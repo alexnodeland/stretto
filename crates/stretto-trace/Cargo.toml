@@ -1,6 +1,6 @@
 [package]
 name = "stretto-trace"
-description = "Canonical agent-episode schema and trace ingest (τ²-bench) for stretto."
+description = "Canonical agent-episode schema and trace ingest (τ²-bench, MCP proxy logs) for stretto."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
