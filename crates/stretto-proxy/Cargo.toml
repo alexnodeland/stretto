@@ -1,0 +1,25 @@
+[package]
+name = "stretto-proxy"
+description = "A stdio MCP proxy that forwards traffic unchanged and records it as stretto episodes."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "stretto-proxy"
+path = "src/main.rs"
+
+# A tiny MCP server for trying the proxy (and for its tests).
+[[bin]]
+name = "stretto-mcp-demo"
+path = "src/bin/stretto-mcp-demo.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+stretto-trace.workspace = true
