@@ -56,6 +56,7 @@ First results, with their interpretation, are in [docs/results/phase0-2026-09-23
 - **The gate depends on how the agent calls tools.** Across nine current leaderboard models the habit never trained on, all clear 20% in retail, from 28.6% (Claude Opus 4.5) to 43.5% (Qwen3.5). In airline, the heaviest parallel callers fall short: Claude Opus 4.5 (13.4%), GLM-5 (15.4%) and GPT-5.2 with reasoning off (17.9%). Models that never call in parallel, such as Qwen3.5 and Qwen3-Max, leave the most to collapse.
 - **Validated arbitration makes the habit a stopping rule.** Requiring ≥99% cross-validated agreement per context, from at least 10 distinct tasks, leaves one context per domain, and both hand back to the LLM. That is safe (no risky decisions on held-out tasks), but it leaves about 7.5 decisions per episode to Jev. Counting tasks matters: a context validated on 28 decisions from a few tasks held only 43% on new ones.
 - **Compile from current frontier runs.** Habits from Claude Opus 4.5, Sonnet 4.5 and Gemini 3 predict GLM-5 as well as its own habit in retail (66–67%) and better in airline (62% against 57%); the 2025 baselines do worse. `--no-baselines --source ...` trains on them.
+- **Phase 0b: zero-shot Jev is calibrated but not accurate enough to carry flows.** jev-1.13.0 answered 8,946 held-out questions for $1.19. It agrees with the agent's next step 72% of the time (ECE 0.06; 92–93% on the third of decisions where it is at least 0.9 sure). Trusted at p ≥ 0.9, flows save only 3.9–4.7% of LLM turns, with a risky call in 6–13% of episodes. A two-key rule (Jev must match the habit) barely helps. Next: the narrower questions and Bayesian arbitration of the design. See [the summary](docs/results/phase0b-2026-09-23-summary.md).
 
 ## Crates
 
@@ -72,7 +73,7 @@ First results, with their interpretation, are in [docs/results/phase0-2026-09-23
 | Phase | What | Needs |
 |---|---|---|
 | 0a | Predictability, headroom and provenance on published trajectories | Nothing (done) |
-| 0b | Replayed shadow mode: ask Jev at every decision a flow would hand it (next step, closed-set arguments), score agreement and calibration, and re-run the projection with its answers. Harness built; matching descriptions to records and judging tool outputs come next | `TYPESAFE_API_KEY` |
+| 0b | Replayed shadow mode: ask Jev at every decision a flow would hand it (next step, closed-set arguments), score agreement and calibration, and re-run the projection with its answers. First run done (v1 questions); next: narrower questions, Bayesian arbitration, matching descriptions to records | `TYPESAFE_API_KEY` (set) |
 | 1 | Rust MCP proxy that records traffic (recording done: `stretto-proxy`); rule checks compiled from policy and tested against traces | — |
 | 2 | Flow compiler; `plan_*` / `resume_*` / `commit_*` macro-tools; arbitration runtime; live τ²-bench arms on GLM and MiniMax | GLM (Z.ai) and MiniMax keys |
 | 3 | Predicate refinement, per-decision counterfactual evaluation, flow search with fugue-evo, then American frontier models | — |

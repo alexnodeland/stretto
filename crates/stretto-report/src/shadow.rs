@@ -171,24 +171,29 @@ pub struct ShadowEpisode<'a> {
 }
 
 /// Values each `(tool, argument)` took in `episodes`, keyed as the questions
-/// key them; arguments with too many values are left out.
+/// key them. Arguments with too many values are left out, and so are
+/// arguments that ever took an array or an object: a composite value (a list
+/// of flights, a split payment) is assembled from the episode's own records,
+/// so other episodes' values are no options for it.
 pub fn closed_values<'a>(
     episodes: impl IntoIterator<Item = &'a Episode>,
 ) -> BTreeMap<(String, String), BTreeSet<String>> {
     let mut values: BTreeMap<(String, String), BTreeSet<String>> = BTreeMap::new();
+    let mut composite: BTreeSet<(String, String)> = BTreeSet::new();
     for ep in episodes {
         for call in ep.tool_calls() {
             if let Value::Object(args) = &call.arguments {
                 for (arg, v) in args {
-                    values
-                        .entry((call.name.clone(), arg.clone()))
-                        .or_default()
-                        .insert(value_key(v));
+                    let key = (call.name.clone(), arg.clone());
+                    if matches!(v, Value::Array(_) | Value::Object(_)) {
+                        composite.insert(key.clone());
+                    }
+                    values.entry(key).or_default().insert(value_key(v));
                 }
             }
         }
     }
-    values.retain(|_, v| v.len() <= MAX_ARG_OPTIONS);
+    values.retain(|k, v| v.len() <= MAX_ARG_OPTIONS && !composite.contains(k));
     values
 }
 
@@ -952,6 +957,30 @@ mod tests {
             })
         );
         assert_eq!(steps_answers[0], None);
+    }
+
+    #[test]
+    fn composite_arguments_are_not_closed_sets() {
+        let call = |args: Value| Event::Assistant {
+            text: None,
+            calls: vec![ToolCall {
+                id: "1".into(),
+                name: "book".into(),
+                arguments: args,
+            }],
+            usage: None,
+        };
+        let mut ep = episode();
+        ep.events = vec![
+            call(json!({"cabin": "economy", "flights": [{"id": "HAT1"}]})),
+            call(json!({"cabin": "business", "flights": [{"id": "HAT2"}]})),
+        ];
+        let values = closed_values([&ep]);
+        assert_eq!(
+            values[&("book".to_string(), "cabin".to_string())],
+            BTreeSet::from(["business".to_string(), "economy".to_string()])
+        );
+        assert!(!values.contains_key(&("book".to_string(), "flights".to_string())));
     }
 
     #[test]
