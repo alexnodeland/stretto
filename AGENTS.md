@@ -9,7 +9,7 @@ crates/
   stretto-trace/   episode schema, τ²-bench and MCP proxy log ingest, tool manifests
   stretto-model/   abstraction, back-off world model, α posterior (fugue), provenance, runs, policy
   stretto-oracle/  Oracle trait, Jev client (feature "http"), replay cache, mock
-  stretto-report/  `stretto` CLI, the Phase 0 report, and Phase 0b (`shadow`: System-One questions at held-out decisions)
+  stretto-report/  `stretto` CLI, the Phase 0 report, and Phase 0b (`shadow`: System-One questions at held-out decisions; `arbitrate`: combining them with the habit)
   stretto-proxy/   stdio MCP proxy that records sessions (Phase 1), plus a demo MCP server
 docs/
   design.md        decisions and architecture

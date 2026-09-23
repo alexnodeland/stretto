@@ -11,6 +11,8 @@ The full rationale, prior work and risks are in fugue's [RFC-001](https://github
 | Where the harness sits | A Rust MCP proxy. Compiled flows are served to the agent as macro-tools |
 | Pausing a flow | Resumable: `plan_*`, `resume_*(token, choice)`, `commit_*(token)` |
 | Writes | Plan/commit pairs. The agent gets the user's explicit "yes" between them, as τ²-bench requires |
+| Between LLM turns | Flows only read. Writes, and tools not marked read-only, go back to the LLM, so a wrong pick is a detour (an extra lookup), not a risk (Phase 0b v2) |
+| Taking Jev's answer | Combined with the habit's prediction and Jev's record at that site on other tasks: a conditional logit, fitted by cross-validation over tasks (RFC-001 §3.6) |
 | Jev's roles inside a flow | Match descriptions to records; classify stated reasons; judge tool outputs; pick the next sub-flow |
 | Dates, amounts, eligibility | Code. Rule checks are compiled from the policy by an LLM, tested against traces, and reviewed by a person |
 | Flow discovery | Traces first. The policy only names flows and checks the rules |

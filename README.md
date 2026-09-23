@@ -38,7 +38,16 @@ cargo run --release -p stretto-report -- phase0 --tau2 ../tau2-bench \
   --oracle jev --out reports/phase0b.md --json reports/phase0b.json
 ```
 
-Answers are cached in `.oracle-cache/`, so each distinct question is paid for once: about 9,000 questions, roughly $1 at Jev's price. `--oracle-budget` refuses to start above a dollar limit (default $5), `--oracle-limit` asks a stable sample for a pilot, `--oracle mock` checks the pipeline for free, and `--oracle-dump` writes every question for audit.
+Answers are cached in `.oracle-cache/`, so each distinct question is paid for once. A full run is about 9,000 questions, roughly $1 at Jev's price. The options:
+
+- `--questions v2` asks the questions RFC-001 §3.5 specifies, for read-only flows. It combines the answers with the habit (§3.6). The default, `v1`, reproduces the first run.
+- `--oracle-budget` refuses to start above a dollar limit (default $5).
+- `--oracle-limit` asks a stable sample, for a pilot.
+- `--oracle mock` checks the pipeline for free.
+- `--oracle-dump` writes every question for audit.
+- `--oracle-log` writes every decision with the agent's step and the picks.
+
+The published answers replay without a key: see [the v2 bundle](docs/results/phase0b-v2-2026-09-23-answers.md).
 
 First results, with their interpretation, are in [docs/results/phase0-2026-09-23.md](docs/results/phase0-2026-09-23.md). The headlines for airline and retail:
 
@@ -57,6 +66,12 @@ First results, with their interpretation, are in [docs/results/phase0-2026-09-23
 - **Validated arbitration makes the habit a stopping rule.** Requiring ≥99% cross-validated agreement per context, from at least 10 distinct tasks, leaves one context per domain, and both hand back to the LLM. That is safe (no risky decisions on held-out tasks), but it leaves about 7.5 decisions per episode to Jev. Counting tasks matters: a context validated on 28 decisions from a few tasks held only 43% on new ones.
 - **Compile from current frontier runs.** Habits from Claude Opus 4.5, Sonnet 4.5 and Gemini 3 predict GLM-5 as well as its own habit in retail (66–67%) and better in airline (62% against 57%); the 2025 baselines do worse. `--no-baselines --source ...` trains on them.
 - **Phase 0b: zero-shot Jev is calibrated but not accurate enough to carry flows.** jev-1.13.0 answered 8,946 held-out questions for $1.19. It agrees with the agent's next step 72% of the time (ECE 0.06; 92–93% on the third of decisions where it is at least 0.9 sure). Trusted at p ≥ 0.9, flows save only 3.9–4.7% of LLM turns, with a risky call in 6–13% of episodes. A two-key rule (Jev must match the habit) barely helps. Next: the narrower questions and Bayesian arbitration of the design. See [the summary](docs/results/phase0b-2026-09-23-summary.md).
+- **Phase 0b v2: read-only flows remove the risk, but Jev is still the bottleneck.** See [the v2 summary](docs/results/phase0b-v2-2026-09-23-summary.md).
+  - Under the design's plan/commit rule, flows only read between LLM turns, so a wrong pick is an extra lookup rather than a risk. That costs little ceiling: GLM-5 drops from 29.1% to 28.2% in retail.
+  - Narrower questions did not make Jev more accurate: 73–78% on the same decisions.
+  - Combining its answers with the habit adds about 2 points. Where the combination is at least 0.99 sure, it agrees 97.7–99.0% of the time.
+  - Because detours are harmless offline, flows can act at p ≥ 0.5. They then save 15.0% of LLM turns in retail and 10.4% in airline, with a detour in about half the episodes.
+  - Only Claude 3.7 Sonnet in retail clears 20% offline. GLM-5 reaches 14.7% in retail and 2.7% in airline.
 
 ## Crates
 
