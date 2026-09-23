@@ -947,13 +947,15 @@ fn featured(
         .map(|sc| sc.thresholds.clone())
         .unwrap_or_default();
     let with_oracle = |inputs: &[ProjectionInput]| -> Vec<Projection> {
-        thresholds
-            .iter()
-            .map(|&t| {
+        let alone = thresholds.iter().map(|&t| Scenario::HabitThenOracle(t));
+        let two_keys = thresholds.iter().map(|&t| Scenario::TwoKeys(t));
+        alone
+            .chain(two_keys)
+            .map(|scenario| {
                 project(
                     &intent_habit,
                     inputs,
-                    Scenario::HabitThenOracle(t),
+                    scenario,
                     Gate::Validated(&validated),
                     config.min_evidence,
                 )

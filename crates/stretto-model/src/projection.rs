@@ -53,6 +53,10 @@ pub enum Scenario {
     /// [`ProjectionInput`]: trusted when its pick has at least this
     /// probability; below it, or where it was not asked, the flow pauses.
     HabitThenOracle(f64),
+    /// Two keys: as [`Scenario::HabitThenOracle`], but a next-step pick is
+    /// trusted only when it is also the habit's top option. Argument picks,
+    /// which the habit does not predict, need the probability alone.
+    TwoKeys(f64),
 }
 
 /// A System-One answer to "what does the agent do next?".
@@ -477,9 +481,12 @@ pub fn project(
                 match scenario {
                     Scenario::HabitOnly => Verdict::Pause,
                     Scenario::HabitThenPerfectOracle => Verdict::Oracle,
-                    Scenario::HabitThenOracle(t) => {
+                    Scenario::HabitThenOracle(t) | Scenario::TwoKeys(t) => {
+                        let both = |o: OracleStep| {
+                            !matches!(scenario, Scenario::TwoKeys(_)) || o.top as usize == top
+                        };
                         match input.oracle_steps.get(k).copied().flatten() {
-                            Some(o) if o.prob >= t => {
+                            Some(o) if o.prob >= t && both(o) => {
                                 if o.top == ep.actions[k] {
                                     Verdict::Oracle
                                 } else if o.top == 0 {
@@ -545,7 +552,7 @@ pub fn project(
                     (ArgNeed::ClosedSet, Scenario::HabitThenPerfectOracle) => {
                         p.oracle_decisions += 1
                     }
-                    (ArgNeed::ClosedSet, Scenario::HabitThenOracle(t)) => {
+                    (ArgNeed::ClosedSet, Scenario::HabitThenOracle(t) | Scenario::TwoKeys(t)) => {
                         match input.oracle_args.get(k).copied().flatten() {
                             Some(a) if a.prob >= t => {
                                 p.oracle_decisions += 1;
@@ -833,6 +840,52 @@ mod tests {
             (1, 0)
         );
         assert_eq!(early.turns_saved, 1);
+    }
+
+    #[test]
+    fn two_keys_need_the_habit_to_agree() {
+        // The habit has learned a → b → c; the oracle is confident everywhere
+        // but, after a, picks c.
+        let steps = vec![reply(), tool("a"), tool("b"), tool("c"), reply()];
+        let vocab = Vocab::build(steps.iter(), ["a", "b", "c"]);
+        let enc: Vec<EncodedEpisode> = (0..30)
+            .map(|_| EncodedEpisode::encode(&steps, &vocab, true))
+            .collect();
+        let habit = BackoffModel::fit(2, 0.5, vocab.len(), &enc);
+        let mut picks: Vec<Option<OracleStep>> = enc[0]
+            .actions
+            .iter()
+            .map(|&top| Some(OracleStep { top, prob: 0.95 }))
+            .collect();
+        picks[2] = Some(OracleStep {
+            top: enc[0].actions[3],
+            prob: 0.95,
+        });
+        let replay = |scenario| {
+            project(
+                &habit,
+                &[ProjectionInput {
+                    encoded: &enc[0],
+                    turns: vec![0, 1, 2, 3, 4],
+                    args: vec![ArgNeed::Bound; 5],
+                    usage: vec![TurnUsage::default(); 5],
+                    input_price: 0.0,
+                    oracle_steps: picks.clone(),
+                    oracle_args: vec![],
+                }],
+                scenario,
+                // No validated contexts: every decision goes past the habit.
+                Gate::Threshold(2.0),
+                0.0,
+            )
+        };
+        let alone = replay(Scenario::HabitThenOracle(0.9));
+        assert_eq!(alone.oracle_disagreements, 1);
+        // With two keys the wrong pick disagrees with the habit, so the flow
+        // pauses there instead; the rest still goes through.
+        let two = replay(Scenario::TwoKeys(0.9));
+        assert_eq!(two.oracle_disagreements, 0);
+        assert_eq!((two.pauses, two.turns_saved), (1, 1));
     }
 
     #[test]

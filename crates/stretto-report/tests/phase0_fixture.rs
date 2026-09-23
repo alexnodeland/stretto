@@ -189,11 +189,11 @@ fn phase0_runs_end_to_end() {
     // One row per model, then the pooled row.
     assert_eq!(sh.rows.len(), 4);
     assert!(sh.rows.iter().all(|r| r.next.n > 0));
-    assert_eq!(sh.projection.len(), sh.thresholds.len());
+    assert_eq!(sh.projection.len(), 2 * sh.thresholds.len());
     assert!(f
         .by_model
         .iter()
-        .all(|m| m.with_oracle.len() == sh.thresholds.len()));
+        .all(|m| m.with_oracle.len() == 2 * sh.thresholds.len()));
     let md = render::markdown(&report);
     assert!(md.contains("### Phase 0b"));
     assert!(md.contains("**Mock oracle.**"));
