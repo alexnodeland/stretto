@@ -71,24 +71,22 @@ The named intent is the set of write tools the episode goes on to call (37 disti
 
 Each run of consecutive tool calls is replayed as one `plan_*` call driven by the habit above (code features + named intent). Where the habit may not act, the decision goes either to the LLM (a pause, one turn) or to a System-One model assumed to agree with the agent (the upper bound Phase 0b will test). Generated arguments always pause. Collapsing every run to one call would save 22.9% of LLM turns (the ceiling).
 
-The habit may act either wherever its top option clears a threshold (with at least 5 training observations), or only in *validated* contexts: those where its top option matched the agent in at least 99% of at least 20 decisions under 5-fold cross-validation grouped by task. A habit that hands back too early is safe: the LLM takes the step, at the cost of one turn. A habit that picks another tool, or carries on when the agent stopped, is the risk.
+The habit may act either wherever its top option clears a threshold (with at least 5 training observations), or only in *validated* contexts: those where its top option matched the agent in at least 99% of at least 20 decisions from at least 10 distinct tasks, under 5-fold cross-validation grouped by task. A habit that hands back too early is safe: the LLM takes the step, at the cost of one turn. A habit that picks another tool, or carries on when the agent stopped, is the risk.
 
 | Where the habit may not act | The habit acts | Turns saved | Pauses/ep | Habit decisions/ep | System-One decisions/ep | Habit handed back early (/100 ep) | Habit chose another step (/100 ep) | Episodes where it did |
 |---|---|---|---|---|---|---|---|---|
 | pause for the LLM | top option ≥ 0.9 | **1.2%** | 3.71 | 0.74 | 0.00 | 9.1 | 2.7 | 2.7% |
 | pause for the LLM | top option ≥ 0.95 | **1.0%** | 3.75 | 0.47 | 0.00 | 5.6 | 1.9 | 1.9% |
-| pause for the LLM | in 3 validated contexts | **0.0%** | 3.88 | 0.17 | 0.00 | 3.4 | 0.0 | 0.0% |
+| pause for the LLM | in 1 validated context | **0.0%** | 3.88 | 0.00 | 0.00 | 0.0 | 0.0 | 0.0% |
 | ask a perfect System-One model | top option ≥ 0.9 | **21.7%** | 0.18 | 0.74 | 6.70 | 9.1 | 2.7 | 2.7% |
 | ask a perfect System-One model | top option ≥ 0.95 | **21.9%** | 0.14 | 0.47 | 6.98 | 5.6 | 1.9 | 1.9% |
-| ask a perfect System-One model | in 3 validated contexts | **22.0%** | 0.12 | 0.17 | 7.27 | 3.4 | 0.0 | 0.0% |
+| ask a perfect System-One model | in 1 validated context | **22.3%** | 0.08 | 0.00 | 7.45 | 0.0 | 0.0 | 0.0% |
 
 Validated contexts, and how the habit did in them on held-out tasks:
 
 | Last steps (oldest first) | The agent's usual next step | Agreement, cross-validated on training tasks | Agreement on held-out tasks |
 |---|---|---|---|
-| `start` → `start` | respond | 99.0% of 831 | 95.5% of 640 |
-| `respond (user replied)` → `transfer_to_human_agents (ok)` | respond | 100.0% of 41 | 100.0% of 30 |
-| `get_user_details (ok; len(orders)=1)` → `get_order_details (ok)` | respond | 100.0% of 38 | 72.8% of 81 |
+| `start` → `start` | respond | 99.0% of 831 (74 tasks) | 95.5% of 640 |
 
 Tokens and dollars come from the usage the benchmark recorded for every LLM call. A removed turn saves its whole prompt and completion. A run that collapses to one call also stops carrying its intermediate tool outputs in every later prompt; their size is read off the recorded prompt growth, and priced at each model's effective input price, fitted to its recorded costs by least squares (so it absorbs any prompt-caching discount): claude-3-7-sonnet $3.00 in / $15.00 out per MTok; gpt-4.1 $0.92 in / $11.18 out per MTok; gpt-4.1-mini $0.21 in / $1.18 out per MTok; o4-mini $0.60 in / $4.14 out per MTok.
 
@@ -96,24 +94,24 @@ Tokens and dollars come from the usage the benchmark recorded for every LLM call
 |---|---|---|---|---|---|---|
 | pause for the LLM | top option ≥ 0.9 | 1.2% | 1.2% | 0.6% | **1.2%** | 0.1123 → 0.1110 |
 | pause for the LLM | top option ≥ 0.95 | 1.0% | 0.9% | 0.6% | **0.9%** | 0.1123 → 0.1113 |
-| pause for the LLM | in 3 validated contexts | 0.0% | 0.0% | 0.0% | **0.0%** | 0.1123 → 0.1123 |
+| pause for the LLM | in 1 validated context | 0.0% | 0.0% | 0.0% | **0.0%** | 0.1123 → 0.1123 |
 | ask a perfect System-One model | top option ≥ 0.9 | 21.7% | 25.7% | 18.7% | **31.7%** | 0.1123 → 0.0768 |
 | ask a perfect System-One model | top option ≥ 0.95 | 21.9% | 26.0% | 18.8% | **31.9%** | 0.1123 → 0.0765 |
-| ask a perfect System-One model | in 3 validated contexts | 22.0% | 26.2% | 19.0% | **32.2%** | 0.1123 → 0.0762 |
+| ask a perfect System-One model | in 1 validated context | 22.3% | 26.5% | 19.1% | **32.4%** | 0.1123 → 0.0759 |
 
 By agent model, with the habit acting only in validated contexts and a perfect System-One model deciding the rest. Pooled dollars weigh each model by its spend. Models marked *(target)* were never trained on: the habit, its features, the closed argument sets and the validated contexts all come from the other models, and the pooled tables above leave them out.
 
 | Agent model | Tool turns with parallel calls | Turns saved | Ceiling | Input tokens saved | Output tokens saved | $ saved | $ per episode |
 |---|---|---|---|---|---|---|---|
-| claude-3-7-sonnet | 0% | **32.7%** | 33.6% | 38.2% | 25.2% | 37.2% | 0.3247 → 0.2040 |
-| gpt-4.1 | 20% | **19.4%** | 20.0% | 20.2% | 7.7% | 16.8% | 0.0579 → 0.0481 |
-| gpt-4.1-mini | 20% | **12.0%** | 13.3% | 14.4% | 7.1% | 12.7% | 0.0134 → 0.0117 |
-| o4-mini | 0% | **22.6%** | 23.6% | 24.7% | 20.9% | 23.3% | 0.0532 → 0.0408 |
-| glm-5 *(target)* | 27% | **28.5%** | 30.0% | 28.9% | 18.6% | – | no cost recorded |
+| claude-3-7-sonnet | 0% | **33.0%** | 33.6% | 38.4% | 25.4% | 37.4% | 0.3247 → 0.2032 |
+| gpt-4.1 | 20% | **19.7%** | 20.0% | 20.5% | 7.8% | 17.1% | 0.0579 → 0.0480 |
+| gpt-4.1-mini | 20% | **12.4%** | 13.3% | 15.0% | 7.2% | 13.3% | 0.0134 → 0.0117 |
+| o4-mini | 0% | **22.8%** | 23.6% | 24.9% | 21.0% | 23.4% | 0.0532 → 0.0407 |
+| glm-5 *(target)* | 27% | **29.1%** | 30.0% | 29.5% | 18.8% | – | no cost recorded |
 
 ### Phase 0b: the System-One model in shadow mode
 
-At every held-out decision a flow would hand to a System-One model, it was asked a typed question about the state the flow would have there: right after a tool returns, which tool the agent calls next or whether it hands back; and, for tool calls inside a run, the value of each closed-set argument. Oracle: `jev` (answering model: jev-1.13.0). 5932 decisions, 5812 distinct questions, 5812 answered, 0 failed; 19252613 input tokens ($0.81 at $0.042/MTok).
+At every held-out decision a flow would hand to a System-One model, it was asked a typed question about the state the flow would have there: right after a tool returns, which tool the agent calls next or whether it hands back; and, for tool calls inside a run, the value of each closed-set argument. Oracle: `replay` (answering model: jev-1.13.0). 5932 decisions, 5812 distinct questions, 5812 answered, 0 failed; 19252613 input tokens ($0.81 at $0.042/MTok).
 
 Next step (which tool next, or hand back):
 
@@ -141,19 +139,19 @@ Projection with the System-One model, pooled over the source models: the habit a
 
 | Pick trusted at | Turns saved | Pauses/ep | System-One decisions/ep | Handed back early (/100 ep) | Risky decisions (/100 ep) | Episodes with one |
 |---|---|---|---|---|---|---|
-| p ≥ 0.5 | **14.4%** | 1.31 | 6.83 | 70.2 | 109.4 | 66.7% |
-| p ≥ 0.7 | **11.4%** | 1.80 | 5.04 | 35.3 | 63.3 | 47.5% |
-| p ≥ 0.9 | **3.9%** | 3.10 | 2.42 | 14.1 | 6.1 | 5.9% |
+| p ≥ 0.5 | **14.6%** | 1.29 | 7.00 | 67.0 | 110.2 | 67.0% |
+| p ≥ 0.7 | **11.5%** | 1.79 | 5.16 | 31.9 | 64.1 | 48.1% |
+| p ≥ 0.9 | **3.9%** | 3.10 | 2.47 | 10.6 | 6.4 | 6.2% |
 
 The gate, per agent model: at least 20% fewer LLM turns, with at most 1% of episodes holding a risky decision (a conservative stand-in for losing at most one point of pass^1). Each cell is turns saved · episodes with a risky decision.
 
 | Agent model | Perfect System-One | p ≥ 0.5 | p ≥ 0.7 | p ≥ 0.9 | Gate |
 |---|---|---|---|---|---|
-| claude-3-7-sonnet | 32.7% | 21.0% · 49.4% | 16.6% · 23.8% | 5.0% · 3.1% | fails |
-| gpt-4.1 | 19.4% | 12.4% · 65.6% | 9.4% · 42.5% | 2.5% · 0.6% | fails: below 20% even with a perfect System-One model |
-| gpt-4.1-mini | 12.0% | 6.5% · 81.9% | 4.6% · 71.9% | 1.7% · 11.2% | fails: below 20% even with a perfect System-One model |
-| o4-mini | 22.6% | 16.8% · 70.0% | 14.4% · 51.9% | 6.3% · 8.8% | fails |
-| glm-5 *(target)* | 28.5% | 12.9% · 45.0% | 7.8% · 15.0% | 1.5% · 0.0% | fails |
+| claude-3-7-sonnet | 33.0% | 21.2% · 50.0% | 16.6% · 24.4% | 5.0% · 3.1% | fails |
+| gpt-4.1 | 19.7% | 12.6% · 65.6% | 9.4% · 42.5% | 2.5% · 0.6% | fails: below 20% even with a perfect System-One model |
+| gpt-4.1-mini | 12.4% | 6.7% · 82.5% | 4.7% · 73.8% | 1.7% · 12.5% | fails: below 20% even with a perfect System-One model |
+| o4-mini | 22.8% | 17.0% · 70.0% | 14.5% · 51.9% | 6.3% · 8.8% | fails |
+| glm-5 *(target)* | 29.1% | 13.2% · 45.6% | 8.0% · 16.9% | 1.5% · 1.2% | fails |
 
 ### Transfer: top-1 when the habit comes from another model (k = 2)
 
@@ -291,7 +289,7 @@ The named intent is the set of write tools the episode goes on to call (19 disti
 
 Each run of consecutive tool calls is replayed as one `plan_*` call driven by the habit above (code features + named intent). Where the habit may not act, the decision goes either to the LLM (a pause, one turn) or to a System-One model assumed to agree with the agent (the upper bound Phase 0b will test). Generated arguments always pause. Collapsing every run to one call would save 23.9% of LLM turns (the ceiling).
 
-The habit may act either wherever its top option clears a threshold (with at least 5 training observations), or only in *validated* contexts: those where its top option matched the agent in at least 99% of at least 20 decisions under 5-fold cross-validation grouped by task. A habit that hands back too early is safe: the LLM takes the step, at the cost of one turn. A habit that picks another tool, or carries on when the agent stopped, is the risk.
+The habit may act either wherever its top option clears a threshold (with at least 5 training observations), or only in *validated* contexts: those where its top option matched the agent in at least 99% of at least 20 decisions from at least 10 distinct tasks, under 5-fold cross-validation grouped by task. A habit that hands back too early is safe: the LLM takes the step, at the cost of one turn. A habit that picks another tool, or carries on when the agent stopped, is the risk.
 
 | Where the habit may not act | The habit acts | Turns saved | Pauses/ep | Habit decisions/ep | System-One decisions/ep | Habit handed back early (/100 ep) | Habit chose another step (/100 ep) | Episodes where it did |
 |---|---|---|---|---|---|---|---|---|
@@ -306,7 +304,7 @@ Validated contexts, and how the habit did in them on held-out tasks:
 
 | Last steps (oldest first) | The agent's usual next step | Agreement, cross-validated on training tasks | Agreement on held-out tasks |
 |---|---|---|---|
-| `respond (user replied)` → `transfer_to_human_agents (ok)` | respond | 100.0% of 96 | 100.0% of 52 |
+| `respond (user replied)` → `transfer_to_human_agents (ok)` | respond | 100.0% of 96 (15 tasks) | 100.0% of 52 |
 
 Tokens and dollars come from the usage the benchmark recorded for every LLM call. A removed turn saves its whole prompt and completion. A run that collapses to one call also stops carrying its intermediate tool outputs in every later prompt; their size is read off the recorded prompt growth, and priced at each model's effective input price, fitted to its recorded costs by least squares (so it absorbs any prompt-caching discount): claude-3-7-sonnet $3.00 in / $15.00 out per MTok; gpt-4.1 $1.04 in / $6.69 out per MTok; gpt-4.1-mini $0.20 in / $1.44 out per MTok; o4-mini $0.65 in / $4.04 out per MTok.
 
@@ -331,7 +329,7 @@ By agent model, with the habit acting only in validated contexts and a perfect S
 
 ### Phase 0b: the System-One model in shadow mode
 
-At every held-out decision a flow would hand to a System-One model, it was asked a typed question about the state the flow would have there: right after a tool returns, which tool the agent calls next or whether it hands back; and, for tool calls inside a run, the value of each closed-set argument. Oracle: `jev` (answering model: jev-1.13.0). 3211 decisions, 3134 distinct questions, 3134 answered, 0 failed; 8979283 input tokens ($0.38 at $0.042/MTok).
+At every held-out decision a flow would hand to a System-One model, it was asked a typed question about the state the flow would have there: right after a tool returns, which tool the agent calls next or whether it hands back; and, for tool calls inside a run, the value of each closed-set argument. Oracle: `replay` (answering model: jev-1.13.0). 3211 decisions, 3134 distinct questions, 3134 answered, 0 failed; 8979283 input tokens ($0.38 at $0.042/MTok).
 
 Next step (which tool next, or hand back):
 
@@ -450,7 +448,7 @@ The gate, per agent model: at least 20% fewer LLM turns, with at most 1% of epis
 - **Code features** are enum-like fields read from JSON tool outputs by code, kept only if they raise the likelihood of *held-out tasks*: a field that merely identifies the task (a user's city) looks predictive on repeated trials and is rejected.
 - **Writes after "yes" / any assent** look at the user's most recent message before each write call: the strict proxy needs the word "yes", the lenient one also accepts phrases like "go ahead" or "proceed". The true confirmation rate lies between them; the System-One question "did the user explicitly confirm?" will measure it.
 - **Turns saved** (projection) is the share of all LLM turns a `plan_*` flow would remove on held-out episodes: a run of t LLM turns costs min(t, 1 + pauses). The **ceiling** is every run collapsing to one call. A **pause** is a decision inside a run that nobody in the flow may take, or an argument only the LLM can produce.
-- **Validated contexts** are those where the habit's top option matched the agent in at least the stated share of at least the stated number of decisions, under cross-validation grouped by task.
+- **Validated contexts** are those where the habit's top option matched the agent in at least the stated share of at least the stated number of decisions, drawn from at least the stated number of distinct tasks (a task's trials and models are near-copies), under cross-validation grouped by task.
 - A **risky decision** is one taken inside the flow that differs from the agent: another tool, carrying on when the agent stopped, or another argument value. Handing back early is counted separately, as safe: it costs one LLM turn. **Episodes with a risky decision** stand in, conservatively, for the pass^1 a flow could lose.
 - **Tokens and dollars saved** come from the usage the benchmark recorded for each call: removed turns, plus intermediate tool outputs a collapsed run no longer carries in later prompts, priced at the model's effective input price.
 - **Phase 0b agreement** is how often the System-One model's pick matched the agent's next step (or argument value) on held-out decisions. **Stop vs. go on** scores only whether it handed back when the agent did. **Brier** is the squared error of its whole distribution (0 is perfect, 2 the worst); **ECE** is the gap between the probability it put on its pick and how often the pick was right, averaged over ten bins.

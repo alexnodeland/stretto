@@ -1,11 +1,11 @@
 # Phase 0b results, 2026-09-23: summary
 
-No code was changed. The full generated report is in [phase0b-2026-09-23-report.md](phase0b-2026-09-23-report.md).
+No code was changed for this run. The full generated report is in [phase0b-2026-09-23-report.md](phase0b-2026-09-23-report.md). It was produced by commit b85bd14 (`main` at dfb2ba7, which requires 10 distinct training tasks per validated context), replaying the cached Jev answers from the live run.
 
 - Jev model: jev-1.13.0 (answered every question)
 - Questions: retail 5812 distinct (5932 decisions) and airline 3134 distinct (3211 decisions), all answered, 0 failed
 - Input tokens: retail 19,252,613 ($0.81) and airline 8,979,283 ($0.38), 28.2M in total ($1.19 at $0.042/MTok)
-- Wall-clock: 281 s for the full run, after a 35 s pilot of 200 questions per domain
+- Wall-clock: the live Jev run took 281 s, after a 35 s pilot of 200 questions per domain; the replay took 23 s
 
 With the pick trusted at p ≥ 0.9, the pooled projection saves 3.9% of LLM turns in retail and 4.7% in airline. No agent model passes the gate in either domain.
 
@@ -26,19 +26,19 @@ Pooled projection:
 
 | Pick trusted at | Turns saved | Pauses/ep | System-One decisions/ep | Handed back early (/100 ep) | Risky decisions (/100 ep) | Episodes with one |
 |---|---|---|---|---|---|---|
-| p ≥ 0.5 | **14.4%** | 1.31 | 6.83 | 70.2 | 109.4 | 66.7% |
-| p ≥ 0.7 | **11.4%** | 1.80 | 5.04 | 35.3 | 63.3 | 47.5% |
-| p ≥ 0.9 | **3.9%** | 3.10 | 2.42 | 14.1 | 6.1 | 5.9% |
+| p ≥ 0.5 | **14.6%** | 1.29 | 7.00 | 67.0 | 110.2 | 67.0% |
+| p ≥ 0.7 | **11.5%** | 1.79 | 5.16 | 31.9 | 64.1 | 48.1% |
+| p ≥ 0.9 | **3.9%** | 3.10 | 2.47 | 10.6 | 6.4 | 6.2% |
 
 Gate (turns saved · episodes with a risky decision):
 
 | Agent model | Perfect System-One | p ≥ 0.5 | p ≥ 0.7 | p ≥ 0.9 | Gate |
 |---|---|---|---|---|---|
-| claude-3-7-sonnet | 32.7% | 21.0% · 49.4% | 16.6% · 23.8% | 5.0% · 3.1% | fails |
-| gpt-4.1 | 19.4% | 12.4% · 65.6% | 9.4% · 42.5% | 2.5% · 0.6% | fails: below 20% even with a perfect System-One model |
-| gpt-4.1-mini | 12.0% | 6.5% · 81.9% | 4.6% · 71.9% | 1.7% · 11.2% | fails: below 20% even with a perfect System-One model |
-| o4-mini | 22.6% | 16.8% · 70.0% | 14.4% · 51.9% | 6.3% · 8.8% | fails |
-| glm-5 *(target)* | 28.5% | 12.9% · 45.0% | 7.8% · 15.0% | 1.5% · 0.0% | fails |
+| claude-3-7-sonnet | 33.0% | 21.2% · 50.0% | 16.6% · 24.4% | 5.0% · 3.1% | fails |
+| gpt-4.1 | 19.7% | 12.6% · 65.6% | 9.4% · 42.5% | 2.5% · 0.6% | fails: below 20% even with a perfect System-One model |
+| gpt-4.1-mini | 12.4% | 6.7% · 82.5% | 4.7% · 73.8% | 1.7% · 12.5% | fails: below 20% even with a perfect System-One model |
+| o4-mini | 22.8% | 17.0% · 70.0% | 14.5% · 51.9% | 6.3% · 8.8% | fails |
+| glm-5 *(target)* | 29.1% | 13.2% · 45.6% | 8.0% · 16.9% | 1.5% · 1.2% | fails |
 
 ## Airline
 
