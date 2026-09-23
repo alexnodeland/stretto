@@ -2,8 +2,8 @@
 
 use crate::arbitrate::{self, Case};
 use crate::shadow::{
-    self, Agreement, Decision, Kind, QuestionSet, Scored, ShadowConfig, ShadowEpisode, Sites,
-    RESPOND,
+    self, Agreement, Decision, Favors, Kind, Predicate, QuestionSet, Scored, ShadowConfig,
+    ShadowEpisode, Sites, RESPOND,
 };
 use anyhow::{bail, Context, Result};
 use serde::Serialize;
@@ -30,7 +30,7 @@ use stretto_model::{
 };
 use stretto_oracle::Oracle;
 use stretto_trace::tau2::{load_manifest, load_results, load_split, Split, Tau2Run};
-use stretto_trace::{Episode, ToolKind, ToolManifest, TurnUsage};
+use stretto_trace::{Episode, Event, ToolKind, ToolManifest, TurnUsage};
 
 /// What to measure.
 #[derive(Clone, Debug)]
@@ -229,6 +229,9 @@ pub struct FeaturedReport {
     /// Dollars per million input and output tokens for each agent model,
     /// fitted from the costs the benchmark recorded.
     pub prices: Vec<ModelPrice>,
+    /// Tokens of a typical lookup's output (characters over four), charged
+    /// to every later prompt for each detour of a read-only flow.
+    pub lookup_tokens: f64,
     /// Contexts where the habit's cross-validated agreement cleared the bar,
     /// most decisions first.
     pub validated: Vec<ValidatedContext>,
@@ -280,10 +283,12 @@ pub struct ShadowReport {
     /// v2: share of the source models' next-step decisions whose step (as a
     /// read-only flow takes it) was among the options.
     pub offered: f64,
-    /// v2: the arbiter's weights, averaged over folds, for the habit, the
-    /// one-question answer, the split answer, handing back, and the site's
-    /// reliability.
-    pub weights: Vec<f64>,
+    /// v2: the arbiter's weights, averaged over folds, by feature: the
+    /// habit, the one-question answer, the split answer, handing back, each
+    /// predicate, and the site's reliability.
+    pub weights: Vec<(String, f64)>,
+    /// v2: the predicates asked alongside the next-step questions.
+    pub predicates: Vec<Predicate>,
 }
 
 /// Phase 0b agreement for one closed-set argument.
@@ -950,6 +955,28 @@ fn featured(
         })
         .collect();
 
+    let (lookups, chars) = prepared
+        .iter()
+        .flat_map(|p| p.ep.events.iter())
+        .filter_map(|e| match e {
+            Event::ToolResult { name, content, .. }
+                if manifest.tools.get(name) == Some(&ToolKind::Read) =>
+            {
+                Some(content.len())
+            }
+            _ => None,
+        })
+        .fold((0usize, 0usize), |(n, c), len| (n + 1, c + len));
+    let lookup_tokens = if lookups > 0 {
+        chars as f64 / lookups as f64 / 4.0
+    } else {
+        0.0
+    };
+    let read_only = Design::ReadOnly {
+        high: &high,
+        detour_tokens: lookup_tokens,
+    };
+
     // Every held-out episode, source models first, as the projection and
     // Phase 0b replay them.
     let replayed: Vec<(&Prepared, &EncodedEpisode)> = test_set
@@ -988,6 +1015,14 @@ fn featured(
             .map(|c| &c[i]);
         projection_input(p, enc, &needs[i], &prices, answers)
     };
+    let lookup_first_input = |i: usize| {
+        let (p, enc) = replayed[i];
+        let answers = shadow
+            .as_ref()
+            .and_then(|run| run.lookup_first.as_ref())
+            .map(|c| &c[i]);
+        projection_input(p, enc, &needs[i], &prices, answers)
+    };
     let inputs: Vec<ProjectionInput> = (0..test_set.len()).map(input).collect();
     let gates: Vec<Gate> = config
         .projection_thresholds
@@ -1010,7 +1045,7 @@ fn featured(
         .unwrap_or_default();
     // v2 asks for read-only flows (plan/commit); v1 let flows call any tool.
     let design = match config.shadow.as_ref().map(|sc| sc.questions) {
-        Some(QuestionSet::V2) => Design::ReadOnly(&high),
+        Some(QuestionSet::V2) => read_only,
         _ => Design::AnyTool,
     };
     let with_oracle = |idx: &[usize]| -> Vec<Projection> {
@@ -1037,6 +1072,13 @@ fn featured(
                 thresholds
                     .iter()
                     .map(|&t| replay(&combined, Scenario::Arbitrated(t))),
+            );
+            // Below one half, only a lookup-first answer can continue.
+            let first: Vec<ProjectionInput> = idx.iter().map(|&i| lookup_first_input(i)).collect();
+            out.extend(
+                LOOKUP_FIRST
+                    .iter()
+                    .map(|&t| replay(&first, Scenario::LookupFirst(t))),
             );
         }
         out
@@ -1070,7 +1112,7 @@ fn featured(
                     Scenario::HabitThenPerfectOracle,
                     Gate::Validated(&validated),
                     config.min_evidence,
-                    Design::ReadOnly(&high),
+                    read_only,
                 ),
                 with_oracle: with_oracle(&idx),
             }
@@ -1157,6 +1199,7 @@ fn featured(
             })
             .collect(),
         validated: validated_list,
+        lookup_tokens,
         projection,
         by_model,
         shadow,
@@ -1174,7 +1217,12 @@ struct ShadowRun {
     raw: Vec<Answers>,
     /// v2: the answers combined with the habit.
     combined: Option<Vec<Answers>>,
+    /// v2: the most likely lookup of each combined answer.
+    lookup_first: Option<Vec<Answers>>,
 }
+
+/// Probabilities at which a read-only flow takes its most likely lookup.
+const LOOKUP_FIRST: [f64; 3] = [0.2, 0.3, 0.4];
 
 /// Ask the System-One model at every decision of `replayed`, score the
 /// answers (and, for v2, combine them with the habit), and lay them out per
@@ -1208,7 +1256,14 @@ fn shadow_run(
         if sc.hints {
             sites.learn_feeds(habit_set.iter().map(|p| p.ep), manifest);
         }
-        shadow::decisions_v2(&episodes, manifest, &closed, &sites, &sc.model)
+        shadow::decisions_v2(
+            &episodes,
+            manifest,
+            &closed,
+            &sites,
+            &sc.predicates,
+            &sc.model,
+        )
     } else {
         shadow::decisions(&episodes, manifest, &closed, &sc.model)
     };
@@ -1222,12 +1277,52 @@ fn shadow_run(
     } else {
         vec![None; decisions.len()]
     };
+    let predicates: Vec<BTreeMap<String, f64>> = decisions
+        .iter()
+        .map(|d| shadow::predicate_answers(d, &asked))
+        .collect();
     let (combined, weights) = if v2 {
-        let (c, w) = combine(&decisions, &scored, &split, replayed, habit, vocab);
+        let (c, w) = combine(
+            &decisions,
+            &scored,
+            &split,
+            &predicates,
+            if sc.predicate_features {
+                &sc.predicates
+            } else {
+                &[]
+            },
+            replayed,
+            habit,
+            vocab,
+        );
         (Some(c), w)
     } else {
         (None, Vec::new())
     };
+    // The most likely lookup, wherever there is one.
+    let lookup_first: Option<Vec<Option<Scored>>> = combined.as_ref().map(|c| {
+        c.iter()
+            .zip(&decisions)
+            .map(|(s, d)| {
+                let s = s.as_ref()?;
+                if d.kind != Kind::Next || d.request.is_none() {
+                    return Some(s.clone());
+                }
+                let best = s.probs.iter().filter(|(o, _)| o.as_str() != RESPOND).fold(
+                    None::<(&String, f64)>,
+                    |best, (o, &p)| match best {
+                        Some((_, q)) if q >= p => best,
+                        _ => Some((o, p)),
+                    },
+                );
+                Some(match best {
+                    Some((o, _)) => Scored::of(s.probs.clone(), o.clone(), &d.actual),
+                    None => s.clone(),
+                })
+            })
+            .collect()
+    });
     if let Some(path) = &sc.log {
         let path = shadow::per_domain(path, &manifest.domain);
         let mut lines = String::new();
@@ -1250,6 +1345,7 @@ fn shadow_run(
                 "pick": pick(&scored[i]),
                 "split": pick(&split[i]),
                 "combined": combined.as_ref().and_then(|c| pick(&c[i])),
+                "predicates": predicates[i],
             });
             lines.push_str(&line.to_string());
             lines.push('\n');
@@ -1274,6 +1370,7 @@ fn shadow_run(
     };
     let raw = layout(&scored);
     let combined_answers = combined.as_deref().map(layout);
+    let lookup_first_answers = lookup_first.as_deref().map(layout);
 
     let agreement = |answers: &[Option<Scored>], keep: &dyn Fn(&Prepared) -> bool, next: bool| {
         Agreement::of(
@@ -1369,26 +1466,35 @@ fn shadow_run(
             .count(),
         offered: if v2 { offered } else { 1.0 },
         weights,
+        predicates: sc.predicates.clone(),
     };
     Ok(ShadowRun {
         report,
         raw,
         combined: combined_answers,
+        lookup_first: lookup_first_answers,
     })
 }
 
 /// v2: combine each asked next-step answer with the habit (see
 /// [`arbitrate`]); argument answers and decisions settled without asking
 /// pass through. Returns the answers and the arbiter's mean weights.
+#[allow(clippy::too_many_arguments)]
 fn combine(
     decisions: &[Decision],
     scored: &[Option<Scored>],
     split: &[Option<Scored>],
+    predicates: &[BTreeMap<String, f64>],
+    asked: &[Predicate],
     replayed: &[(&Prepared, &EncodedEpisode)],
     habit: &GroupedModel,
     vocab: &Vocab,
-) -> (Vec<Option<Scored>>, Vec<f64>) {
+) -> (Vec<Option<Scored>>, Vec<(String, f64)>) {
     let ln = |v: f64| v.max(1e-6).ln();
+    let logit = |v: f64| {
+        let v = v.clamp(1e-4, 1.0 - 1e-4);
+        (v / (1.0 - v)).ln()
+    };
     let mut cases: Vec<Case> = Vec::new();
     let mut at: Vec<usize> = Vec::new();
     for (i, d) in decisions.iter().enumerate() {
@@ -1418,25 +1524,37 @@ fn combine(
             })
             .collect();
         prior[respond] = (1.0 - prior.iter().sum::<f64>()).max(0.0);
+        let (site, prev) = match &p.steps[d.step - 1] {
+            Step {
+                action: Action::Tool(t),
+                outcome,
+            } => (Sites::name(t, *outcome == Outcome::Err), t.as_str()),
+            _ => continue,
+        };
         let features = options
             .iter()
             .enumerate()
             .map(|(a, o)| {
-                vec![
+                let mut x = vec![
                     ln(prior[a]),
                     ln(one.probs[*o]),
                     ln(two.probs.get(*o).copied().unwrap_or(0.0)),
                     (a == respond) as u8 as f64,
-                ]
+                ];
+                // Each predicate's answer, on the options it bears on (zero
+                // where it was not asked).
+                for q in asked {
+                    let on = match q.favors {
+                        Favors::SameLookup => o.as_str() == prev,
+                        Favors::AnyLookup => a != respond,
+                        Favors::HandBack => a == respond,
+                    };
+                    let answer = predicates[i].get(&q.id).copied().map_or(0.0, logit);
+                    x.push(if on { answer } else { 0.0 });
+                }
+                x
             })
             .collect();
-        let site = match &p.steps[d.step - 1] {
-            Step {
-                action: Action::Tool(t),
-                outcome,
-            } => Sites::name(t, *outcome == Outcome::Err),
-            _ => continue,
-        };
         cases.push(Case {
             group: p.group,
             site,
@@ -1451,6 +1569,16 @@ fn combine(
         at.push(i);
     }
     let (arbitrated, weights) = arbitrate::cross_fit(&cases, FOLDS);
+    let names = ["habit", "one question", "split", "handing back"]
+        .into_iter()
+        .map(String::from)
+        .chain(asked.iter().map(|q| format!("predicate {}", q.id)))
+        .chain(["the model's record at the site".to_string()]);
+    let weights: Vec<(String, f64)> = if cases.is_empty() {
+        Vec::new()
+    } else {
+        names.zip(weights).collect()
+    };
     let mut out = scored.to_vec();
     for (&i, a) in at.iter().zip(arbitrated) {
         let d = &decisions[i];

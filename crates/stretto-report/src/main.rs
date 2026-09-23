@@ -77,6 +77,15 @@ enum Command {
         /// learned from argument dataflow in training.
         #[arg(long)]
         dataflow_hints: bool,
+        /// v2: a JSON file of yes/no predicates about the state (see
+        /// `data/predicates-v2.json`) to ask with every next-step question and
+        /// weigh in the arbiter.
+        #[arg(long)]
+        predicates: Option<PathBuf>,
+        /// v2: ask the predicates but leave them out of the arbiter, to
+        /// measure what they add.
+        #[arg(long)]
+        no_predicate_features: bool,
         /// Replay cache for oracle answers.
         #[arg(long, default_value = ".oracle-cache")]
         oracle_cache: PathBuf,
@@ -159,6 +168,8 @@ fn main() -> Result<()> {
             oracle,
             questions,
             dataflow_hints,
+            predicates,
+            no_predicate_features,
             oracle_cache,
             oracle_concurrency,
             oracle_limit,
@@ -180,6 +191,16 @@ fn main() -> Result<()> {
             config.baselines = !no_baselines;
             config.sources = sources.iter().map(|t| phase0::Target::parse(t)).collect();
             config.targets = targets.iter().map(|t| phase0::Target::parse(t)).collect();
+            let predicates = match predicates {
+                Some(path) => {
+                    let text = std::fs::read_to_string(&path)
+                        .with_context(|| format!("reading {}", path.display()))?;
+                    serde_json::from_str::<PredicateFile>(&text)
+                        .with_context(|| format!("parsing {}", path.display()))?
+                        .predicates
+                }
+                None => Vec::new(),
+            };
             config.shadow = oracle.map(|kind| {
                 let mut sc = ShadowConfig::new(match kind {
                     OracleArg::Jev => OracleKind::Jev,
@@ -188,6 +209,8 @@ fn main() -> Result<()> {
                 });
                 sc.cache_dir = oracle_cache;
                 sc.hints = dataflow_hints;
+                sc.predicates = predicates.clone();
+                sc.predicate_features = !no_predicate_features;
                 sc.questions = match questions {
                     QuestionArg::V1 => QuestionSet::V1,
                     QuestionArg::V2 => QuestionSet::V2,
@@ -245,6 +268,11 @@ fn main() -> Result<()> {
             Ok(())
         }
     }
+}
+
+#[derive(serde::Deserialize)]
+struct PredicateFile {
+    predicates: Vec<stretto_report::shadow::Predicate>,
 }
 
 #[derive(serde::Deserialize)]

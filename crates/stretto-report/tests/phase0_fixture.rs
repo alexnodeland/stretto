@@ -213,9 +213,10 @@ fn phase0_runs_end_to_end() {
         .all(|r| r.split.is_some() && r.combined.is_some()));
     assert_eq!(sh.weights.len(), 5);
     assert!((0.0..=1.0).contains(&sh.offered));
-    // One question, two keys and combined, per threshold; read-only flows
-    // take no risks.
-    assert_eq!(sh.projection.len(), 3 * sh.thresholds.len());
+    // One question, two keys and combined per threshold, then three
+    // lookup-first thresholds; read-only flows take no risks.
+    assert_eq!(sh.projection.len(), 3 * sh.thresholds.len() + 3);
+    assert!(f.lookup_tokens > 0.0);
     assert!(sh
         .projection
         .iter()

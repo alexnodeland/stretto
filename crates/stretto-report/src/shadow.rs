@@ -25,7 +25,7 @@
 //! transcript; and the stop decision is also asked on its own.
 
 use anyhow::{bail, Result};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::PathBuf;
@@ -105,6 +105,34 @@ pub enum QuestionSet {
     V2,
 }
 
+/// A yes/no question about the state, asked alongside the v2 next-step
+/// questions, whose answer the arbiter weighs (RFC-001 §3.4).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Predicate {
+    /// Short id; the question is asked as `pred_<id>`.
+    pub id: String,
+    /// Which options the answer bears on.
+    pub favors: Favors,
+    /// The question.
+    pub question: String,
+    /// What "yes" means.
+    pub yes: String,
+    /// What "no" means.
+    pub no: String,
+}
+
+/// The options a [`Predicate`]'s answer bears on, as the arbiter's feature.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Favors {
+    /// The lookup the agent has just made, made again.
+    SameLookup,
+    /// Every lookup.
+    AnyLookup,
+    /// Handing back.
+    HandBack,
+}
+
 /// Which System-One oracle answers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OracleKind {
@@ -148,6 +176,12 @@ pub struct ShadowConfig {
     /// v2: describe each lookup by what its results supply, learned from
     /// argument dataflow in training.
     pub hints: bool,
+    /// v2: yes/no questions about the state to ask with every next-step
+    /// question and weigh in the arbiter.
+    pub predicates: Vec<Predicate>,
+    /// v2: whether the arbiter weighs the predicates' answers (off: they are
+    /// asked but ignored, to measure what they add).
+    pub predicate_features: bool,
 }
 
 impl ShadowConfig {
@@ -166,6 +200,8 @@ impl ShadowConfig {
             log: None,
             questions: QuestionSet::V1,
             hints: false,
+            predicates: Vec::new(),
+            predicate_features: true,
         }
     }
 
@@ -523,12 +559,14 @@ impl Sites {
     }
 }
 
-/// Every question Phase 0b v2 asks about `episodes` (see [`QuestionSet::V2`]).
+/// Every question Phase 0b v2 asks about `episodes` (see [`QuestionSet::V2`]),
+/// with `predicates` asked alongside each next-step question.
 pub fn decisions_v2(
     episodes: &[ShadowEpisode<'_>],
     manifest: &ToolManifest,
     closed: &BTreeMap<(String, String), BTreeSet<String>>,
     sites: &Sites,
+    predicates: &[Predicate],
     model: &str,
 ) -> Vec<Decision> {
     let mut out = Vec::new();
@@ -560,10 +598,23 @@ pub fn decisions_v2(
             let (request, fixed) = if options.is_empty() {
                 (None, Some(RESPOND.to_string()))
             } else {
+                let mut questions = next_questions_v2(manifest, sites, prev, failed, &options);
+                for p in predicates {
+                    questions.insert(
+                        format!("pred_{}", p.id),
+                        Question::Noul {
+                            instructions: format!("{V2_CONTEXT} {}", p.question),
+                            criteria: Some(NoulCriteria {
+                                yes: p.yes.clone(),
+                                no: p.no.clone(),
+                            }),
+                        },
+                    );
+                }
                 let request = Request {
                     model: model.to_string(),
                     state: slice(before, se.goal, None),
-                    questions: next_questions_v2(manifest, sites, prev, failed, &options),
+                    questions,
                 };
                 (Some(request), None)
             };
@@ -859,6 +910,25 @@ pub fn score(d: &Decision, asked: &Asked) -> Option<Scored> {
         .map(|o| (o.clone(), probabilities.get(o).copied().unwrap_or(0.0)))
         .collect();
     Some(Scored::of(probs, choice.clone(), &d.actual))
+}
+
+/// The predicates' answers to `d`, by predicate id: the probability of "yes".
+pub fn predicate_answers(d: &Decision, asked: &Asked) -> BTreeMap<String, f64> {
+    let Some(response) = d
+        .request
+        .as_ref()
+        .and_then(|r| asked.responses.get(&request_key(r)))
+    else {
+        return BTreeMap::new();
+    };
+    response
+        .answers
+        .iter()
+        .filter_map(|(id, a)| match (id.strip_prefix("pred_"), a) {
+            (Some(p), Answer::Noul { noul }) => Some((p.to_string(), *noul)),
+            _ => None,
+        })
+        .collect()
 }
 
 /// The v2 split answer to a next-step decision: "respond" gets one minus the
@@ -1576,7 +1646,7 @@ mod tests {
             needs: &needs,
             goal: "cancel",
         };
-        let ds = decisions_v2(&[se], &manifest(), &BTreeMap::new(), &sites, "m");
+        let ds = decisions_v2(&[se], &manifest(), &BTreeMap::new(), &sites, &[], "m");
         assert_eq!(ds.len(), 2);
         // After get_order the agent wrote: a read-only flow hands back.
         assert_eq!(
@@ -1600,6 +1670,52 @@ mod tests {
         assert_eq!(split.probs[RESPOND], 0.5);
         assert_eq!(split.probs["get_order"], 0.5);
         assert_eq!(score(&ds[1], &asked).unwrap().pick, RESPOND);
+    }
+
+    #[test]
+    fn predicates_ride_along_with_next_step_questions() {
+        let call = |name: &str| Step {
+            action: Action::Tool(name.into()),
+            outcome: Outcome::Ok,
+        };
+        let train = vec![call("get_order"), call("get_order")];
+        let sites = Sites::learn([train.as_slice()], &manifest());
+        let ep = episode();
+        let st = steps(&ep);
+        let sources = call_sources(&ep);
+        let needs = vec![ArgNeed::Bound; st.len()];
+        let se = ShadowEpisode {
+            episode: &ep,
+            steps: &st,
+            sources: &sources,
+            needs: &needs,
+            goal: "cancel",
+        };
+        let pending = Predicate {
+            id: "list_pending".into(),
+            favors: Favors::SameLookup,
+            question: "Are records still unchecked?".into(),
+            yes: "Some are.".into(),
+            no: "None are.".into(),
+        };
+        let ds = decisions_v2(
+            &[se],
+            &manifest(),
+            &BTreeMap::new(),
+            &sites,
+            &[pending],
+            "m",
+        );
+        let ids: Vec<&String> = ds[0].request.as_ref().unwrap().questions.keys().collect();
+        assert_eq!(ids, ["go_on", "next", "pred_list_pending"]);
+        let config = ShadowConfig::new(OracleKind::Mock);
+        let asked = ask(config.build().unwrap().as_ref(), &ds, &config, "retail").unwrap();
+        assert_eq!(
+            predicate_answers(&ds[0], &asked),
+            BTreeMap::from([("list_pending".to_string(), 0.5)])
+        );
+        // A decision settled without asking has no answers.
+        assert!(predicate_answers(&ds[1], &asked).is_empty());
     }
 
     #[test]

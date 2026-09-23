@@ -1,0 +1,26 @@
+{
+  "about": "State predicates for Phase 0b v2, proposed as RFC-001 §3.4 describes: an LLM (Claude) read where the flow handed back while the agent kept looking things up. It read the training runs of one lookup repeated (the report's most common runs, such as get_order_details three times in a row) and a dozen held-out failures at product lookups and flight searches. Each predicate is asked as a Noul in every v2 next-step request and enters the arbiter as one feature of the stated shape: same_lookup (the lookup just made), any_lookup (every lookup) or hand_back.",
+  "predicates": [
+    {
+      "id": "list_pending",
+      "favors": "same_lookup",
+      "question": "Is the agent working through a list of records one lookup at a time (orders, items, products, reservations, flights or dates), with some it has not looked up yet?",
+      "yes": "Records the customer asked about, or that the results list, are still unchecked, and the agent is checking them one by one.",
+      "no": "Every record the agent needs has been looked up, or it is not working through a list."
+    },
+    {
+      "id": "needs_options",
+      "favors": "any_lookup",
+      "question": "Does the customer's request need options the agent has not looked up yet, such as another version of an item, other products, or flights on a date or route not yet searched?",
+      "yes": "The request depends on options that no result so far shows.",
+      "no": "The results so far show every option the request needs, or it needs none."
+    },
+    {
+      "id": "must_ask",
+      "favors": "hand_back",
+      "question": "Does the agent need something only the customer can give before any further lookup would help, such as identification, a choice between options, or a confirmation?",
+      "yes": "The next useful step is a question to the customer.",
+      "no": "The agent can make progress with lookups alone."
+    }
+  ]
+}

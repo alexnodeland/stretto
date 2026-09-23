@@ -764,14 +764,24 @@ fn shadow_section(s: &mut String, f: &FeaturedReport) {
             );
         }
         let _ = writeln!(s);
-        if sh.weights.len() == 5 {
-            let w = &sh.weights;
+        if !sh.weights.is_empty() {
+            let w: Vec<String> = sh
+                .weights
+                .iter()
+                .map(|(name, w)| format!("{name} {w:.2}"))
+                .collect();
             let _ = writeln!(
                 s,
-                "The arbiter's weights, averaged over folds: habit {:.2}, one question {:.2}, split \
-                 {:.2}, handing back {:.2}, the model's record at the site {:.2}.\n",
-                w[0], w[1], w[2], w[3], w[4]
+                "The arbiter's weights, averaged over folds: {}.\n",
+                w.join(", ")
             );
+        }
+        if !sh.predicates.is_empty() {
+            let _ = writeln!(s, "Predicates asked with every next-step question:\n");
+            for q in &sh.predicates {
+                let _ = writeln!(s, "- `{}`: {}", q.id, q.question);
+            }
+            let _ = writeln!(s);
         }
     } else {
         let _ = writeln!(s, "Next step (which tool next, or hand back):\n");
@@ -848,20 +858,29 @@ fn shadow_section(s: &mut String, f: &FeaturedReport) {
                  top option; *combined*: the arbiter's probability), and anything else pauses. \
                  A write always goes back to the LLM. Nothing a read-only flow does changes the \
                  environment, so its wrong picks are *detours*, extra lookups that cost a pause, \
-                 not risks.\n"
+                 not risks. Handing back costs a turn and a detour does not, so *lookup first* \
+                 takes the likeliest lookup whenever it clears the (lower) threshold. Each detour \
+                 is charged a typical lookup's output ({:.0} tokens) in every later prompt, so \
+                 the dollars saved include the detours' cost.\n",
+                f.lookup_tokens
             );
             let _ = writeln!(
                 s,
-                "| Pick trusted at | Turns saved | Pauses/ep | System-One decisions/ep | Handed back early (/100 ep) | Detours (/100 ep) | Episodes with a detour | Writes handed back/ep |"
+                "| Pick trusted at | Turns saved | $ saved | Pauses/ep | System-One decisions/ep | Handed back early (/100 ep) | Detours (/100 ep) | Episodes with a detour | Writes handed back/ep |"
             );
-            let _ = writeln!(s, "|---|---|---|---|---|---|---|---|");
+            let _ = writeln!(s, "|---|---|---|---|---|---|---|---|---|");
             for p in &sh.projection {
                 let n = p.episodes.max(1) as f64;
                 let _ = writeln!(
                     s,
-                    "| {} | **{}** | {:.2} | {:.2} | {:.1} | {:.1} | {} | {:.2} |",
+                    "| {} | **{}** | {} | {:.2} | {:.2} | {:.1} | {:.1} | {} | {:.2} |",
                     column(p.scenario),
                     pct1(p.saved_share()),
+                    if p.cost > 0.0 {
+                        pct1(p.cost_saved_share())
+                    } else {
+                        "–".to_string()
+                    },
                     p.pauses as f64 / n,
                     p.oracle_decisions as f64 / n,
                     100.0 * (p.early_stops + p.oracle_early_stops) as f64 / n,
@@ -909,6 +928,7 @@ fn shadow_section(s: &mut String, f: &FeaturedReport) {
                 (Scenario::HabitThenOracle(t), _)
                 | (Scenario::TwoKeys(t), false)
                 | (Scenario::Arbitrated(t), true) => t,
+                (Scenario::LookupFirst(t), true) => return (t - 0.3).abs() < 1e-9,
                 _ => return false,
             };
             [0.5, 0.7, 0.9].iter().any(|x| (x - t).abs() < 1e-9)
@@ -993,6 +1013,7 @@ fn column(scenario: Scenario) -> String {
         Scenario::HabitThenOracle(t) => format!("p ≥ {t}"),
         Scenario::TwoKeys(t) => format!("two keys, p ≥ {t}"),
         Scenario::Arbitrated(t) => format!("combined, p ≥ {t}"),
+        Scenario::LookupFirst(t) => format!("lookup first, p ≥ {t}"),
         _ => "–".to_string(),
     }
 }
@@ -1015,6 +1036,9 @@ fn who(scenario: Scenario) -> String {
         }
         Scenario::Arbitrated(t) => {
             format!("combine the System-One model with the habit, trusted at p ≥ {t}")
+        }
+        Scenario::LookupFirst(t) => {
+            format!("combine with the habit, and take the likeliest lookup at p ≥ {t}")
         }
     }
 }
