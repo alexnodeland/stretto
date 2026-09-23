@@ -1,0 +1,18 @@
+//! Phase 0 measurement: how compressible is an agent's behavior?
+//!
+//! [`phase0::run`] reads τ²-bench results files and measures, per domain and
+//! per agent model, on the official train/test split:
+//!
+//! - **predictability**: how well a habit learned from successful training
+//!   episodes predicts the agent's next action on held-out tasks;
+//! - **coverage**: the share of held-out decisions the habit could take at a
+//!   given confidence, and how often it would agree with the agent;
+//! - **transfer**: the same, training on one model and testing on another;
+//! - **macro-tool headroom**: LLM turns spent inside runs of tool calls;
+//! - **argument provenance**: where tool-argument values came from;
+//! - **confirmation**: how often writes follow the user's "yes".
+//!
+//! [`render::markdown`] turns the result into a report.
+
+pub mod phase0;
+pub mod render;

@@ -1,0 +1,25 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+rust-version = "1.87"
+license = "MIT"
+repository = "https://github.com/alexnodeland/stretto"
+authors = ["Alex Nodeland"]
+
+[workspace.dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+fugue = { package = "fugue-ppl", version = "0.2.2" }
+hex = "0.4"
+rand = "0.8"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+stretto-model = { path = "crates/stretto-model" }
+stretto-oracle = { path = "crates/stretto-oracle" }
+stretto-trace = { path = "crates/stretto-trace" }

@@ -1,0 +1,23 @@
+[package]
+name = "stretto-oracle"
+description = "System-One oracle interface for stretto: TypeSafe Jev client, replay cache, and mocks."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[features]
+default = ["http"]
+# The live Jev client. Without it the crate still has the types, the cache,
+# and the mock, which is all offline analysis and tests need.
+http = ["dep:reqwest"]
+
+[dependencies]
+anyhow.workspace = true
+hex.workspace = true
+reqwest = { workspace = true, optional = true }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true

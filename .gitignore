@@ -1,0 +1,5 @@
+target/
+reports/
+.oracle-cache/
+*.profraw
+.env
