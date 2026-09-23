@@ -18,4 +18,5 @@ clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 stretto-model.workspace = true
+stretto-oracle.workspace = true
 stretto-trace.workspace = true

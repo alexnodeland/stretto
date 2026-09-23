@@ -29,6 +29,17 @@ cargo run --release -p stretto-report -- phase0 --tau2 ../tau2-bench \
   $(scripts/fetch-targets.sh | sed 's/^/--target /') --out reports/phase0.md
 ```
 
+**Phase 0b** asks a System-One model at every held-out decision a flow would hand it: right after a tool returns, which tool comes next or whether to hand back, and each closed-set argument. It needs `TYPESAFE_API_KEY` in the environment:
+
+```bash
+cargo run --release -p stretto-report -- jev-check     # key, TLS and latency, one question
+cargo run --release -p stretto-report -- phase0 --tau2 ../tau2-bench \
+  $(scripts/fetch-targets.sh glm-5 | sed 's/^/--target /') \
+  --oracle jev --out reports/phase0b.md --json reports/phase0b.json
+```
+
+Answers are cached in `.oracle-cache/`, so each distinct question is paid for once: about 9,000 questions, roughly $1 at Jev's price. `--oracle-budget` refuses to start above a dollar limit (default $5), `--oracle-limit` asks a stable sample for a pilot, `--oracle mock` checks the pipeline for free, and `--oracle-dump` writes every question for audit.
+
 First results, with their interpretation, are in [docs/results/phase0-2026-09-23.md](docs/results/phase0-2026-09-23.md). The headlines for airline and retail:
 
 - **Macro-tool headroom.** About a quarter of LLM turns are spent inside runs of consecutive tool calls that a macro-tool could perform in one call.
@@ -59,7 +70,7 @@ First results, with their interpretation, are in [docs/results/phase0-2026-09-23
 | Phase | What | Needs |
 |---|---|---|
 | 0a | Predictability, headroom and provenance on published trajectories | Nothing (done) |
-| 0b | Replayed shadow mode: ask Jev at every recorded decision, and measure agreement and calibration for its four roles | `TYPESAFE_API_KEY` |
+| 0b | Replayed shadow mode: ask Jev at every decision a flow would hand it (next step, closed-set arguments), score agreement and calibration, and re-run the projection with its answers. Harness built; matching descriptions to records and judging tool outputs come next | `TYPESAFE_API_KEY` |
 | 1 | Rust MCP proxy that records traffic; rule checks compiled from policy and tested against traces | — |
 | 2 | Flow compiler; `plan_*` / `resume_*` / `commit_*` macro-tools; arbitration runtime; live τ²-bench arms on GLM and MiniMax | GLM (Z.ai) and MiniMax keys |
 | 3 | Predicate refinement, per-decision counterfactual evaluation, flow search with fugue-evo, then American frontier models | — |

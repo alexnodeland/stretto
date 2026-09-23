@@ -12,7 +12,12 @@
 //! - **argument provenance**: where tool-argument values came from;
 //! - **confirmation**: how often writes follow the user's "yes".
 //!
+//! With [`phase0::Config::shadow`] set, [`shadow`] (Phase 0b) also asks a
+//! System-One model at every held-out decision a flow would hand it, scores
+//! the answers, and re-runs the projection with them.
+//!
 //! [`render::markdown`] turns the result into a report.
 
 pub mod phase0;
 pub mod render;
+pub mod shadow;

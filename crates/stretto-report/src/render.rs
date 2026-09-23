@@ -87,7 +87,26 @@ pub fn markdown(report: &Report) -> String {
          before each write call: the strict proxy needs the word \"yes\", the lenient one also \
          accepts phrases like \"go ahead\" or \"proceed\". The true confirmation rate lies \
          between them; the System-One question \"did the user explicitly confirm?\" will \
-         measure it."
+         measure it.\n\
+         - **Turns saved** (projection) is the share of all LLM turns a `plan_*` flow would \
+         remove on held-out episodes: a run of t LLM turns costs min(t, 1 + pauses). The \
+         **ceiling** is every run collapsing to one call. A **pause** is a decision inside a run \
+         that nobody in the flow may take, or an argument only the LLM can produce.\n\
+         - **Validated contexts** are those where the habit's top option matched the agent in at \
+         least the stated share of at least the stated number of decisions, under \
+         cross-validation grouped by task.\n\
+         - A **risky decision** is one taken inside the flow that differs from the agent: \
+         another tool, carrying on when the agent stopped, or another argument value. Handing \
+         back early is counted separately, as safe: it costs one LLM turn. **Episodes with a \
+         risky decision** stand in, conservatively, for the pass^1 a flow could lose.\n\
+         - **Tokens and dollars saved** come from the usage the benchmark recorded for each \
+         call: removed turns, plus intermediate tool outputs a collapsed run no longer carries \
+         in later prompts, priced at the model's effective input price.\n\
+         - **Phase 0b agreement** is how often the System-One model's pick matched the agent's \
+         next step (or argument value) on held-out decisions. **Stop vs. go on** scores only \
+         whether it handed back when the agent did. **Brier** is the squared error of its whole \
+         distribution (0 is perfect, 2 the worst); **ECE** is the gap between the probability it \
+         put on its pick and how often the pick was right, averaged over ten bins."
     );
     s
 }
@@ -414,6 +433,7 @@ fn featured(s: &mut String, d: &DomainReport, f: &FeaturedReport, report: &Repor
     }
     let _ = writeln!(s);
     projection(s, f, &report.settings);
+    shadow_section(s, f);
 }
 
 fn projection(s: &mut String, f: &FeaturedReport, settings: &Settings) {
@@ -595,10 +615,189 @@ fn dollars_per_episode(p: &Projection) -> String {
     format!("{:.4} → {:.4}", p.cost / n, (p.cost - p.cost_saved) / n)
 }
 
-fn who(scenario: Scenario) -> &'static str {
+fn shadow_section(s: &mut String, f: &FeaturedReport) {
+    let Some(sh) = &f.shadow else {
+        return;
+    };
+    let _ = writeln!(s, "### Phase 0b: the System-One model in shadow mode\n");
+    if sh.oracle == "mock" {
+        let _ = writeln!(
+            s,
+            "**Mock oracle.** It always picks the first option, so these numbers only check the \
+             pipeline; they say nothing about Jev.\n"
+        );
+    }
+    let versions = if sh.versions.is_empty() {
+        "none".to_string()
+    } else {
+        sh.versions.join(", ")
+    };
+    let _ = writeln!(
+        s,
+        "At every held-out decision a flow would hand to a System-One model, it was asked a typed \
+         question about the state the flow would have there: right after a tool returns, which \
+         tool the agent calls next or whether it hands back; and, for tool calls inside a run, \
+         the value of each closed-set argument. Oracle: `{}` (answering model: {versions}). \
+         {} decisions, {} distinct questions, {} answered, {} failed; {} input tokens \
+         (${:.2} at ${}/MTok).\n",
+        sh.oracle,
+        sh.decisions,
+        sh.distinct,
+        sh.answered,
+        sh.errors,
+        sh.input_tokens,
+        sh.input_tokens as f64 / 1e6 * crate::shadow::PRICE_PER_MTOK,
+        crate::shadow::PRICE_PER_MTOK,
+    );
+    if let Some(e) = &sh.first_error {
+        let _ = writeln!(s, "First failure: `{}`\n", e.replace('`', "'"));
+    }
+    let t = sh.thresholds.last().copied().unwrap_or(0.9);
+    let _ = writeln!(s, "Next step (which tool next, or hand back):\n");
+    let _ = writeln!(
+        s,
+        "| Agent model | Decisions | Agreed | Stop vs. go on | Brier | ECE | p ≥ {t}: share / agreed |"
+    );
+    let _ = writeln!(s, "|---|---|---|---|---|---|---|");
+    for row in &sh.rows {
+        let a = &row.next;
+        let at = a.curve.iter().find(|c| (c.0 - t).abs() < 1e-9);
+        let _ = writeln!(
+            s,
+            "| {} | {} | {} | {} | {:.3} | {:.3} | {} |",
+            shadow_label(row),
+            a.n,
+            pct1(a.rate()),
+            pct1(a.stop_agreed as f64 / a.n.max(1) as f64),
+            a.brier,
+            a.ece,
+            at.map_or("–".to_string(), |c| format!(
+                "{} / {}",
+                pct1(c.1),
+                pct1(c.2)
+            )),
+        );
+    }
+    let _ = writeln!(s);
+    let _ = writeln!(s, "Closed-set arguments:\n");
+    let _ = writeln!(
+        s,
+        "| Agent model | Decisions | Agreed | p ≥ {t}: share / agreed |"
+    );
+    let _ = writeln!(s, "|---|---|---|---|");
+    for row in &sh.rows {
+        let a = &row.args;
+        let at = a.curve.iter().find(|c| (c.0 - t).abs() < 1e-9);
+        let _ = writeln!(
+            s,
+            "| {} | {} | {} | {} |",
+            shadow_label(row),
+            a.n,
+            pct1(a.rate()),
+            at.map_or("–".to_string(), |c| format!(
+                "{} / {}",
+                pct1(c.1),
+                pct1(c.2)
+            )),
+        );
+    }
+    let _ = writeln!(s);
+
+    if !sh.projection.is_empty() {
+        let _ = writeln!(
+            s,
+            "Projection with the System-One model, pooled over the source models: the habit acts \
+             in validated contexts, the System-One pick is trusted at or above the threshold, and \
+             anything else pauses.\n"
+        );
+        let _ = writeln!(
+            s,
+            "| Pick trusted at | Turns saved | Pauses/ep | System-One decisions/ep | Handed back early (/100 ep) | Risky decisions (/100 ep) | Episodes with one |"
+        );
+        let _ = writeln!(s, "|---|---|---|---|---|---|---|");
+        for p in &sh.projection {
+            let n = p.episodes.max(1) as f64;
+            let t = match p.scenario {
+                Scenario::HabitThenOracle(t) => format!("p ≥ {t}"),
+                _ => "–".to_string(),
+            };
+            let _ = writeln!(
+                s,
+                "| {} | **{}** | {:.2} | {:.2} | {:.1} | {:.1} | {} |",
+                t,
+                pct1(p.saved_share()),
+                p.pauses as f64 / n,
+                p.oracle_decisions as f64 / n,
+                100.0 * (p.early_stops + p.oracle_early_stops) as f64 / n,
+                100.0 * (p.disagreements + p.oracle_disagreements) as f64 / n,
+                pct1(p.risky_share()),
+            );
+        }
+        let _ = writeln!(s);
+    }
+
+    if f.by_model.iter().any(|m| !m.with_oracle.is_empty()) {
+        let _ = writeln!(
+            s,
+            "The gate, per agent model: at least 20% fewer LLM turns, with at most 1% of episodes \
+             holding a risky decision (a conservative stand-in for losing at most one point of \
+             pass^1). Each cell is turns saved · episodes with a risky decision.\n"
+        );
+        let mut header = "| Agent model | Perfect System-One |".to_string();
+        let mut rule = "|---|---|".to_string();
+        for t in &sh.thresholds {
+            let _ = write!(header, " p ≥ {t} |");
+            rule.push_str("---|");
+        }
+        let _ = writeln!(s, "{header} Gate |\n{rule}---|");
+        for m in &f.by_model {
+            let cells: Vec<String> = m
+                .with_oracle
+                .iter()
+                .map(|p| format!("{} · {}", pct1(p.saved_share()), pct1(p.risky_share())))
+                .collect();
+            let passing = m
+                .with_oracle
+                .iter()
+                .filter(|p| p.saved_share() >= 0.2 && p.risky_share() <= 0.01)
+                .filter_map(|p| match p.scenario {
+                    Scenario::HabitThenOracle(t) => Some(t),
+                    _ => None,
+                })
+                .next();
+            let gate = match passing {
+                Some(t) => format!("**passes** at p ≥ {t}"),
+                None if m.projection.saved_share() < 0.2 => {
+                    "fails: below 20% even with a perfect System-One model".to_string()
+                }
+                None => "fails".to_string(),
+            };
+            let _ = writeln!(
+                s,
+                "| {} | {} | {} | {} |",
+                label(&m.model, m.target),
+                pct1(m.projection.saved_share()),
+                cells.join(" | "),
+                gate
+            );
+        }
+        let _ = writeln!(s);
+    }
+}
+
+fn shadow_label(row: &crate::phase0::ShadowRow) -> String {
+    if row.model == "all source models" {
+        "**all source models**".to_string()
+    } else {
+        label(&row.model, row.target)
+    }
+}
+
+fn who(scenario: Scenario) -> String {
     match scenario {
-        Scenario::HabitOnly => "pause for the LLM",
-        Scenario::HabitThenPerfectOracle => "ask a perfect System-One model",
+        Scenario::HabitOnly => "pause for the LLM".to_string(),
+        Scenario::HabitThenPerfectOracle => "ask a perfect System-One model".to_string(),
+        Scenario::HabitThenOracle(t) => format!("ask the System-One model, trusted at p ≥ {t}"),
     }
 }
 

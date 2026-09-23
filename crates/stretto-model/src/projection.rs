@@ -42,13 +42,35 @@ pub enum ArgNeed {
 }
 
 /// Who resolves the decisions the habit is not confident about.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub enum Scenario {
     /// Nobody: the flow pauses and the LLM decides.
     HabitOnly,
     /// A System-One model that always agrees with the agent: the upper bound
     /// on what Phase 0b can find.
     HabitThenPerfectOracle,
+    /// A real System-One model, from the answers in each
+    /// [`ProjectionInput`]: trusted when its pick has at least this
+    /// probability; below it, or where it was not asked, the flow pauses.
+    HabitThenOracle(f64),
+}
+
+/// A System-One answer to "what does the agent do next?".
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+pub struct OracleStep {
+    /// The action id it picked (0 is respond).
+    pub top: u32,
+    /// The probability it put on that pick.
+    pub prob: f64,
+}
+
+/// A System-One answer for a step's closed-set arguments.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+pub struct OracleArgs {
+    /// Whether every pick matched the agent's value.
+    pub agrees: bool,
+    /// The lowest probability among its picks.
+    pub prob: f64,
 }
 
 /// Arguments that took at most `max_values` distinct values over at least
@@ -115,6 +137,11 @@ pub struct ProjectionInput<'a> {
     pub usage: Vec<TurnUsage>,
     /// Dollars per input token for this episode's model (see [`fit_prices`]).
     pub input_price: f64,
+    /// System-One answers to the next-step question at each step, where one
+    /// was asked; empty when none were. Read by [`Scenario::HabitThenOracle`].
+    pub oracle_steps: Vec<Option<OracleStep>>,
+    /// System-One answers for each step's closed-set arguments, where asked.
+    pub oracle_args: Vec<Option<OracleArgs>>,
 }
 
 /// Contexts where the habit may act, validated by cross-validation.
@@ -282,7 +309,12 @@ pub struct Projection {
     /// Habit decisions that chose a different tool than the agent, or carried
     /// on when the agent stopped: the risk.
     pub disagreements: usize,
-    /// Episodes with at least one such disagreement.
+    /// System-One decisions to hand back while the agent carried on.
+    pub oracle_early_stops: usize,
+    /// System-One decisions that chose another tool, carried on when the
+    /// agent stopped, or picked another argument value: the risk.
+    pub oracle_disagreements: usize,
+    /// Episodes with at least one risky decision, by the habit or System-One.
     pub episodes_with_disagreement: usize,
     /// Input tokens across all turns.
     pub input_tokens: f64,
@@ -342,8 +374,12 @@ enum Verdict {
     EarlyStop,
     /// The habit decided and disagreed.
     Wrong,
-    /// The System-One model decided.
+    /// The System-One model decided and agreed with the agent.
     Oracle,
+    /// The System-One model decided to hand back while the agent carried on.
+    OracleEarlyStop,
+    /// The System-One model decided and disagreed.
+    OracleWrong,
     /// Nobody inside the flow could decide.
     Pause,
 }
@@ -380,6 +416,8 @@ pub fn project(
         oracle_decisions: 0,
         early_stops: 0,
         disagreements: 0,
+        oracle_early_stops: 0,
+        oracle_disagreements: 0,
         episodes_with_disagreement: 0,
         input_tokens: 0.0,
         output_tokens: 0.0,
@@ -388,7 +426,6 @@ pub fn project(
         output_saved: 0.0,
         cost_saved: 0.0,
     };
-    let oracle = scenario == Scenario::HabitThenPerfectOracle;
     for input in inputs {
         let ep = input.encoded;
         let n = ep.actions.len();
@@ -408,10 +445,25 @@ pub fn project(
                 } else {
                     Verdict::Wrong
                 }
-            } else if oracle {
-                Verdict::Oracle
             } else {
-                Verdict::Pause
+                match scenario {
+                    Scenario::HabitOnly => Verdict::Pause,
+                    Scenario::HabitThenPerfectOracle => Verdict::Oracle,
+                    Scenario::HabitThenOracle(t) => {
+                        match input.oracle_steps.get(k).copied().flatten() {
+                            Some(o) if o.prob >= t => {
+                                if o.top == ep.actions[k] {
+                                    Verdict::Oracle
+                                } else if o.top == 0 {
+                                    Verdict::OracleEarlyStop
+                                } else {
+                                    Verdict::OracleWrong
+                                }
+                            }
+                            _ => Verdict::Pause,
+                        }
+                    }
+                }
             }
         };
 
@@ -447,12 +499,38 @@ pub fn project(
                         pause = true;
                     }
                     Verdict::Oracle => p.oracle_decisions += 1,
+                    Verdict::OracleEarlyStop => {
+                        p.oracle_decisions += 1;
+                        p.oracle_early_stops += 1;
+                        pause = true;
+                    }
+                    Verdict::OracleWrong => {
+                        p.oracle_decisions += 1;
+                        p.oracle_disagreements += 1;
+                        wrong_here += 1;
+                        pause = true;
+                    }
                     Verdict::Pause => pause = true,
                 }
-                match input.args[k] {
-                    ArgNeed::Bound => {}
-                    ArgNeed::ClosedSet if oracle => p.oracle_decisions += 1,
-                    ArgNeed::ClosedSet | ArgNeed::Llm => pause = true,
+                match (input.args[k], scenario) {
+                    (ArgNeed::Bound, _) => {}
+                    (ArgNeed::ClosedSet, Scenario::HabitThenPerfectOracle) => {
+                        p.oracle_decisions += 1
+                    }
+                    (ArgNeed::ClosedSet, Scenario::HabitThenOracle(t)) => {
+                        match input.oracle_args.get(k).copied().flatten() {
+                            Some(a) if a.prob >= t => {
+                                p.oracle_decisions += 1;
+                                if !a.agrees {
+                                    p.oracle_disagreements += 1;
+                                    wrong_here += 1;
+                                    pause = true;
+                                }
+                            }
+                            _ => pause = true,
+                        }
+                    }
+                    (ArgNeed::ClosedSet, Scenario::HabitOnly) | (ArgNeed::Llm, _) => pause = true,
                 }
                 pauses += pause as usize;
             }
@@ -467,7 +545,12 @@ pub fn project(
                         p.disagreements += 1;
                         wrong_here += 1;
                     }
-                    Verdict::Oracle => p.oracle_decisions += 1,
+                    Verdict::Oracle | Verdict::OracleEarlyStop => p.oracle_decisions += 1,
+                    Verdict::OracleWrong => {
+                        p.oracle_decisions += 1;
+                        p.oracle_disagreements += 1;
+                        wrong_here += 1;
+                    }
                     Verdict::Pause => {}
                 }
             }
@@ -580,6 +663,8 @@ mod tests {
             args: vec![ArgNeed::Bound; 5],
             usage,
             input_price: 1e-5,
+            oracle_steps: vec![],
+            oracle_args: vec![],
         };
         let p = project(
             &model,
@@ -614,6 +699,8 @@ mod tests {
             args,
             usage: vec![TurnUsage::default(); 5],
             input_price: 0.0,
+            oracle_steps: vec![],
+            oracle_args: vec![],
         };
         let habit_only = project(
             &empty,
@@ -642,6 +729,82 @@ mod tests {
         assert_eq!(oracle.pauses, 1);
         assert_eq!(oracle.turns_saved, 1);
         assert_eq!(oracle.oracle_decisions, 2 + 1 + 1);
+    }
+
+    #[test]
+    fn a_real_oracle_is_trusted_only_above_its_threshold() {
+        let steps = vec![reply(), tool("a"), tool("b"), tool("c"), reply()];
+        let vocab = Vocab::build(steps.iter(), ["a", "b", "c"]);
+        let enc = EncodedEpisode::encode(&steps, &vocab, true);
+        let empty = BackoffModel::new(2, 1.0, vocab.len());
+        let args = vec![
+            ArgNeed::Bound,
+            ArgNeed::Bound,
+            ArgNeed::ClosedSet,
+            ArgNeed::Bound,
+            ArgNeed::Bound,
+        ];
+        let replay = |oracle_steps: Vec<Option<OracleStep>>, agrees: bool, scenario| {
+            let mut oracle_args = vec![None; 5];
+            oracle_args[2] = Some(OracleArgs { agrees, prob: 0.9 });
+            project(
+                &empty,
+                &[ProjectionInput {
+                    encoded: &enc,
+                    turns: vec![0, 1, 2, 3, 4],
+                    args: args.clone(),
+                    usage: vec![TurnUsage::default(); 5],
+                    input_price: 0.0,
+                    oracle_steps,
+                    oracle_args,
+                }],
+                scenario,
+                Gate::Threshold(0.8),
+                0.0,
+            )
+        };
+        let truth = |p: f64| -> Vec<Option<OracleStep>> {
+            enc.actions
+                .iter()
+                .map(|&top| Some(OracleStep { top, prob: p }))
+                .collect()
+        };
+        // Confident and always right: exactly the perfect-oracle upper bound.
+        let perfect = replay(vec![], true, Scenario::HabitThenPerfectOracle);
+        let real = replay(truth(0.95), true, Scenario::HabitThenOracle(0.9));
+        assert_eq!(
+            (real.turns_saved, real.pauses, real.oracle_decisions),
+            (
+                perfect.turns_saved,
+                perfect.pauses,
+                perfect.oracle_decisions
+            )
+        );
+        assert_eq!(real.oracle_disagreements, 0);
+        // Unsure: every decision pauses, as with no System-One model at all.
+        let unsure = replay(truth(0.5), true, Scenario::HabitThenOracle(0.9));
+        assert_eq!((unsure.turns_saved, unsure.oracle_decisions), (0, 1));
+        // Confident but wrong: after a, it calls c instead of b, and it gets
+        // b's argument wrong. Both are risks; being the same step, they cost
+        // one pause, so the three-turn run still loses one turn.
+        let mut wrong = truth(0.95);
+        wrong[2] = Some(OracleStep {
+            top: enc.actions[3],
+            prob: 0.95,
+        });
+        let wrong = replay(wrong, false, Scenario::HabitThenOracle(0.9));
+        assert_eq!(wrong.oracle_disagreements, 2);
+        assert_eq!(wrong.episodes_with_disagreement, 1);
+        assert_eq!((wrong.pauses, wrong.turns_saved), (1, 1));
+        // Handing back early is safe.
+        let mut early = truth(0.95);
+        early[3] = Some(OracleStep { top: 0, prob: 0.95 });
+        let early = replay(early, true, Scenario::HabitThenOracle(0.9));
+        assert_eq!(
+            (early.oracle_early_stops, early.oracle_disagreements),
+            (1, 0)
+        );
+        assert_eq!(early.turns_saved, 1);
     }
 
     #[test]
@@ -710,6 +873,8 @@ mod tests {
                     args: vec![ArgNeed::Bound; n],
                     usage: vec![TurnUsage::default(); n],
                     input_price: 0.0,
+                    oracle_steps: vec![],
+                    oracle_args: vec![],
                 }],
                 Scenario::HabitOnly,
                 Gate::Threshold(0.8),

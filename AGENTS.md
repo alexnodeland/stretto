@@ -9,7 +9,7 @@ crates/
   stretto-trace/   episode schema, τ²-bench ingest, tool manifests
   stretto-model/   abstraction, back-off world model, α posterior (fugue), provenance, runs, policy
   stretto-oracle/  Oracle trait, Jev client (feature "http"), replay cache, mock
-  stretto-report/  `stretto` CLI and the Phase 0 report
+  stretto-report/  `stretto` CLI, the Phase 0 report, and Phase 0b (`shadow`: System-One questions at held-out decisions)
 docs/
   design.md        decisions and architecture
   results/         dated Phase 0 results with interpretation

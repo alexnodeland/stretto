@@ -1,5 +1,6 @@
 //! The Phase 0 pipeline.
 
+use crate::shadow::{self, Agreement, Decision, Kind, Scored, ShadowConfig, ShadowEpisode};
 use anyhow::{bail, Context, Result};
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -12,8 +13,8 @@ use stretto_model::features::{
 };
 use stretto_model::policy::write_confirmations;
 use stretto_model::projection::{
-    arg_needs, closed_sets, fit_prices, project, validated_contexts, Gate, Projection,
-    ProjectionInput, Scenario,
+    arg_needs, closed_sets, fit_prices, project, validated_contexts, ArgNeed, Gate, OracleArgs,
+    OracleStep, Projection, ProjectionInput, Scenario,
 };
 use stretto_model::provenance::{argument_provenance, call_sources, Source};
 use stretto_model::world::{
@@ -23,6 +24,7 @@ use stretto_model::{
     step_turns, steps, Action, BackoffModel, CoveragePoint, EncodedEpisode, EvalStats,
     GroupedModel, Outcome, Step, Vocab,
 };
+use stretto_oracle::Oracle;
 use stretto_trace::tau2::{load_manifest, load_results, load_split, Split, Tau2Run};
 use stretto_trace::{Episode, ToolKind, ToolManifest, TurnUsage};
 
@@ -68,7 +70,37 @@ pub struct Config {
     /// Extra τ²-bench results files for agent models the habit never trains
     /// on: measured only as transfer targets. Files for other domains are
     /// skipped.
-    pub targets: Vec<PathBuf>,
+    pub targets: Vec<Target>,
+    /// Phase 0b: ask a System-One model at every held-out decision a flow
+    /// would hand it.
+    pub shadow: Option<ShadowConfig>,
+}
+
+/// A results file for a transfer target, optionally relabeled.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Target {
+    /// Name to report the agent model under (default: the name the file
+    /// records). Needed when two runs record the same model, or one model
+    /// under different names.
+    pub label: Option<String>,
+    /// The τ²-bench results file.
+    pub path: PathBuf,
+}
+
+impl Target {
+    /// Parse `label=path` or a bare `path`.
+    pub fn parse(arg: &str) -> Self {
+        match arg.split_once('=') {
+            Some((label, path)) if !label.is_empty() && !label.contains('/') => Target {
+                label: Some(label.to_string()),
+                path: path.into(),
+            },
+            _ => Target {
+                label: None,
+                path: arg.into(),
+            },
+        }
+    }
 }
 
 impl Config {
@@ -94,6 +126,7 @@ impl Config {
             validated_min_n: 20,
             validated_min_agreement: 0.99,
             targets: Vec::new(),
+            shadow: None,
         }
     }
 }
@@ -184,6 +217,50 @@ pub struct FeaturedReport {
     /// The headline configuration (validated contexts, then a perfect
     /// System-One model) for each agent model.
     pub by_model: Vec<ModelProjection>,
+    /// Phase 0b: the System-One model's answers, scored.
+    pub shadow: Option<ShadowReport>,
+}
+
+/// Phase 0b results for one domain.
+#[derive(Clone, Debug, Serialize)]
+pub struct ShadowReport {
+    /// Which oracle answered (`jev`, `replay` or `mock`).
+    pub oracle: String,
+    /// Model versions that answered.
+    pub versions: Vec<String>,
+    /// Decisions asked about (including arguments answered without asking).
+    pub decisions: usize,
+    /// Distinct requests among them.
+    pub distinct: usize,
+    /// Requests that got an answer this run (from the service or the cache).
+    pub answered: usize,
+    /// Requests that failed.
+    pub errors: usize,
+    /// The first failure, if any.
+    pub first_error: Option<String>,
+    /// Input tokens the service reported for the answers used.
+    pub input_tokens: u64,
+    /// Agreement per agent model, then pooled over the source models.
+    pub rows: Vec<ShadowRow>,
+    /// Probabilities at which the System-One pick was trusted in the
+    /// projections.
+    pub thresholds: Vec<f64>,
+    /// Pooled projection over the source models, validated habit then the
+    /// System-One model, one per threshold.
+    pub projection: Vec<Projection>,
+}
+
+/// Phase 0b agreement for one agent model.
+#[derive(Clone, Debug, Serialize)]
+pub struct ShadowRow {
+    /// Agent model (or `all source models`).
+    pub model: String,
+    /// Whether it is a transfer target.
+    pub target: bool,
+    /// Next-step questions.
+    pub next: Agreement,
+    /// Closed-set argument questions.
+    pub args: Agreement,
 }
 
 /// A context where the habit may act.
@@ -214,6 +291,9 @@ pub struct ModelProjection {
     pub parallel_share: f64,
     /// Its held-out episodes, replayed.
     pub projection: Projection,
+    /// The same with the real System-One model instead of a perfect one, one
+    /// per Phase 0b threshold (empty without Phase 0b).
+    pub with_oracle: Vec<Projection>,
 }
 
 /// Fitted token prices for one agent model.
@@ -328,10 +408,15 @@ pub struct ProvenanceRow {
 
 /// Run Phase 0 over every configured domain.
 pub fn run(config: &Config) -> Result<Report> {
+    let oracle = config
+        .shadow
+        .as_ref()
+        .map(ShadowConfig::build)
+        .transpose()?;
     let domains = config
         .domains
         .iter()
-        .map(|d| domain(config, d))
+        .map(|d| domain(config, d, oracle.as_deref()))
         .collect::<Result<Vec<_>>>()?;
     Ok(Report {
         settings: Settings {
@@ -374,7 +459,11 @@ struct ModelData {
     test: Vec<EncodedEpisode>,
 }
 
-fn domain(config: &Config, domain: &str) -> Result<DomainReport> {
+fn domain(
+    config: &Config,
+    domain: &str,
+    oracle: Option<&(dyn Oracle + Sync)>,
+) -> Result<DomainReport> {
     let root = &config.tau2_dir;
     let manifest = load_manifest(
         domain,
@@ -390,11 +479,18 @@ fn domain(config: &Config, domain: &str) -> Result<DomainReport> {
         }
         runs_by_model.push((run, false));
     }
-    for path in &config.targets {
-        let run = load_results(path)?;
-        if run.domain == domain {
-            runs_by_model.push((run, true));
+    for target in &config.targets {
+        let mut run = load_results(&target.path)?;
+        if run.domain != domain {
+            continue;
         }
+        if let Some(label) = &target.label {
+            run.agent_model = label.clone();
+            for ep in &mut run.episodes {
+                ep.agent_model = label.clone();
+            }
+        }
+        runs_by_model.push((run, true));
     }
 
     let all_steps: Vec<_> = runs_by_model
@@ -505,8 +601,8 @@ fn domain(config: &Config, domain: &str) -> Result<DomainReport> {
     top_runs.truncate(config.top_runs);
 
     let target_episodes: Vec<&Episode> = targets.iter().flat_map(|m| &m.run.episodes).collect();
-    let featured = config.features.then(|| {
-        featured(
+    let featured = if config.features {
+        Some(featured(
             config,
             &all_episodes,
             &target_episodes,
@@ -514,8 +610,11 @@ fn domain(config: &Config, domain: &str) -> Result<DomainReport> {
             &vocab,
             &manifest,
             alpha_used,
-        )
-    });
+            oracle,
+        )?)
+    } else {
+        None
+    };
 
     Ok(DomainReport {
         domain: domain.to_string(),
@@ -543,7 +642,8 @@ fn domain(config: &Config, domain: &str) -> Result<DomainReport> {
     })
 }
 
-struct Prepared {
+struct Prepared<'a> {
+    ep: &'a Episode,
     steps: Vec<Step>,
     outputs: Vec<StepOutput>,
     turns: Vec<usize>,
@@ -608,6 +708,7 @@ fn variant(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn featured(
     config: &Config,
     episodes: &[&Episode],
@@ -616,7 +717,8 @@ fn featured(
     vocab: &Vocab,
     manifest: &ToolManifest,
     alpha_used: f64,
-) -> FeaturedReport {
+    oracle: Option<&(dyn Oracle + Sync)>,
+) -> Result<FeaturedReport> {
     let train_ids: HashSet<&str> = split.train.iter().map(String::as_str).collect();
     let test_ids: HashSet<&str> = split.test.iter().map(String::as_str).collect();
     let prepared: Vec<Prepared> = episodes
@@ -624,6 +726,7 @@ fn featured(
         .map(|ep| (ep, false))
         .chain(targets.iter().map(|ep| (ep, true)))
         .map(|(ep, target)| Prepared {
+            ep,
             steps: steps(ep),
             outputs: step_outputs(ep),
             turns: step_turns(ep),
@@ -744,11 +847,6 @@ fn featured(
         .into_iter()
         .map(|(m, turns)| (m, fit_prices(turns)))
         .collect();
-    let inputs: Vec<ProjectionInput> = test_set
-        .iter()
-        .zip(&test)
-        .map(|(p, enc)| projection_input(p, enc, &closed, &prices))
-        .collect();
     let grouped: Vec<(u64, EncodedEpisode)> = habit_set
         .iter()
         .map(|p| p.group)
@@ -763,6 +861,31 @@ fn featured(
         config.validated_min_n,
         config.validated_min_agreement,
     );
+
+    // Every held-out episode, source models first, as the projection and
+    // Phase 0b replay them.
+    let replayed: Vec<(&Prepared, &EncodedEpisode)> = test_set
+        .iter()
+        .copied()
+        .zip(&test)
+        .chain(target_set.iter().copied().zip(&target_test))
+        .collect();
+    let needs: Vec<Vec<ArgNeed>> = replayed
+        .iter()
+        .map(|(p, _)| arg_needs(&p.steps, &p.sources, &closed))
+        .collect();
+    let shadow = match (&config.shadow, oracle) {
+        (Some(sc), Some(oracle)) => Some(shadow_run(
+            sc, oracle, &replayed, &needs, manifest, vocab, &habit_set,
+        )?),
+        _ => None,
+    };
+    let input = |i: usize| {
+        let (p, enc) = replayed[i];
+        let answers = shadow.as_ref().map(|(_, a)| &a[i]);
+        projection_input(p, enc, &needs[i], &prices, answers)
+    };
+    let inputs: Vec<ProjectionInput> = (0..test_set.len()).map(input).collect();
     let gates: Vec<Gate> = config
         .projection_thresholds
         .iter()
@@ -776,19 +899,41 @@ fn featured(
             project(&intent_habit, &inputs, scenario, gate, config.min_evidence)
         })
         .collect();
-    let by_model = prices
+    let thresholds: Vec<f64> = config
+        .shadow
+        .as_ref()
+        .filter(|_| shadow.is_some())
+        .map(|sc| sc.thresholds.clone())
+        .unwrap_or_default();
+    let with_oracle = |inputs: &[ProjectionInput]| -> Vec<Projection> {
+        thresholds
+            .iter()
+            .map(|&t| {
+                project(
+                    &intent_habit,
+                    inputs,
+                    Scenario::HabitThenOracle(t),
+                    Gate::Validated(&validated),
+                    config.min_evidence,
+                )
+            })
+            .collect()
+    };
+    let mut models: Vec<(bool, &str)> = prices
         .keys()
-        .map(|&m| {
-            let inputs: Vec<ProjectionInput> = test_set
-                .iter()
-                .zip(&test)
-                .chain(target_set.iter().zip(&target_test))
-                .filter(|(p, _)| p.model == m)
-                .map(|(p, enc)| projection_input(p, enc, &closed, &prices))
+        .map(|&m| (prepared.iter().any(|p| p.model == m && p.target), m))
+        .collect();
+    models.sort();
+    let by_model = models
+        .into_iter()
+        .map(|(target, m)| {
+            let inputs: Vec<ProjectionInput> = (0..replayed.len())
+                .filter(|&i| replayed[i].0.model == m)
+                .map(input)
                 .collect();
             ModelProjection {
                 model: m.to_string(),
-                target: prepared.iter().any(|p| p.model == m && p.target),
+                target,
                 parallel_share: parallel_share(prepared.iter().filter(|p| p.model == m)),
                 projection: project(
                     &intent_habit,
@@ -797,9 +942,14 @@ fn featured(
                     Gate::Validated(&validated),
                     config.min_evidence,
                 ),
+                with_oracle: with_oracle(&inputs),
             }
         })
         .collect();
+    let shadow = shadow.map(|(mut report, _)| {
+        report.projection = with_oracle(&inputs);
+        report
+    });
 
     // How the validated contexts fared on held-out tasks.
     let mut held_out: HashMap<Vec<Symbol>, (usize, usize)> = HashMap::new();
@@ -853,7 +1003,7 @@ fn featured(
         })
         .collect();
 
-    FeaturedReport {
+    Ok(FeaturedReport {
         candidates: candidates.len(),
         selected,
         intents: prepared
@@ -875,26 +1025,132 @@ fn featured(
         validated: validated_list,
         projection,
         by_model,
-    }
+        shadow,
+    })
 }
 
+/// Ask the System-One model at every decision of `replayed`, score the
+/// answers, and lay them out per step for the projection.
+#[allow(clippy::type_complexity)]
+fn shadow_run(
+    sc: &ShadowConfig,
+    oracle: &(dyn Oracle + Sync),
+    replayed: &[(&Prepared, &EncodedEpisode)],
+    needs: &[Vec<ArgNeed>],
+    manifest: &ToolManifest,
+    vocab: &Vocab,
+    habit_set: &[&Prepared],
+) -> Result<(
+    ShadowReport,
+    Vec<(Vec<Option<OracleStep>>, Vec<Option<OracleArgs>>)>,
+)> {
+    let closed = shadow::closed_values(habit_set.iter().map(|p| p.ep));
+    let episodes: Vec<ShadowEpisode> = replayed
+        .iter()
+        .zip(needs)
+        .map(|((p, _), needs)| ShadowEpisode {
+            episode: p.ep,
+            steps: &p.steps,
+            sources: &p.sources,
+            needs,
+            goal: &p.intent,
+        })
+        .collect();
+    let decisions = shadow::decisions(&episodes, manifest, &closed, &sc.model);
+    let asked = shadow::ask(oracle, &decisions, sc)?;
+    let scored: Vec<Option<Scored>> = decisions.iter().map(|d| shadow::score(d, &asked)).collect();
+
+    let mut by_episode: Vec<Vec<usize>> = vec![Vec::new(); replayed.len()];
+    for (i, d) in decisions.iter().enumerate() {
+        by_episode[d.episode].push(i);
+    }
+    let answers = by_episode
+        .iter()
+        .enumerate()
+        .map(|(e, idx)| {
+            let ds: Vec<&Decision> = idx.iter().map(|&i| &decisions[i]).collect();
+            let ss: Vec<Option<Scored>> = idx.iter().map(|&i| scored[i].clone()).collect();
+            shadow::projection_answers(&ds, &ss, replayed[e].0.steps.len(), vocab)
+        })
+        .collect();
+
+    let agreement = |keep: &dyn Fn(&Prepared) -> bool, next: bool| {
+        Agreement::of(
+            decisions
+                .iter()
+                .zip(&scored)
+                .filter(|(d, _)| keep(replayed[d.episode].0) && (d.kind == Kind::Next) == next)
+                .filter_map(|(d, s)| s.as_ref().map(|s| (s, d.actual.as_str()))),
+            &sc.thresholds,
+        )
+    };
+    let mut models: Vec<(&str, bool)> = replayed
+        .iter()
+        .map(|(p, _)| (p.model.as_str(), p.target))
+        .collect();
+    models.sort();
+    models.dedup();
+    models.sort_by_key(|&(_, target)| target);
+    let mut rows: Vec<ShadowRow> = models
+        .iter()
+        .map(|&(m, target)| ShadowRow {
+            model: m.to_string(),
+            target,
+            next: agreement(&|p: &Prepared| p.model == m, true),
+            args: agreement(&|p: &Prepared| p.model == m, false),
+        })
+        .collect();
+    rows.push(ShadowRow {
+        model: "all source models".to_string(),
+        target: false,
+        next: agreement(&|p: &Prepared| !p.target, true),
+        args: agreement(&|p: &Prepared| !p.target, false),
+    });
+    let mut versions: Vec<String> = asked.responses.values().map(|r| r.model.clone()).collect();
+    versions.sort();
+    versions.dedup();
+    let report = ShadowReport {
+        oracle: match sc.oracle {
+            shadow::OracleKind::Mock => "mock",
+            shadow::OracleKind::Jev => "jev",
+            shadow::OracleKind::Replay => "replay",
+        }
+        .to_string(),
+        versions,
+        decisions: decisions.len(),
+        distinct: asked.distinct,
+        answered: asked.responses.len(),
+        errors: asked.errors,
+        first_error: asked.first_error.clone(),
+        input_tokens: asked.responses.values().map(|r| r.usage.input_tokens).sum(),
+        rows,
+        thresholds: sc.thresholds.clone(),
+        projection: Vec::new(),
+    };
+    Ok((report, answers))
+}
+
+#[allow(clippy::type_complexity)]
 fn projection_input<'a>(
     p: &Prepared,
     encoded: &'a EncodedEpisode,
-    closed: &HashSet<(String, String)>,
+    needs: &[ArgNeed],
     prices: &BTreeMap<&str, (f64, f64)>,
+    answers: Option<&(Vec<Option<OracleStep>>, Vec<Option<OracleArgs>>)>,
 ) -> ProjectionInput<'a> {
     ProjectionInput {
         encoded,
         turns: p.turns.clone(),
-        args: arg_needs(&p.steps, &p.sources, closed),
+        args: needs.to_vec(),
         usage: p.usage.clone(),
         input_price: prices[p.model.as_str()].0,
+        oracle_steps: answers.map(|a| a.0.clone()).unwrap_or_default(),
+        oracle_args: answers.map(|a| a.1.clone()).unwrap_or_default(),
     }
 }
 
 /// Share of tool-calling turns that made several calls at once.
-fn parallel_share<'a>(episodes: impl Iterator<Item = &'a Prepared>) -> f64 {
+fn parallel_share<'a, 'b: 'a>(episodes: impl Iterator<Item = &'a Prepared<'b>>) -> f64 {
     let (mut tool_turns, mut parallel) = (0, 0);
     for p in episodes {
         let mut calls: BTreeMap<usize, usize> = BTreeMap::new();
@@ -988,4 +1244,23 @@ fn provenance(episodes: &[&Episode], manifest: &ToolManifest) -> Vec<ProvenanceR
             counts,
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Target;
+
+    #[test]
+    fn targets_parse_with_or_without_a_label() {
+        assert_eq!(
+            Target::parse("gpt-5.2-none=runs/a.json"),
+            Target {
+                label: Some("gpt-5.2-none".into()),
+                path: "runs/a.json".into()
+            }
+        );
+        assert_eq!(Target::parse("runs/a.json").label, None);
+        // An '=' inside a path is not a label.
+        assert_eq!(Target::parse("dir/x=y.json").label, None);
+    }
 }

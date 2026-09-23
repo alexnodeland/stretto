@@ -81,6 +81,7 @@ mod tests {
                 ("cancel".to_string(), ToolKind::Write),
                 ("lookup".to_string(), ToolKind::Read),
             ]),
+            ..Default::default()
         };
         let call = |id: &str, name: &str| Event::Assistant {
             usage: None,

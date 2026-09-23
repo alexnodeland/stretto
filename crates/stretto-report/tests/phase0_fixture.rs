@@ -3,6 +3,7 @@
 use std::fs;
 use std::path::Path;
 use stretto_model::projection::Scenario;
+use stretto_report::shadow::{OracleKind, ShadowConfig};
 use stretto_report::{phase0, render};
 
 const TOOLS_PY: &str = r#"
@@ -123,7 +124,10 @@ fn phase0_runs_end_to_end() {
     config.alpha_samples = 40;
     config.targets = ["retail", "airline"]
         .iter()
-        .map(|d| root.join(format!("targets/model-t_{d}.json")))
+        .map(|d| phase0::Target {
+            label: None,
+            path: root.join(format!("targets/model-t_{d}.json")),
+        })
         .collect();
     let report = phase0::run(&config).unwrap();
 
@@ -172,5 +176,26 @@ fn phase0_runs_end_to_end() {
     assert!(md.contains("## retail"));
     assert!(md.contains("Macro-tool headroom"));
     assert!(md.contains("model-t *(target)*"));
+    assert!(f.shadow.is_none() && !md.contains("### Phase 0b"));
+
+    // Phase 0b with the mock oracle: every question is built, answered and
+    // fed back into the projection.
+    config.shadow = Some(ShadowConfig::new(OracleKind::Mock));
+    let report = phase0::run(&config).unwrap();
+    let f = report.domains[0].featured.as_ref().unwrap();
+    let sh = f.shadow.as_ref().expect("Phase 0b ran");
+    assert_eq!(sh.oracle, "mock");
+    assert!(sh.decisions > 0 && sh.errors == 0, "{sh:?}");
+    // One row per model, then the pooled row.
+    assert_eq!(sh.rows.len(), 4);
+    assert!(sh.rows.iter().all(|r| r.next.n > 0));
+    assert_eq!(sh.projection.len(), sh.thresholds.len());
+    assert!(f
+        .by_model
+        .iter()
+        .all(|m| m.with_oracle.len() == sh.thresholds.len()));
+    let md = render::markdown(&report);
+    assert!(md.contains("### Phase 0b"));
+    assert!(md.contains("**Mock oracle.**"));
     let _ = fs::remove_dir_all(&root);
 }

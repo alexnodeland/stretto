@@ -3,9 +3,12 @@
 //! `POST {base}/v1/systemone` with a bearer token. Configuration follows the
 //! official SDKs' environment variables: `TYPESAFE_API_KEY` (required),
 //! `TYPESAFE_BASE_URL` (default `https://api.typesafe.ai`) and
-//! `TYPESAFE_DEFAULT_MODEL` (default `jev-latest`). Rate limiting (429) and
-//! overload (529) are retried with exponential backoff, as the API reference
-//! asks.
+//! `TYPESAFE_DEFAULT_MODEL` (default `jev-latest`). Rate limiting (429),
+//! overload (529), transient server errors and dropped connections are retried
+//! with exponential backoff.
+//!
+//! Certificates in `SSL_CERT_FILE`, when it is set, are trusted in addition to
+//! the built-in roots, so the client works behind TLS-inspecting proxies.
 
 use crate::{Oracle, Request, Response};
 use anyhow::{anyhow, bail, Context, Result};
@@ -27,9 +30,15 @@ pub struct JevClient {
 impl JevClient {
     /// A client for `base_url` authenticated with `api_key`.
     pub fn new(base_url: impl Into<String>, api_key: impl Into<String>) -> Result<Self> {
-        let http = reqwest::blocking::Client::builder()
-            .timeout(Duration::from_secs(10))
-            .build()?;
+        let mut builder = reqwest::blocking::Client::builder().timeout(Duration::from_secs(30));
+        if let Some(path) = std::env::var_os("SSL_CERT_FILE") {
+            let pem = std::fs::read(&path)
+                .with_context(|| format!("reading SSL_CERT_FILE {}", path.to_string_lossy()))?;
+            for cert in reqwest::Certificate::from_pem_bundle(&pem)? {
+                builder = builder.add_root_certificate(cert);
+            }
+        }
+        let http = builder.build()?;
         Ok(Self {
             http,
             base_url: base_url.into().trim_end_matches('/').to_string(),
@@ -58,25 +67,54 @@ impl Oracle for JevClient {
         let url = format!("{}/v1/systemone", self.base_url);
         let mut attempt = 0;
         loop {
-            let resp = self
+            let backoff = Duration::from_secs(1 << attempt);
+            let resp = match self
                 .http
                 .post(&url)
                 .bearer_auth(&self.api_key)
                 .json(request)
                 .send()
-                .context("sending request to TypeSafe")?;
+            {
+                Ok(resp) => resp,
+                Err(e) if attempt < self.max_retries && (e.is_connect() || e.is_timeout()) => {
+                    std::thread::sleep(backoff);
+                    attempt += 1;
+                    continue;
+                }
+                Err(e) => return Err(e).context("sending request to TypeSafe"),
+            };
             let status = resp.status();
             if status.is_success() {
                 return resp.json().context("decoding TypeSafe response");
             }
-            let retryable = status.as_u16() == 429 || status.as_u16() == 529;
-            if retryable && attempt < self.max_retries {
-                std::thread::sleep(Duration::from_secs(1 << attempt));
+            if retryable(status.as_u16()) && attempt < self.max_retries {
+                std::thread::sleep(backoff);
                 attempt += 1;
                 continue;
             }
             let body = resp.text().unwrap_or_default();
             bail!("TypeSafe returned {status}: {body}");
+        }
+    }
+}
+
+/// Statuses worth retrying: rate limiting, overload and transient server
+/// errors.
+fn retryable(status: u16) -> bool {
+    matches!(status, 429 | 500 | 502 | 503 | 504 | 529)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::retryable;
+
+    #[test]
+    fn only_transient_statuses_are_retried() {
+        for s in [429, 500, 502, 503, 504, 529] {
+            assert!(retryable(s), "{s}");
+        }
+        for s in [400, 401, 403, 404, 422] {
+            assert!(!retryable(s), "{s}");
         }
     }
 }

@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// A typed question.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -164,8 +165,13 @@ impl<O: Oracle> Oracle for ReplayCache<O> {
         let parent = path.parent().expect("cache paths have a parent");
         std::fs::create_dir_all(parent)
             .with_context(|| format!("creating {}", parent.display()))?;
-        std::fs::write(&path, serde_json::to_vec_pretty(&response)?)
-            .with_context(|| format!("writing {}", path.display()))?;
+        // Write then rename, so a concurrent reader never sees half a file.
+        static WRITES: AtomicU64 = AtomicU64::new(0);
+        let n = WRITES.fetch_add(1, Ordering::Relaxed);
+        let tmp = path.with_extension(format!("tmp{}-{n}", std::process::id()));
+        std::fs::write(&tmp, serde_json::to_vec_pretty(&response)?)
+            .with_context(|| format!("writing {}", tmp.display()))?;
+        std::fs::rename(&tmp, &path).with_context(|| format!("writing {}", path.display()))?;
         Ok(response)
     }
 }

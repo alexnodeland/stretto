@@ -128,6 +128,18 @@ pub struct ToolManifest {
     pub domain: String,
     /// Tool name to kind.
     pub tools: BTreeMap<String, ToolKind>,
+    /// Tool name to its documentation, where the source has any.
+    #[serde(default)]
+    pub docs: BTreeMap<String, ToolDoc>,
+}
+
+/// What a tool's documentation says about it.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct ToolDoc {
+    /// What the tool does, as one paragraph.
+    pub summary: String,
+    /// Argument name to its description.
+    pub args: BTreeMap<String, String>,
 }
 
 impl ToolManifest {

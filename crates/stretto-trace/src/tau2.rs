@@ -8,7 +8,7 @@
 //! τ²-bench opens every conversation with a fixed assistant greeting that costs
 //! nothing and is not an LLM decision; ingest drops it.
 
-use crate::{Episode, Event, ToolCall, ToolKind, ToolManifest, TurnUsage};
+use crate::{Episode, Event, ToolCall, ToolDoc, ToolKind, ToolManifest, TurnUsage};
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::collections::{BTreeMap, HashMap};
@@ -183,14 +183,18 @@ fn convert_simulation(sim: RawSim, domain: &str, agent_model: &str) -> Episode {
     }
 }
 
-/// Parse the `@is_tool(ToolType.X)` decorators of a τ²-bench `tools.py`.
+/// Parse the `@is_tool(ToolType.X)` decorators of a τ²-bench `tools.py`,
+/// and each tool's docstring.
 ///
 /// Each decorator applies to the next `def name(` line. Commented-out tools
-/// (`# @is_tool(...)`) are ignored.
+/// (`# @is_tool(...)`) are ignored. The docstring's opening paragraphs become
+/// the summary, and its `Args:` section the argument descriptions.
 pub fn parse_tool_kinds(domain: &str, tools_py: &str) -> ToolManifest {
     let mut tools = BTreeMap::new();
+    let mut docs = BTreeMap::new();
     let mut pending: Option<ToolKind> = None;
-    for line in tools_py.lines() {
+    let lines: Vec<&str> = tools_py.lines().collect();
+    for (i, line) in lines.iter().enumerate() {
         let t = line.trim_start();
         if let Some(rest) = t.strip_prefix("@is_tool(ToolType.") {
             let kind = rest.split(')').next().unwrap_or("");
@@ -204,6 +208,9 @@ pub fn parse_tool_kinds(domain: &str, tools_py: &str) -> ToolManifest {
                 let name = rest.split('(').next().unwrap_or("").trim();
                 if !name.is_empty() {
                     tools.insert(name.to_string(), kind);
+                    if let Some(doc) = docstring(&lines[i..]) {
+                        docs.insert(name.to_string(), doc);
+                    }
                 }
             }
         }
@@ -211,7 +218,62 @@ pub fn parse_tool_kinds(domain: &str, tools_py: &str) -> ToolManifest {
     ToolManifest {
         domain: domain.to_string(),
         tools,
+        docs,
     }
+}
+
+/// The docstring of the function whose `def` line starts `lines`, if any.
+fn docstring(lines: &[&str]) -> Option<ToolDoc> {
+    // The signature may span lines; it ends at the first line ending in ':'.
+    let body = lines.iter().position(|l| l.trim_end().ends_with(':'))? + 1;
+    let first = lines.get(body)?.trim();
+    let open = first.strip_prefix("\"\"\"")?;
+    let mut text: Vec<String> = Vec::new();
+    if let Some(one_line) = open.strip_suffix("\"\"\"") {
+        text.push(one_line.to_string());
+    } else {
+        text.push(open.to_string());
+        for l in &lines[body + 1..] {
+            let l = l.trim();
+            if let Some(last) = l.strip_suffix("\"\"\"") {
+                text.push(last.to_string());
+                break;
+            }
+            text.push(l.to_string());
+        }
+    }
+    let mut doc = ToolDoc::default();
+    let mut summary: Vec<&str> = Vec::new();
+    let mut section = "";
+    let mut current: Option<String> = None;
+    for l in &text {
+        let l = l.as_str();
+        if matches!(
+            l,
+            "Args:" | "Returns:" | "Raises:" | "Example:" | "Examples:"
+        ) {
+            section = l;
+            continue;
+        }
+        match section {
+            "" if !l.is_empty() => summary.push(l),
+            "Args:" if !l.is_empty() => match l.split_once(':') {
+                Some((name, desc)) if !name.contains(' ') => {
+                    doc.args.insert(name.to_string(), desc.trim().to_string());
+                    current = Some(name.to_string());
+                }
+                _ => {
+                    if let Some(d) = current.as_ref().and_then(|n| doc.args.get_mut(n)) {
+                        d.push(' ');
+                        d.push_str(l);
+                    }
+                }
+            },
+            _ => {}
+        }
+    }
+    doc.summary = summary.join(" ");
+    (!doc.summary.is_empty() || !doc.args.is_empty()).then_some(doc)
 }
 
 #[derive(Deserialize)]
@@ -386,5 +448,51 @@ mod tests {
         assert_eq!(m.kind("transfer_to_human_agents"), Some(ToolKind::Generic));
         assert_eq!(m.kind("think"), None);
         assert_eq!(m.kind("helper"), None);
+    }
+
+    #[test]
+    fn parses_docstrings() {
+        let py = r#"
+    @is_tool(ToolType.WRITE)
+    def cancel_pending_order(
+        self, order_id: str, reason: str
+    ) -> Order:
+        """Cancel a pending order. If the order is already processed or delivered,
+        it cannot be cancelled.
+
+        Args:
+            order_id: The order id, such as '#W0000000'. Be careful there is a '#'
+                symbol at the beginning of the order id.
+            reason: The reason for cancellation, which should be either
+                'no longer needed' or 'ordered by mistake'.
+
+        Returns:
+            Order: The order details after the cancellation.
+        """
+        order = self._get_order(order_id)
+    @is_tool(ToolType.GENERIC)
+    def think(self, thought: str) -> str:
+        """Use the tool to think about something."""
+        return ""
+    @is_tool(ToolType.READ)
+    def undocumented(self) -> str:
+        return ""
+"#;
+        let m = parse_tool_kinds("retail", py);
+        let doc = &m.docs["cancel_pending_order"];
+        assert_eq!(
+            doc.summary,
+            "Cancel a pending order. If the order is already processed or delivered, it cannot be cancelled."
+        );
+        assert_eq!(
+            doc.args["reason"],
+            "The reason for cancellation, which should be either 'no longer needed' or 'ordered by mistake'."
+        );
+        assert!(doc.args["order_id"].ends_with("beginning of the order id."));
+        assert_eq!(
+            m.docs["think"].summary,
+            "Use the tool to think about something."
+        );
+        assert!(!m.docs.contains_key("undocumented"));
     }
 }

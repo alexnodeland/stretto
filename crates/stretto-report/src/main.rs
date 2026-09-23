@@ -1,6 +1,10 @@
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
+use std::collections::BTreeMap;
 use std::path::PathBuf;
+use std::time::Instant;
+use stretto_oracle::{Answer, NoulCriteria, Oracle, Question, Request};
+use stretto_report::shadow::{OracleKind, ShadowConfig};
 use stretto_report::{phase0, render};
 
 /// stretto: compile agent behavior into typed probabilistic flows.
@@ -11,9 +15,13 @@ struct Cli {
     command: Command,
 }
 
+// Parsed once, so the size of the largest variant does not matter.
+#[allow(clippy::large_enum_variant)]
 #[derive(Subcommand)]
 enum Command {
-    /// Measure how compressible an agent's behavior is (no API keys needed).
+    /// Measure how compressible an agent's behavior is (no API keys needed),
+    /// and with --oracle, how well a System-One model takes the decisions
+    /// flows would hand it (Phase 0b).
     Phase0 {
         /// Path to a τ²-bench checkout.
         #[arg(long)]
@@ -40,9 +48,35 @@ enum Command {
         #[arg(long)]
         no_features: bool,
         /// τ²-bench results for an agent model the habit never trains on,
-        /// measured as a transfer target (repeatable; any domain).
+        /// measured as a transfer target: `path` or `label=path` (repeatable;
+        /// files for other domains are skipped).
         #[arg(long = "target")]
-        targets: Vec<PathBuf>,
+        targets: Vec<String>,
+        /// Phase 0b: who answers the System-One questions. `jev` needs
+        /// TYPESAFE_API_KEY and pays once per distinct question; `replay`
+        /// reads the cache only; `mock` checks the pipeline for free.
+        #[arg(long, value_enum)]
+        oracle: Option<OracleArg>,
+        /// Replay cache for oracle answers.
+        #[arg(long, default_value = ".oracle-cache")]
+        oracle_cache: PathBuf,
+        /// Oracle requests in flight at once.
+        #[arg(long, default_value_t = 8)]
+        oracle_concurrency: usize,
+        /// Ask at most this many distinct questions (a stable sample), for a
+        /// pilot run.
+        #[arg(long)]
+        oracle_limit: Option<usize>,
+        /// Refuse to start if uncached questions could cost more than this
+        /// many dollars.
+        #[arg(long, default_value_t = 5.0)]
+        oracle_budget: f64,
+        /// Model id to request (default: TYPESAFE_DEFAULT_MODEL, else jev-latest).
+        #[arg(long)]
+        oracle_model: Option<String>,
+        /// Write every distinct oracle request to this file (JSON lines).
+        #[arg(long)]
+        oracle_dump: Option<PathBuf>,
         /// Write the Markdown report here (default: stdout).
         #[arg(long)]
         out: Option<PathBuf>,
@@ -50,6 +84,16 @@ enum Command {
         #[arg(long)]
         json: Option<PathBuf>,
     },
+    /// Check that Jev is reachable with TYPESAFE_API_KEY: ask one small
+    /// question (uncached) and print the answer, model version and latency.
+    JevCheck,
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum OracleArg {
+    Jev,
+    Replay,
+    Mock,
 }
 
 fn main() -> Result<()> {
@@ -64,6 +108,13 @@ fn main() -> Result<()> {
             seed,
             no_features,
             targets,
+            oracle,
+            oracle_cache,
+            oracle_concurrency,
+            oracle_limit,
+            oracle_budget,
+            oracle_model,
+            oracle_dump,
             out,
             json,
         } => {
@@ -75,7 +126,26 @@ fn main() -> Result<()> {
             config.min_evidence = min_evidence;
             config.seed = seed;
             config.features = !no_features;
-            config.targets = targets;
+            config.targets = targets.iter().map(|t| phase0::Target::parse(t)).collect();
+            config.shadow = oracle.map(|kind| {
+                let mut sc = ShadowConfig::new(match kind {
+                    OracleArg::Jev => OracleKind::Jev,
+                    OracleArg::Replay => OracleKind::Replay,
+                    OracleArg::Mock => OracleKind::Mock,
+                });
+                sc.cache_dir = oracle_cache;
+                sc.concurrency = oracle_concurrency;
+                sc.limit = oracle_limit;
+                sc.budget = oracle_budget;
+                if let Some(m) = oracle_model {
+                    sc.model = m;
+                }
+                sc.dump = oracle_dump;
+                sc
+            });
+            if config.shadow.is_some() && !config.features {
+                anyhow::bail!("--oracle needs code features; drop --no-features");
+            }
             let report = phase0::run(&config)?;
             let md = render::markdown(&report);
             match out {
@@ -87,7 +157,42 @@ fn main() -> Result<()> {
             }
             Ok(())
         }
+        Command::JevCheck => jev_check(),
     }
+}
+
+fn jev_check() -> Result<()> {
+    let client = stretto_oracle::jev::JevClient::from_env()?;
+    let request = Request {
+        model: stretto_oracle::jev::JevClient::default_model(),
+        state: serde_json::json!(
+            "Customer: I'd like to cancel order #W1, I ordered it by mistake."
+        ),
+        questions: BTreeMap::from([(
+            "cancel".to_string(),
+            Question::Noul {
+                instructions: "Does the customer want to cancel an order?".to_string(),
+                criteria: Some(NoulCriteria {
+                    yes: "The customer asks to cancel an order".to_string(),
+                    no: "The customer wants something else".to_string(),
+                }),
+            },
+        )]),
+    };
+    let start = Instant::now();
+    let response = client.ask(&request)?;
+    let elapsed = start.elapsed();
+    let answer = match response.answers.get("cancel") {
+        Some(Answer::Noul { noul }) => format!("P(yes) = {noul:.3}"),
+        other => format!("{other:?}"),
+    };
+    println!(
+        "Jev OK: model {}, {answer}, {} input tokens, {} ms",
+        response.model,
+        response.usage.input_tokens,
+        elapsed.as_millis()
+    );
+    Ok(())
 }
 
 fn write(path: &PathBuf, bytes: &[u8]) -> Result<()> {

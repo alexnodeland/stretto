@@ -1070,6 +1070,7 @@ dependencies = [
  "serde",
  "serde_json",
  "stretto-model",
+ "stretto-oracle",
  "stretto-trace",
 ]
 
