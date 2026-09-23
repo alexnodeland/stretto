@@ -61,10 +61,11 @@ First results, with their interpretation, are in [docs/results/phase0-2026-09-23
 
 | Crate | What it does |
 |---|---|
-| `stretto-trace` | Canonical episode schema; τ²-bench results ingest; tool manifests |
+| `stretto-trace` | Canonical episode schema; τ²-bench results ingest; MCP proxy log ingest; tool manifests with docs |
 | `stretto-model` | Action abstraction; hierarchical Dirichlet back-off world model; concentration posterior via fugue; argument provenance; tool runs; policy checks |
 | `stretto-oracle` | `Oracle` trait; Jev HTTP client (`POST /v1/systemone`); on-disk replay cache; mock |
-| `stretto-report` | The `stretto` CLI and the Phase 0 report |
+| `stretto-report` | The `stretto` CLI, the Phase 0 report, and Phase 0b (System-One questions at held-out decisions) |
+| `stretto-proxy` | A stdio MCP proxy that forwards every line unchanged and records sessions for `stretto-trace` ([README](crates/stretto-proxy/README.md)) |
 
 ## Roadmap
 
@@ -72,7 +73,7 @@ First results, with their interpretation, are in [docs/results/phase0-2026-09-23
 |---|---|---|
 | 0a | Predictability, headroom and provenance on published trajectories | Nothing (done) |
 | 0b | Replayed shadow mode: ask Jev at every decision a flow would hand it (next step, closed-set arguments), score agreement and calibration, and re-run the projection with its answers. Harness built; matching descriptions to records and judging tool outputs come next | `TYPESAFE_API_KEY` |
-| 1 | Rust MCP proxy that records traffic; rule checks compiled from policy and tested against traces | — |
+| 1 | Rust MCP proxy that records traffic (recording done: `stretto-proxy`); rule checks compiled from policy and tested against traces | — |
 | 2 | Flow compiler; `plan_*` / `resume_*` / `commit_*` macro-tools; arbitration runtime; live τ²-bench arms on GLM and MiniMax | GLM (Z.ai) and MiniMax keys |
 | 3 | Predicate refinement, per-decision counterfactual evaluation, flow search with fugue-evo, then American frontier models | — |
 
