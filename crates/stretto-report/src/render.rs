@@ -735,6 +735,32 @@ fn shadow_section(s: &mut String, f: &FeaturedReport) {
         );
     }
     let _ = writeln!(s);
+    if !sh.by_arg.is_empty() {
+        let _ = writeln!(s, "Closed-set arguments by argument (source models):\n");
+        let _ = writeln!(
+            s,
+            "| Tool | Argument | Decisions | Agreed | p ≥ {t}: share / agreed |"
+        );
+        let _ = writeln!(s, "|---|---|---|---|---|");
+        for row in &sh.by_arg {
+            let a = &row.agreement;
+            let at = a.curve.iter().find(|c| (c.0 - t).abs() < 1e-9);
+            let _ = writeln!(
+                s,
+                "| `{}` | `{}` | {} | {} | {} |",
+                row.tool,
+                row.arg,
+                a.n,
+                pct1(a.rate()),
+                at.map_or("–".to_string(), |c| format!(
+                    "{} / {}",
+                    pct1(c.1),
+                    pct1(c.2)
+                )),
+            );
+        }
+        let _ = writeln!(s);
+    }
 
     if !sh.projection.is_empty() {
         let _ = writeln!(

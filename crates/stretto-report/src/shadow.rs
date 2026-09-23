@@ -144,6 +144,8 @@ pub struct Decision {
     pub step: usize,
     /// What is asked.
     pub kind: Kind,
+    /// For argument questions, the tool being called.
+    pub tool: Option<String>,
     /// The option the agent took.
     pub actual: String,
     /// The request to send, if the decision is asked about.
@@ -216,6 +218,7 @@ pub fn decisions(
                 episode: i,
                 step: k,
                 kind: Kind::Next,
+                tool: None,
                 actual: option_of(&se.steps[k].action),
                 request: Some(Request {
                     model: model.to_string(),
@@ -279,6 +282,7 @@ pub fn decisions(
                     episode: i,
                     step: k,
                     kind: Kind::Arg(arg.to_string()),
+                    tool: Some(name.clone()),
                     actual,
                     request,
                     fixed,
