@@ -17,6 +17,12 @@
 //!
 //! Answers are scored for agreement with the agent and calibration, and fed
 //! back into [`stretto_model::projection`].
+//!
+//! That is the v1 question set. [`QuestionSet::V2`] asks what RFC-001 §3.5
+//! specifies instead: flows only read between LLM turns (writes go through
+//! plan/commit), so the options at a site are the lookups the agent made
+//! there in training plus "hand back"; the state is a slice rather than a
+//! transcript; and the stop decision is also asked on its own.
 
 use anyhow::{bail, Result};
 use serde::Serialize;
@@ -27,9 +33,11 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Mutex;
 use stretto_model::projection::{ArgNeed, OracleArgs, OracleStep};
 use stretto_model::provenance::Source;
-use stretto_model::{Action, Step, Vocab};
-use stretto_oracle::{request_key, Answer, MockOracle, Oracle, Question, Request, Response};
-use stretto_trace::{Episode, Event, ToolManifest};
+use stretto_model::{Action, Outcome, Step, Vocab};
+use stretto_oracle::{
+    request_key, Answer, MockOracle, NoulCriteria, Oracle, Question, Request, Response,
+};
+use stretto_trace::{Episode, Event, ToolKind, ToolManifest};
 
 /// The option that hands the decision back to the LLM.
 pub const RESPOND: &str = "respond";
@@ -53,6 +61,49 @@ const NEXT_INSTRUCTIONS: &str = "A customer-service agent is working on the cust
 const RESPOND_CRITERION: &str = "Write to the customer instead of calling a tool: ask for \
      missing information or for explicit confirmation, report what was done, or answer a \
      question.";
+
+/// Latest tool results the v2 state shows in full.
+const RECENT_RESULTS: usize = 4;
+/// Older lookups the v2 state lists, one line each.
+const MAX_EARLIER: usize = 16;
+const MAX_RESULT_V2: usize = 1500;
+const MAX_MESSAGE_V2: usize = 600;
+/// Rubric length the v2 questions keep to.
+const MAX_RUBRIC: usize = 250;
+
+const V2_CONTEXT: &str = "A customer-service agent is working on the customer's request. Between \
+     its messages to the customer it can look things up with tools. It makes changes \
+     (cancellations, modifications, exchanges, returns, bookings) and transfers only after the \
+     customer confirms them.";
+const HAND_BACK: &str = "Hand back: the agent writes to the customer now (to ask for missing \
+     details or a confirmation, report what it found, or answer), or it makes a change or a \
+     transfer.";
+const GO_ON_YES: &str = "It still needs information it can look up before it can reply or act.";
+const GO_ON_NO: &str =
+    "It has what it needs for now: it writes to the customer, or makes a change.";
+
+/// Which questions Phase 0b asks.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub enum QuestionSet {
+    /// v1: after each tool result, one `Choice` over every tool plus
+    /// "respond", about the last twelve transcript items, for flows that may
+    /// call any tool.
+    V1,
+    /// v2, as RFC-001 §3.5 specifies, for read-only flows:
+    ///
+    /// - the options at a site are the lookups the agent made after the same
+    ///   tool (succeeding or failing) in training, plus "respond" (hand back);
+    ///   a site with none hands back without asking;
+    /// - the agent's next step is scored as what a read-only flow should do:
+    ///   the lookup, or "respond" for a reply or a write;
+    /// - the stop decision is also asked on its own (a `Noul`), with the
+    ///   lookup as a separate `Choice`, in the same request;
+    /// - the state is a slice: the customer's messages, the agent's last
+    ///   message, the latest results in full and older lookups in one line;
+    /// - numeric arguments are not asked about (Jev does no arithmetic), and
+    ///   writes, handed back, need no arguments from the flow.
+    V2,
+}
 
 /// Which System-One oracle answers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -89,6 +140,14 @@ pub struct ShadowConfig {
     /// Write every distinct request here as JSON lines, to audit what the
     /// oracle is shown.
     pub dump: Option<PathBuf>,
+    /// Write every decision here as JSON lines: who took it, the agent's
+    /// option, the oracle's pick and the request key (no state text).
+    pub log: Option<PathBuf>,
+    /// Which questions to ask.
+    pub questions: QuestionSet,
+    /// v2: describe each lookup by what its results supply, learned from
+    /// argument dataflow in training.
+    pub hints: bool,
 }
 
 impl ShadowConfig {
@@ -102,8 +161,11 @@ impl ShadowConfig {
             concurrency: 8,
             limit: None,
             budget: 5.0,
-            thresholds: vec![0.5, 0.7, 0.9],
+            thresholds: vec![0.5, 0.7, 0.9, 0.95, 0.99],
             dump: None,
+            log: None,
+            questions: QuestionSet::V1,
+            hints: false,
         }
     }
 
@@ -146,8 +208,12 @@ pub struct Decision {
     pub kind: Kind,
     /// For argument questions, the tool being called.
     pub tool: Option<String>,
-    /// The option the agent took.
+    /// The option the agent took, as the flow should take it: for v2
+    /// next-step questions a reply or a write is "respond" (hand back).
     pub actual: String,
+    /// What the agent itself did next (a tool, "respond", or an argument
+    /// value).
+    pub agent: String,
     /// The request to send, if the decision is asked about.
     pub request: Option<Request>,
     /// The answer when it is certain without asking: an argument that took
@@ -225,6 +291,7 @@ pub fn decisions(
                 kind: Kind::Next,
                 tool: None,
                 actual: option_of(&se.steps[k].action),
+                agent: option_of(&se.steps[k].action),
                 request: Some(Request {
                     model: model.to_string(),
                     state: snapshot,
@@ -288,6 +355,289 @@ pub fn decisions(
                     step: k,
                     kind: Kind::Arg(arg.to_string()),
                     tool: Some(name.clone()),
+                    agent: actual.clone(),
+                    actual,
+                    request,
+                    fixed,
+                });
+            }
+        }
+    }
+    out
+}
+
+/// The lookups a read-only flow may make at each site: after a call to a
+/// tool that succeeded (or failed), every read-only tool the agent called
+/// next in training. Optionally also what each lookup is for (see
+/// [`Sites::learn_feeds`]).
+#[derive(Clone, Debug, Default)]
+pub struct Sites {
+    reads: BTreeSet<String>,
+    next: BTreeMap<(String, bool), BTreeMap<String, usize>>,
+    feeds: BTreeMap<String, BTreeMap<(String, String), usize>>,
+}
+
+impl Sites {
+    /// Learn from training episodes' steps; `manifest` says which tools only
+    /// read.
+    pub fn learn<'a>(train: impl IntoIterator<Item = &'a [Step]>, manifest: &ToolManifest) -> Self {
+        let reads: BTreeSet<String> = manifest
+            .tools
+            .iter()
+            .filter(|(_, kind)| **kind == ToolKind::Read)
+            .map(|(name, _)| name.clone())
+            .collect();
+        let mut next: BTreeMap<(String, bool), BTreeMap<String, usize>> = BTreeMap::new();
+        for steps in train {
+            for w in steps.windows(2) {
+                if let (Action::Tool(prev), Action::Tool(t)) = (&w[0].action, &w[1].action) {
+                    if reads.contains(t) {
+                        let site = (prev.clone(), w[0].outcome == Outcome::Err);
+                        *next.entry(site).or_default().entry(t.clone()).or_insert(0) += 1;
+                    }
+                }
+            }
+        }
+        Self {
+            reads,
+            next,
+            feeds: BTreeMap::new(),
+        }
+    }
+
+    /// Learn which write arguments each lookup's results supply, from
+    /// argument dataflow: every value (of three characters or more) passed to
+    /// a write is traced to the most recent successful tool output that
+    /// contains it, counted once per episode.
+    pub fn learn_feeds<'a>(
+        &mut self,
+        train: impl IntoIterator<Item = &'a Episode>,
+        manifest: &ToolManifest,
+    ) {
+        for ep in train {
+            let mut outputs: Vec<(&str, String)> = Vec::new();
+            let mut seen: BTreeSet<(String, String, String)> = BTreeSet::new();
+            for e in &ep.events {
+                match e {
+                    Event::ToolResult {
+                        name,
+                        content,
+                        error: false,
+                        ..
+                    } => outputs.push((name.as_str(), content.to_lowercase())),
+                    Event::Assistant { calls, .. } => {
+                        for c in calls {
+                            if manifest.tools.get(&c.name) != Some(&ToolKind::Write) {
+                                continue;
+                            }
+                            let Value::Object(args) = &c.arguments else {
+                                continue;
+                            };
+                            for (arg, v) in args {
+                                let mut leaves = Vec::new();
+                                leaf_strings(v, &mut leaves);
+                                for leaf in leaves.iter().filter(|l| l.chars().count() >= 3) {
+                                    let needle = leaf.to_lowercase();
+                                    let source = outputs
+                                        .iter()
+                                        .rev()
+                                        .find(|(_, out)| out.contains(&needle))
+                                        .map(|(tool, _)| *tool);
+                                    if let Some(tool) = source.filter(|t| self.reads.contains(*t)) {
+                                        seen.insert((
+                                            tool.to_string(),
+                                            c.name.clone(),
+                                            arg.clone(),
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            for (read, write, arg) in seen {
+                *self
+                    .feeds
+                    .entry(read)
+                    .or_default()
+                    .entry((write, arg))
+                    .or_insert(0) += 1;
+            }
+        }
+    }
+
+    /// What a lookup is for, from [`Sites::learn_feeds`]: the two write
+    /// arguments its results supplied most often (in at least three training
+    /// episodes each), with up to two writes each.
+    pub fn hint(&self, tool: &str) -> Option<String> {
+        // Per argument: total uses, and uses per write.
+        type Uses<'a> = (usize, Vec<(usize, &'a str)>);
+        let mut by_arg: BTreeMap<&str, Uses> = BTreeMap::new();
+        for ((write, arg), &n) in self.feeds.get(tool)? {
+            if n >= 3 {
+                let e = by_arg.entry(arg.as_str()).or_default();
+                e.0 += n;
+                e.1.push((n, write.as_str()));
+            }
+        }
+        let mut args: Vec<(&str, Uses)> = by_arg.into_iter().collect();
+        args.sort_by(|a, b| b.1 .0.cmp(&a.1 .0).then_with(|| a.0.cmp(b.0)));
+        let parts: Vec<String> = args
+            .into_iter()
+            .take(2)
+            .map(|(arg, (_, mut writes))| {
+                writes.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(b.1)));
+                let writes: Vec<String> = writes
+                    .iter()
+                    .take(2)
+                    .map(|(_, w)| format!("`{w}`"))
+                    .collect();
+                format!("`{arg}` for {}", writes.join(" or "))
+            })
+            .collect();
+        (!parts.is_empty()).then(|| format!("Its results supply {}.", parts.join(", and ")))
+    }
+
+    /// Whether `tool` only reads.
+    pub fn is_read(&self, tool: &str) -> bool {
+        self.reads.contains(tool)
+    }
+
+    /// The lookups seen after `tool` (failed or not), by name.
+    pub fn options(&self, tool: &str, failed: bool) -> Vec<String> {
+        self.next
+            .get(&(tool.to_string(), failed))
+            .map(|m| m.keys().cloned().collect())
+            .unwrap_or_default()
+    }
+
+    /// A site's name: the tool, marked when it failed.
+    pub fn name(tool: &str, failed: bool) -> String {
+        if failed {
+            format!("{tool} (error)")
+        } else {
+            tool.to_string()
+        }
+    }
+}
+
+/// Every question Phase 0b v2 asks about `episodes` (see [`QuestionSet::V2`]).
+pub fn decisions_v2(
+    episodes: &[ShadowEpisode<'_>],
+    manifest: &ToolManifest,
+    closed: &BTreeMap<(String, String), BTreeSet<String>>,
+    sites: &Sites,
+    model: &str,
+) -> Vec<Decision> {
+    let mut out = Vec::new();
+    for (i, se) in episodes.iter().enumerate() {
+        let (items, step_items) = timeline(se.episode);
+        let is_tool = |k: usize| matches!(se.steps[k].action, Action::Tool(_));
+        let mut call = 0;
+        for k in 0..se.steps.len() {
+            let this_call = is_tool(k).then(|| {
+                call += 1;
+                call - 1
+            });
+            if k == 0 {
+                continue;
+            }
+            let Action::Tool(prev) = &se.steps[k - 1].action else {
+                continue;
+            };
+            let failed = se.steps[k - 1].outcome == Outcome::Err;
+            let agent = option_of(&se.steps[k].action);
+            let actual = if sites.is_read(&agent) {
+                agent.clone()
+            } else {
+                RESPOND.to_string()
+            };
+            let options = sites.options(prev, failed);
+            let before = &items[..step_items[k]];
+            // A site where the agent never looked anything up hands back.
+            let (request, fixed) = if options.is_empty() {
+                (None, Some(RESPOND.to_string()))
+            } else {
+                let request = Request {
+                    model: model.to_string(),
+                    state: slice(before, se.goal, None),
+                    questions: next_questions_v2(manifest, sites, prev, failed, &options),
+                };
+                (Some(request), None)
+            };
+            out.push(Decision {
+                episode: i,
+                step: k,
+                kind: Kind::Next,
+                tool: None,
+                actual,
+                agent,
+                request,
+                fixed,
+            });
+            // Arguments: only for lookups inside a run that need nothing but
+            // closed-set choices. A write is handed back, arguments and all.
+            let (Some(c), ArgNeed::ClosedSet) = (this_call, se.needs[k]) else {
+                continue;
+            };
+            let Item::Tool {
+                name, arguments, ..
+            } = &items[step_items[k]]
+            else {
+                continue;
+            };
+            if !sites.is_read(name) {
+                continue;
+            }
+            let leaves = se.sources.get(c).map(Vec::as_slice).unwrap_or(&[]);
+            let asked: BTreeSet<&str> = leaves
+                .iter()
+                .filter(|(arg, source, _)| match source {
+                    Source::Literal | Source::Short => true,
+                    Source::Generated => closed.contains_key(&(name.clone(), arg.clone())),
+                    _ => false,
+                })
+                .map(|(arg, _, _)| arg.as_str())
+                .collect();
+            for arg in asked {
+                let value = arguments.get(arg);
+                let actual = value.map(value_key).unwrap_or_default();
+                let options = closed.get(&(name.clone(), arg.to_string()));
+                let fixed = options
+                    .filter(|o| o.len() == 1)
+                    .and_then(|o| o.iter().next().cloned());
+                // Jev does no arithmetic: a number is left to the LLM.
+                let numeric = value.is_some_and(Value::is_number);
+                let request = match options {
+                    Some(o) if o.len() >= 2 && !numeric => {
+                        let others: serde_json::Map<String, Value> = match arguments {
+                            Value::Object(m) => m
+                                .iter()
+                                .filter(|(k, _)| k.as_str() != arg)
+                                .map(|(k, v)| (k.clone(), v.clone()))
+                                .collect(),
+                            _ => Default::default(),
+                        };
+                        let pending = json!({"tool": name, "other_arguments": others});
+                        Some(Request {
+                            model: model.to_string(),
+                            state: slice(before, se.goal, Some(pending)),
+                            questions: BTreeMap::from([(
+                                "value".to_string(),
+                                arg_question(manifest, name, arg, o),
+                            )]),
+                        })
+                    }
+                    _ => None,
+                };
+                out.push(Decision {
+                    episode: i,
+                    step: k,
+                    kind: Kind::Arg(arg.to_string()),
+                    tool: Some(name.clone()),
+                    agent: actual.clone(),
                     actual,
                     request,
                     fixed,
@@ -312,6 +662,20 @@ pub struct Asked {
     pub first_error: Option<String>,
 }
 
+/// `path` with `-<domain>` added to its file stem, so each domain's run
+/// writes its own file.
+pub fn per_domain(path: &std::path::Path, domain: &str) -> PathBuf {
+    let stem = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let name = match path.extension() {
+        Some(ext) => format!("{stem}-{domain}.{}", ext.to_string_lossy()),
+        None => format!("{stem}-{domain}"),
+    };
+    path.with_file_name(name)
+}
+
 /// Rough input tokens of a request (four characters per token).
 pub fn estimate_tokens(request: &Request) -> u64 {
     serde_json::to_string(request).map_or(0, |s| s.len() as u64 / 4)
@@ -325,6 +689,7 @@ pub fn ask(
     oracle: &(dyn Oracle + Sync),
     decisions: &[Decision],
     config: &ShadowConfig,
+    domain: &str,
 ) -> Result<Asked> {
     let mut unique: BTreeMap<String, &Request> = BTreeMap::new();
     for d in decisions {
@@ -338,12 +703,13 @@ pub fn ask(
         todo.truncate(limit);
     }
     if let Some(path) = &config.dump {
+        let path = per_domain(path, domain);
         let mut lines = String::new();
         for (key, r) in &todo {
             lines.push_str(&serde_json::to_string(&json!({"key": key, "request": r}))?);
             lines.push('\n');
         }
-        std::fs::write(path, lines)?;
+        std::fs::write(&path, lines)?;
     }
     let tokens: u64 = todo.iter().map(|(_, r)| estimate_tokens(r)).sum();
     let dollars = tokens as f64 / 1e6 * PRICE_PER_MTOK;
@@ -432,6 +798,36 @@ pub struct Scored {
     pub prob_actual: f64,
     /// Brier score of its whole distribution.
     pub brier: f64,
+    /// Its whole distribution over the options.
+    pub probs: BTreeMap<String, f64>,
+}
+
+impl Scored {
+    /// Score the distribution `probs` over the options (its keys), with
+    /// `pick` the chosen option, against the agent's option `actual`.
+    pub fn of(probs: BTreeMap<String, f64>, pick: String, actual: &str) -> Self {
+        let p = |o: &str| probs.get(o).copied().unwrap_or(0.0);
+        let brier = probs
+            .keys()
+            .map(|o| (p(o) - if o == actual { 1.0 } else { 0.0 }).powi(2))
+            .sum::<f64>()
+            + if probs.contains_key(actual) { 0.0 } else { 1.0 };
+        Scored {
+            prob: p(&pick),
+            prob_actual: p(actual),
+            pick,
+            brier,
+            probs,
+        }
+    }
+}
+
+/// The question id a decision's answer is read from.
+fn answer_id(kind: &Kind) -> &'static str {
+    match kind {
+        Kind::Next => "next",
+        Kind::Arg(_) => "value",
+    }
 }
 
 /// The oracle's answer to `d`, if it has one.
@@ -439,44 +835,72 @@ pub fn score(d: &Decision, asked: &Asked) -> Option<Scored> {
     let Some(request) = &d.request else {
         // Certain without asking, or not answerable at all.
         let only = d.fixed.clone()?;
-        let right = only == d.actual;
-        return Some(Scored {
-            pick: only,
-            prob: 1.0,
-            prob_actual: if right { 1.0 } else { 0.0 },
-            brier: if right { 0.0 } else { 2.0 },
-        });
+        return Some(Scored::of(
+            BTreeMap::from([(only.clone(), 1.0)]),
+            only,
+            &d.actual,
+        ));
     };
     let response = asked.responses.get(&request_key(request))?;
-    let (_, answer) = response.answers.iter().next()?;
-    let Answer::Choice {
+    let id = answer_id(&d.kind);
+    let Some(Answer::Choice {
         choice,
         probabilities,
         ..
-    } = answer
+    }) = response.answers.get(id)
     else {
         return None;
     };
-    let options: Vec<&String> = match request.questions.values().next()? {
-        Question::Choice { criteria, .. } => criteria.keys().collect(),
-        _ => return None,
+    let Question::Choice { criteria, .. } = request.questions.get(id)? else {
+        return None;
     };
-    let p = |o: &str| probabilities.get(o).copied().unwrap_or(0.0);
-    let brier = options
+    let probs = criteria
+        .keys()
+        .map(|o| (o.clone(), probabilities.get(o).copied().unwrap_or(0.0)))
+        .collect();
+    Some(Scored::of(probs, choice.clone(), &d.actual))
+}
+
+/// The v2 split answer to a next-step decision: "respond" gets one minus the
+/// stop question's probability of going on, and each lookup gets that
+/// probability times its share in the lookup question (all of it at a site
+/// with one lookup).
+pub fn score_split(d: &Decision, asked: &Asked) -> Option<Scored> {
+    if d.kind != Kind::Next {
+        return None;
+    }
+    let Some(request) = &d.request else {
+        return score(d, asked);
+    };
+    let response = asked.responses.get(&request_key(request))?;
+    let Some(Answer::Noul { noul: go_on }) = response.answers.get("go_on") else {
+        return None;
+    };
+    let Question::Choice { criteria, .. } = request.questions.get("next")? else {
+        return None;
+    };
+    let lookups: Vec<&String> = criteria.keys().filter(|o| *o != RESPOND).collect();
+    let mut probs = BTreeMap::from([(RESPOND.to_string(), 1.0 - go_on)]);
+    match (response.answers.get("tool"), lookups.as_slice()) {
+        (Some(Answer::Choice { probabilities, .. }), _) => {
+            for l in &lookups {
+                let share = probabilities.get(*l).copied().unwrap_or(0.0);
+                probs.insert((*l).clone(), go_on * share);
+            }
+        }
+        (None, [only]) => {
+            probs.insert((*only).clone(), *go_on);
+        }
+        _ => return None,
+    }
+    let pick = probs
         .iter()
-        .map(|o| (p(o) - if **o == d.actual { 1.0 } else { 0.0 }).powi(2))
-        .sum::<f64>()
-        + if options.iter().any(|o| **o == d.actual) {
-            0.0
-        } else {
-            1.0
-        };
-    Some(Scored {
-        pick: choice.clone(),
-        prob: p(choice),
-        prob_actual: p(&d.actual),
-        brier,
-    })
+        .fold(None::<(&String, f64)>, |best, (o, &p)| match best {
+            Some((_, q)) if q >= p => best,
+            _ => Some((o, p)),
+        })
+        .map(|(o, _)| o.clone())?;
+    Some(Scored::of(probs, pick, &d.actual))
 }
 
 /// Agreement and calibration over a set of answered decisions.
@@ -623,6 +1047,17 @@ fn action_of(option: &str) -> Action {
     }
 }
 
+/// Every string or number inside `v`, as text.
+fn leaf_strings(v: &Value, out: &mut Vec<String>) {
+    match v {
+        Value::String(s) => out.push(s.clone()),
+        Value::Number(n) => out.push(n.to_string()),
+        Value::Array(items) => items.iter().for_each(|i| leaf_strings(i, out)),
+        Value::Object(m) => m.values().for_each(|i| leaf_strings(i, out)),
+        _ => {}
+    }
+}
+
 /// How argument values are keyed: strings as themselves, anything else as
 /// compact JSON.
 fn value_key(v: &Value) -> String {
@@ -671,6 +1106,163 @@ fn arg_question(
             .map(|o| (o.clone(), format!("{arg} = {o}")))
             .collect(),
     }
+}
+
+/// The v2 next-step questions at a site after `prev`: which lookup or hand
+/// back (`next`), whether to look anything else up (`go_on`), and which
+/// lookup (`tool`, at sites with several). Each lookup is described by its
+/// docstring and, when learned, what its results supply.
+fn next_questions_v2(
+    manifest: &ToolManifest,
+    sites: &Sites,
+    prev: &str,
+    failed: bool,
+    lookups: &[String],
+) -> BTreeMap<String, Question> {
+    let doc = |name: &str| {
+        let summary = manifest
+            .docs
+            .get(name)
+            .map(|d| d.summary.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| format!("Call {name}."));
+        match sites.hint(name) {
+            Some(hint) => clip(&format!("{summary} {hint}"), MAX_RUBRIC),
+            None => clip(&summary, MAX_RUBRIC),
+        }
+    };
+    let last = if failed {
+        format!("Its last tool call, `{prev}`, returned an error.")
+    } else {
+        format!("It has just received the result of `{prev}`.")
+    };
+    let mut next = BTreeMap::from([(RESPOND.to_string(), HAND_BACK.to_string())]);
+    for l in lookups {
+        next.insert(l.clone(), doc(l));
+    }
+    let mut questions = BTreeMap::from([
+        (
+            "next".to_string(),
+            Question::Choice {
+                instructions: format!(
+                    "{V2_CONTEXT} {last} What does it do next? Pick the lookup it makes now, or \
+                     'respond' if it hands back."
+                ),
+                criteria: next,
+            },
+        ),
+        (
+            "go_on".to_string(),
+            Question::Noul {
+                instructions: format!(
+                    "{V2_CONTEXT} {last} Does it make another lookup now, before it writes to \
+                     the customer or makes any change?"
+                ),
+                criteria: Some(NoulCriteria {
+                    yes: GO_ON_YES.to_string(),
+                    no: GO_ON_NO.to_string(),
+                }),
+            },
+        ),
+    ]);
+    if lookups.len() >= 2 {
+        questions.insert(
+            "tool".to_string(),
+            Question::Choice {
+                instructions: format!(
+                    "{V2_CONTEXT} {last} Suppose it makes one more lookup now: which one?"
+                ),
+                criteria: lookups.iter().map(|l| (l.clone(), doc(l))).collect(),
+            },
+        );
+    }
+    questions
+}
+
+/// The v2 state before a decision: the customer's first and latest
+/// messages, the goal, the agent's last message, the latest tool results in
+/// full and older lookups one line each, and the pending call for argument
+/// questions.
+fn slice(before: &[Item], goal: &str, pending: Option<Value>) -> Value {
+    let customer: Vec<&String> = before
+        .iter()
+        .filter_map(|i| match i {
+            Item::Customer(t) => Some(t),
+            _ => None,
+        })
+        .collect();
+    let agent = before.iter().rev().find_map(|i| match i {
+        Item::Agent(t) if !t.trim().is_empty() => Some(t),
+        _ => None,
+    });
+    let tools: Vec<&Item> = before
+        .iter()
+        .filter(|i| matches!(i, Item::Tool { .. }))
+        .collect();
+    let split = tools.len().saturating_sub(RECENT_RESULTS);
+    let earlier: Vec<String> = tools[split.saturating_sub(MAX_EARLIER)..split]
+        .iter()
+        .filter_map(|i| match i {
+            Item::Tool {
+                name,
+                arguments,
+                error,
+                ..
+            } => Some(format!(
+                "{name}({}) → {}",
+                clip(&arguments.to_string(), 160),
+                if *error { "error" } else { "ok" }
+            )),
+            _ => None,
+        })
+        .collect();
+    let latest: Vec<Value> = tools[split..]
+        .iter()
+        .filter_map(|i| match i {
+            Item::Tool {
+                name,
+                arguments,
+                result,
+                error,
+            } => {
+                let mut v = json!({
+                    "tool_call": name,
+                    "arguments": arguments,
+                    "result": clip(result, MAX_RESULT_V2),
+                });
+                if *error {
+                    v["error"] = json!(true);
+                }
+                Some(v)
+            }
+            _ => None,
+        })
+        .collect();
+    let mut s = json!({
+        "customer_request": customer.first().map(|t| clip(t, MAX_TEXT)),
+        "flow_goal": goal,
+    });
+    if customer.len() > 1 {
+        let later: Vec<String> = customer[1..]
+            .iter()
+            .rev()
+            .take(4)
+            .rev()
+            .map(|t| clip(t, MAX_MESSAGE_V2))
+            .collect();
+        s["later_customer_messages"] = json!(later);
+    }
+    if let Some(t) = agent {
+        s["agent_last_message"] = json!(clip(t, MAX_MESSAGE_V2));
+    }
+    if !earlier.is_empty() {
+        s["earlier_lookups"] = json!(earlier);
+    }
+    s["latest_results"] = json!(latest);
+    if let Some(p) = pending {
+        s["pending_call"] = p;
+    }
+    s
 }
 
 /// One entry of an episode's transcript.
@@ -930,7 +1522,7 @@ mod tests {
         let ds = decisions(&[se], &manifest(), &BTreeMap::new(), "m");
         let config = ShadowConfig::new(OracleKind::Mock);
         let oracle = config.build().unwrap();
-        let asked = ask(oracle.as_ref(), &ds, &config).unwrap();
+        let asked = ask(oracle.as_ref(), &ds, &config, "retail").unwrap();
         assert_eq!((asked.distinct, asked.errors), (2, 0));
         // The mock picks the first option in key order: "cancel".
         let scored: Vec<Option<Scored>> = ds.iter().map(|d| score(d, &asked)).collect();
@@ -957,6 +1549,75 @@ mod tests {
             })
         );
         assert_eq!(steps_answers[0], None);
+    }
+
+    #[test]
+    fn v2_offers_a_sites_lookups_and_scores_writes_as_hand_backs() {
+        // Training: after get_order the agent sometimes looks up another
+        // order, so that is the site's one lookup.
+        let call = |name: &str| Step {
+            action: Action::Tool(name.into()),
+            outcome: Outcome::Ok,
+        };
+        let train = vec![call("get_order"), call("get_order"), call("cancel")];
+        let sites = Sites::learn([train.as_slice()], &manifest());
+        assert_eq!(sites.options("get_order", false), vec!["get_order"]);
+        assert!(sites.options("cancel", false).is_empty());
+
+        // Held out: get_order, then cancel (a write), then a reply.
+        let ep = episode();
+        let st = steps(&ep);
+        let sources = call_sources(&ep);
+        let needs = vec![ArgNeed::Bound; st.len()];
+        let se = ShadowEpisode {
+            episode: &ep,
+            steps: &st,
+            sources: &sources,
+            needs: &needs,
+            goal: "cancel",
+        };
+        let ds = decisions_v2(&[se], &manifest(), &BTreeMap::new(), &sites, "m");
+        assert_eq!(ds.len(), 2);
+        // After get_order the agent wrote: a read-only flow hands back.
+        assert_eq!(
+            (ds[0].agent.as_str(), ds[0].actual.as_str()),
+            ("cancel", RESPOND)
+        );
+        let request = ds[0].request.as_ref().unwrap();
+        let ids: Vec<&String> = request.questions.keys().collect();
+        assert_eq!(ids, ["go_on", "next"]);
+        assert_eq!(request.state["latest_results"][0]["tool_call"], "get_order");
+        // After cancel the agent never looked anything up: no question.
+        assert!(ds[1].request.is_none());
+        assert_eq!(ds[1].fixed.as_deref(), Some(RESPOND));
+
+        let config = ShadowConfig::new(OracleKind::Mock);
+        let asked = ask(config.build().unwrap().as_ref(), &ds, &config, "retail").unwrap();
+        // The mock puts 0.6 on the first option and says 0.5 to going on.
+        let one = score(&ds[0], &asked).unwrap();
+        assert_eq!((one.pick.as_str(), one.prob), ("get_order", 0.6));
+        let split = score_split(&ds[0], &asked).unwrap();
+        assert_eq!(split.probs[RESPOND], 0.5);
+        assert_eq!(split.probs["get_order"], 0.5);
+        assert_eq!(score(&ds[1], &asked).unwrap().pick, RESPOND);
+    }
+
+    #[test]
+    fn dataflow_hints_say_what_a_lookup_supplies() {
+        // The cancel's order id was read from get_order's output; its reason
+        // came from the customer, so it says nothing about the lookup.
+        let ep = episode();
+        let st = steps(&ep);
+        let mut sites = Sites::learn([st.as_slice()], &manifest());
+        sites.learn_feeds([&ep, &ep], &manifest());
+        // Two episodes are not enough.
+        assert_eq!(sites.hint("get_order"), None);
+        sites.learn_feeds([&ep], &manifest());
+        assert_eq!(
+            sites.hint("get_order").as_deref(),
+            Some("Its results supply `order_id` for `cancel`.")
+        );
+        assert_eq!(sites.hint("cancel"), None);
     }
 
     #[test]

@@ -1,6 +1,7 @@
 //! Markdown rendering of a Phase 0 report.
 
 use crate::phase0::{DomainReport, FeaturedReport, Report, Settings, VariantStats};
+use crate::shadow::{Agreement, QuestionSet};
 use std::fmt::Write as _;
 use stretto_model::features::FOLDS;
 use stretto_model::projection::{GateKind, Projection, Scenario};
@@ -119,6 +120,10 @@ pub fn markdown(report: &Report) -> String {
          another tool, carrying on when the agent stopped, or another argument value. Handing \
          back early is counted separately, as safe: it costs one LLM turn. **Episodes with a \
          risky decision** stand in, conservatively, for the pass^1 a flow could lose.\n\
+         - **Read-only flows** follow RFC-001's plan/commit rule: between LLM turns a flow only \
+         calls tools the benchmark marks as reads, and every write (and any tool not marked \
+         read-only, such as a transfer or the calculator) goes back to the LLM. A wrong pick is \
+         then a **detour**: an extra lookup that changes nothing and costs a pause, not a risk.\n\
          - **Tokens and dollars saved** come from the usage the benchmark recorded for each \
          call: removed turns, plus intermediate tool outputs a collapsed run no longer carries \
          in later prompts, priced at the model's effective input price.\n\
@@ -592,7 +597,9 @@ fn projection(s: &mut String, f: &FeaturedReport, settings: &Settings) {
         let _ = writeln!(
             s,
             "By agent model, with the habit acting only in validated contexts and a perfect \
-             System-One model deciding the rest. Pooled dollars weigh each model by its spend.{}\n",
+             System-One model deciding the rest. *Read-only flows* follow RFC-001's plan/commit \
+             rule: between LLM turns a flow only reads, and every write goes back to the LLM. \
+             Pooled dollars weigh each model by its spend.{}\n",
             if f.by_model.iter().any(|m| m.target) {
                 " Models marked *(target)* were never trained on: the habit, its features, the \
                  closed argument sets and the validated contexts all come from the other models, \
@@ -603,17 +610,18 @@ fn projection(s: &mut String, f: &FeaturedReport, settings: &Settings) {
         );
         let _ = writeln!(
             s,
-            "| Agent model | Tool turns with parallel calls | Turns saved | Ceiling | Input tokens saved | Output tokens saved | $ saved | $ per episode |"
+            "| Agent model | Tool turns with parallel calls | Turns saved | Read-only flows | Ceiling | Input tokens saved | Output tokens saved | $ saved | $ per episode |"
         );
-        let _ = writeln!(s, "|---|---|---|---|---|---|---|---|");
+        let _ = writeln!(s, "|---|---|---|---|---|---|---|---|---|");
         for m in &f.by_model {
             let p = &m.projection;
             let _ = writeln!(
                 s,
-                "| {} | {} | **{}** | {} | {} | {} | {} | {} |",
+                "| {} | {} | **{}** | {} | {} | {} | {} | {} | {} |",
                 label(&m.model, m.target),
                 pct0(m.parallel_share),
                 pct1(p.saved_share()),
+                pct1(m.read_only.saved_share()),
                 pct1(p.ceiling_share()),
                 if p.input_tokens > 0.0 {
                     pct1(p.input_saved_share())
@@ -652,6 +660,7 @@ fn shadow_section(s: &mut String, f: &FeaturedReport) {
     let Some(sh) = &f.shadow else {
         return;
     };
+    let v2 = sh.questions == QuestionSet::V2;
     let _ = writeln!(s, "### Phase 0b: the System-One model in shadow mode\n");
     if sh.oracle == "mock" {
         let _ = writeln!(
@@ -665,76 +674,148 @@ fn shadow_section(s: &mut String, f: &FeaturedReport) {
     } else {
         sh.versions.join(", ")
     };
-    let _ = writeln!(
-        s,
-        "At every held-out decision a flow would hand to a System-One model, it was asked a typed \
-         question about the state the flow would have there: right after a tool returns, which \
-         tool the agent calls next or whether it hands back; and, for tool calls inside a run, \
-         the value of each closed-set argument. Oracle: `{}` (answering model: {versions}). \
-         {} decisions, {} distinct questions, {} answered, {} failed; {} input tokens \
-         (${:.2} at ${}/MTok).\n",
-        sh.oracle,
-        sh.decisions,
-        sh.distinct,
-        sh.answered,
-        sh.errors,
-        sh.input_tokens,
-        sh.input_tokens as f64 / 1e6 * crate::shadow::PRICE_PER_MTOK,
-        crate::shadow::PRICE_PER_MTOK,
-    );
+    if v2 {
+        let _ = writeln!(
+            s,
+            "Questions v2 (RFC-001 §3.5), for read-only flows. At every held-out decision right \
+             after a tool returns, the System-One model was asked which lookup the agent makes \
+             next, with the options limited to the lookups the agent made after the same tool in \
+             training, or whether it hands back (to write to the customer, or to make a change, \
+             which only the LLM does). The same request also asks the stop decision on its own \
+             (*split*: \"does it make another lookup now?\", then which one). The state is a \
+             slice: the customer's messages, the agent's last message, the latest four results in \
+             full and older lookups one line each. *Combined* answers weigh the System-One \
+             answers against the habit's prediction and the model's record at that site on other \
+             tasks, fitted by cross-validation over tasks (RFC-001 §3.6). Numeric arguments are \
+             not asked about. Oracle: `{}` (answering model: {versions}). {} decisions, {} \
+             distinct questions, {} answered, {} failed; {} input tokens (${:.2} at ${}/MTok). \
+             {} next-step decisions came at sites where the agent never looked anything up in \
+             training, so the flow hands back without asking; the options held the agent's step \
+             in {} of the source models' next-step decisions.\n",
+            sh.oracle,
+            sh.decisions,
+            sh.distinct,
+            sh.answered,
+            sh.errors,
+            sh.input_tokens,
+            sh.input_tokens as f64 / 1e6 * crate::shadow::PRICE_PER_MTOK,
+            crate::shadow::PRICE_PER_MTOK,
+            sh.structural,
+            pct1(sh.offered),
+        );
+    } else {
+        let _ = writeln!(
+            s,
+            "At every held-out decision a flow would hand to a System-One model, it was asked a \
+             typed question about the state the flow would have there: right after a tool \
+             returns, which tool the agent calls next or whether it hands back; and, for tool \
+             calls inside a run, the value of each closed-set argument. Oracle: `{}` (answering \
+             model: {versions}). {} decisions, {} distinct questions, {} answered, {} failed; {} \
+             input tokens (${:.2} at ${}/MTok).\n",
+            sh.oracle,
+            sh.decisions,
+            sh.distinct,
+            sh.answered,
+            sh.errors,
+            sh.input_tokens,
+            sh.input_tokens as f64 / 1e6 * crate::shadow::PRICE_PER_MTOK,
+            crate::shadow::PRICE_PER_MTOK,
+        );
+    }
     if let Some(e) = &sh.first_error {
         let _ = writeln!(s, "First failure: `{}`\n", e.replace('`', "'"));
     }
-    let t = sh.thresholds.last().copied().unwrap_or(0.9);
-    let _ = writeln!(s, "Next step (which tool next, or hand back):\n");
-    let _ = writeln!(
-        s,
-        "| Agent model | Decisions | Agreed | Stop vs. go on | Brier | ECE | p ≥ {t}: share / agreed |"
-    );
-    let _ = writeln!(s, "|---|---|---|---|---|---|---|");
-    for row in &sh.rows {
-        let a = &row.next;
-        let at = a.curve.iter().find(|c| (c.0 - t).abs() < 1e-9);
+    let at = |a: &Agreement, t: f64| {
+        a.curve
+            .iter()
+            .find(|c| (c.0 - t).abs() < 1e-9)
+            .map_or("–".to_string(), |c| {
+                format!("{} / {}", pct1(c.1), pct1(c.2))
+            })
+    };
+    let t = 0.9;
+    if v2 {
         let _ = writeln!(
             s,
-            "| {} | {} | {} | {} | {:.3} | {:.3} | {} |",
-            shadow_label(row),
-            a.n,
-            pct1(a.rate()),
-            pct1(a.stop_agreed as f64 / a.n.max(1) as f64),
-            a.brier,
-            a.ece,
-            at.map_or("–".to_string(), |c| format!(
-                "{} / {}",
-                pct1(c.1),
-                pct1(c.2)
-            )),
+            "Next step, as a read-only flow takes it (a lookup, or hand back):\n"
         );
-    }
-    let _ = writeln!(s);
-    let _ = writeln!(s, "Closed-set arguments:\n");
-    let _ = writeln!(
-        s,
-        "| Agent model | Decisions | Agreed | p ≥ {t}: share / agreed |"
-    );
-    let _ = writeln!(s, "|---|---|---|---|");
-    for row in &sh.rows {
-        let a = &row.args;
-        let at = a.curve.iter().find(|c| (c.0 - t).abs() < 1e-9);
         let _ = writeln!(
             s,
-            "| {} | {} | {} | {} |",
-            shadow_label(row),
-            a.n,
-            pct1(a.rate()),
-            at.map_or("–".to_string(), |c| format!(
-                "{} / {}",
-                pct1(c.1),
-                pct1(c.2)
-            )),
+            "| Agent model | Decisions | One question | Split | Combined | Stop vs. go on | ECE | Combined p ≥ 0.9: share / agreed | Combined p ≥ 0.99: share / agreed |"
         );
+        let _ = writeln!(s, "|---|---|---|---|---|---|---|---|---|");
+        for row in &sh.rows {
+            let a = &row.next;
+            let rate =
+                |x: &Option<Agreement>| x.as_ref().map_or("–".to_string(), |x| pct1(x.rate()));
+            let combined = row.combined.as_ref();
+            let _ = writeln!(
+                s,
+                "| {} | {} | {} | {} | {} | {} | {:.3} | {} | {} |",
+                shadow_label(row),
+                a.n,
+                pct1(a.rate()),
+                rate(&row.split),
+                rate(&row.combined),
+                pct1(a.stop_agreed as f64 / a.n.max(1) as f64),
+                a.ece,
+                combined.map_or("–".to_string(), |c| at(c, 0.9)),
+                combined.map_or("–".to_string(), |c| at(c, 0.99)),
+            );
+        }
+        let _ = writeln!(s);
+        if sh.weights.len() == 5 {
+            let w = &sh.weights;
+            let _ = writeln!(
+                s,
+                "The arbiter's weights, averaged over folds: habit {:.2}, one question {:.2}, split \
+                 {:.2}, handing back {:.2}, the model's record at the site {:.2}.\n",
+                w[0], w[1], w[2], w[3], w[4]
+            );
+        }
+    } else {
+        let _ = writeln!(s, "Next step (which tool next, or hand back):\n");
+        let _ = writeln!(
+            s,
+            "| Agent model | Decisions | Agreed | Stop vs. go on | Brier | ECE | p ≥ {t}: share / agreed |"
+        );
+        let _ = writeln!(s, "|---|---|---|---|---|---|---|");
+        for row in &sh.rows {
+            let a = &row.next;
+            let _ = writeln!(
+                s,
+                "| {} | {} | {} | {} | {:.3} | {:.3} | {} |",
+                shadow_label(row),
+                a.n,
+                pct1(a.rate()),
+                pct1(a.stop_agreed as f64 / a.n.max(1) as f64),
+                a.brier,
+                a.ece,
+                at(a, t),
+            );
+        }
+        let _ = writeln!(s);
     }
-    let _ = writeln!(s);
+    if sh.rows.iter().any(|r| r.args.n > 0) {
+        let _ = writeln!(s, "Closed-set arguments:\n");
+        let _ = writeln!(
+            s,
+            "| Agent model | Decisions | Agreed | p ≥ {t}: share / agreed |"
+        );
+        let _ = writeln!(s, "|---|---|---|---|");
+        for row in &sh.rows {
+            let a = &row.args;
+            let _ = writeln!(
+                s,
+                "| {} | {} | {} | {} |",
+                shadow_label(row),
+                a.n,
+                pct1(a.rate()),
+                at(a, t),
+            );
+        }
+        let _ = writeln!(s);
+    }
     if !sh.by_arg.is_empty() {
         let _ = writeln!(s, "Closed-set arguments by argument (source models):\n");
         let _ = writeln!(
@@ -744,7 +825,6 @@ fn shadow_section(s: &mut String, f: &FeaturedReport) {
         let _ = writeln!(s, "|---|---|---|---|---|");
         for row in &sh.by_arg {
             let a = &row.agreement;
-            let at = a.curve.iter().find(|c| (c.0 - t).abs() < 1e-9);
             let _ = writeln!(
                 s,
                 "| `{}` | `{}` | {} | {} | {} |",
@@ -752,74 +832,144 @@ fn shadow_section(s: &mut String, f: &FeaturedReport) {
                 row.arg,
                 a.n,
                 pct1(a.rate()),
-                at.map_or("–".to_string(), |c| format!(
-                    "{} / {}",
-                    pct1(c.1),
-                    pct1(c.2)
-                )),
+                at(a, t),
             );
         }
         let _ = writeln!(s);
     }
 
     if !sh.projection.is_empty() {
-        let _ = writeln!(
-            s,
-            "Projection with the System-One model, pooled over the source models: the habit acts \
-             in validated contexts, the System-One pick is trusted at or above the threshold (with \
-             *two keys*, only when it is also the habit's top option), and anything else pauses.\n"
-        );
-        let _ = writeln!(
-            s,
-            "| Pick trusted at | Turns saved | Pauses/ep | System-One decisions/ep | Handed back early (/100 ep) | Risky decisions (/100 ep) | Episodes with one |"
-        );
-        let _ = writeln!(s, "|---|---|---|---|---|---|---|");
-        for p in &sh.projection {
-            let n = p.episodes.max(1) as f64;
-            let t = column(p.scenario);
+        if v2 {
             let _ = writeln!(
                 s,
-                "| {} | **{}** | {:.2} | {:.2} | {:.1} | {:.1} | {} |",
-                t,
-                pct1(p.saved_share()),
-                p.pauses as f64 / n,
-                p.oracle_decisions as f64 / n,
-                100.0 * (p.early_stops + p.oracle_early_stops) as f64 / n,
-                100.0 * (p.disagreements + p.oracle_disagreements) as f64 / n,
-                pct1(p.risky_share()),
+                "Projection with the System-One model, pooled over the source models, for \
+                 read-only flows: the habit acts in validated contexts, a System-One pick is \
+                 trusted at or above the threshold (*two keys*: only when it is also the habit's \
+                 top option; *combined*: the arbiter's probability), and anything else pauses. \
+                 A write always goes back to the LLM. Nothing a read-only flow does changes the \
+                 environment, so its wrong picks are *detours*, extra lookups that cost a pause, \
+                 not risks.\n"
             );
+            let _ = writeln!(
+                s,
+                "| Pick trusted at | Turns saved | Pauses/ep | System-One decisions/ep | Handed back early (/100 ep) | Detours (/100 ep) | Episodes with a detour | Writes handed back/ep |"
+            );
+            let _ = writeln!(s, "|---|---|---|---|---|---|---|---|");
+            for p in &sh.projection {
+                let n = p.episodes.max(1) as f64;
+                let _ = writeln!(
+                    s,
+                    "| {} | **{}** | {:.2} | {:.2} | {:.1} | {:.1} | {} | {:.2} |",
+                    column(p.scenario),
+                    pct1(p.saved_share()),
+                    p.pauses as f64 / n,
+                    p.oracle_decisions as f64 / n,
+                    100.0 * (p.early_stops + p.oracle_early_stops) as f64 / n,
+                    100.0 * (p.detours + p.oracle_detours) as f64 / n,
+                    pct1(p.detour_share()),
+                    p.handoffs as f64 / n,
+                );
+            }
+        } else {
+            let _ = writeln!(
+                s,
+                "Projection with the System-One model, pooled over the source models: the habit \
+                 acts in validated contexts, the System-One pick is trusted at or above the \
+                 threshold (with *two keys*, only when it is also the habit's top option), and \
+                 anything else pauses.\n"
+            );
+            let _ = writeln!(
+                s,
+                "| Pick trusted at | Turns saved | Pauses/ep | System-One decisions/ep | Handed back early (/100 ep) | Risky decisions (/100 ep) | Episodes with one |"
+            );
+            let _ = writeln!(s, "|---|---|---|---|---|---|---|");
+            for p in &sh.projection {
+                let n = p.episodes.max(1) as f64;
+                let _ = writeln!(
+                    s,
+                    "| {} | **{}** | {:.2} | {:.2} | {:.1} | {:.1} | {} |",
+                    column(p.scenario),
+                    pct1(p.saved_share()),
+                    p.pauses as f64 / n,
+                    p.oracle_decisions as f64 / n,
+                    100.0 * (p.early_stops + p.oracle_early_stops) as f64 / n,
+                    100.0 * (p.disagreements + p.oracle_disagreements) as f64 / n,
+                    pct1(p.risky_share()),
+                );
+            }
         }
         let _ = writeln!(s);
     }
 
     if f.by_model.iter().any(|m| !m.with_oracle.is_empty()) {
+        // Columns: p ≥ 0.5, 0.7 and 0.9, alone and with two keys (v1) or
+        // combined with the habit (v2).
+        let shown = |p: &Projection| {
+            let t = match (p.scenario, v2) {
+                (Scenario::HabitThenOracle(t), _)
+                | (Scenario::TwoKeys(t), false)
+                | (Scenario::Arbitrated(t), true) => t,
+                _ => return false,
+            };
+            [0.5, 0.7, 0.9].iter().any(|x| (x - t).abs() < 1e-9)
+        };
         let _ = writeln!(
             s,
             "The gate, per agent model: at least 20% fewer LLM turns, with at most 1% of episodes \
              holding a risky decision (a conservative stand-in for losing at most one point of \
-             pass^1). Each cell is turns saved · episodes with a risky decision.\n"
+             pass^1). {}\n",
+            if v2 {
+                "Read-only flows take no risky decisions, so offline the gate is the turns saved; \
+                 each cell is turns saved · episodes with a detour. Whether detours cost pass^1 is \
+                 for a live run to show."
+            } else {
+                "Each cell is turns saved · episodes with a risky decision."
+            }
         );
-        let mut header = "| Agent model | Perfect System-One |".to_string();
+        let mut header = format!(
+            "| Agent model | Perfect System-One{} |",
+            if v2 { " (read-only)" } else { "" }
+        );
         let mut rule = "|---|---|".to_string();
-        for p in f.by_model.first().map_or(&[][..], |m| &m.with_oracle[..]) {
+        for p in f
+            .by_model
+            .first()
+            .map_or(&[][..], |m| &m.with_oracle[..])
+            .iter()
+            .filter(|p| shown(p))
+        {
             let _ = write!(header, " {} |", column(p.scenario));
             rule.push_str("---|");
         }
         let _ = writeln!(s, "{header} Gate |\n{rule}---|");
         for m in &f.by_model {
+            let perfect = if v2 { &m.read_only } else { &m.projection };
             let cells: Vec<String> = m
                 .with_oracle
                 .iter()
-                .map(|p| format!("{} · {}", pct1(p.saved_share()), pct1(p.risky_share())))
+                .filter(|p| shown(p))
+                .map(|p| {
+                    let second = if v2 {
+                        p.detour_share()
+                    } else {
+                        p.risky_share()
+                    };
+                    format!("{} · {}", pct1(p.saved_share()), pct1(second))
+                })
                 .collect();
             let passing = m
                 .with_oracle
                 .iter()
-                .find(|p| p.saved_share() >= 0.2 && p.risky_share() <= 0.01)
-                .map(|p| column(p.scenario));
+                .filter(|p| shown(p))
+                .find(|p| p.saved_share() >= 0.2 && p.risky_share() <= 0.01);
             let gate = match passing {
-                Some(rule) => format!("**passes** ({rule})"),
-                None if m.projection.saved_share() < 0.2 => {
+                Some(p) if v2 => format!(
+                    "**passes offline** ({}; detours in {} of episodes)",
+                    column(p.scenario),
+                    pct0(p.detour_share())
+                ),
+                Some(p) => format!("**passes** ({})", column(p.scenario)),
+                None if perfect.saved_share() < 0.2 => {
                     "fails: below 20% even with a perfect System-One model".to_string()
                 }
                 None => "fails".to_string(),
@@ -828,7 +978,7 @@ fn shadow_section(s: &mut String, f: &FeaturedReport) {
                 s,
                 "| {} | {} | {} | {} |",
                 label(&m.model, m.target),
-                pct1(m.projection.saved_share()),
+                pct1(perfect.saved_share()),
                 cells.join(" | "),
                 gate
             );
@@ -842,6 +992,7 @@ fn column(scenario: Scenario) -> String {
     match scenario {
         Scenario::HabitThenOracle(t) => format!("p ≥ {t}"),
         Scenario::TwoKeys(t) => format!("two keys, p ≥ {t}"),
+        Scenario::Arbitrated(t) => format!("combined, p ≥ {t}"),
         _ => "–".to_string(),
     }
 }
@@ -861,6 +1012,9 @@ fn who(scenario: Scenario) -> String {
         Scenario::HabitThenOracle(t) => format!("ask the System-One model, trusted at p ≥ {t}"),
         Scenario::TwoKeys(t) => {
             format!("ask the System-One model, trusted at p ≥ {t} when the habit agrees")
+        }
+        Scenario::Arbitrated(t) => {
+            format!("combine the System-One model with the habit, trusted at p ≥ {t}")
         }
     }
 }

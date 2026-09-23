@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::Path;
 use stretto_model::projection::Scenario;
-use stretto_report::shadow::{OracleKind, ShadowConfig};
+use stretto_report::shadow::{OracleKind, QuestionSet, ShadowConfig};
 use stretto_report::{phase0, render};
 
 const TOOLS_PY: &str = r#"
@@ -197,5 +197,32 @@ fn phase0_runs_end_to_end() {
     let md = render::markdown(&report);
     assert!(md.contains("### Phase 0b"));
     assert!(md.contains("**Mock oracle.**"));
+
+    // The v2 questions: read-only flows, with split and combined answers.
+    let mut sc = ShadowConfig::new(OracleKind::Mock);
+    sc.questions = QuestionSet::V2;
+    config.shadow = Some(sc);
+    let report = phase0::run(&config).unwrap();
+    let f = report.domains[0].featured.as_ref().unwrap();
+    let sh = f.shadow.as_ref().expect("Phase 0b v2 ran");
+    assert_eq!(sh.questions, QuestionSet::V2);
+    assert!(sh.decisions > 0 && sh.errors == 0, "{sh:?}");
+    assert!(sh
+        .rows
+        .iter()
+        .all(|r| r.split.is_some() && r.combined.is_some()));
+    assert_eq!(sh.weights.len(), 5);
+    assert!((0.0..=1.0).contains(&sh.offered));
+    // One question, two keys and combined, per threshold; read-only flows
+    // take no risks.
+    assert_eq!(sh.projection.len(), 3 * sh.thresholds.len());
+    assert!(sh
+        .projection
+        .iter()
+        .all(|p| p.read_only && p.disagreements + p.oracle_disagreements == 0));
+    assert!(f.by_model.iter().all(|m| m.read_only.read_only));
+    let md = render::markdown(&report);
+    assert!(md.contains("Questions v2"));
+    assert!(md.contains("Read-only flows"));
     let _ = fs::remove_dir_all(&root);
 }

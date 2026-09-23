@@ -1,6 +1,10 @@
 //! The Phase 0 pipeline.
 
-use crate::shadow::{self, Agreement, Decision, Kind, Scored, ShadowConfig, ShadowEpisode};
+use crate::arbitrate::{self, Case};
+use crate::shadow::{
+    self, Agreement, Decision, Kind, QuestionSet, Scored, ShadowConfig, ShadowEpisode, Sites,
+    RESPOND,
+};
 use anyhow::{bail, Context, Result};
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -13,8 +17,8 @@ use stretto_model::features::{
 };
 use stretto_model::policy::write_confirmations;
 use stretto_model::projection::{
-    arg_needs, closed_sets, fit_prices, project, validated_contexts, ArgNeed, Gate, OracleArgs,
-    OracleStep, Projection, ProjectionInput, Scenario,
+    arg_needs, closed_sets, fit_prices, project, project_design, validated_contexts, ArgNeed,
+    Design, Gate, OracleArgs, OracleStep, Projection, ProjectionInput, Scenario,
 };
 use stretto_model::provenance::{argument_provenance, call_sources, Source};
 use stretto_model::world::{
@@ -268,6 +272,18 @@ pub struct ShadowReport {
     /// Pooled projection over the source models, validated habit then the
     /// System-One model, one per threshold.
     pub projection: Vec<Projection>,
+    /// Which questions were asked.
+    pub questions: QuestionSet,
+    /// v2: next-step decisions settled without asking, at sites where the
+    /// agent never looked anything up in training (the flow hands back).
+    pub structural: usize,
+    /// v2: share of the source models' next-step decisions whose step (as a
+    /// read-only flow takes it) was among the options.
+    pub offered: f64,
+    /// v2: the arbiter's weights, averaged over folds, for the habit, the
+    /// one-question answer, the split answer, handing back, and the site's
+    /// reliability.
+    pub weights: Vec<f64>,
 }
 
 /// Phase 0b agreement for one closed-set argument.
@@ -292,6 +308,10 @@ pub struct ShadowRow {
     pub next: Agreement,
     /// Closed-set argument questions.
     pub args: Agreement,
+    /// v2: next-step answers from the stop and lookup questions.
+    pub split: Option<Agreement>,
+    /// v2: next-step answers combined with the habit.
+    pub combined: Option<Agreement>,
 }
 
 /// A context where the habit may act.
@@ -324,6 +344,9 @@ pub struct ModelProjection {
     pub parallel_share: f64,
     /// Its held-out episodes, replayed.
     pub projection: Projection,
+    /// The same with read-only flows (plan/commit: writes go back to the
+    /// LLM).
+    pub read_only: Projection,
     /// The same with the real System-One model instead of a perfect one, one
     /// per Phase 0b threshold (empty without Phase 0b).
     pub with_oracle: Vec<Projection>,
@@ -917,6 +940,16 @@ fn featured(
         config.validated_min_agreement,
     );
 
+    // Action ids a read-only flow hands back: writes, and tools not known to
+    // be read-only (the unseen-tool id included).
+    let high: HashSet<u32> = (0..vocab.len() as u32)
+        .filter(|&id| match vocab.action(id) {
+            Some(Action::Tool(t)) => manifest.tools.get(t) != Some(&ToolKind::Read),
+            Some(Action::Respond) => false,
+            None => true,
+        })
+        .collect();
+
     // Every held-out episode, source models first, as the projection and
     // Phase 0b replay them.
     let replayed: Vec<(&Prepared, &EncodedEpisode)> = test_set
@@ -931,13 +964,28 @@ fn featured(
         .collect();
     let shadow = match (&config.shadow, oracle) {
         (Some(sc), Some(oracle)) => Some(shadow_run(
-            sc, oracle, &replayed, &needs, manifest, vocab, &habit_set,
+            sc,
+            oracle,
+            &replayed,
+            &needs,
+            manifest,
+            vocab,
+            &habit_set,
+            &intent_habit,
         )?),
         _ => None,
     };
     let input = |i: usize| {
         let (p, enc) = replayed[i];
-        let answers = shadow.as_ref().map(|(_, a)| &a[i]);
+        let answers = shadow.as_ref().map(|run| &run.raw[i]);
+        projection_input(p, enc, &needs[i], &prices, answers)
+    };
+    let combined_input = |i: usize| {
+        let (p, enc) = replayed[i];
+        let answers = shadow
+            .as_ref()
+            .and_then(|run| run.combined.as_ref())
+            .map(|c| &c[i]);
         projection_input(p, enc, &needs[i], &prices, answers)
     };
     let inputs: Vec<ProjectionInput> = (0..test_set.len()).map(input).collect();
@@ -960,21 +1008,38 @@ fn featured(
         .filter(|_| shadow.is_some())
         .map(|sc| sc.thresholds.clone())
         .unwrap_or_default();
-    let with_oracle = |inputs: &[ProjectionInput]| -> Vec<Projection> {
-        let alone = thresholds.iter().map(|&t| Scenario::HabitThenOracle(t));
-        let two_keys = thresholds.iter().map(|&t| Scenario::TwoKeys(t));
-        alone
-            .chain(two_keys)
-            .map(|scenario| {
-                project(
-                    &intent_habit,
-                    inputs,
-                    scenario,
-                    Gate::Validated(&validated),
-                    config.min_evidence,
-                )
-            })
-            .collect()
+    // v2 asks for read-only flows (plan/commit); v1 let flows call any tool.
+    let design = match config.shadow.as_ref().map(|sc| sc.questions) {
+        Some(QuestionSet::V2) => Design::ReadOnly(&high),
+        _ => Design::AnyTool,
+    };
+    let with_oracle = |idx: &[usize]| -> Vec<Projection> {
+        let raw: Vec<ProjectionInput> = idx.iter().map(|&i| input(i)).collect();
+        let replay = |inputs: &[ProjectionInput], scenario| {
+            project_design(
+                &intent_habit,
+                inputs,
+                scenario,
+                Gate::Validated(&validated),
+                config.min_evidence,
+                design,
+            )
+        };
+        let mut out: Vec<Projection> = thresholds
+            .iter()
+            .map(|&t| Scenario::HabitThenOracle(t))
+            .chain(thresholds.iter().map(|&t| Scenario::TwoKeys(t)))
+            .map(|scenario| replay(&raw, scenario))
+            .collect();
+        if shadow.as_ref().is_some_and(|run| run.combined.is_some()) {
+            let combined: Vec<ProjectionInput> = idx.iter().map(|&i| combined_input(i)).collect();
+            out.extend(
+                thresholds
+                    .iter()
+                    .map(|&t| replay(&combined, Scenario::Arbitrated(t))),
+            );
+        }
+        out
     };
     let mut models: Vec<(bool, &str)> = prices
         .keys()
@@ -984,10 +1049,10 @@ fn featured(
     let by_model = models
         .into_iter()
         .map(|(target, m)| {
-            let inputs: Vec<ProjectionInput> = (0..replayed.len())
+            let idx: Vec<usize> = (0..replayed.len())
                 .filter(|&i| replayed[i].0.model == m)
-                .map(input)
                 .collect();
+            let inputs: Vec<ProjectionInput> = idx.iter().map(|&i| input(i)).collect();
             ModelProjection {
                 model: m.to_string(),
                 target,
@@ -999,12 +1064,23 @@ fn featured(
                     Gate::Validated(&validated),
                     config.min_evidence,
                 ),
-                with_oracle: with_oracle(&inputs),
+                read_only: project_design(
+                    &intent_habit,
+                    &inputs,
+                    Scenario::HabitThenPerfectOracle,
+                    Gate::Validated(&validated),
+                    config.min_evidence,
+                    Design::ReadOnly(&high),
+                ),
+                with_oracle: with_oracle(&idx),
             }
         })
         .collect();
-    let shadow = shadow.map(|(mut report, _)| {
-        report.projection = with_oracle(&inputs);
+    let sources: Vec<usize> = (0..test_set.len()).collect();
+    let pooled = with_oracle(&sources);
+    let shadow = shadow.map(|run| {
+        let mut report = run.report;
+        report.projection = pooled;
         report
     });
 
@@ -1087,9 +1163,23 @@ fn featured(
     })
 }
 
+/// Phase 0b's answers for one held-out episode, laid out per step for the
+/// projection.
+type Answers = (Vec<Option<OracleStep>>, Vec<Option<OracleArgs>>);
+
+/// What a Phase 0b run hands back to the projection.
+struct ShadowRun {
+    report: ShadowReport,
+    /// The System-One model's own answers, per held-out episode.
+    raw: Vec<Answers>,
+    /// v2: the answers combined with the habit.
+    combined: Option<Vec<Answers>>,
+}
+
 /// Ask the System-One model at every decision of `replayed`, score the
-/// answers, and lay them out per step for the projection.
-#[allow(clippy::type_complexity)]
+/// answers (and, for v2, combine them with the habit), and lay them out per
+/// step for the projection.
+#[allow(clippy::too_many_arguments)]
 fn shadow_run(
     sc: &ShadowConfig,
     oracle: &(dyn Oracle + Sync),
@@ -1098,10 +1188,8 @@ fn shadow_run(
     manifest: &ToolManifest,
     vocab: &Vocab,
     habit_set: &[&Prepared],
-) -> Result<(
-    ShadowReport,
-    Vec<(Vec<Option<OracleStep>>, Vec<Option<OracleArgs>>)>,
-)> {
+    habit: &GroupedModel,
+) -> Result<ShadowRun> {
     let closed = shadow::closed_values(habit_set.iter().map(|p| p.ep));
     let episodes: Vec<ShadowEpisode> = replayed
         .iter()
@@ -1114,33 +1202,96 @@ fn shadow_run(
             goal: &p.intent,
         })
         .collect();
-    let decisions = shadow::decisions(&episodes, manifest, &closed, &sc.model);
-    let asked = shadow::ask(oracle, &decisions, sc)?;
+    let v2 = sc.questions == QuestionSet::V2;
+    let decisions = if v2 {
+        let mut sites = Sites::learn(habit_set.iter().map(|p| p.steps.as_slice()), manifest);
+        if sc.hints {
+            sites.learn_feeds(habit_set.iter().map(|p| p.ep), manifest);
+        }
+        shadow::decisions_v2(&episodes, manifest, &closed, &sites, &sc.model)
+    } else {
+        shadow::decisions(&episodes, manifest, &closed, &sc.model)
+    };
+    let asked = shadow::ask(oracle, &decisions, sc, &manifest.domain)?;
     let scored: Vec<Option<Scored>> = decisions.iter().map(|d| shadow::score(d, &asked)).collect();
-
-    let mut by_episode: Vec<Vec<usize>> = vec![Vec::new(); replayed.len()];
-    for (i, d) in decisions.iter().enumerate() {
-        by_episode[d.episode].push(i);
+    let split: Vec<Option<Scored>> = if v2 {
+        decisions
+            .iter()
+            .map(|d| shadow::score_split(d, &asked))
+            .collect()
+    } else {
+        vec![None; decisions.len()]
+    };
+    let (combined, weights) = if v2 {
+        let (c, w) = combine(&decisions, &scored, &split, replayed, habit, vocab);
+        (Some(c), w)
+    } else {
+        (None, Vec::new())
+    };
+    if let Some(path) = &sc.log {
+        let path = shadow::per_domain(path, &manifest.domain);
+        let mut lines = String::new();
+        for (i, d) in decisions.iter().enumerate() {
+            let p = replayed[d.episode].0;
+            let pick = |s: &Option<Scored>| s.as_ref().map(|s| serde_json::json!([s.pick, s.prob]));
+            let line = serde_json::json!({
+                "episode": p.ep.id,
+                "task": p.ep.task_id,
+                "model": p.model,
+                "target": p.target,
+                "step": d.step,
+                "kind": d.kind,
+                "tool": d.tool,
+                "agent": d.agent,
+                "actual": d.actual,
+                "fixed": d.fixed,
+                "key": d.request.as_ref().map(stretto_oracle::request_key),
+                "options": scored[i].as_ref().map(|s| s.probs.keys().collect::<Vec<_>>()),
+                "pick": pick(&scored[i]),
+                "split": pick(&split[i]),
+                "combined": combined.as_ref().and_then(|c| pick(&c[i])),
+            });
+            lines.push_str(&line.to_string());
+            lines.push('\n');
+        }
+        std::fs::write(&path, lines).with_context(|| format!("writing {}", path.display()))?;
     }
-    let answers = by_episode
-        .iter()
-        .enumerate()
-        .map(|(e, idx)| {
-            let ds: Vec<&Decision> = idx.iter().map(|&i| &decisions[i]).collect();
-            let ss: Vec<Option<Scored>> = idx.iter().map(|&i| scored[i].clone()).collect();
-            shadow::projection_answers(&ds, &ss, replayed[e].0.steps.len(), vocab)
-        })
-        .collect();
 
-    let agreement = |keep: &dyn Fn(&Prepared) -> bool, next: bool| {
+    let layout = |answers: &[Option<Scored>]| -> Vec<Answers> {
+        let mut by_episode: Vec<Vec<usize>> = vec![Vec::new(); replayed.len()];
+        for (i, d) in decisions.iter().enumerate() {
+            by_episode[d.episode].push(i);
+        }
+        by_episode
+            .iter()
+            .enumerate()
+            .map(|(e, idx)| {
+                let ds: Vec<&Decision> = idx.iter().map(|&i| &decisions[i]).collect();
+                let ss: Vec<Option<Scored>> = idx.iter().map(|&i| answers[i].clone()).collect();
+                shadow::projection_answers(&ds, &ss, replayed[e].0.steps.len(), vocab)
+            })
+            .collect()
+    };
+    let raw = layout(&scored);
+    let combined_answers = combined.as_deref().map(layout);
+
+    let agreement = |answers: &[Option<Scored>], keep: &dyn Fn(&Prepared) -> bool, next: bool| {
         Agreement::of(
             decisions
                 .iter()
-                .zip(&scored)
+                .zip(answers)
                 .filter(|(d, _)| keep(replayed[d.episode].0) && (d.kind == Kind::Next) == next)
                 .filter_map(|(d, s)| s.as_ref().map(|s| (s, d.actual.as_str()))),
             &sc.thresholds,
         )
+    };
+    let row = |model: String, target: bool, keep: &dyn Fn(&Prepared) -> bool| ShadowRow {
+        model,
+        target,
+        next: agreement(&scored, keep, true),
+        args: agreement(&scored, keep, false),
+        split: v2.then(|| agreement(&split, keep, true)),
+        combined: combined.as_deref().map(|c| agreement(c, keep, true)),
     };
     let mut models: Vec<(&str, bool)> = replayed
         .iter()
@@ -1151,19 +1302,13 @@ fn shadow_run(
     models.sort_by_key(|&(_, target)| target);
     let mut rows: Vec<ShadowRow> = models
         .iter()
-        .map(|&(m, target)| ShadowRow {
-            model: m.to_string(),
-            target,
-            next: agreement(&|p: &Prepared| p.model == m, true),
-            args: agreement(&|p: &Prepared| p.model == m, false),
-        })
+        .map(|&(m, target)| row(m.to_string(), target, &|p: &Prepared| p.model == m))
         .collect();
-    rows.push(ShadowRow {
-        model: "all source models".to_string(),
-        target: false,
-        next: agreement(&|p: &Prepared| !p.target, true),
-        args: agreement(&|p: &Prepared| !p.target, false),
-    });
+    rows.push(row(
+        "all source models".to_string(),
+        false,
+        &|p: &Prepared| !p.target,
+    ));
     let mut args: BTreeMap<(String, String), Vec<(&Scored, &str)>> = BTreeMap::new();
     for (d, s) in decisions.iter().zip(&scored) {
         if let (Kind::Arg(arg), Some(tool), Some(s)) = (&d.kind, &d.tool, s) {
@@ -1182,6 +1327,20 @@ fn shadow_run(
             agreement: Agreement::of(answers, &sc.thresholds),
         })
         .collect();
+    let source_next: Vec<(&Decision, &Option<Scored>)> = decisions
+        .iter()
+        .zip(&scored)
+        .filter(|(d, _)| d.kind == Kind::Next && !replayed[d.episode].0.target)
+        .collect();
+    let offered = source_next
+        .iter()
+        .filter(|(d, s)| match (&d.fixed, s) {
+            (Some(_), _) => d.actual == RESPOND,
+            (None, Some(s)) => s.probs.contains_key(&d.actual),
+            (None, None) => false,
+        })
+        .count() as f64
+        / source_next.len().max(1) as f64;
     let mut versions: Vec<String> = asked.responses.values().map(|r| r.model.clone()).collect();
     versions.sort();
     versions.dedup();
@@ -1203,8 +1362,106 @@ fn shadow_run(
         by_arg,
         thresholds: sc.thresholds.clone(),
         projection: Vec::new(),
+        questions: sc.questions,
+        structural: decisions
+            .iter()
+            .filter(|d| d.kind == Kind::Next && d.request.is_none())
+            .count(),
+        offered: if v2 { offered } else { 1.0 },
+        weights,
     };
-    Ok((report, answers))
+    Ok(ShadowRun {
+        report,
+        raw,
+        combined: combined_answers,
+    })
+}
+
+/// v2: combine each asked next-step answer with the habit (see
+/// [`arbitrate`]); argument answers and decisions settled without asking
+/// pass through. Returns the answers and the arbiter's mean weights.
+fn combine(
+    decisions: &[Decision],
+    scored: &[Option<Scored>],
+    split: &[Option<Scored>],
+    replayed: &[(&Prepared, &EncodedEpisode)],
+    habit: &GroupedModel,
+    vocab: &Vocab,
+) -> (Vec<Option<Scored>>, Vec<f64>) {
+    let ln = |v: f64| v.max(1e-6).ln();
+    let mut cases: Vec<Case> = Vec::new();
+    let mut at: Vec<usize> = Vec::new();
+    for (i, d) in decisions.iter().enumerate() {
+        if d.kind != Kind::Next || d.request.is_none() {
+            continue;
+        }
+        let (Some(one), Some(two)) = (&scored[i], &split[i]) else {
+            continue;
+        };
+        let (p, enc) = replayed[d.episode];
+        let options: Vec<&String> = one.probs.keys().collect();
+        let Some(respond) = options.iter().position(|o| o.as_str() == RESPOND) else {
+            continue;
+        };
+        // The habit's prediction as a read-only flow would act on it: all
+        // mass on steps it cannot take (replies, writes, lookups not offered)
+        // goes to handing back.
+        let predicted = habit.predict_at(enc, d.step);
+        let mut prior: Vec<f64> = options
+            .iter()
+            .map(|o| {
+                if o.as_str() == RESPOND {
+                    0.0
+                } else {
+                    predicted[vocab.id(&Action::Tool((*o).clone())) as usize]
+                }
+            })
+            .collect();
+        prior[respond] = (1.0 - prior.iter().sum::<f64>()).max(0.0);
+        let features = options
+            .iter()
+            .enumerate()
+            .map(|(a, o)| {
+                vec![
+                    ln(prior[a]),
+                    ln(one.probs[*o]),
+                    ln(two.probs.get(*o).copied().unwrap_or(0.0)),
+                    (a == respond) as u8 as f64,
+                ]
+            })
+            .collect();
+        let site = match &p.steps[d.step - 1] {
+            Step {
+                action: Action::Tool(t),
+                outcome,
+            } => Sites::name(t, *outcome == Outcome::Err),
+            _ => continue,
+        };
+        cases.push(Case {
+            group: p.group,
+            site,
+            features,
+            pick: options
+                .iter()
+                .position(|o| **o == one.pick)
+                .unwrap_or(respond),
+            actual: options.iter().position(|o| **o == d.actual),
+            fit: !p.target,
+        });
+        at.push(i);
+    }
+    let (arbitrated, weights) = arbitrate::cross_fit(&cases, FOLDS);
+    let mut out = scored.to_vec();
+    for (&i, a) in at.iter().zip(arbitrated) {
+        let d = &decisions[i];
+        let options: Vec<String> = scored[i]
+            .as_ref()
+            .map(|s| s.probs.keys().cloned().collect())
+            .unwrap_or_default();
+        let probs: BTreeMap<String, f64> = options.iter().cloned().zip(a.probs).collect();
+        out[i] = Some(Scored::of(probs, options[a.top].clone(), &d.actual));
+    }
+    (out, weights)
 }
 
 #[allow(clippy::type_complexity)]

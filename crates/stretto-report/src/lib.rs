@@ -14,10 +14,12 @@
 //!
 //! With [`phase0::Config::shadow`] set, [`shadow`] (Phase 0b) also asks a
 //! System-One model at every held-out decision a flow would hand it, scores
-//! the answers, and re-runs the projection with them.
+//! the answers, and re-runs the projection with them. With the v2 questions,
+//! [`arbitrate`] also combines the answers with the habit (RFC-001 §3.6).
 //!
 //! [`render::markdown`] turns the result into a report.
 
+pub mod arbitrate;
 pub mod phase0;
 pub mod render;
 pub mod shadow;

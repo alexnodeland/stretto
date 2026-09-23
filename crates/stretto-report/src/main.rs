@@ -5,7 +5,7 @@ use std::io::{BufRead, Write};
 use std::path::PathBuf;
 use std::time::Instant;
 use stretto_oracle::{Answer, MockOracle, NoulCriteria, Oracle, Question, ReplayCache, Request};
-use stretto_report::shadow::{OracleKind, ShadowConfig};
+use stretto_report::shadow::{OracleKind, QuestionSet, ShadowConfig};
 use stretto_report::{phase0, render};
 
 /// stretto: compile agent behavior into typed probabilistic flows.
@@ -66,6 +66,17 @@ enum Command {
         /// reads the cache only; `mock` checks the pipeline for free.
         #[arg(long, value_enum)]
         oracle: Option<OracleArg>,
+        /// Which Phase 0b questions to ask: `v1` (one question over every
+        /// tool, for flows that may call any tool) or `v2` (RFC-001 §3.5:
+        /// read-only flows, a site's own lookups as options, a state slice,
+        /// the stop decision asked on its own, and the answers combined with
+        /// the habit).
+        #[arg(long, value_enum, default_value_t = QuestionArg::V1)]
+        questions: QuestionArg,
+        /// v2: also describe each lookup by what its results supply,
+        /// learned from argument dataflow in training.
+        #[arg(long)]
+        dataflow_hints: bool,
         /// Replay cache for oracle answers.
         #[arg(long, default_value = ".oracle-cache")]
         oracle_cache: PathBuf,
@@ -83,9 +94,15 @@ enum Command {
         /// Model id to request (default: TYPESAFE_DEFAULT_MODEL, else jev-latest).
         #[arg(long)]
         oracle_model: Option<String>,
-        /// Write every distinct oracle request to this file (JSON lines).
+        /// Write every distinct oracle request to this file (JSON lines; the
+        /// domain is added to the file name).
         #[arg(long)]
         oracle_dump: Option<PathBuf>,
+        /// Write every decision, with the agent's option and the oracle's
+        /// pick, to this file (JSON lines; the domain is added to the file
+        /// name).
+        #[arg(long)]
+        oracle_log: Option<PathBuf>,
         /// Write the Markdown report here (default: stdout).
         #[arg(long)]
         out: Option<PathBuf>,
@@ -119,6 +136,12 @@ enum OracleArg {
     Mock,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum QuestionArg {
+    V1,
+    V2,
+}
+
 fn main() -> Result<()> {
     match Cli::parse().command {
         Command::Phase0 {
@@ -134,12 +157,15 @@ fn main() -> Result<()> {
             sources,
             targets,
             oracle,
+            questions,
+            dataflow_hints,
             oracle_cache,
             oracle_concurrency,
             oracle_limit,
             oracle_budget,
             oracle_model,
             oracle_dump,
+            oracle_log,
             out,
             json,
         } => {
@@ -161,6 +187,11 @@ fn main() -> Result<()> {
                     OracleArg::Mock => OracleKind::Mock,
                 });
                 sc.cache_dir = oracle_cache;
+                sc.hints = dataflow_hints;
+                sc.questions = match questions {
+                    QuestionArg::V1 => QuestionSet::V1,
+                    QuestionArg::V2 => QuestionSet::V2,
+                };
                 sc.concurrency = oracle_concurrency;
                 sc.limit = oracle_limit;
                 sc.budget = oracle_budget;
@@ -168,6 +199,7 @@ fn main() -> Result<()> {
                     sc.model = m;
                 }
                 sc.dump = oracle_dump;
+                sc.log = oracle_log;
                 sc
             });
             if config.shadow.is_some() && !config.features {

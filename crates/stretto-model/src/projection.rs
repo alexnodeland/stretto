@@ -22,6 +22,13 @@
 //! (the LLM takes the next step, one turn). Choosing a different tool, or
 //! carrying on when the agent stopped, is the risk that the gate's success-loss
 //! bound has to absorb.
+//!
+//! That holds when flows may call any tool ([`Design::AnyTool`]). Under the
+//! RFC's plan/commit rule ([`Design::ReadOnly`]) flows only read between LLM
+//! turns: a write, or any tool not known to be read-only, is handed back to
+//! the LLM (a pause), and a flow that picks one hands back instead. A wrong
+//! pick is then an extra lookup, a *detour*: it costs a pause and some
+//! tokens, but it changes nothing, so it is not a risk.
 
 use crate::abstraction::{Action, Step};
 use crate::provenance::Source;
@@ -57,6 +64,20 @@ pub enum Scenario {
     /// trusted only when it is also the habit's top option. Argument picks,
     /// which the habit does not predict, need the probability alone.
     TwoKeys(f64),
+    /// As [`Scenario::HabitThenOracle`], for answers the caller has already
+    /// combined with the habit (each [`ProjectionInput`] carries the
+    /// arbitrated pick and its posterior probability).
+    Arbitrated(f64),
+}
+
+/// What flows may do between LLM turns.
+#[derive(Clone, Copy, Debug)]
+pub enum Design<'a> {
+    /// Any tool; every disagreement with the agent is a risk.
+    AnyTool,
+    /// Reads only (plan/commit): these action ids, the writes and anything not
+    /// known to be read-only, are always handed back to the LLM.
+    ReadOnly(&'a HashSet<u32>),
 }
 
 /// A System-One answer to "what does the agent do next?".
@@ -348,6 +369,19 @@ pub struct Projection {
     pub oracle_disagreements: usize,
     /// Episodes with at least one risky decision, by the habit or System-One.
     pub episodes_with_disagreement: usize,
+    /// Whether flows only read ([`Design::ReadOnly`]).
+    pub read_only: bool,
+    /// Steps a read-only flow hands back because the agent's next step is a
+    /// write (or not known to be read-only); each is a pause.
+    pub handoffs: usize,
+    /// Read-only habit decisions that made a lookup the agent did not: safe,
+    /// but a pause.
+    pub detours: usize,
+    /// Read-only System-One decisions that made a lookup the agent did not,
+    /// or passed a lookup another argument value.
+    pub oracle_detours: usize,
+    /// Episodes with at least one detour.
+    pub episodes_with_detour: usize,
     /// Input tokens across all turns.
     pub input_tokens: f64,
     /// Output tokens across all turns.
@@ -377,6 +411,11 @@ impl Projection {
     /// Share of episodes with at least one disagreement.
     pub fn risky_share(&self) -> f64 {
         self.episodes_with_disagreement as f64 / self.episodes.max(1) as f64
+    }
+
+    /// Share of episodes with at least one detour.
+    pub fn detour_share(&self) -> f64 {
+        self.episodes_with_detour as f64 / self.episodes.max(1) as f64
     }
 
     /// Input tokens saved as a share of all input tokens.
@@ -412,6 +451,12 @@ enum Verdict {
     OracleEarlyStop,
     /// The System-One model decided and disagreed.
     OracleWrong,
+    /// A read-only habit decision made a lookup the agent did not.
+    Detour,
+    /// A read-only System-One decision made a lookup the agent did not.
+    OracleDetour,
+    /// The agent's next step is a write: a read-only flow hands it back.
+    Handoff,
     /// Nobody inside the flow could decide.
     Pause,
 }
@@ -424,7 +469,8 @@ struct RunPlan {
     kept: usize,
 }
 
-/// Replay `inputs` under `scenario` and `gate`.
+/// Replay `inputs` under `scenario` and `gate`, with flows that may call any
+/// tool.
 pub fn project(
     model: &impl Predictor,
     inputs: &[ProjectionInput<'_>],
@@ -432,6 +478,21 @@ pub fn project(
     gate: Gate<'_>,
     min_evidence: f64,
 ) -> Projection {
+    project_design(model, inputs, scenario, gate, min_evidence, Design::AnyTool)
+}
+
+/// Replay `inputs` under `scenario` and `gate`, with flows built to `design`.
+pub fn project_design(
+    model: &impl Predictor,
+    inputs: &[ProjectionInput<'_>],
+    scenario: Scenario,
+    gate: Gate<'_>,
+    min_evidence: f64,
+    design: Design<'_>,
+) -> Projection {
+    let read_only = matches!(design, Design::ReadOnly(_));
+    // Whether a read-only flow must hand this action back.
+    let high = |a: u32| matches!(design, Design::ReadOnly(h) if h.contains(&a));
     let mut p = Projection {
         scenario,
         gate: match gate {
@@ -451,6 +512,11 @@ pub fn project(
         oracle_early_stops: 0,
         oracle_disagreements: 0,
         episodes_with_disagreement: 0,
+        read_only,
+        handoffs: 0,
+        detours: 0,
+        oracle_detours: 0,
+        episodes_with_detour: 0,
         input_tokens: 0.0,
         output_tokens: 0.0,
         cost: 0.0,
@@ -463,6 +529,26 @@ pub fn project(
         let n = ep.actions.len();
         let is_tool = |k: usize| ep.actions[k] != 0; // id 0 is Respond
         let decide = |k: usize| -> Verdict {
+            let actual = ep.actions[k];
+            if high(actual) {
+                return Verdict::Handoff;
+            }
+            // What the flow does with a pick: a read-only flow hands back
+            // instead of writing.
+            let flow = |a: u32| if high(a) { 0 } else { a };
+            let judge = |pick: u32, by_habit: bool| {
+                let pick = flow(pick);
+                match (pick == actual, pick == 0, read_only, by_habit) {
+                    (true, _, _, true) => Verdict::Habit,
+                    (true, _, _, false) => Verdict::Oracle,
+                    (_, true, _, true) => Verdict::EarlyStop,
+                    (_, true, _, false) => Verdict::OracleEarlyStop,
+                    (_, _, true, true) => Verdict::Detour,
+                    (_, _, true, false) => Verdict::OracleDetour,
+                    (_, _, false, true) => Verdict::Wrong,
+                    (_, _, false, false) => Verdict::OracleWrong,
+                }
+            };
             let probs = model.predict_at(ep, k);
             let top = argmax(&probs);
             let may_act = match gate {
@@ -470,31 +556,20 @@ pub fn project(
                 Gate::Validated(v) => v.allows(ep, k),
             };
             if may_act {
-                if top == ep.actions[k] as usize {
-                    Verdict::Habit
-                } else if top == 0 {
-                    Verdict::EarlyStop
-                } else {
-                    Verdict::Wrong
-                }
+                judge(top as u32, true)
             } else {
                 match scenario {
                     Scenario::HabitOnly => Verdict::Pause,
                     Scenario::HabitThenPerfectOracle => Verdict::Oracle,
-                    Scenario::HabitThenOracle(t) | Scenario::TwoKeys(t) => {
+                    Scenario::HabitThenOracle(t)
+                    | Scenario::TwoKeys(t)
+                    | Scenario::Arbitrated(t) => {
                         let both = |o: OracleStep| {
-                            !matches!(scenario, Scenario::TwoKeys(_)) || o.top as usize == top
+                            !matches!(scenario, Scenario::TwoKeys(_))
+                                || flow(o.top) == flow(top as u32)
                         };
                         match input.oracle_steps.get(k).copied().flatten() {
-                            Some(o) if o.prob >= t && both(o) => {
-                                if o.top == ep.actions[k] {
-                                    Verdict::Oracle
-                                } else if o.top == 0 {
-                                    Verdict::OracleEarlyStop
-                                } else {
-                                    Verdict::OracleWrong
-                                }
-                            }
+                            Some(o) if o.prob >= t && both(o) => judge(o.top, false),
                             _ => Verdict::Pause,
                         }
                     }
@@ -504,6 +579,7 @@ pub fn project(
 
         let mut plans: Vec<RunPlan> = Vec::new();
         let mut wrong_here = 0;
+        let mut detours_here = 0;
         let mut j = 0;
         while j < n {
             if !is_tool(j) {
@@ -520,7 +596,9 @@ pub fn project(
             let mut pauses = 0;
             for k in s + 1..e {
                 let mut pause = false;
-                match decide(k) {
+                let verdict = decide(k);
+                let handed_off = matches!(verdict, Verdict::Handoff);
+                match verdict {
                     Verdict::Habit => p.habit_decisions += 1,
                     Verdict::EarlyStop => {
                         p.habit_decisions += 1;
@@ -545,26 +623,58 @@ pub fn project(
                         wrong_here += 1;
                         pause = true;
                     }
+                    Verdict::Detour => {
+                        p.habit_decisions += 1;
+                        p.detours += 1;
+                        detours_here += 1;
+                        pause = true;
+                    }
+                    Verdict::OracleDetour => {
+                        p.oracle_decisions += 1;
+                        p.oracle_detours += 1;
+                        detours_here += 1;
+                        pause = true;
+                    }
+                    Verdict::Handoff => {
+                        p.handoffs += 1;
+                        pause = true;
+                    }
                     Verdict::Pause => pause = true,
                 }
-                match (input.args[k], scenario) {
+                // A handed-off call is the LLM's, arguments included.
+                let need = if handed_off {
+                    ArgNeed::Bound
+                } else {
+                    input.args[k]
+                };
+                match (need, scenario) {
                     (ArgNeed::Bound, _) => {}
                     (ArgNeed::ClosedSet, Scenario::HabitThenPerfectOracle) => {
                         p.oracle_decisions += 1
                     }
-                    (ArgNeed::ClosedSet, Scenario::HabitThenOracle(t) | Scenario::TwoKeys(t)) => {
-                        match input.oracle_args.get(k).copied().flatten() {
-                            Some(a) if a.prob >= t => {
-                                p.oracle_decisions += 1;
-                                if !a.agrees {
+                    (
+                        ArgNeed::ClosedSet,
+                        Scenario::HabitThenOracle(t)
+                        | Scenario::TwoKeys(t)
+                        | Scenario::Arbitrated(t),
+                    ) => match input.oracle_args.get(k).copied().flatten() {
+                        Some(a) if a.prob >= t => {
+                            p.oracle_decisions += 1;
+                            if !a.agrees {
+                                // A read with another argument value looks
+                                // up something else: a detour.
+                                if read_only {
+                                    p.oracle_detours += 1;
+                                    detours_here += 1;
+                                } else {
                                     p.oracle_disagreements += 1;
                                     wrong_here += 1;
-                                    pause = true;
                                 }
+                                pause = true;
                             }
-                            _ => pause = true,
                         }
-                    }
+                        _ => pause = true,
+                    },
                     (ArgNeed::ClosedSet, Scenario::HabitOnly) | (ArgNeed::Llm, _) => pause = true,
                 }
                 pauses += pause as usize;
@@ -586,7 +696,19 @@ pub fn project(
                         p.oracle_disagreements += 1;
                         wrong_here += 1;
                     }
-                    Verdict::Pause => {}
+                    // One lookup too many before handing back.
+                    Verdict::Detour => {
+                        p.habit_decisions += 1;
+                        p.detours += 1;
+                        detours_here += 1;
+                    }
+                    Verdict::OracleDetour => {
+                        p.oracle_decisions += 1;
+                        p.oracle_detours += 1;
+                        detours_here += 1;
+                    }
+                    // A reply is never a write.
+                    Verdict::Handoff | Verdict::Pause => {}
                 }
             }
             let t = turns.len();
@@ -599,6 +721,7 @@ pub fn project(
             j = e;
         }
         p.episodes_with_disagreement += (wrong_here > 0) as usize;
+        p.episodes_with_detour += (detours_here > 0) as usize;
         p.assistant_turns += input.usage.len();
         account_tokens(&mut p, input, &plans);
     }
@@ -980,6 +1103,87 @@ mod tests {
         assert_eq!(early.episodes_with_disagreement, 0);
         assert_eq!(early.pauses, 1);
         assert_eq!(early.turns_saved, 1);
+    }
+
+    #[test]
+    fn read_only_flows_hand_writes_back_and_detour_instead_of_risking() {
+        // The agent looks up a, then b, then writes w, then replies.
+        let steps = vec![reply(), tool("a"), tool("b"), tool("w"), reply()];
+        let vocab = Vocab::build(steps.iter(), ["a", "b", "c", "w"]);
+        let enc = EncodedEpisode::encode(&steps, &vocab, true);
+        let empty = BackoffModel::new(2, 1.0, vocab.len());
+        let (c, w) = (
+            vocab.id(&Action::Tool("c".into())),
+            vocab.id(&Action::Tool("w".into())),
+        );
+        let high = HashSet::from([w]);
+        let replay = |oracle_steps: Vec<Option<OracleStep>>, scenario, design| {
+            project_design(
+                &empty,
+                &[ProjectionInput {
+                    encoded: &enc,
+                    turns: vec![0, 1, 2, 3, 4],
+                    args: vec![ArgNeed::Bound; 5],
+                    usage: vec![TurnUsage::default(); 5],
+                    input_price: 0.0,
+                    oracle_steps,
+                    oracle_args: vec![],
+                }],
+                scenario,
+                Gate::Threshold(2.0),
+                0.0,
+                design,
+            )
+        };
+        // With a perfect System-One model, any-tool flows run a → b → w in
+        // one turn; read-only flows hand w back to the LLM.
+        let any = replay(vec![], Scenario::HabitThenPerfectOracle, Design::AnyTool);
+        assert_eq!((any.turns_saved, any.pauses, any.handoffs), (2, 0, 0));
+        let ro = replay(
+            vec![],
+            Scenario::HabitThenPerfectOracle,
+            Design::ReadOnly(&high),
+        );
+        assert_eq!((ro.turns_saved, ro.pauses, ro.handoffs), (1, 1, 1));
+        assert!(ro.read_only && !any.read_only);
+        // A System-One model that looks up c where the agent looked up b, and
+        // picks w where the agent replied.
+        let picks = vec![
+            None,
+            None,
+            Some(OracleStep { top: c, prob: 0.95 }),
+            None,
+            Some(OracleStep { top: w, prob: 0.95 }),
+        ];
+        // Any tool: both are risks.
+        let any = replay(
+            picks.clone(),
+            Scenario::HabitThenOracle(0.9),
+            Design::AnyTool,
+        );
+        assert_eq!(any.oracle_disagreements, 2);
+        assert_eq!(any.episodes_with_disagreement, 1);
+        // Read only: c is a detour, and w becomes the hand-back the agent made.
+        let ro = replay(
+            picks.clone(),
+            Scenario::HabitThenOracle(0.9),
+            Design::ReadOnly(&high),
+        );
+        assert_eq!(
+            (ro.oracle_disagreements, ro.oracle_detours, ro.handoffs),
+            (0, 1, 1)
+        );
+        assert_eq!(
+            (ro.episodes_with_disagreement, ro.episodes_with_detour),
+            (0, 1)
+        );
+        assert!((ro.detour_share() - 1.0).abs() < 1e-12);
+        // Arbitrated answers are trusted the same way.
+        let arb = replay(picks, Scenario::Arbitrated(0.9), Design::ReadOnly(&high));
+        assert_eq!(
+            (arb.oracle_detours, arb.pauses, arb.turns_saved),
+            (ro.oracle_detours, ro.pauses, ro.turns_saved)
+        );
     }
 
     #[test]
