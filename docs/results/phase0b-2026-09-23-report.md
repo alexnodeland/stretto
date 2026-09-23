@@ -135,23 +135,34 @@ Closed-set arguments:
 | glm-5 *(target)* | 13 | 100.0% | 100.0% / 100.0% |
 | **all source models** | 65 | 98.5% | 96.9% / 100.0% |
 
-Projection with the System-One model, pooled over the source models: the habit acts in validated contexts, the System-One pick is trusted at or above the threshold, and anything else pauses.
+Closed-set arguments by argument (source models):
+
+| Tool | Argument | Decisions | Agreed | p ≥ 0.9: share / agreed |
+|---|---|---|---|---|
+| `cancel_pending_order` | `reason` | 14 | 100.0% | 92.9% / 100.0% |
+| `modify_pending_order_address` | `state` | 38 | 100.0% | 100.0% / 100.0% |
+| `modify_user_address` | `state` | 13 | 92.3% | 92.3% / 100.0% |
+
+Projection with the System-One model, pooled over the source models: the habit acts in validated contexts, the System-One pick is trusted at or above the threshold (with *two keys*, only when it is also the habit's top option), and anything else pauses.
 
 | Pick trusted at | Turns saved | Pauses/ep | System-One decisions/ep | Handed back early (/100 ep) | Risky decisions (/100 ep) | Episodes with one |
 |---|---|---|---|---|---|---|
 | p ≥ 0.5 | **14.6%** | 1.29 | 7.00 | 67.0 | 110.2 | 67.0% |
 | p ≥ 0.7 | **11.5%** | 1.79 | 5.16 | 31.9 | 64.1 | 48.1% |
 | p ≥ 0.9 | **3.9%** | 3.10 | 2.47 | 10.6 | 6.4 | 6.2% |
+| two keys, p ≥ 0.5 | **11.3%** | 1.94 | 4.58 | 24.1 | 49.7 | 44.1% |
+| two keys, p ≥ 0.7 | **9.1%** | 2.31 | 3.67 | 13.4 | 38.4 | 35.6% |
+| two keys, p ≥ 0.9 | **3.0%** | 3.35 | 1.80 | 3.8 | 4.4 | 4.4% |
 
 The gate, per agent model: at least 20% fewer LLM turns, with at most 1% of episodes holding a risky decision (a conservative stand-in for losing at most one point of pass^1). Each cell is turns saved · episodes with a risky decision.
 
-| Agent model | Perfect System-One | p ≥ 0.5 | p ≥ 0.7 | p ≥ 0.9 | Gate |
-|---|---|---|---|---|---|
-| claude-3-7-sonnet | 33.0% | 21.2% · 50.0% | 16.6% · 24.4% | 5.0% · 3.1% | fails |
-| gpt-4.1 | 19.7% | 12.6% · 65.6% | 9.4% · 42.5% | 2.5% · 0.6% | fails: below 20% even with a perfect System-One model |
-| gpt-4.1-mini | 12.4% | 6.7% · 82.5% | 4.7% · 73.8% | 1.7% · 12.5% | fails: below 20% even with a perfect System-One model |
-| o4-mini | 22.8% | 17.0% · 70.0% | 14.5% · 51.9% | 6.3% · 8.8% | fails |
-| glm-5 *(target)* | 29.1% | 13.2% · 45.6% | 8.0% · 16.9% | 1.5% · 1.2% | fails |
+| Agent model | Perfect System-One | p ≥ 0.5 | p ≥ 0.7 | p ≥ 0.9 | two keys, p ≥ 0.5 | two keys, p ≥ 0.7 | two keys, p ≥ 0.9 | Gate |
+|---|---|---|---|---|---|---|---|---|
+| claude-3-7-sonnet | 33.0% | 21.2% · 50.0% | 16.6% · 24.4% | 5.0% · 3.1% | 16.5% · 11.9% | 13.2% · 8.8% | 3.5% · 0.6% | fails |
+| gpt-4.1 | 19.7% | 12.6% · 65.6% | 9.4% · 42.5% | 2.5% · 0.6% | 10.8% · 36.9% | 8.5% · 26.2% | 2.3% · 0.0% | fails: below 20% even with a perfect System-One model |
+| gpt-4.1-mini | 12.4% | 6.7% · 82.5% | 4.7% · 73.8% | 1.7% · 12.5% | 4.7% · 68.8% | 3.4% · 60.6% | 1.2% · 9.4% | fails: below 20% even with a perfect System-One model |
+| o4-mini | 22.8% | 17.0% · 70.0% | 14.5% · 51.9% | 6.3% · 8.8% | 12.6% · 58.8% | 11.0% · 46.9% | 4.7% · 7.5% | fails |
+| glm-5 *(target)* | 29.1% | 13.2% · 45.6% | 8.0% · 16.9% | 1.5% · 1.2% | 9.7% · 6.2% | 6.2% · 3.1% | 1.2% · 0.0% | fails |
 
 ### Transfer: top-1 when the habit comes from another model (k = 2)
 
@@ -353,23 +364,45 @@ Closed-set arguments:
 | glm-5 *(target)* | 25 | 72.0% | 80.0% / 85.0% |
 | **all source models** | 122 | 58.2% | 82.8% / 67.3% |
 
-Projection with the System-One model, pooled over the source models: the habit acts in validated contexts, the System-One pick is trusted at or above the threshold, and anything else pauses.
+Closed-set arguments by argument (source models):
+
+| Tool | Argument | Decisions | Agreed | p ≥ 0.9: share / agreed |
+|---|---|---|---|---|
+| `book_reservation` | `flight_type` | 3 | 0.0% | 100.0% / 0.0% |
+| `book_reservation` | `flights` | 6 | 0.0% | 0.0% / 0.0% |
+| `book_reservation` | `insurance` | 11 | 100.0% | 100.0% / 100.0% |
+| `book_reservation` | `nonfree_baggages` | 11 | 100.0% | 90.9% / 100.0% |
+| `book_reservation` | `payment_methods` | 7 | 0.0% | 14.3% / 0.0% |
+| `book_reservation` | `total_baggages` | 11 | 45.5% | 100.0% / 45.5% |
+| `search_onestop_flight` | `date` | 19 | 100.0% | 100.0% / 100.0% |
+| `search_onestop_flight` | `destination` | 2 | 0.0% | 0.0% / 0.0% |
+| `search_onestop_flight` | `origin` | 1 | 0.0% | 100.0% / 0.0% |
+| `send_certificate` | `amount` | 3 | 100.0% | 33.3% / 100.0% |
+| `update_reservation_baggages` | `nonfree_baggages` | 21 | 71.4% | 85.7% / 83.3% |
+| `update_reservation_baggages` | `payment_id` | 1 | 0.0% | 0.0% / 0.0% |
+| `update_reservation_baggages` | `total_baggages` | 21 | 33.3% | 100.0% / 33.3% |
+| `update_reservation_flights` | `payment_id` | 5 | 0.0% | 100.0% / 0.0% |
+
+Projection with the System-One model, pooled over the source models: the habit acts in validated contexts, the System-One pick is trusted at or above the threshold (with *two keys*, only when it is also the habit's top option), and anything else pauses.
 
 | Pick trusted at | Turns saved | Pauses/ep | System-One decisions/ep | Handed back early (/100 ep) | Risky decisions (/100 ep) | Episodes with one |
 |---|---|---|---|---|---|---|
 | p ≥ 0.5 | **12.0%** | 2.10 | 6.94 | 104.4 | 75.3 | 50.9% |
 | p ≥ 0.7 | **9.3%** | 2.64 | 5.04 | 52.5 | 33.4 | 29.4% |
 | p ≥ 0.9 | **4.7%** | 3.63 | 2.76 | 14.1 | 13.8 | 13.1% |
+| two keys, p ≥ 0.5 | **6.1%** | 3.35 | 3.40 | 52.5 | 19.1 | 17.8% |
+| two keys, p ≥ 0.7 | **4.9%** | 3.59 | 2.70 | 29.4 | 12.5 | 12.5% |
+| two keys, p ≥ 0.9 | **2.9%** | 3.96 | 1.70 | 7.8 | 8.4 | 8.4% |
 
 The gate, per agent model: at least 20% fewer LLM turns, with at most 1% of episodes holding a risky decision (a conservative stand-in for losing at most one point of pass^1). Each cell is turns saved · episodes with a risky decision.
 
-| Agent model | Perfect System-One | p ≥ 0.5 | p ≥ 0.7 | p ≥ 0.9 | Gate |
-|---|---|---|---|---|---|
-| claude-3-7-sonnet | 36.6% | 19.5% · 52.5% | 13.9% · 28.7% | 5.5% · 12.5% | fails |
-| gpt-4.1 | 10.9% | 6.0% · 46.2% | 5.3% · 26.2% | 3.1% · 12.5% | fails: below 20% even with a perfect System-One model |
-| gpt-4.1-mini | 6.6% | 2.9% · 68.8% | 2.4% · 35.0% | 1.3% · 13.8% | fails: below 20% even with a perfect System-One model |
-| o4-mini | 24.5% | 18.4% · 36.2% | 15.1% · 27.5% | 9.2% · 13.8% | fails |
-| glm-5 *(target)* | 15.4% | 2.4% · 67.5% | 2.2% · 40.0% | 1.0% · 12.5% | fails: below 20% even with a perfect System-One model |
+| Agent model | Perfect System-One | p ≥ 0.5 | p ≥ 0.7 | p ≥ 0.9 | two keys, p ≥ 0.5 | two keys, p ≥ 0.7 | two keys, p ≥ 0.9 | Gate |
+|---|---|---|---|---|---|---|---|---|
+| claude-3-7-sonnet | 36.6% | 19.5% · 52.5% | 13.9% · 28.7% | 5.5% · 12.5% | 9.5% · 11.2% | 6.7% · 10.0% | 3.4% · 5.0% | fails |
+| gpt-4.1 | 10.9% | 6.0% · 46.2% | 5.3% · 26.2% | 3.1% · 12.5% | 3.4% · 16.2% | 3.3% · 10.0% | 1.8% · 8.8% | fails: below 20% even with a perfect System-One model |
+| gpt-4.1-mini | 6.6% | 2.9% · 68.8% | 2.4% · 35.0% | 1.3% · 13.8% | 1.6% · 25.0% | 1.4% · 16.2% | 0.7% · 12.5% | fails: below 20% even with a perfect System-One model |
+| o4-mini | 24.5% | 18.4% · 36.2% | 15.1% · 27.5% | 9.2% · 13.8% | 9.3% · 18.8% | 8.1% · 13.8% | 5.6% · 7.5% | fails |
+| glm-5 *(target)* | 15.4% | 2.4% · 67.5% | 2.2% · 40.0% | 1.0% · 12.5% | 0.5% · 3.8% | 0.5% · 3.8% | 0.2% · 1.2% | fails: below 20% even with a perfect System-One model |
 
 ### Transfer: top-1 when the habit comes from another model (k = 2)
 
