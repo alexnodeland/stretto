@@ -65,8 +65,16 @@ pub struct Config {
     pub projection_thresholds: Vec<f64>,
     /// Held-out decisions a context needs before it can be validated.
     pub validated_min_n: usize,
+    /// Distinct training tasks those decisions must come from.
+    pub validated_min_tasks: usize,
     /// Held-out top-1 agreement a context needs to be validated.
     pub validated_min_agreement: f64,
+    /// Whether τ²-bench's own published baselines (in the checkout) are
+    /// training sources.
+    pub baselines: bool,
+    /// Extra τ²-bench results files to train on, like the baselines. Files
+    /// for other domains are skipped.
+    pub sources: Vec<Target>,
     /// Extra τ²-bench results files for agent models the habit never trains
     /// on: measured only as transfer targets. Files for other domains are
     /// skipped.
@@ -124,7 +132,10 @@ impl Config {
             feature_max_fields: 8,
             projection_thresholds: vec![0.9, 0.95],
             validated_min_n: 20,
+            validated_min_tasks: 10,
             validated_min_agreement: 0.99,
+            baselines: true,
+            sources: Vec::new(),
             targets: Vec::new(),
             shadow: None,
         }
@@ -155,8 +166,14 @@ pub struct Settings {
     pub position_threshold: f64,
     /// Held-out decisions a context needs before it can be validated.
     pub validated_min_n: usize,
+    /// Distinct training tasks those decisions must come from.
+    pub validated_min_tasks: usize,
     /// Held-out top-1 agreement a context needs to be validated.
     pub validated_min_agreement: f64,
+    /// Whether τ²-bench's published baselines were training sources.
+    pub baselines: bool,
+    /// Labels (or paths) of extra training sources.
+    pub sources: Vec<String>,
 }
 
 /// One domain.
@@ -272,6 +289,8 @@ pub struct ValidatedContext {
     pub action: String,
     /// Decisions in this context under cross-validation on training tasks.
     pub cv_n: usize,
+    /// Distinct training tasks they came from.
+    pub cv_tasks: usize,
     /// Those where the habit matched the agent.
     pub cv_agreed: usize,
     /// Decisions in this context on held-out tasks.
@@ -426,7 +445,18 @@ pub fn run(config: &Config) -> Result<Report> {
             min_evidence: config.min_evidence,
             position_threshold: config.position_threshold,
             validated_min_n: config.validated_min_n,
+            validated_min_tasks: config.validated_min_tasks,
             validated_min_agreement: config.validated_min_agreement,
+            baselines: config.baselines,
+            sources: config
+                .sources
+                .iter()
+                .map(|t| {
+                    t.label
+                        .clone()
+                        .unwrap_or_else(|| t.path.display().to_string())
+                })
+                .collect(),
         },
         domains,
     })
@@ -472,25 +502,35 @@ fn domain(
     let split = load_split(&root.join(format!("data/tau2/domains/{domain}/split_tasks.json")))?;
 
     let mut runs_by_model = Vec::new();
-    for path in result_files(root, domain)? {
-        let run = load_results(&path)?;
-        if run.domain != domain {
-            bail!("{} is for {}, not {domain}", path.display(), run.domain);
+    if config.baselines {
+        for path in result_files(root, domain)? {
+            let run = load_results(&path)?;
+            if run.domain != domain {
+                bail!("{} is for {}, not {domain}", path.display(), run.domain);
+            }
+            runs_by_model.push((run, false));
         }
-        runs_by_model.push((run, false));
     }
-    for target in &config.targets {
-        let mut run = load_results(&target.path)?;
+    let extra = config
+        .sources
+        .iter()
+        .map(|t| (t, false))
+        .chain(config.targets.iter().map(|t| (t, true)));
+    for (file, target) in extra {
+        let mut run = load_results(&file.path)?;
         if run.domain != domain {
             continue;
         }
-        if let Some(label) = &target.label {
+        if let Some(label) = &file.label {
             run.agent_model = label.clone();
             for ep in &mut run.episodes {
                 ep.agent_model = label.clone();
             }
         }
-        runs_by_model.push((run, true));
+        runs_by_model.push((run, target));
+    }
+    if !runs_by_model.iter().any(|(_, target)| !target) {
+        bail!("no training sources for {domain}: keep the baselines or pass --source");
     }
 
     let all_steps: Vec<_> = runs_by_model
@@ -859,6 +899,7 @@ fn featured(
         vocab.len(),
         FOLDS,
         config.validated_min_n,
+        config.validated_min_tasks,
         config.validated_min_agreement,
     );
 
@@ -996,6 +1037,7 @@ fn featured(
                     .action(r.action)
                     .map_or_else(|| "?".to_string(), Action::to_string),
                 cv_n: r.n,
+                cv_tasks: r.tasks,
                 cv_agreed: r.agreed,
                 test_n,
                 test_agreed,

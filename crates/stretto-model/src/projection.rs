@@ -158,6 +158,8 @@ pub struct ContextRecord {
     pub n: usize,
     /// Those where the habit's top option matched the agent.
     pub agreed: usize,
+    /// Distinct tasks those decisions came from.
+    pub tasks: usize,
     /// The agent's most common action there.
     pub action: u32,
 }
@@ -196,7 +198,13 @@ impl ValidatedContexts {
 /// Validate contexts by `folds`-fold cross-validation grouped by `train`'s
 /// first element (the task): a context is kept when the held-out top-1
 /// agreement of a [`GroupedModel`] fitted on the other folds is at least
-/// `min_agreement` over at least `min_n` held-out decisions.
+/// `min_agreement` over at least `min_n` held-out decisions from at least
+/// `min_tasks` distinct tasks.
+///
+/// The task count matters more than the decision count: every task repeats
+/// across trials and agent models, so its decisions are near-copies, and a
+/// context seen in two tasks can reach dozens of decisions.
+#[allow(clippy::too_many_arguments)]
 pub fn validated_contexts(
     train: &[(u64, EncodedEpisode)],
     order: usize,
@@ -204,9 +212,17 @@ pub fn validated_contexts(
     vocab_size: usize,
     folds: u64,
     min_n: usize,
+    min_tasks: usize,
     min_agreement: f64,
 ) -> ValidatedContexts {
-    let mut stats: HashMap<Vec<Symbol>, (usize, usize, HashMap<u32, usize>)> = HashMap::new();
+    #[derive(Default)]
+    struct Tally {
+        n: usize,
+        agreed: usize,
+        actions: HashMap<u32, usize>,
+        tasks: HashSet<u64>,
+    }
+    let mut stats: HashMap<Vec<Symbol>, Tally> = HashMap::new();
     for fold in 0..folds {
         let fit: Vec<EncodedEpisode> = train
             .iter()
@@ -214,15 +230,16 @@ pub fn validated_contexts(
             .map(|(_, e)| e.clone())
             .collect();
         let model = GroupedModel::fit(order, alpha, alpha, vocab_size, &fit);
-        for (_, ep) in train.iter().filter(|(g, _)| g % folds == fold) {
+        for (task, ep) in train.iter().filter(|(g, _)| g % folds == fold) {
             for t in 0..ep.actions.len() {
                 let top = argmax(&model.predict_at(ep, t));
                 let e = stats
                     .entry(BackoffModel::context(&ep.symbols[..t], order))
                     .or_default();
-                e.0 += 1;
-                e.1 += (top == ep.actions[t] as usize) as usize;
-                *e.2.entry(ep.actions[t]).or_insert(0) += 1;
+                e.n += 1;
+                e.agreed += (top == ep.actions[t] as usize) as usize;
+                *e.actions.entry(ep.actions[t]).or_insert(0) += 1;
+                e.tasks.insert(*task);
             }
         }
     }
@@ -230,13 +247,24 @@ pub fn validated_contexts(
         order,
         keys: stats
             .into_iter()
-            .filter(|(_, (n, ok, _))| *n >= min_n && *ok as f64 >= min_agreement * *n as f64)
-            .map(|(k, (n, agreed, actions))| {
-                let action = actions
+            .filter(|(_, e)| {
+                e.n >= min_n
+                    && e.tasks.len() >= min_tasks
+                    && e.agreed as f64 >= min_agreement * e.n as f64
+            })
+            .map(|(k, e)| {
+                let action = e
+                    .actions
                     .into_iter()
                     .max_by_key(|&(a, c)| (c, std::cmp::Reverse(a)))
                     .map_or(0, |(a, _)| a);
-                (k, ContextRecord { n, agreed, action })
+                let record = ContextRecord {
+                    n: e.n,
+                    agreed: e.agreed,
+                    tasks: e.tasks.len(),
+                    action,
+                };
+                (k, record)
             })
             .collect(),
     }
@@ -842,7 +870,7 @@ mod tests {
         let train: Vec<(u64, EncodedEpisode)> = (0..60u64)
             .flat_map(|i| [(i, steady.clone()), (i, fickle(1 + (i % 2) as u32))])
             .collect();
-        let v = validated_contexts(&train, 1, 0.5, vocab.len(), 5, 20, 0.99);
+        let v = validated_contexts(&train, 1, 0.5, vocab.len(), 5, 20, 10, 0.99);
         assert!(v.allows(&steady, 1));
         assert!(!v.allows(&fickle(1), 1));
         assert_eq!(v.context_at(&steady, 1), Some(vec![4]));
@@ -850,7 +878,13 @@ mod tests {
         assert_eq!(records.len(), 1);
         let (context, r) = records[0];
         assert_eq!(context, &[4]);
-        assert_eq!((r.n, r.agreed, r.action), (60, 60, 2));
+        assert_eq!((r.n, r.agreed, r.tasks, r.action), (60, 60, 60, 2));
+        // The same decisions from only three tasks do not validate.
+        let few: Vec<(u64, EncodedEpisode)> = (0..60u64)
+            .flat_map(|i| [(i % 3, steady.clone()), (i % 3, fickle(1 + (i % 2) as u32))])
+            .collect();
+        let v = validated_contexts(&few, 1, 0.5, vocab.len(), 3, 20, 10, 0.99);
+        assert!(!v.allows(&steady, 1));
     }
 
     #[test]

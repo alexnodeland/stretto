@@ -47,6 +47,14 @@ enum Command {
         /// Skip learning code features from tool outputs.
         #[arg(long)]
         no_features: bool,
+        /// Do not train on τ²-bench's published baselines in the checkout
+        /// (then pass --source).
+        #[arg(long)]
+        no_baselines: bool,
+        /// Extra τ²-bench results to train on: `path` or `label=path`
+        /// (repeatable; files for other domains are skipped).
+        #[arg(long = "source")]
+        sources: Vec<String>,
         /// τ²-bench results for an agent model the habit never trains on,
         /// measured as a transfer target: `path` or `label=path` (repeatable;
         /// files for other domains are skipped).
@@ -107,6 +115,8 @@ fn main() -> Result<()> {
             min_evidence,
             seed,
             no_features,
+            no_baselines,
+            sources,
             targets,
             oracle,
             oracle_cache,
@@ -126,6 +136,8 @@ fn main() -> Result<()> {
             config.min_evidence = min_evidence;
             config.seed = seed;
             config.features = !no_features;
+            config.baselines = !no_baselines;
+            config.sources = sources.iter().map(|t| phase0::Target::parse(t)).collect();
             config.targets = targets.iter().map(|t| phase0::Target::parse(t)).collect();
             config.shadow = oracle.map(|kind| {
                 let mut sc = ShadowConfig::new(match kind {

@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# Fetch published τ²-bench trajectories for agent models that Phase 0 uses as
-# transfer targets: models the habit never trains on. Sierra hosts leaderboard
-# submissions in a public bucket (see web/leaderboard in the τ²-bench repo).
+# Fetch published τ²-bench trajectories from Sierra's leaderboard, for Phase 0
+# to train on (--source) or to test transfer to (--target). Sierra hosts
+# leaderboard submissions in a public bucket (see web/leaderboard in the
+# τ²-bench repo).
 #
-# Usage: scripts/fetch-targets.sh [-d dest] [model ...]
+# Usage: scripts/fetch-leaderboard.sh [-d dest] [model ...]
 #   dest defaults to .data/tau2-targets; models default to glm-5.
 #   Models: glm-5 qwen3.5 qwen3-max gpt-5.2 gpt-5.2-none claude-opus-4.5
 #           claude-sonnet-4.5 gemini-3-pro gemini-3-flash, or "all".
 # Prints one label=path pair per file (retail, then airline), ready to pass
-# to `stretto phase0 --target`.
+# to `stretto phase0 --source` or `--target`.
 set -euo pipefail
 
 dest=".data/tau2-targets"
@@ -66,7 +67,7 @@ for model in "${models[@]}"; do
       dir=gemini-3-flash_sierra_2026-03-02
       files=(geminiflash-retail.json geminiflash-airline.json) ;;
     *)
-      echo "fetch-targets: unknown model '$model'" >&2
+      echo "fetch-leaderboard: unknown model '$model'" >&2
       exit 2 ;;
   esac
   for f in "${files[@]}"; do
