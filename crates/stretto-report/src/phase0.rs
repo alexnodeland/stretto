@@ -11,10 +11,14 @@ use stretto_model::features::{
     discover, select, step_outputs, FeatureMap, Selected, StepOutput, TrainEpisode,
 };
 use stretto_model::policy::write_confirmations;
-use stretto_model::provenance::{argument_provenance, Source};
+use stretto_model::projection::{
+    arg_needs, closed_sets, project, Projection, ProjectionInput, Scenario,
+};
+use stretto_model::provenance::{argument_provenance, call_sources, Source};
 use stretto_model::world::{by_position, coverage_curve, evaluate, PositionStats};
 use stretto_model::{
-    steps, BackoffModel, CoveragePoint, EncodedEpisode, EvalStats, GroupedModel, Step, Vocab,
+    step_turns, steps, Action, BackoffModel, CoveragePoint, EncodedEpisode, EvalStats,
+    GroupedModel, Step, Vocab,
 };
 use stretto_trace::tau2::{load_manifest, load_results, load_split, Split, Tau2Run};
 use stretto_trace::{Episode, ToolKind, ToolManifest};
@@ -52,6 +56,8 @@ pub struct Config {
     pub feature_min_gain: f64,
     /// Most fields to select.
     pub feature_max_fields: usize,
+    /// Habit confidence thresholds for the macro-tool projection.
+    pub projection_thresholds: Vec<f64>,
 }
 
 impl Config {
@@ -73,6 +79,7 @@ impl Config {
             feature_max_values: 8,
             feature_min_gain: 5.0,
             feature_max_fields: 8,
+            projection_thresholds: vec![0.8, 0.9, 0.95],
         }
     }
 }
@@ -147,6 +154,9 @@ pub struct FeaturedReport {
     /// macro-tool call supplies, since the LLM names the intent when it calls
     /// the flow.
     pub code_and_intent: VariantStats,
+    /// Held-out episodes replayed through macro-tool flows driven by the
+    /// code-and-intent habit, per scenario and threshold.
+    pub projection: Vec<Projection>,
 }
 
 /// Held-out results for one variant of the habit.
@@ -437,6 +447,9 @@ fn domain(config: &Config, domain: &str) -> Result<DomainReport> {
 struct Prepared {
     steps: Vec<Step>,
     outputs: Vec<StepOutput>,
+    turns: Vec<usize>,
+    sources: Vec<Vec<(String, Source, String)>>,
+    assistant_turns: usize,
     success: bool,
     train: bool,
     test: bool,
@@ -509,6 +522,9 @@ fn featured(
         .map(|ep| Prepared {
             steps: steps(ep),
             outputs: step_outputs(ep),
+            turns: step_turns(ep),
+            sources: call_sources(ep),
+            assistant_turns: ep.assistant_turns(),
             success: ep.succeeded(),
             train: train_ids.contains(ep.task_id.as_str()),
             test: test_ids.contains(ep.task_id.as_str()),
@@ -585,12 +601,54 @@ fn featured(
             config.min_evidence,
         ),
     };
+    // Replay held-out episodes through macro-tool flows driven by this habit.
+    let closed = closed_sets(
+        habit_set.iter().flat_map(|p| {
+            p.steps
+                .iter()
+                .filter_map(|s| match &s.action {
+                    Action::Tool(t) => Some(t.clone()),
+                    Action::Respond => None,
+                })
+                .zip(&p.sources)
+                .flat_map(|(tool, leaves)| {
+                    leaves
+                        .iter()
+                        .map(move |(arg, _, value)| (tool.clone(), arg.clone(), value.clone()))
+                })
+                .collect::<Vec<_>>()
+        }),
+        8,
+        10,
+    );
+    let inputs: Vec<ProjectionInput> = test_set
+        .iter()
+        .zip(&test)
+        .map(|(p, enc)| ProjectionInput {
+            encoded: enc,
+            turns: p.turns.clone(),
+            args: arg_needs(&p.steps, &p.sources, &closed),
+            assistant_turns: p.assistant_turns,
+        })
+        .collect();
+    let projection = [Scenario::HabitOnly, Scenario::HabitThenPerfectOracle]
+        .into_iter()
+        .flat_map(|scenario| {
+            config
+                .projection_thresholds
+                .iter()
+                .map(move |&tau| (scenario, tau))
+        })
+        .map(|(scenario, tau)| project(&intent_habit, &inputs, scenario, tau, config.min_evidence))
+        .collect();
+
     FeaturedReport {
         candidates: candidates.len(),
         selected,
         intents: intent_ids.len(),
         code,
         code_and_intent,
+        projection,
     }
 }
 

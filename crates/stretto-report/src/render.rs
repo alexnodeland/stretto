@@ -2,6 +2,7 @@
 
 use crate::phase0::{DomainReport, FeaturedReport, Report, VariantStats};
 use std::fmt::Write as _;
+use stretto_model::projection::Scenario;
 use stretto_model::provenance::Source;
 use stretto_model::world::Position;
 use stretto_trace::ToolKind;
@@ -380,6 +381,55 @@ fn featured(s: &mut String, d: &DomainReport, f: &FeaturedReport, report: &Repor
         );
     }
     let _ = writeln!(s);
+    projection(s, f);
+}
+
+fn projection(s: &mut String, f: &FeaturedReport) {
+    if f.projection.is_empty() {
+        return;
+    }
+    let _ = writeln!(
+        s,
+        "### Projection: LLM turns macro-tools would save on held-out tasks\n"
+    );
+    let _ = writeln!(
+        s,
+        "Each run of consecutive tool calls is replayed as one `plan_*` call driven by the habit \
+         above (code features + named intent). A decision the habit is unsure of goes either to \
+         the LLM (a pause, one turn) or to a System-One model assumed to agree with the agent \
+         (the upper bound Phase 0b will test). Generated arguments always pause. The ceiling is \
+         every run collapsing to one call.\n"
+    );
+    let _ = writeln!(
+        s,
+        "| When the habit is unsure | τ | Turns saved | Ceiling | Pauses/ep | Habit decisions/ep | System-One decisions/ep | Confident habit decisions that disagreed (/100 ep) | Episodes with one |"
+    );
+    let _ = writeln!(s, "|---|---|---|---|---|---|---|---|---|");
+    for p in &f.projection {
+        let n = p.episodes.max(1) as f64;
+        let who = match p.scenario {
+            Scenario::HabitOnly => "pause for the LLM",
+            Scenario::HabitThenPerfectOracle => "ask a perfect System-One model",
+        };
+        let _ = writeln!(
+            s,
+            "| {} | {} | **{}** | {} | {:.2} | {:.2} | {:.2} | {:.1} | {} |",
+            who,
+            p.threshold,
+            pct1(p.saved_share()),
+            pct1(p.ceiling_share()),
+            p.pauses as f64 / n,
+            p.habit_decisions as f64 / n,
+            p.oracle_decisions as f64 / n,
+            100.0 * p.disagreements as f64 / n,
+            pct1(p.risky_share())
+        );
+    }
+    let _ = writeln!(s);
+}
+
+fn pct1(x: f64) -> String {
+    format!("{:.1}%", 100.0 * x)
 }
 
 #[cfg(test)]

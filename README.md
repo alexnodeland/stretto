@@ -31,6 +31,10 @@ It takes about 10 seconds. First results, with their interpretation, are in [doc
   - Naming the intent, as a macro-tool call does, lifts retail coverage from 15% to 24%.
   - About three quarters of decisions still need content-aware judgment: that is Phase 0b's job, with Jev.
 - **Behavior transfers across models.** A habit learned from one model predicts another within 3–7 points of top-1 of that model's own habit.
+- **Projection.** Replaying held-out episodes through macro-tool flows:
+  - the habit alone saves 0–2% of LLM turns;
+  - with a System-One model that always agrees with the agent, savings reach 20.5–22%, against a 23–24% ceiling.
+  - So the ≥20% gate depends on Jev making about 7 in-flow decisions per episode nearly perfectly. Phase 0b measures that.
 
 ## Crates
 

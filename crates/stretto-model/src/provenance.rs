@@ -50,6 +50,46 @@ pub struct ArgUse {
     pub source: Source,
 }
 
+/// Every leaf argument value of every tool call in `ep`, grouped by call in
+/// call order: `(argument, source, value)` per leaf.
+pub fn call_sources(ep: &Episode) -> Vec<Vec<(String, Source, String)>> {
+    let mut user_text = String::new();
+    let mut tool_text = String::new();
+    let mut out = Vec::new();
+    for e in &ep.events {
+        match e {
+            Event::User { text } => {
+                user_text.push_str(&text.to_lowercase());
+                user_text.push('\n');
+            }
+            Event::ToolResult { content, .. } => {
+                tool_text.push_str(&content.to_lowercase());
+                tool_text.push('\n');
+            }
+            Event::Assistant { calls, .. } => {
+                for c in calls {
+                    let mut leaves = Vec::new();
+                    collect_leaves(None, &c.arguments, &mut leaves);
+                    out.push(
+                        leaves
+                            .into_iter()
+                            .map(|(arg, value)| {
+                                let source = classify(&value, &user_text, &tool_text);
+                                let text = match &value {
+                                    serde_json::Value::String(s) => s.trim().to_lowercase(),
+                                    other => other.to_string(),
+                                };
+                                (arg, source, text)
+                            })
+                            .collect(),
+                    );
+                }
+            }
+        }
+    }
+    out
+}
+
 /// Classify every leaf argument value of every tool call in `ep`.
 pub fn argument_provenance(ep: &Episode) -> Vec<ArgUse> {
     let mut user_text = String::new();

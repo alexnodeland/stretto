@@ -109,6 +109,25 @@ pub fn steps(ep: &Episode) -> Vec<Step> {
     out
 }
 
+/// The assistant turn (LLM call) each step belongs to, aligned with
+/// [`steps`]. Several tool calls in one turn share its index.
+pub fn step_turns(ep: &Episode) -> Vec<usize> {
+    let mut out = Vec::new();
+    let mut turn = 0;
+    for e in &ep.events {
+        if let Event::Assistant { calls, .. } = e {
+            if calls.is_empty() {
+                out.push(turn);
+            }
+            for _ in calls {
+                out.push(turn);
+            }
+            turn += 1;
+        }
+    }
+    out
+}
+
 /// Dense ids for actions. `Respond` is always id 0; the last id is reserved
 /// for actions never seen when the vocabulary was built.
 #[derive(Clone, Debug)]
