@@ -16,8 +16,13 @@ use crate::abstraction::{Step, Vocab};
 use serde::Serialize;
 use std::collections::HashMap;
 
-/// A step encoded for use as context: `action id × 4 + outcome index`.
+/// A step encoded for use as context:
+/// `(action id × 4 + outcome index) × FEATURE_SLOTS + feature`.
 pub type Symbol = u32;
+
+/// Distinct feature values a step's symbol can carry; 0 means "no feature".
+/// See [`crate::features`].
+pub const FEATURE_SLOTS: u32 = 4096;
 
 /// Padding before the first step.
 const START: Symbol = u32::MAX;
@@ -27,27 +32,65 @@ const START: Symbol = u32::MAX;
 pub struct EncodedEpisode {
     /// Action id at each step.
     pub actions: Vec<u32>,
-    /// Context symbol of each step (action and outcome).
+    /// Outcome index at each step (see [`crate::Outcome::index`]).
+    pub outcomes: Vec<u32>,
+    /// Context symbol of each step (action, outcome and feature).
     pub symbols: Vec<Symbol>,
     /// Whether the episode solved its task.
     pub success: bool,
+    /// A coarse, episode-level condition such as the intent a macro-tool call
+    /// names; 0 when unused. Only [`GroupedModel`] reads it.
+    pub group: u32,
 }
 
 impl EncodedEpisode {
-    /// Encode abstract steps with `vocab`.
+    /// Encode abstract steps with `vocab`, without features.
     pub fn encode(steps: &[Step], vocab: &Vocab, success: bool) -> Self {
+        Self::encode_with_features(steps, None, vocab, success)
+    }
+
+    /// Encode abstract steps with `vocab`, folding a per-step feature id
+    /// (from [`crate::features::FeatureMap`]) into each context symbol.
+    pub fn encode_with_features(
+        steps: &[Step],
+        features: Option<&[u32]>,
+        vocab: &Vocab,
+        success: bool,
+    ) -> Self {
         let actions: Vec<u32> = steps.iter().map(|s| vocab.id(&s.action)).collect();
-        let symbols = steps
-            .iter()
-            .zip(&actions)
-            .map(|(s, &a)| a * 4 + s.outcome.index())
+        let outcomes: Vec<u32> = steps.iter().map(|s| s.outcome.index()).collect();
+        let symbols = (0..steps.len())
+            .map(|t| {
+                let f = features.map_or(0, |f| f[t].min(FEATURE_SLOTS - 1));
+                (actions[t] * 4 + outcomes[t]) * FEATURE_SLOTS + f
+            })
             .collect();
         Self {
             actions,
+            outcomes,
             symbols,
             success,
+            group: 0,
         }
     }
+
+    /// The same episode, conditioned on `group`.
+    pub fn with_group(mut self, group: u32) -> Self {
+        self.group = group;
+        self
+    }
+}
+
+/// Anything that predicts the next action of an encoded episode.
+pub trait Predictor {
+    /// Posterior predictive over every action id at step `t` of `ep`.
+    fn predict_at(&self, ep: &EncodedEpisode, t: usize) -> Vec<f64>;
+    /// Posterior predictive probability of `action` at step `t` of `ep`.
+    fn prob_at(&self, ep: &EncodedEpisode, t: usize, action: u32) -> f64 {
+        self.predict_at(ep, t)[action as usize]
+    }
+    /// Training observations behind the prediction at step `t` of `ep`.
+    fn evidence_at(&self, ep: &EncodedEpisode, t: usize) -> f64;
 }
 
 #[derive(Clone, Debug, Default)]
@@ -151,6 +194,93 @@ impl BackoffModel {
     }
 }
 
+impl Predictor for BackoffModel {
+    fn predict_at(&self, ep: &EncodedEpisode, t: usize) -> Vec<f64> {
+        self.predict(&ep.symbols[..t])
+    }
+    fn prob_at(&self, ep: &EncodedEpisode, t: usize, action: u32) -> f64 {
+        self.prob(&ep.symbols[..t], action)
+    }
+    fn evidence_at(&self, ep: &EncodedEpisode, t: usize) -> f64 {
+        self.evidence(&ep.symbols[..t])
+    }
+}
+
+/// A back-off model with one coarse, episode-level condition on top.
+///
+/// ```text
+/// P(a | h, g) = (n(g, c_k(h), a) + β · P(a | h)) / (n(g, c_k(h)) + β),
+/// ```
+///
+/// where `P(a | h)` is the shared [`BackoffModel`] and `g` the episode's
+/// [`EncodedEpisode::group`]. The condition is dropped before any history is,
+/// so a rare group falls back to the shared model rather than to a shorter
+/// context. This is the right structure for "the LLM named the intent": the
+/// intent sharpens predictions where the data support it and costs nothing
+/// where they do not.
+#[derive(Clone, Debug)]
+pub struct GroupedModel {
+    base: BackoffModel,
+    beta: f64,
+    top: HashMap<(u32, Vec<Symbol>), Counts>,
+}
+
+impl GroupedModel {
+    /// Fit on `episodes`, with concentration `alpha` for the shared model
+    /// and `beta` for the group layer.
+    pub fn fit(
+        order: usize,
+        alpha: f64,
+        beta: f64,
+        vocab_size: usize,
+        episodes: &[EncodedEpisode],
+    ) -> Self {
+        let base = BackoffModel::fit(order, alpha, vocab_size, episodes);
+        let mut top: HashMap<(u32, Vec<Symbol>), Counts> = HashMap::new();
+        for ep in episodes {
+            for t in 0..ep.actions.len() {
+                let key = (ep.group, BackoffModel::context(&ep.symbols[..t], order));
+                let c = top.entry(key).or_default();
+                *c.by_action.entry(ep.actions[t]).or_insert(0.0) += 1.0;
+                c.total += 1.0;
+            }
+        }
+        Self { base, beta, top }
+    }
+
+    fn layer(&self, ep: &EncodedEpisode, t: usize) -> Option<&Counts> {
+        let ctx = BackoffModel::context(&ep.symbols[..t], self.base.order);
+        self.top.get(&(ep.group, ctx))
+    }
+}
+
+impl Predictor for GroupedModel {
+    fn predict_at(&self, ep: &EncodedEpisode, t: usize) -> Vec<f64> {
+        let mut p = self.base.predict(&ep.symbols[..t]);
+        if let Some(c) = self.layer(ep, t) {
+            let denom = c.total + self.beta;
+            for (a, pa) in p.iter_mut().enumerate() {
+                let n = c.by_action.get(&(a as u32)).copied().unwrap_or(0.0);
+                *pa = (n + self.beta * *pa) / denom;
+            }
+        }
+        p
+    }
+    fn prob_at(&self, ep: &EncodedEpisode, t: usize, action: u32) -> f64 {
+        let p = self.base.prob(&ep.symbols[..t], action);
+        match self.layer(ep, t) {
+            Some(c) => {
+                let n = c.by_action.get(&action).copied().unwrap_or(0.0);
+                (n + self.beta * p) / (c.total + self.beta)
+            }
+            None => p,
+        }
+    }
+    fn evidence_at(&self, ep: &EncodedEpisode, t: usize) -> f64 {
+        self.base.evidence(&ep.symbols[..t])
+    }
+}
+
 /// Held-out predictive quality.
 #[derive(Clone, Copy, Debug, Default, Serialize)]
 pub struct EvalStats {
@@ -163,11 +293,11 @@ pub struct EvalStats {
 }
 
 /// Evaluate `model` on held-out episodes.
-pub fn evaluate(model: &BackoffModel, episodes: &[EncodedEpisode]) -> EvalStats {
+pub fn evaluate(model: &impl Predictor, episodes: &[EncodedEpisode]) -> EvalStats {
     let (mut n, mut bits, mut hits) = (0usize, 0.0, 0usize);
     for ep in episodes {
         for t in 0..ep.actions.len() {
-            let p = model.predict(&ep.symbols[..t]);
+            let p = model.predict_at(ep, t);
             let a = ep.actions[t] as usize;
             bits -= p[a].log2();
             hits += (argmax(&p) == a) as usize;
@@ -182,6 +312,18 @@ pub fn evaluate(model: &BackoffModel, episodes: &[EncodedEpisode]) -> EvalStats 
         bits_per_step: bits / n as f64,
         top1: hits as f64 / n as f64,
     }
+}
+
+/// Total log-likelihood (nats) of the actions in `episodes` under `model`.
+pub fn log_likelihood(model: &impl Predictor, episodes: &[EncodedEpisode]) -> f64 {
+    episodes
+        .iter()
+        .map(|ep| {
+            (0..ep.actions.len())
+                .map(|t| model.prob_at(ep, t, ep.actions[t]).ln())
+                .sum::<f64>()
+        })
+        .sum()
 }
 
 /// One point on a coverage/accuracy curve.
@@ -200,7 +342,7 @@ pub struct CoveragePoint {
 /// `min_evidence` training observations, and how often that option matches
 /// what the agent actually did.
 pub fn coverage_curve(
-    model: &BackoffModel,
+    model: &impl Predictor,
     episodes: &[EncodedEpisode],
     thresholds: &[f64],
     min_evidence: f64,
@@ -208,10 +350,9 @@ pub fn coverage_curve(
     let mut decisions: Vec<(f64, bool)> = Vec::new();
     for ep in episodes {
         for t in 0..ep.actions.len() {
-            let h = &ep.symbols[..t];
-            let p = model.predict(h);
+            let p = model.predict_at(ep, t);
             let top = argmax(&p);
-            let conf = if model.evidence(h) >= min_evidence {
+            let conf = if model.evidence_at(ep, t) >= min_evidence {
                 p[top]
             } else {
                 0.0
@@ -255,7 +396,7 @@ pub enum Position {
 impl Position {
     /// The position of decision `t` in `ep`.
     pub fn of(ep: &EncodedEpisode, t: usize) -> Self {
-        match t.checked_sub(1).map(|p| ep.symbols[p] % 4) {
+        match t.checked_sub(1).map(|p| ep.outcomes[p]) {
             Some(0) | Some(1) => Position::AfterTool,
             _ => Position::AfterUser,
         }
@@ -277,7 +418,7 @@ pub struct PositionStats {
 
 /// [`evaluate`] and [`coverage_curve`] split by [`Position`], at one threshold.
 pub fn by_position(
-    model: &BackoffModel,
+    model: &impl Predictor,
     episodes: &[EncodedEpisode],
     threshold: f64,
     min_evidence: f64,
@@ -291,14 +432,13 @@ pub fn by_position(
             let (mut n, mut bits, mut hits, mut taken, mut right) = (0usize, 0.0, 0usize, 0, 0);
             for ep in episodes {
                 for t in (0..ep.actions.len()).filter(|&t| Position::of(ep, t) == pos) {
-                    let h = &ep.symbols[..t];
-                    let p = model.predict(h);
+                    let p = model.predict_at(ep, t);
                     let a = ep.actions[t] as usize;
                     let top = argmax(&p);
                     n += 1;
                     bits -= p[a].log2();
                     hits += (top == a) as usize;
-                    if model.evidence(h) >= min_evidence && p[top] >= threshold {
+                    if model.evidence_at(ep, t) >= min_evidence && p[top] >= threshold {
                         taken += 1;
                         right += (top == a) as usize;
                     }
@@ -339,8 +479,10 @@ mod tests {
     fn ep(actions: &[u32]) -> EncodedEpisode {
         EncodedEpisode {
             actions: actions.to_vec(),
+            outcomes: vec![0; actions.len()],
             symbols: actions.iter().map(|a| a * 4).collect(),
             success: true,
+            group: 0,
         }
     }
 
@@ -362,6 +504,30 @@ mod tests {
         assert!(after_one[2] > 0.9);
         let unseen = m.predict(&[12, 12]);
         assert!((unseen.iter().sum::<f64>() - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn a_group_sharpens_only_where_it_is_supported() {
+        // After action 1, group 1 always does 2 and group 2 always does 3.
+        let mut data = Vec::new();
+        for _ in 0..30 {
+            data.push(ep(&[1, 2]).with_group(1));
+            data.push(ep(&[1, 3]).with_group(2));
+        }
+        let shared = BackoffModel::fit(1, 1.0, 5, &data);
+        let grouped = GroupedModel::fit(1, 1.0, 1.0, 5, &data);
+        let probe = |g: u32, a: u32| {
+            let e = ep(&[1, a]).with_group(g);
+            (shared.prob_at(&e, 1, a), grouped.prob_at(&e, 1, a))
+        };
+        let (s, g) = probe(1, 2);
+        assert!(s < 0.6 && g > 0.9, "shared {s}, grouped {g}");
+        // An unseen group falls back to the shared model exactly.
+        let (s, g) = probe(9, 2);
+        assert!((s - g).abs() < 1e-12);
+        let e = ep(&[1, 2]).with_group(1);
+        let z: f64 = grouped.predict_at(&e, 1).iter().sum();
+        assert!((z - 1.0).abs() < 1e-12);
     }
 
     #[test]

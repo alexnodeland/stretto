@@ -36,6 +36,9 @@ enum Command {
         /// Seed for the MH chain.
         #[arg(long, default_value_t = 7)]
         seed: u64,
+        /// Skip learning code features from tool outputs.
+        #[arg(long)]
+        no_features: bool,
         /// Write the Markdown report here (default: stdout).
         #[arg(long)]
         out: Option<PathBuf>,
@@ -55,6 +58,7 @@ fn main() -> Result<()> {
             alpha,
             min_evidence,
             seed,
+            no_features,
             out,
             json,
         } => {
@@ -65,6 +69,7 @@ fn main() -> Result<()> {
             config.fixed_alpha = alpha;
             config.min_evidence = min_evidence;
             config.seed = seed;
+            config.features = !no_features;
             let report = phase0::run(&config)?;
             let md = render::markdown(&report);
             match out {

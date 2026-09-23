@@ -1,6 +1,6 @@
 //! Markdown rendering of a Phase 0 report.
 
-use crate::phase0::{DomainReport, Report};
+use crate::phase0::{DomainReport, FeaturedReport, Report, VariantStats};
 use std::fmt::Write as _;
 use stretto_model::provenance::Source;
 use stretto_model::world::Position;
@@ -55,6 +55,9 @@ pub fn markdown(report: &Report) -> String {
          what the user had said and in earlier tool outputs. *Generated* values appear in \
          neither, so the agent had to produce them. *Short* values (< 3 characters) are not \
          attributed.\n\
+         - **Code features** are enum-like fields read from JSON tool outputs by code, kept \
+         only if they raise the likelihood of *held-out tasks*: a field that merely identifies \
+         the task (a user's city) looks predictive on repeated trials and is rejected.\n\
          - **Writes after \"yes\" / any assent** look at the user's most recent message \
          before each write call: the strict proxy needs the word \"yes\", the lenient one also \
          accepts phrases like \"go ahead\" or \"proceed\". The true confirmation rate lies \
@@ -207,6 +210,10 @@ fn domain(s: &mut String, d: &DomainReport, report: &Report) {
     }
     let _ = writeln!(s);
 
+    if let Some(f) = &d.featured {
+        featured(s, d, f, report);
+    }
+
     let _ = writeln!(
         s,
         "### Transfer: top-1 when the habit comes from another model (k = {})\n",
@@ -276,6 +283,100 @@ fn domain(s: &mut String, d: &DomainReport, report: &Report) {
             share(Source::Generated),
             share(Source::Literal),
             share(Source::Short),
+        );
+    }
+    let _ = writeln!(s);
+}
+
+fn featured(s: &mut String, d: &DomainReport, f: &FeaturedReport, report: &Report) {
+    let st = &report.settings;
+    let _ = writeln!(
+        s,
+        "### What the habit gains from code features and a named intent (all models pooled, k = {})\n",
+        st.order
+    );
+    if f.selected.is_empty() {
+        let _ = writeln!(
+            s,
+            "{} candidate fields in tool outputs; none improved the likelihood of held-out tasks.\n",
+            f.candidates
+        );
+    } else {
+        let _ = writeln!(
+            s,
+            "{} candidate fields in tool outputs. Kept, in order, because each raised the \
+             log-likelihood of held-out tasks (5-fold cross-validation grouped by task):\n",
+            f.candidates
+        );
+        let _ = writeln!(s, "| Tool | Field | Values | Gain (nats) |");
+        let _ = writeln!(s, "|---|---|---|---|");
+        for x in &f.selected {
+            let _ = writeln!(
+                s,
+                "| `{}` | `{}` | {} | {:.1} |",
+                x.tool, x.field, x.values, x.gain
+            );
+        }
+        let _ = writeln!(s);
+    }
+    let _ = writeln!(
+        s,
+        "The named intent is the set of write tools the episode goes on to call ({} distinct), \
+         standing in for what the LLM states when it calls a macro-tool. It is layered on top of \
+         the shared model, so rare intents fall back to it.\n",
+        f.intents
+    );
+    let at = |v: &[stretto_model::CoveragePoint], tau: f64| {
+        v.iter()
+            .find(|c| (c.threshold - tau).abs() < 1e-9)
+            .map(|c| format!("{} / {}", pct(c.coverage), pct(c.accuracy)))
+            .unwrap_or_default()
+    };
+    let pos = |v: &[stretto_model::world::PositionStats], p: Position| {
+        v.iter()
+            .find(|x| x.position == p)
+            .map(|x| {
+                format!(
+                    "{} / {}",
+                    pct(x.coverage.coverage),
+                    pct(x.coverage.accuracy)
+                )
+            })
+            .unwrap_or_default()
+    };
+    let k = |v: &[(usize, stretto_model::EvalStats)]| {
+        v.iter()
+            .find(|(o, _)| *o == st.order)
+            .map(|(_, e)| format!("{:.2} | {}", e.bits_per_step, pct(e.top1)))
+            .unwrap_or_default()
+    };
+    let _ = writeln!(
+        s,
+        "| Habit sees | Bits/step | Top-1 | After a tool: cover / agree at τ={t} | After the user: cover / agree at τ={t} | All: cover / agree at τ=0.8 | at τ=0.9 |",
+        t = st.position_threshold
+    );
+    let _ = writeln!(s, "|---|---|---|---|---|---|---|");
+    let seq = VariantStats {
+        alpha: None,
+        alpha_used: d.alpha_used,
+        by_order: d.pooled.by_order.clone(),
+        coverage: d.pooled.coverage.clone(),
+        positions: d.pooled.positions.clone(),
+    };
+    for (name, v) in [
+        ("the action sequence", &seq),
+        ("+ code features", &f.code),
+        ("+ code features + named intent", &f.code_and_intent),
+    ] {
+        let _ = writeln!(
+            s,
+            "| {} | {} | {} | {} | {} | {} |",
+            name,
+            k(&v.by_order),
+            pos(&v.positions, Position::AfterTool),
+            pos(&v.positions, Position::AfterUser),
+            at(&v.coverage, 0.8),
+            at(&v.coverage, 0.9)
         );
     }
     let _ = writeln!(s);

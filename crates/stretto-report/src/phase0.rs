@@ -7,10 +7,15 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use stretto_model::alpha::{alpha_posterior, AlphaPosterior};
 use stretto_model::bursts::{runs, summarize, RunSummary};
+use stretto_model::features::{
+    discover, select, step_outputs, FeatureMap, Selected, StepOutput, TrainEpisode,
+};
 use stretto_model::policy::write_confirmations;
 use stretto_model::provenance::{argument_provenance, Source};
 use stretto_model::world::{by_position, coverage_curve, evaluate, PositionStats};
-use stretto_model::{steps, BackoffModel, CoveragePoint, EncodedEpisode, EvalStats, Vocab};
+use stretto_model::{
+    steps, BackoffModel, CoveragePoint, EncodedEpisode, EvalStats, GroupedModel, Step, Vocab,
+};
 use stretto_trace::tau2::{load_manifest, load_results, load_split, Split, Tau2Run};
 use stretto_trace::{Episode, ToolKind, ToolManifest};
 
@@ -39,6 +44,14 @@ pub struct Config {
     pub top_runs: usize,
     /// Threshold for the by-position coverage breakdown.
     pub position_threshold: f64,
+    /// Also learn code features from tool outputs and report the difference.
+    pub features: bool,
+    /// Most distinct values a candidate field may take.
+    pub feature_max_values: usize,
+    /// Minimum log-evidence gain (nats) for a field to be added.
+    pub feature_min_gain: f64,
+    /// Most fields to select.
+    pub feature_max_fields: usize,
 }
 
 impl Config {
@@ -56,6 +69,10 @@ impl Config {
             seed: 7,
             top_runs: 12,
             position_threshold: 0.8,
+            features: true,
+            feature_max_values: 8,
+            feature_min_gain: 5.0,
+            feature_max_fields: 8,
         }
     }
 }
@@ -110,6 +127,41 @@ pub struct DomainReport {
     pub top_runs: Vec<RunSignature>,
     /// Argument provenance by tool and argument.
     pub provenance: Vec<ProvenanceRow>,
+    /// The pooled habit again, with code features read from tool outputs.
+    pub featured: Option<FeaturedReport>,
+}
+
+/// The pooled habit with code features from tool outputs, and again with the
+/// episode's intent named up front.
+#[derive(Clone, Debug, Serialize)]
+pub struct FeaturedReport {
+    /// Candidate fields discovered.
+    pub candidates: usize,
+    /// Fields chosen by grouped cross-validation, in order of selection.
+    pub selected: Vec<Selected>,
+    /// Distinct intents (sets of write tools an episode calls).
+    pub intents: usize,
+    /// Habit with the selected code features.
+    pub code: VariantStats,
+    /// Habit with the code features *and* the episode's intent: what a
+    /// macro-tool call supplies, since the LLM names the intent when it calls
+    /// the flow.
+    pub code_and_intent: VariantStats,
+}
+
+/// Held-out results for one variant of the habit.
+#[derive(Clone, Debug, Serialize)]
+pub struct VariantStats {
+    /// Posterior over α, if inferred.
+    pub alpha: Option<AlphaPosterior>,
+    /// α used.
+    pub alpha_used: f64,
+    /// Held-out predictability at each context length.
+    pub by_order: Vec<(usize, EvalStats)>,
+    /// Held-out coverage/accuracy at the configured context length.
+    pub coverage: Vec<CoveragePoint>,
+    /// Predictability and coverage by decision position.
+    pub positions: Vec<PositionStats>,
 }
 
 /// One agent model in one domain.
@@ -352,6 +404,10 @@ fn domain(config: &Config, domain: &str) -> Result<DomainReport> {
     top_runs.sort_by(|a, b| b.count.cmp(&a.count).then(a.tools.cmp(&b.tools)));
     top_runs.truncate(config.top_runs);
 
+    let featured = config
+        .features
+        .then(|| featured(config, &all_episodes, &split, &vocab, &manifest, alpha_used));
+
     Ok(DomainReport {
         domain: domain.to_string(),
         train_tasks: split.train.len(),
@@ -374,6 +430,174 @@ fn domain(config: &Config, domain: &str) -> Result<DomainReport> {
         transfer,
         top_runs,
         provenance: provenance(&all_episodes, &manifest),
+        featured,
+    })
+}
+
+struct Prepared {
+    steps: Vec<Step>,
+    outputs: Vec<StepOutput>,
+    success: bool,
+    train: bool,
+    test: bool,
+    group: u64,
+    intent: String,
+}
+
+/// An episode's intent: the sorted set of write tools it calls.
+fn intent(ep: &Episode, manifest: &ToolManifest) -> String {
+    let mut writes: Vec<&str> = ep
+        .tool_calls()
+        .filter(|c| manifest.is_write(&c.name))
+        .map(|c| c.name.as_str())
+        .collect();
+    writes.sort();
+    writes.dedup();
+    if writes.is_empty() {
+        "(no write)".to_string()
+    } else {
+        writes.join("+")
+    }
+}
+
+fn variant(
+    config: &Config,
+    vocab: &Vocab,
+    train: Vec<EncodedEpisode>,
+    test: &[EncodedEpisode],
+    alpha_default: f64,
+) -> VariantStats {
+    let alpha = (config.alpha_samples > 0).then(|| {
+        alpha_posterior(
+            Arc::new(train.clone()),
+            config.order,
+            vocab.len(),
+            config.alpha_samples,
+            config.seed,
+        )
+    });
+    let a = alpha.as_ref().map_or(alpha_default, |p| p.median);
+    let habit = BackoffModel::fit(config.order, a, vocab.len(), &train);
+    VariantStats {
+        alpha,
+        alpha_used: a,
+        by_order: config
+            .orders
+            .iter()
+            .map(|&k| {
+                let m = BackoffModel::fit(k, a, vocab.len(), &train);
+                (k, evaluate(&m, test))
+            })
+            .collect(),
+        coverage: coverage_curve(&habit, test, &config.thresholds, config.min_evidence),
+        positions: by_position(&habit, test, config.position_threshold, config.min_evidence),
+    }
+}
+
+fn featured(
+    config: &Config,
+    episodes: &[&Episode],
+    split: &Split,
+    vocab: &Vocab,
+    manifest: &ToolManifest,
+    alpha_used: f64,
+) -> FeaturedReport {
+    let train_ids: HashSet<&str> = split.train.iter().map(String::as_str).collect();
+    let test_ids: HashSet<&str> = split.test.iter().map(String::as_str).collect();
+    let prepared: Vec<Prepared> = episodes
+        .iter()
+        .map(|ep| Prepared {
+            steps: steps(ep),
+            outputs: step_outputs(ep),
+            success: ep.succeeded(),
+            train: train_ids.contains(ep.task_id.as_str()),
+            test: test_ids.contains(ep.task_id.as_str()),
+            group: task_group(&ep.task_id),
+            intent: intent(ep, manifest),
+        })
+        .collect();
+    let habit_set: Vec<&Prepared> = prepared.iter().filter(|p| p.train && p.success).collect();
+    let test_set: Vec<&Prepared> = prepared.iter().filter(|p| p.test).collect();
+
+    let train_outputs: Vec<&[StepOutput]> =
+        habit_set.iter().map(|p| p.outputs.as_slice()).collect();
+    let candidates = discover(&train_outputs, config.feature_max_values);
+    let train_eps: Vec<TrainEpisode> = habit_set
+        .iter()
+        .map(|p| TrainEpisode {
+            steps: &p.steps,
+            outputs: &p.outputs,
+            group: p.group,
+        })
+        .collect();
+    let selected = select(
+        &train_eps,
+        &candidates,
+        vocab,
+        config.order,
+        alpha_used,
+        config.feature_min_gain,
+        config.feature_max_fields,
+    );
+    let fields: Vec<_> = selected
+        .iter()
+        .map(|s| (s.tool.clone(), s.field.clone()))
+        .collect();
+    let map = FeatureMap::fit(&fields, &train_outputs);
+
+    let mut intent_ids: BTreeMap<&str, u32> = BTreeMap::new();
+    for p in &prepared {
+        let next = intent_ids.len() as u32 + 1;
+        intent_ids.entry(p.intent.as_str()).or_insert(next);
+    }
+    let encode = |p: &&Prepared| {
+        let f = map.features(&p.outputs);
+        EncodedEpisode::encode_with_features(&p.steps, Some(&f), vocab, p.success)
+            .with_group(intent_ids[p.intent.as_str()])
+    };
+    let train: Vec<EncodedEpisode> = habit_set.iter().map(encode).collect();
+    let test: Vec<EncodedEpisode> = test_set.iter().map(encode).collect();
+
+    let code = variant(config, vocab, train.clone(), &test, alpha_used);
+    let a = code.alpha_used;
+    let intent_habit = GroupedModel::fit(config.order, a, a, vocab.len(), &train);
+    let code_and_intent = VariantStats {
+        alpha: None,
+        alpha_used: a,
+        by_order: config
+            .orders
+            .iter()
+            .map(|&k| {
+                let m = GroupedModel::fit(k, a, a, vocab.len(), &train);
+                (k, evaluate(&m, &test))
+            })
+            .collect(),
+        coverage: coverage_curve(
+            &intent_habit,
+            &test,
+            &config.thresholds,
+            config.min_evidence,
+        ),
+        positions: by_position(
+            &intent_habit,
+            &test,
+            config.position_threshold,
+            config.min_evidence,
+        ),
+    };
+    FeaturedReport {
+        candidates: candidates.len(),
+        selected,
+        intents: intent_ids.len(),
+        code,
+        code_and_intent,
+    }
+}
+
+/// A stable group id for a task, so all of its episodes share a fold.
+fn task_group(task_id: &str) -> u64 {
+    task_id.bytes().fold(1469598103934665603u64, |h, b| {
+        (h ^ b as u64).wrapping_mul(1099511628211)
     })
 }
 

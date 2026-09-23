@@ -86,8 +86,10 @@ mod tests {
     fn ep(actions: &[u32]) -> EncodedEpisode {
         EncodedEpisode {
             actions: actions.to_vec(),
+            outcomes: vec![0; actions.len()],
             symbols: actions.iter().map(|a| a * 4).collect(),
             success: true,
+            group: 0,
         }
     }
 

@@ -26,7 +26,10 @@ It takes about 10 seconds. First results, with their interpretation, are in [doc
 
 - **Macro-tool headroom.** About a quarter of LLM turns are spent inside runs of consecutive tool calls that a macro-tool could perform in one call.
 - **Arguments can mostly be bound.** Identifiers, items, payment methods and flights in write calls almost always appear verbatim in an earlier tool output or user message, so flows can bind them instead of generating them. The values agents actually generate are mostly closed-set choices (a cancellation reason, a flight type), which suit a Jev `Choice`, and arithmetic, which belongs in code.
-- **A habit that only sees the tool sequence is not enough.** It can take just 6–8% of decisions right after a tool returns at 80% confidence. Continuing a run depends on what the tool returned, which is the System-One model's job.
+- **A habit that only sees the tool sequence is not enough.** It can take just 6–8% of decisions right after a tool returns at 80% confidence.
+  - Code features read from tool outputs help a little: they are kept only if they help on held-out tasks, which rejects fields that merely identify a task.
+  - Naming the intent, as a macro-tool call does, lifts retail coverage from 15% to 24%.
+  - About three quarters of decisions still need content-aware judgment: that is Phase 0b's job, with Jev.
 - **Behavior transfers across models.** A habit learned from one model predicts another within 3–7 points of top-1 of that model's own habit.
 
 ## Crates
