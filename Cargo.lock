@@ -1062,6 +1062,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "stretto-proxy"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "clap",
+ "serde",
+ "serde_json",
+ "stretto-trace",
+]
+
+[[package]]
 name = "stretto-report"
 version = "0.0.1"
 dependencies = [

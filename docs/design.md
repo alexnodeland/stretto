@@ -43,10 +43,14 @@ The full rationale, prior work and risks are in fugue's [RFC-001](https://github
 ## Pieces
 
 ```text
-τ²-bench logs ─┐
-MCP proxy logs ┼─► stretto-trace (Episode) ─► stretto-model (abstraction, world model, provenance)
-               │                                      │
-               │                      stretto-report (Phase 0) ◄── stretto-oracle (Jev, cache)
-               │
-               └─ later: stretto-compile (flow IR → fugue Model) ─► stretto-proxy (macro-tools, runtime)
+τ²-bench logs ──────────────────┐
+stretto-proxy (records MCP) ────┼─► stretto-trace (Episode) ─► stretto-model (abstraction, world model,
+                                │                              provenance, projection)
+                                │                                      │
+                                │         stretto-report (Phase 0, 0b) ◄── stretto-oracle (Jev, cache)
+                                │
+                                └─ later: stretto-compile (flow IR → fugue Model) ─► stretto-proxy
+                                          serving macro-tools, with the arbitration runtime
 ```
+
+Today `stretto-proxy` only records: it forwards every line unchanged and writes a session log. Serving compiled flows as `plan_*` / `resume_*` / `commit_*` macro-tools, and checking raw writes against compiled rules, are later phases in the same process.

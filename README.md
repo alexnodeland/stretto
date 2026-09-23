@@ -26,7 +26,7 @@ It takes about 20 seconds. To also measure transfer to GLM-5, whose trajectories
 
 ```bash
 cargo run --release -p stretto-report -- phase0 --tau2 ../tau2-bench \
-  $(scripts/fetch-targets.sh | sed 's/^/--target /') --out reports/phase0.md
+  $(scripts/fetch-leaderboard.sh | sed 's/^/--target /') --out reports/phase0.md
 ```
 
 **Phase 0b** asks a System-One model at every held-out decision a flow would hand it: right after a tool returns, which tool comes next or whether to hand back, and each closed-set argument. It needs `TYPESAFE_API_KEY` in the environment:
@@ -34,7 +34,7 @@ cargo run --release -p stretto-report -- phase0 --tau2 ../tau2-bench \
 ```bash
 cargo run --release -p stretto-report -- jev-check     # key, TLS and latency, one question
 cargo run --release -p stretto-report -- phase0 --tau2 ../tau2-bench \
-  $(scripts/fetch-targets.sh glm-5 | sed 's/^/--target /') \
+  $(scripts/fetch-leaderboard.sh glm-5 | sed 's/^/--target /') \
   --oracle jev --out reports/phase0b.md --json reports/phase0b.json
 ```
 
@@ -51,19 +51,21 @@ First results, with their interpretation, are in [docs/results/phase0-2026-09-23
 - **Behavior transfers across models.** A habit learned from one model predicts another within 3–7 points of top-1 of that model's own habit.
 - **Projection.** Replaying held-out episodes through macro-tool flows:
   - the habit alone saves at most 1.2% of LLM turns;
-  - with a System-One model that always agrees with the agent, savings reach 22.0% (retail) and 20.6% (airline), against a 23–24% ceiling;
-  - input tokens fall faster (26–28%) and output tokens slower (19–25%). Dollars fall 32–38%, but that figure is dominated by Claude 3.7 Sonnet's uncached runs.
-- **The gate depends on how the agent calls tools.** Models that call tools one at a time leave the most to collapse: Claude 3.7 Sonnet saves 33–37%, o4-mini 23–25%. Models that batch parallel calls save less: GPT-4.1 11–19%, GPT-4.1-mini 7–12%. GLM-5, never trained on, saves 28.5% in retail but only 15.4% in airline, where its ceiling is 18.9%.
-- **Validated arbitration makes the habit a stopping rule.** Requiring ≥99% cross-validated agreement per context leaves only contexts where the habit hands back to the LLM. That is safe (no risky decisions on held-out tasks), but it leaves about 7 decisions per episode to Jev. Phase 0b measures how well Jev takes them.
+  - with a System-One model that always agrees with the agent, savings reach 22.3% (retail) and 20.6% (airline), against a 23–24% ceiling;
+  - input tokens fall faster (27–28%) and output tokens slower (19–25%). Dollars fall 32–38%, but that figure is dominated by Claude 3.7 Sonnet's uncached runs.
+- **The gate depends on how the agent calls tools.** Across nine current leaderboard models the habit never trained on, all clear 20% in retail, from 28.6% (Claude Opus 4.5) to 43.5% (Qwen3.5). In airline, the heaviest parallel callers fall short: Claude Opus 4.5 (13.4%), GLM-5 (15.4%) and GPT-5.2 with reasoning off (17.9%). Models that never call in parallel, such as Qwen3.5 and Qwen3-Max, leave the most to collapse.
+- **Validated arbitration makes the habit a stopping rule.** Requiring ≥99% cross-validated agreement per context, from at least 10 distinct tasks, leaves one context per domain, and both hand back to the LLM. That is safe (no risky decisions on held-out tasks), but it leaves about 7.5 decisions per episode to Jev. Counting tasks matters: a context validated on 28 decisions from a few tasks held only 43% on new ones.
+- **Compile from current frontier runs.** Habits from Claude Opus 4.5, Sonnet 4.5 and Gemini 3 predict GLM-5 as well as its own habit in retail (66–67%) and better in airline (62% against 57%); the 2025 baselines do worse. `--no-baselines --source ...` trains on them.
 
 ## Crates
 
 | Crate | What it does |
 |---|---|
-| `stretto-trace` | Canonical episode schema; τ²-bench results ingest; tool manifests |
+| `stretto-trace` | Canonical episode schema; τ²-bench results ingest; MCP proxy log ingest; tool manifests with docs |
 | `stretto-model` | Action abstraction; hierarchical Dirichlet back-off world model; concentration posterior via fugue; argument provenance; tool runs; policy checks |
 | `stretto-oracle` | `Oracle` trait; Jev HTTP client (`POST /v1/systemone`); on-disk replay cache; mock |
-| `stretto-report` | The `stretto` CLI and the Phase 0 report |
+| `stretto-report` | The `stretto` CLI, the Phase 0 report, and Phase 0b (System-One questions at held-out decisions) |
+| `stretto-proxy` | A stdio MCP proxy that forwards every line unchanged and records sessions for `stretto-trace` ([README](crates/stretto-proxy/README.md)) |
 
 ## Roadmap
 
@@ -71,7 +73,7 @@ First results, with their interpretation, are in [docs/results/phase0-2026-09-23
 |---|---|---|
 | 0a | Predictability, headroom and provenance on published trajectories | Nothing (done) |
 | 0b | Replayed shadow mode: ask Jev at every decision a flow would hand it (next step, closed-set arguments), score agreement and calibration, and re-run the projection with its answers. Harness built; matching descriptions to records and judging tool outputs come next | `TYPESAFE_API_KEY` |
-| 1 | Rust MCP proxy that records traffic; rule checks compiled from policy and tested against traces | — |
+| 1 | Rust MCP proxy that records traffic (recording done: `stretto-proxy`); rule checks compiled from policy and tested against traces | — |
 | 2 | Flow compiler; `plan_*` / `resume_*` / `commit_*` macro-tools; arbitration runtime; live τ²-bench arms on GLM and MiniMax | GLM (Z.ai) and MiniMax keys |
 | 3 | Predicate refinement, per-decision counterfactual evaluation, flow search with fugue-evo, then American frontier models | — |
 

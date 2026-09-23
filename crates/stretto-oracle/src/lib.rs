@@ -138,16 +138,69 @@ impl<O: Oracle> ReplayCache<O> {
         }
     }
 
-    fn path(&self, key: &str) -> PathBuf {
-        self.dir.join(&key[..2]).join(format!("{key}.json"))
-    }
-
     fn read(path: &Path) -> Result<Option<Response>> {
         match std::fs::read_to_string(path) {
             Ok(text) => Ok(Some(serde_json::from_str(&text)?)),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
             Err(e) => Err(e.into()),
         }
+    }
+}
+
+impl<O> ReplayCache<O> {
+    /// Every cached `(key, response)`, sorted by key. Responses carry only
+    /// the oracle's answers and usage, never the request's state.
+    pub fn entries(&self) -> Result<Vec<(String, Response)>> {
+        let mut out = Vec::new();
+        let shards = match std::fs::read_dir(&self.dir) {
+            Ok(d) => d,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(out),
+            Err(e) => return Err(e.into()),
+        };
+        for shard in shards {
+            let shard = shard?.path();
+            if !shard.is_dir() {
+                continue;
+            }
+            for file in std::fs::read_dir(&shard)? {
+                let path = file?.path();
+                if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                    continue;
+                }
+                let key = path
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or_default()
+                    .to_string();
+                let text = std::fs::read_to_string(&path)
+                    .with_context(|| format!("reading {}", path.display()))?;
+                out.push((key, serde_json::from_str(&text)?));
+            }
+        }
+        out.sort_by(|a, b| a.0.cmp(&b.0));
+        Ok(out)
+    }
+
+    /// Store `response` under `key`, as if it had been asked.
+    pub fn insert(&self, key: &str, response: &Response) -> Result<()> {
+        if key.len() < 3 || !key.chars().all(|c| c.is_ascii_hexdigit()) {
+            bail!("not a request key: {key:?}");
+        }
+        let path = self.path(key);
+        let parent = path.parent().expect("cache paths have a parent");
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("creating {}", parent.display()))?;
+        static WRITES: AtomicU64 = AtomicU64::new(0);
+        let n = WRITES.fetch_add(1, Ordering::Relaxed);
+        let tmp = path.with_extension(format!("tmp{}-{n}", std::process::id()));
+        std::fs::write(&tmp, serde_json::to_vec_pretty(response)?)
+            .with_context(|| format!("writing {}", tmp.display()))?;
+        std::fs::rename(&tmp, &path).with_context(|| format!("writing {}", path.display()))?;
+        Ok(())
+    }
+
+    fn path(&self, key: &str) -> PathBuf {
+        self.dir.join(&key[..2]).join(format!("{key}.json"))
     }
 }
 
@@ -162,16 +215,8 @@ impl<O: Oracle> Oracle for ReplayCache<O> {
             bail!("replay cache miss for request {key}");
         };
         let response = inner.ask(request)?;
-        let parent = path.parent().expect("cache paths have a parent");
-        std::fs::create_dir_all(parent)
-            .with_context(|| format!("creating {}", parent.display()))?;
-        // Write then rename, so a concurrent reader never sees half a file.
-        static WRITES: AtomicU64 = AtomicU64::new(0);
-        let n = WRITES.fetch_add(1, Ordering::Relaxed);
-        let tmp = path.with_extension(format!("tmp{}-{n}", std::process::id()));
-        std::fs::write(&tmp, serde_json::to_vec_pretty(&response)?)
-            .with_context(|| format!("writing {}", tmp.display()))?;
-        std::fs::rename(&tmp, &path).with_context(|| format!("writing {}", path.display()))?;
+        // Written then renamed, so a concurrent reader never sees half a file.
+        self.insert(&key, &response)?;
         Ok(response)
     }
 }
@@ -343,6 +388,18 @@ mod tests {
         let mut other = req.clone();
         other.state = serde_json::json!("something else");
         assert!(offline.ask(&other).is_err());
+
+        // Entries export the answers alone, and import into another cache.
+        let entries = offline.entries().unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].0, request_key(&req));
+        let copy_dir = dir.with_extension("copy");
+        let _ = std::fs::remove_dir_all(&copy_dir);
+        let copy: ReplayCache<MockOracle> = ReplayCache::new(&copy_dir, None);
+        copy.insert(&entries[0].0, &entries[0].1).unwrap();
+        assert_eq!(copy.ask(&req).unwrap(), first);
+        assert!(copy.insert("../escape", &first).is_err());
         let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&copy_dir);
     }
 }

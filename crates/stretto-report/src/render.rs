@@ -35,6 +35,23 @@ fn label(model: &str, target: bool) -> String {
     }
 }
 
+/// What the habit was trained on, in words.
+fn sources(st: &Settings) -> String {
+    let extra = st
+        .sources
+        .iter()
+        .map(|s| short_model(s))
+        .collect::<Vec<_>>()
+        .join(", ");
+    match (st.baselines, extra.is_empty()) {
+        (true, true) => "τ²-bench's published baseline trajectories".to_string(),
+        (true, false) => {
+            format!("τ²-bench's published baseline trajectories, plus leaderboard runs of {extra}")
+        }
+        (false, _) => format!("leaderboard runs of {extra}"),
+    }
+}
+
 /// Render the report.
 pub fn markdown(report: &Report) -> String {
     let mut s = String::new();
@@ -42,12 +59,14 @@ pub fn markdown(report: &Report) -> String {
     let _ = writeln!(s, "# stretto Phase 0 report\n");
     let _ = writeln!(
         s,
-        "Source: τ²-bench's published baseline trajectories (4 trials per task). The habit \
-         is a hierarchical Dirichlet back-off model of the agent's next action, learned from \
-         the **successful episodes of the official training tasks** and evaluated on the \
-         **held-out test tasks**. Coverage uses context length k = {} and needs at least {} \
-         training observations of a context before the habit may act on it.\n",
-        st.order, st.min_evidence
+        "Source: {} (4 trials per task). The habit is a hierarchical Dirichlet back-off model \
+         of the agent's next action, learned from the **successful episodes of the official \
+         training tasks** and evaluated on the **held-out test tasks**. Coverage uses context \
+         length k = {} and needs at least {} training observations of a context before the \
+         habit may act on it.\n",
+        sources(st),
+        st.order,
+        st.min_evidence
     );
     if report
         .domains
@@ -93,7 +112,8 @@ pub fn markdown(report: &Report) -> String {
          **ceiling** is every run collapsing to one call. A **pause** is a decision inside a run \
          that nobody in the flow may take, or an argument only the LLM can produce.\n\
          - **Validated contexts** are those where the habit's top option matched the agent in at \
-         least the stated share of at least the stated number of decisions, under \
+         least the stated share of at least the stated number of decisions, drawn from at least \
+         the stated number of distinct tasks (a task's trials and models are near-copies), under \
          cross-validation grouped by task.\n\
          - A **risky decision** is one taken inside the flow that differs from the agent: \
          another tool, carrying on when the agent stopped, or another argument value. Handing \
@@ -457,13 +477,15 @@ fn projection(s: &mut String, f: &FeaturedReport, settings: &Settings) {
         s,
         "The habit may act either wherever its top option clears a threshold (with at least {} \
          training observations), or only in *validated* contexts: those where its top option \
-         matched the agent in at least {} of at least {} decisions under {}-fold \
-         cross-validation grouped by task. A habit that hands back too early is safe: the LLM \
+         matched the agent in at least {} of at least {} decisions from at least {} distinct \
+         tasks, under {}-fold cross-validation grouped by task. A habit that hands back too \
+         early is safe: the LLM \
          takes the step, at the cost of one turn. A habit that picks another tool, or carries \
          on when the agent stopped, is the risk.\n",
         settings.min_evidence,
         pct0(settings.validated_min_agreement),
         settings.validated_min_n,
+        settings.validated_min_tasks,
         FOLDS,
     );
     let _ = writeln!(
@@ -502,7 +524,7 @@ fn projection(s: &mut String, f: &FeaturedReport, settings: &Settings) {
         for v in &f.validated {
             let _ = writeln!(
                 s,
-                "| {} | {} | {} of {} | {} |",
+                "| {} | {} | {} of {} ({} tasks) | {} |",
                 v.context
                     .iter()
                     .map(|c| format!("`{c}`"))
@@ -511,6 +533,7 @@ fn projection(s: &mut String, f: &FeaturedReport, settings: &Settings) {
                 v.action,
                 pct1(v.cv_agreed as f64 / v.cv_n.max(1) as f64),
                 v.cv_n,
+                v.cv_tasks,
                 if v.test_n == 0 {
                     "not reached".to_string()
                 } else {
@@ -592,8 +615,16 @@ fn projection(s: &mut String, f: &FeaturedReport, settings: &Settings) {
                 pct0(m.parallel_share),
                 pct1(p.saved_share()),
                 pct1(p.ceiling_share()),
-                pct1(p.input_saved_share()),
-                pct1(p.output_saved_share()),
+                if p.input_tokens > 0.0 {
+                    pct1(p.input_saved_share())
+                } else {
+                    "–".to_string()
+                },
+                if p.output_tokens > 0.0 {
+                    pct1(p.output_saved_share())
+                } else {
+                    "–".to_string()
+                },
                 if p.cost > 0.0 {
                     pct1(p.cost_saved_share())
                 } else {
@@ -601,8 +632,10 @@ fn projection(s: &mut String, f: &FeaturedReport, settings: &Settings) {
                 },
                 if p.cost > 0.0 {
                     dollars_per_episode(p)
-                } else {
+                } else if p.input_tokens > 0.0 {
                     "no cost recorded".to_string()
+                } else {
+                    "no usage recorded".to_string()
                 },
             );
         }

@@ -1,9 +1,10 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use std::collections::BTreeMap;
+use std::io::{BufRead, Write};
 use std::path::PathBuf;
 use std::time::Instant;
-use stretto_oracle::{Answer, NoulCriteria, Oracle, Question, Request};
+use stretto_oracle::{Answer, MockOracle, NoulCriteria, Oracle, Question, ReplayCache, Request};
 use stretto_report::shadow::{OracleKind, ShadowConfig};
 use stretto_report::{phase0, render};
 
@@ -47,6 +48,14 @@ enum Command {
         /// Skip learning code features from tool outputs.
         #[arg(long)]
         no_features: bool,
+        /// Do not train on τ²-bench's published baselines in the checkout
+        /// (then pass --source).
+        #[arg(long)]
+        no_baselines: bool,
+        /// Extra τ²-bench results to train on: `path` or `label=path`
+        /// (repeatable; files for other domains are skipped).
+        #[arg(long = "source")]
+        sources: Vec<String>,
         /// τ²-bench results for an agent model the habit never trains on,
         /// measured as a transfer target: `path` or `label=path` (repeatable;
         /// files for other domains are skipped).
@@ -87,6 +96,20 @@ enum Command {
     /// Check that Jev is reachable with TYPESAFE_API_KEY: ask one small
     /// question (uncached) and print the answer, model version and latency.
     JevCheck,
+    /// Write every cached oracle answer to stdout as JSON lines
+    /// (`{"key", "response"}`). Answers carry no benchmark text, so the
+    /// bundle can be shared to replay Phase 0b without a key.
+    ExportAnswers {
+        /// Replay cache to read.
+        #[arg(long, default_value = ".oracle-cache")]
+        oracle_cache: PathBuf,
+    },
+    /// Read JSON lines from `export-answers` on stdin into a replay cache.
+    ImportAnswers {
+        /// Replay cache to fill.
+        #[arg(long, default_value = ".oracle-cache")]
+        oracle_cache: PathBuf,
+    },
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -107,6 +130,8 @@ fn main() -> Result<()> {
             min_evidence,
             seed,
             no_features,
+            no_baselines,
+            sources,
             targets,
             oracle,
             oracle_cache,
@@ -126,6 +151,8 @@ fn main() -> Result<()> {
             config.min_evidence = min_evidence;
             config.seed = seed;
             config.features = !no_features;
+            config.baselines = !no_baselines;
+            config.sources = sources.iter().map(|t| phase0::Target::parse(t)).collect();
             config.targets = targets.iter().map(|t| phase0::Target::parse(t)).collect();
             config.shadow = oracle.map(|kind| {
                 let mut sc = ShadowConfig::new(match kind {
@@ -158,7 +185,40 @@ fn main() -> Result<()> {
             Ok(())
         }
         Command::JevCheck => jev_check(),
+        Command::ExportAnswers { oracle_cache } => {
+            let cache: ReplayCache<MockOracle> = ReplayCache::new(oracle_cache, None);
+            let mut out = std::io::stdout().lock();
+            for (key, response) in cache.entries()? {
+                serde_json::to_writer(
+                    &mut out,
+                    &serde_json::json!({"key": key, "response": response}),
+                )?;
+                writeln!(out)?;
+            }
+            Ok(())
+        }
+        Command::ImportAnswers { oracle_cache } => {
+            let cache: ReplayCache<MockOracle> = ReplayCache::new(oracle_cache, None);
+            let mut n = 0;
+            for line in std::io::stdin().lock().lines() {
+                let line = line?;
+                if line.trim().is_empty() {
+                    continue;
+                }
+                let entry: AnswerLine = serde_json::from_str(&line)?;
+                cache.insert(&entry.key, &entry.response)?;
+                n += 1;
+            }
+            eprintln!("stretto: imported {n} answers");
+            Ok(())
+        }
     }
+}
+
+#[derive(serde::Deserialize)]
+struct AnswerLine {
+    key: String,
+    response: stretto_oracle::Response,
 }
 
 fn jev_check() -> Result<()> {
