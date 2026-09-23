@@ -3,8 +3,10 @@
 //! An [`Episode`] is one conversation between an agent, a user and a set of
 //! tools, flattened into [`Event`]s in the order they happened. Everything
 //! downstream (abstraction, world model, reports) reads episodes, never a
-//! benchmark's native format; the [`tau2`] module converts τ²-bench results.
+//! benchmark's native format; the [`tau2`] module converts τ²-bench results,
+//! and the [`mcp`] module converts logs recorded by `stretto-proxy`.
 
+pub mod mcp;
 pub mod tau2;
 
 use serde::{Deserialize, Serialize};
@@ -117,7 +119,9 @@ pub enum ToolKind {
     Read,
     /// Changes the environment (database writes).
     Write,
-    /// Neither, e.g. a calculator or a transfer to a human.
+    /// Neither, e.g. a calculator or a transfer to a human. In a manifest
+    /// read from MCP annotations ([`mcp::manifest`]), a tool that gave no
+    /// `readOnlyHint`, so its kind is unknown.
     Generic,
 }
 
