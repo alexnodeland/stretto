@@ -1,6 +1,6 @@
 # Design summary
 
-The full rationale, prior work and risks are in fugue's [RFC-001](https://github.com/alexnodeland/fugue/blob/claude/jev-fugue-agent-harness-00f93u/docs/decisions/rfc/001-habit-compiler.md). This page records what we decided and how the pieces fit.
+The full rationale, prior work and risks are in fugue's [RFC-001](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md). This page records what we decided and how the pieces fit.
 
 ## Decisions (2026-09-23)
 

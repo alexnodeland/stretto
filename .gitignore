@@ -3,3 +3,4 @@ reports/
 .oracle-cache/
 *.profraw
 .env
+.data/

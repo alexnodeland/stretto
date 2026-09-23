@@ -8,20 +8,23 @@ use std::sync::Arc;
 use stretto_model::alpha::{alpha_posterior, AlphaPosterior};
 use stretto_model::bursts::{runs, summarize, RunSummary};
 use stretto_model::features::{
-    discover, select, step_outputs, FeatureMap, Selected, StepOutput, TrainEpisode,
+    discover, select, step_outputs, FeatureMap, Selected, StepOutput, TrainEpisode, FOLDS,
 };
 use stretto_model::policy::write_confirmations;
 use stretto_model::projection::{
-    arg_needs, closed_sets, project, Projection, ProjectionInput, Scenario,
+    arg_needs, closed_sets, fit_prices, project, validated_contexts, Gate, Projection,
+    ProjectionInput, Scenario,
 };
 use stretto_model::provenance::{argument_provenance, call_sources, Source};
-use stretto_model::world::{by_position, coverage_curve, evaluate, PositionStats};
+use stretto_model::world::{
+    argmax, by_position, coverage_curve, decode, evaluate, PositionStats, Predictor, Symbol,
+};
 use stretto_model::{
     step_turns, steps, Action, BackoffModel, CoveragePoint, EncodedEpisode, EvalStats,
-    GroupedModel, Step, Vocab,
+    GroupedModel, Outcome, Step, Vocab,
 };
 use stretto_trace::tau2::{load_manifest, load_results, load_split, Split, Tau2Run};
-use stretto_trace::{Episode, ToolKind, ToolManifest};
+use stretto_trace::{Episode, ToolKind, ToolManifest, TurnUsage};
 
 /// What to measure.
 #[derive(Clone, Debug)]
@@ -58,6 +61,14 @@ pub struct Config {
     pub feature_max_fields: usize,
     /// Habit confidence thresholds for the macro-tool projection.
     pub projection_thresholds: Vec<f64>,
+    /// Held-out decisions a context needs before it can be validated.
+    pub validated_min_n: usize,
+    /// Held-out top-1 agreement a context needs to be validated.
+    pub validated_min_agreement: f64,
+    /// Extra τ²-bench results files for agent models the habit never trains
+    /// on: measured only as transfer targets. Files for other domains are
+    /// skipped.
+    pub targets: Vec<PathBuf>,
 }
 
 impl Config {
@@ -79,7 +90,10 @@ impl Config {
             feature_max_values: 8,
             feature_min_gain: 5.0,
             feature_max_fields: 8,
-            projection_thresholds: vec![0.8, 0.9, 0.95],
+            projection_thresholds: vec![0.9, 0.95],
+            validated_min_n: 20,
+            validated_min_agreement: 0.99,
+            targets: Vec::new(),
         }
     }
 }
@@ -106,6 +120,10 @@ pub struct Settings {
     pub min_evidence: f64,
     /// Threshold for the by-position breakdown.
     pub position_threshold: f64,
+    /// Held-out decisions a context needs before it can be validated.
+    pub validated_min_n: usize,
+    /// Held-out top-1 agreement a context needs to be validated.
+    pub validated_min_agreement: f64,
 }
 
 /// One domain.
@@ -154,9 +172,59 @@ pub struct FeaturedReport {
     /// macro-tool call supplies, since the LLM names the intent when it calls
     /// the flow.
     pub code_and_intent: VariantStats,
+    /// Dollars per million input and output tokens for each agent model,
+    /// fitted from the costs the benchmark recorded.
+    pub prices: Vec<ModelPrice>,
+    /// Contexts where the habit's cross-validated agreement cleared the bar,
+    /// most decisions first.
+    pub validated: Vec<ValidatedContext>,
     /// Held-out episodes replayed through macro-tool flows driven by the
-    /// code-and-intent habit, per scenario and threshold.
+    /// code-and-intent habit, per scenario and gate.
     pub projection: Vec<Projection>,
+    /// The headline configuration (validated contexts, then a perfect
+    /// System-One model) for each agent model.
+    pub by_model: Vec<ModelProjection>,
+}
+
+/// A context where the habit may act.
+#[derive(Clone, Debug, Serialize)]
+pub struct ValidatedContext {
+    /// The steps before the decision, oldest first (`start` before the first).
+    pub context: Vec<String>,
+    /// The agent's usual next step there.
+    pub action: String,
+    /// Decisions in this context under cross-validation on training tasks.
+    pub cv_n: usize,
+    /// Those where the habit matched the agent.
+    pub cv_agreed: usize,
+    /// Decisions in this context on held-out tasks.
+    pub test_n: usize,
+    /// Those where the habit matched the agent.
+    pub test_agreed: usize,
+}
+
+/// The headline projection for one agent model.
+#[derive(Clone, Debug, Serialize)]
+pub struct ModelProjection {
+    /// Agent model.
+    pub model: String,
+    /// Whether the model is a transfer target the habit never trained on.
+    pub target: bool,
+    /// Share of the model's tool-calling turns that made several calls.
+    pub parallel_share: f64,
+    /// Its held-out episodes, replayed.
+    pub projection: Projection,
+}
+
+/// Fitted token prices for one agent model.
+#[derive(Clone, Debug, Serialize)]
+pub struct ModelPrice {
+    /// Agent model.
+    pub model: String,
+    /// Dollars per million input tokens.
+    pub input_per_mtok: f64,
+    /// Dollars per million output tokens.
+    pub output_per_mtok: f64,
 }
 
 /// Held-out results for one variant of the habit.
@@ -179,6 +247,11 @@ pub struct VariantStats {
 pub struct ModelReport {
     /// Model name.
     pub model: String,
+    /// Whether the model is a transfer target: never trained on, except for
+    /// its own row of the transfer matrix and its own-habit numbers here.
+    pub target: bool,
+    /// Model that simulated the user, if recorded.
+    pub user_model: Option<String>,
     /// Episodes (tasks × trials).
     pub episodes: usize,
     /// Share of episodes that solved their task.
@@ -267,6 +340,8 @@ pub fn run(config: &Config) -> Result<Report> {
             thresholds: config.thresholds.clone(),
             min_evidence: config.min_evidence,
             position_threshold: config.position_threshold,
+            validated_min_n: config.validated_min_n,
+            validated_min_agreement: config.validated_min_agreement,
         },
         domains,
     })
@@ -294,6 +369,7 @@ pub fn result_files(tau2_dir: &Path, domain: &str) -> Result<Vec<PathBuf>> {
 
 struct ModelData {
     run: Tau2Run,
+    target: bool,
     train: Vec<EncodedEpisode>,
     test: Vec<EncodedEpisode>,
 }
@@ -312,25 +388,36 @@ fn domain(config: &Config, domain: &str) -> Result<DomainReport> {
         if run.domain != domain {
             bail!("{} is for {}, not {domain}", path.display(), run.domain);
         }
-        runs_by_model.push(run);
+        runs_by_model.push((run, false));
+    }
+    for path in &config.targets {
+        let run = load_results(path)?;
+        if run.domain == domain {
+            runs_by_model.push((run, true));
+        }
     }
 
     let all_steps: Vec<_> = runs_by_model
         .iter()
-        .flat_map(|r| r.episodes.iter().map(steps))
+        .flat_map(|(r, _)| r.episodes.iter().map(steps))
         .collect();
     let vocab = Vocab::build(
         all_steps.iter().flatten(),
         manifest.tools.keys().map(String::as_str),
     );
 
-    let models: Vec<ModelData> = runs_by_model
+    let (models, targets): (Vec<ModelData>, Vec<ModelData>) = runs_by_model
         .into_iter()
-        .map(|run| {
+        .map(|(run, target)| {
             let (train, test) = encode_split(&run.episodes, &split, &vocab);
-            ModelData { run, train, test }
+            ModelData {
+                run,
+                target,
+                train,
+                test,
+            }
         })
-        .collect();
+        .partition(|m| !m.target);
 
     let successful_train = |m: &ModelData| -> Vec<EncodedEpisode> {
         m.train.iter().filter(|e| e.success).cloned().collect()
@@ -368,6 +455,7 @@ fn domain(config: &Config, domain: &str) -> Result<DomainReport> {
 
     let model_reports = models
         .iter()
+        .chain(&targets)
         .map(|m| {
             let train = successful_train(m);
             model_report(
@@ -381,11 +469,13 @@ fn domain(config: &Config, domain: &str) -> Result<DomainReport> {
 
     let transfer = models
         .iter()
+        .chain(&targets)
         .flat_map(|a| {
             let habit =
                 BackoffModel::fit(config.order, alpha_used, vocab.len(), &successful_train(a));
             models
                 .iter()
+                .chain(&targets)
                 .map(move |b| TransferCell {
                     train: a.run.agent_model.clone(),
                     test: b.run.agent_model.clone(),
@@ -414,9 +504,18 @@ fn domain(config: &Config, domain: &str) -> Result<DomainReport> {
     top_runs.sort_by(|a, b| b.count.cmp(&a.count).then(a.tools.cmp(&b.tools)));
     top_runs.truncate(config.top_runs);
 
-    let featured = config
-        .features
-        .then(|| featured(config, &all_episodes, &split, &vocab, &manifest, alpha_used));
+    let target_episodes: Vec<&Episode> = targets.iter().flat_map(|m| &m.run.episodes).collect();
+    let featured = config.features.then(|| {
+        featured(
+            config,
+            &all_episodes,
+            &target_episodes,
+            &split,
+            &vocab,
+            &manifest,
+            alpha_used,
+        )
+    });
 
     Ok(DomainReport {
         domain: domain.to_string(),
@@ -449,9 +548,11 @@ struct Prepared {
     outputs: Vec<StepOutput>,
     turns: Vec<usize>,
     sources: Vec<Vec<(String, Source, String)>>,
-    assistant_turns: usize,
+    usage: Vec<TurnUsage>,
+    model: String,
     success: bool,
     train: bool,
+    target: bool,
     test: bool,
     group: u64,
     intent: String,
@@ -510,6 +611,7 @@ fn variant(
 fn featured(
     config: &Config,
     episodes: &[&Episode],
+    targets: &[&Episode],
     split: &Split,
     vocab: &Vocab,
     manifest: &ToolManifest,
@@ -519,21 +621,30 @@ fn featured(
     let test_ids: HashSet<&str> = split.test.iter().map(String::as_str).collect();
     let prepared: Vec<Prepared> = episodes
         .iter()
-        .map(|ep| Prepared {
+        .map(|ep| (ep, false))
+        .chain(targets.iter().map(|ep| (ep, true)))
+        .map(|(ep, target)| Prepared {
             steps: steps(ep),
             outputs: step_outputs(ep),
             turns: step_turns(ep),
             sources: call_sources(ep),
-            assistant_turns: ep.assistant_turns(),
+            usage: ep
+                .turn_usage()
+                .into_iter()
+                .map(Option::unwrap_or_default)
+                .collect(),
+            model: ep.agent_model.clone(),
             success: ep.succeeded(),
-            train: train_ids.contains(ep.task_id.as_str()),
+            train: !target && train_ids.contains(ep.task_id.as_str()),
+            target,
             test: test_ids.contains(ep.task_id.as_str()),
             group: task_group(&ep.task_id),
             intent: intent(ep, manifest),
         })
         .collect();
     let habit_set: Vec<&Prepared> = prepared.iter().filter(|p| p.train && p.success).collect();
-    let test_set: Vec<&Prepared> = prepared.iter().filter(|p| p.test).collect();
+    let test_set: Vec<&Prepared> = prepared.iter().filter(|p| p.test && !p.target).collect();
+    let target_set: Vec<&Prepared> = prepared.iter().filter(|p| p.test && p.target).collect();
 
     let train_outputs: Vec<&[StepOutput]> =
         habit_set.iter().map(|p| p.outputs.as_slice()).collect();
@@ -573,6 +684,7 @@ fn featured(
     };
     let train: Vec<EncodedEpisode> = habit_set.iter().map(encode).collect();
     let test: Vec<EncodedEpisode> = test_set.iter().map(encode).collect();
+    let target_test: Vec<EncodedEpisode> = target_set.iter().map(encode).collect();
 
     let code = variant(config, vocab, train.clone(), &test, alpha_used);
     let a = code.alpha_used;
@@ -621,35 +733,180 @@ fn featured(
         8,
         10,
     );
+    let mut by_model: BTreeMap<&str, Vec<TurnUsage>> = BTreeMap::new();
+    for p in &prepared {
+        by_model
+            .entry(p.model.as_str())
+            .or_default()
+            .extend(p.usage.iter().copied());
+    }
+    let prices: BTreeMap<&str, (f64, f64)> = by_model
+        .into_iter()
+        .map(|(m, turns)| (m, fit_prices(turns)))
+        .collect();
     let inputs: Vec<ProjectionInput> = test_set
         .iter()
         .zip(&test)
-        .map(|(p, enc)| ProjectionInput {
-            encoded: enc,
-            turns: p.turns.clone(),
-            args: arg_needs(&p.steps, &p.sources, &closed),
-            assistant_turns: p.assistant_turns,
-        })
+        .map(|(p, enc)| projection_input(p, enc, &closed, &prices))
+        .collect();
+    let grouped: Vec<(u64, EncodedEpisode)> = habit_set
+        .iter()
+        .map(|p| p.group)
+        .zip(train.iter().cloned())
+        .collect();
+    let validated = validated_contexts(
+        &grouped,
+        config.order,
+        a,
+        vocab.len(),
+        FOLDS,
+        config.validated_min_n,
+        config.validated_min_agreement,
+    );
+    let gates: Vec<Gate> = config
+        .projection_thresholds
+        .iter()
+        .map(|&t| Gate::Threshold(t))
+        .chain([Gate::Validated(&validated)])
         .collect();
     let projection = [Scenario::HabitOnly, Scenario::HabitThenPerfectOracle]
         .into_iter()
-        .flat_map(|scenario| {
-            config
-                .projection_thresholds
-                .iter()
-                .map(move |&tau| (scenario, tau))
+        .flat_map(|scenario| gates.iter().map(move |&gate| (scenario, gate)))
+        .map(|(scenario, gate)| {
+            project(&intent_habit, &inputs, scenario, gate, config.min_evidence)
         })
-        .map(|(scenario, tau)| project(&intent_habit, &inputs, scenario, tau, config.min_evidence))
+        .collect();
+    let by_model = prices
+        .keys()
+        .map(|&m| {
+            let inputs: Vec<ProjectionInput> = test_set
+                .iter()
+                .zip(&test)
+                .chain(target_set.iter().zip(&target_test))
+                .filter(|(p, _)| p.model == m)
+                .map(|(p, enc)| projection_input(p, enc, &closed, &prices))
+                .collect();
+            ModelProjection {
+                model: m.to_string(),
+                target: prepared.iter().any(|p| p.model == m && p.target),
+                parallel_share: parallel_share(prepared.iter().filter(|p| p.model == m)),
+                projection: project(
+                    &intent_habit,
+                    &inputs,
+                    Scenario::HabitThenPerfectOracle,
+                    Gate::Validated(&validated),
+                    config.min_evidence,
+                ),
+            }
+        })
+        .collect();
+
+    // How the validated contexts fared on held-out tasks.
+    let mut held_out: HashMap<Vec<Symbol>, (usize, usize)> = HashMap::new();
+    for enc in &test {
+        for t in 0..enc.actions.len() {
+            if let Some(c) = validated.context_at(enc, t) {
+                let top = argmax(&intent_habit.predict_at(enc, t));
+                let e = held_out.entry(c).or_default();
+                e.0 += 1;
+                e.1 += (top == enc.actions[t] as usize) as usize;
+            }
+        }
+    }
+    let describe = |symbol: Symbol| match decode(symbol) {
+        None => "start".to_string(),
+        Some((a, o, f)) => {
+            let action = vocab.action(a);
+            let outcome = match Outcome::from_index(o) {
+                Some(Outcome::Ok) => "ok",
+                Some(Outcome::Err) => "error",
+                Some(Outcome::Reply) => "user replied",
+                Some(Outcome::End) => "ended",
+                None => "?",
+            };
+            let feature = match action {
+                Some(Action::Tool(t)) if f > 0 => map
+                    .describe(t, f)
+                    .map(|d| format!("; {d}"))
+                    .unwrap_or_default(),
+                _ => String::new(),
+            };
+            let name = action.map_or_else(|| "?".to_string(), Action::to_string);
+            format!("{name} ({outcome}{feature})")
+        }
+    };
+    let validated_list = validated
+        .records()
+        .into_iter()
+        .map(|(context, r)| {
+            let (test_n, test_agreed) = held_out.get(context).copied().unwrap_or_default();
+            ValidatedContext {
+                context: context.iter().map(|&s| describe(s)).collect(),
+                action: vocab
+                    .action(r.action)
+                    .map_or_else(|| "?".to_string(), Action::to_string),
+                cv_n: r.n,
+                cv_agreed: r.agreed,
+                test_n,
+                test_agreed,
+            }
+        })
         .collect();
 
     FeaturedReport {
         candidates: candidates.len(),
         selected,
-        intents: intent_ids.len(),
+        intents: prepared
+            .iter()
+            .filter(|p| !p.target)
+            .map(|p| p.intent.as_str())
+            .collect::<HashSet<_>>()
+            .len(),
         code,
         code_and_intent,
+        prices: prices
+            .iter()
+            .map(|(m, (i, o))| ModelPrice {
+                model: m.to_string(),
+                input_per_mtok: i * 1e6,
+                output_per_mtok: o * 1e6,
+            })
+            .collect(),
+        validated: validated_list,
         projection,
+        by_model,
     }
+}
+
+fn projection_input<'a>(
+    p: &Prepared,
+    encoded: &'a EncodedEpisode,
+    closed: &HashSet<(String, String)>,
+    prices: &BTreeMap<&str, (f64, f64)>,
+) -> ProjectionInput<'a> {
+    ProjectionInput {
+        encoded,
+        turns: p.turns.clone(),
+        args: arg_needs(&p.steps, &p.sources, closed),
+        usage: p.usage.clone(),
+        input_price: prices[p.model.as_str()].0,
+    }
+}
+
+/// Share of tool-calling turns that made several calls at once.
+fn parallel_share<'a>(episodes: impl Iterator<Item = &'a Prepared>) -> f64 {
+    let (mut tool_turns, mut parallel) = (0, 0);
+    for p in episodes {
+        let mut calls: BTreeMap<usize, usize> = BTreeMap::new();
+        for (step, &turn) in p.steps.iter().zip(&p.turns) {
+            if matches!(step.action, Action::Tool(_)) {
+                *calls.entry(turn).or_insert(0) += 1;
+            }
+        }
+        tool_turns += calls.len();
+        parallel += calls.values().filter(|&&n| n > 1).count();
+    }
+    parallel as f64 / tool_turns.max(1) as f64
 }
 
 /// A stable group id for a task, so all of its episodes share a fold.
@@ -693,6 +950,8 @@ fn model_report(
         .collect();
     ModelReport {
         model: m.run.agent_model.clone(),
+        target: m.target,
+        user_model: m.run.user_model.clone(),
         episodes: eps.len(),
         success_rate: eps.iter().filter(|e| e.succeeded()).count() as f64 / n,
         assistant_turns_per_episode: eps.iter().map(|e| e.assistant_turns()).sum::<usize>() as f64

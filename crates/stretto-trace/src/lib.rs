@@ -32,6 +32,9 @@ pub enum Event {
     Assistant {
         text: Option<String>,
         calls: Vec<ToolCall>,
+        /// Tokens and cost of this LLM call, when the source recorded them.
+        #[serde(default)]
+        usage: Option<TurnUsage>,
     },
     /// The result of an assistant tool call.
     ToolResult {
@@ -40,6 +43,17 @@ pub enum Event {
         error: bool,
         content: String,
     },
+}
+
+/// Tokens and cost of one LLM call.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct TurnUsage {
+    /// Input tokens: the whole context the model read.
+    pub prompt_tokens: u64,
+    /// Output tokens, including any reasoning tokens.
+    pub completion_tokens: u64,
+    /// Cost in dollars, as the source computed it.
+    pub cost: f64,
 }
 
 /// A complete episode.
@@ -73,6 +87,17 @@ impl Episode {
             .iter()
             .filter(|e| matches!(e, Event::Assistant { .. }))
             .count()
+    }
+
+    /// Usage of each assistant turn, in order (`None` where unrecorded).
+    pub fn turn_usage(&self) -> Vec<Option<TurnUsage>> {
+        self.events
+            .iter()
+            .filter_map(|e| match e {
+                Event::Assistant { usage, .. } => Some(*usage),
+                _ => None,
+            })
+            .collect()
     }
 
     /// All tool calls, in order.

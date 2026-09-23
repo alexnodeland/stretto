@@ -1,8 +1,9 @@
 //! Markdown rendering of a Phase 0 report.
 
-use crate::phase0::{DomainReport, FeaturedReport, Report, VariantStats};
+use crate::phase0::{DomainReport, FeaturedReport, Report, Settings, VariantStats};
 use std::fmt::Write as _;
-use stretto_model::projection::Scenario;
+use stretto_model::features::FOLDS;
+use stretto_model::projection::{GateKind, Projection, Scenario};
 use stretto_model::provenance::Source;
 use stretto_model::world::Position;
 use stretto_trace::ToolKind;
@@ -12,7 +13,9 @@ fn pct(x: f64) -> String {
 }
 
 fn short_model(m: &str) -> String {
-    // Drop date suffixes such as `-20250219` or `-2025-04-14`.
+    // Drop a provider prefix such as `openai/`, and date suffixes such as
+    // `-20250219` or `-2025-04-14`.
+    let m = m.rsplit('/').next().unwrap_or(m);
     let mut parts: Vec<&str> = m.split('-').collect();
     while parts
         .last()
@@ -21,6 +24,15 @@ fn short_model(m: &str) -> String {
         parts.pop();
     }
     parts.join("-")
+}
+
+/// A model's name, marked when it is a transfer target.
+fn label(model: &str, target: bool) -> String {
+    if target {
+        format!("{} *(target)*", short_model(model))
+    } else {
+        short_model(model)
+    }
 }
 
 /// Render the report.
@@ -37,6 +49,18 @@ pub fn markdown(report: &Report) -> String {
          training observations of a context before the habit may act on it.\n",
         st.order, st.min_evidence
     );
+    if report
+        .domains
+        .iter()
+        .any(|d| d.models.iter().any(|m| m.target))
+    {
+        let _ = writeln!(
+            s,
+            "Models marked *(target)* come from τ²-bench leaderboard submissions and are transfer \
+             targets: nothing is learned from them, except their own row of each transfer matrix \
+             and their own-habit numbers in the model tables.\n"
+        );
+    }
     for d in &report.domains {
         domain(&mut s, d, report);
     }
@@ -103,15 +127,18 @@ fn domain(s: &mut String, d: &DomainReport, report: &Report) {
     let _ = writeln!(s, "### Runs\n");
     let _ = writeln!(
         s,
-        "| Agent model | Episodes | Success | LLM turns/ep | Tool calls/ep | Writes/ep | \
-         Macro-tool headroom | Writes after \"yes\" / any assent |"
+        "| Agent model | User simulator | Episodes | Success | LLM turns/ep | Tool calls/ep | \
+         Writes/ep | Macro-tool headroom | Writes after \"yes\" / any assent |"
     );
-    let _ = writeln!(s, "|---|---|---|---|---|---|---|---|");
+    let _ = writeln!(s, "|---|---|---|---|---|---|---|---|---|");
     for m in &d.models {
         let _ = writeln!(
             s,
-            "| {} | {} | {} | {:.1} | {:.1} | {:.2} | {} | {} |",
-            short_model(&m.model),
+            "| {} | {} | {} | {} | {:.1} | {:.1} | {:.2} | {} | {} |",
+            label(&m.model, m.target),
+            m.user_model
+                .as_deref()
+                .map_or_else(|| "?".to_string(), short_model),
             m.episodes,
             pct(m.success_rate),
             m.assistant_turns_per_episode,
@@ -131,7 +158,7 @@ fn domain(s: &mut String, d: &DomainReport, report: &Report) {
     }
     let _ = writeln!(
         s,
-        "| **all** | | | | | | **{}** | |\n",
+        "| **all** | | | | | | | **{}** | |\n",
         pct(d.pooled.runs.removable_share())
     );
 
@@ -151,7 +178,7 @@ fn domain(s: &mut String, d: &DomainReport, report: &Report) {
         r
     };
     for m in &d.models {
-        let _ = writeln!(s, "{}", row(&short_model(&m.model), &m.by_order));
+        let _ = writeln!(s, "{}", row(&label(&m.model, m.target), &m.by_order));
     }
     let _ = writeln!(s, "{}\n", row("**all models pooled**", &d.pooled.by_order));
 
@@ -175,7 +202,7 @@ fn domain(s: &mut String, d: &DomainReport, report: &Report) {
         r
     };
     for m in &d.models {
-        let _ = writeln!(s, "{}", cov_row(&short_model(&m.model), &m.coverage));
+        let _ = writeln!(s, "{}", cov_row(&label(&m.model, m.target), &m.coverage));
     }
     let _ = writeln!(
         s,
@@ -220,7 +247,7 @@ fn domain(s: &mut String, d: &DomainReport, report: &Report) {
         "### Transfer: top-1 when the habit comes from another model (k = {})\n",
         report.settings.order
     );
-    let names: Vec<String> = d.models.iter().map(|m| short_model(&m.model)).collect();
+    let names: Vec<String> = d.models.iter().map(|m| label(&m.model, m.target)).collect();
     let _ = writeln!(s, "| habit from ↓ / tested on → | {} |", names.join(" | "));
     let _ = writeln!(s, "|---|{}", "---|".repeat(names.len()));
     for a in &d.models {
@@ -235,7 +262,12 @@ fn domain(s: &mut String, d: &DomainReport, report: &Report) {
                     .unwrap_or_default()
             })
             .collect();
-        let _ = writeln!(s, "| {} | {} |", short_model(&a.model), cells.join(" | "));
+        let _ = writeln!(
+            s,
+            "| {} | {} |",
+            label(&a.model, a.target),
+            cells.join(" | ")
+        );
     }
     let _ = writeln!(s);
 
@@ -381,51 +413,205 @@ fn featured(s: &mut String, d: &DomainReport, f: &FeaturedReport, report: &Repor
         );
     }
     let _ = writeln!(s);
-    projection(s, f);
+    projection(s, f, &report.settings);
 }
 
-fn projection(s: &mut String, f: &FeaturedReport) {
-    if f.projection.is_empty() {
+fn projection(s: &mut String, f: &FeaturedReport, settings: &Settings) {
+    let Some(first) = f.projection.first() else {
         return;
-    }
+    };
     let _ = writeln!(
         s,
-        "### Projection: LLM turns macro-tools would save on held-out tasks\n"
+        "### Projection: what macro-tools would save on held-out tasks\n"
     );
     let _ = writeln!(
         s,
         "Each run of consecutive tool calls is replayed as one `plan_*` call driven by the habit \
-         above (code features + named intent). A decision the habit is unsure of goes either to \
-         the LLM (a pause, one turn) or to a System-One model assumed to agree with the agent \
-         (the upper bound Phase 0b will test). Generated arguments always pause. The ceiling is \
-         every run collapsing to one call.\n"
+         above (code features + named intent). Where the habit may not act, the decision goes \
+         either to the LLM (a pause, one turn) or to a System-One model assumed to agree with \
+         the agent (the upper bound Phase 0b will test). Generated arguments always pause. \
+         Collapsing every run to one call would save {} of LLM turns (the ceiling).\n",
+        pct1(first.ceiling_share()),
     );
     let _ = writeln!(
         s,
-        "| When the habit is unsure | τ | Turns saved | Ceiling | Pauses/ep | Habit decisions/ep | System-One decisions/ep | Confident habit decisions that disagreed (/100 ep) | Episodes with one |"
+        "The habit may act either wherever its top option clears a threshold (with at least {} \
+         training observations), or only in *validated* contexts: those where its top option \
+         matched the agent in at least {} of at least {} decisions under {}-fold \
+         cross-validation grouped by task. A habit that hands back too early is safe: the LLM \
+         takes the step, at the cost of one turn. A habit that picks another tool, or carries \
+         on when the agent stopped, is the risk.\n",
+        settings.min_evidence,
+        pct0(settings.validated_min_agreement),
+        settings.validated_min_n,
+        FOLDS,
+    );
+    let _ = writeln!(
+        s,
+        "| Where the habit may not act | The habit acts | Turns saved | Pauses/ep | Habit decisions/ep | System-One decisions/ep | Habit handed back early (/100 ep) | Habit chose another step (/100 ep) | Episodes where it did |"
     );
     let _ = writeln!(s, "|---|---|---|---|---|---|---|---|---|");
     for p in &f.projection {
         let n = p.episodes.max(1) as f64;
-        let who = match p.scenario {
-            Scenario::HabitOnly => "pause for the LLM",
-            Scenario::HabitThenPerfectOracle => "ask a perfect System-One model",
-        };
         let _ = writeln!(
             s,
-            "| {} | {} | **{}** | {} | {:.2} | {:.2} | {:.2} | {:.1} | {} |",
-            who,
-            p.threshold,
+            "| {} | {} | **{}** | {:.2} | {:.2} | {:.2} | {:.1} | {:.1} | {} |",
+            who(p.scenario),
+            gate(&p.gate),
             pct1(p.saved_share()),
-            pct1(p.ceiling_share()),
             p.pauses as f64 / n,
             p.habit_decisions as f64 / n,
             p.oracle_decisions as f64 / n,
+            100.0 * p.early_stops as f64 / n,
             100.0 * p.disagreements as f64 / n,
             pct1(p.risky_share())
         );
     }
     let _ = writeln!(s);
+
+    if !f.validated.is_empty() {
+        let _ = writeln!(
+            s,
+            "Validated contexts, and how the habit did in them on held-out tasks:\n"
+        );
+        let _ = writeln!(
+            s,
+            "| Last steps (oldest first) | The agent's usual next step | Agreement, cross-validated on training tasks | Agreement on held-out tasks |"
+        );
+        let _ = writeln!(s, "|---|---|---|---|");
+        for v in &f.validated {
+            let _ = writeln!(
+                s,
+                "| {} | {} | {} of {} | {} |",
+                v.context
+                    .iter()
+                    .map(|c| format!("`{c}`"))
+                    .collect::<Vec<_>>()
+                    .join(" → "),
+                v.action,
+                pct1(v.cv_agreed as f64 / v.cv_n.max(1) as f64),
+                v.cv_n,
+                if v.test_n == 0 {
+                    "not reached".to_string()
+                } else {
+                    format!(
+                        "{} of {}",
+                        pct1(v.test_agreed as f64 / v.test_n as f64),
+                        v.test_n
+                    )
+                },
+            );
+        }
+        let _ = writeln!(s);
+    }
+
+    let _ = writeln!(
+        s,
+        "Tokens and dollars come from the usage the benchmark recorded for every LLM call. A \
+         removed turn saves its whole prompt and completion. A run that collapses to one call \
+         also stops carrying its intermediate tool outputs in every later prompt; their size is \
+         read off the recorded prompt growth, and priced at each model's effective input price, \
+         fitted to its recorded costs by least squares (so it absorbs any prompt-caching \
+         discount): {}.\n",
+        f.prices
+            .iter()
+            .filter(|m| m.input_per_mtok > 0.0 || m.output_per_mtok > 0.0)
+            .map(|m| format!(
+                "{} ${:.2} in / ${:.2} out per MTok",
+                short_model(&m.model),
+                m.input_per_mtok,
+                m.output_per_mtok
+            ))
+            .collect::<Vec<_>>()
+            .join("; ")
+    );
+    let _ = writeln!(
+        s,
+        "| Where the habit may not act | The habit acts | Turns saved | Input tokens saved | Output tokens saved | $ saved | $ per episode |"
+    );
+    let _ = writeln!(s, "|---|---|---|---|---|---|---|");
+    for p in &f.projection {
+        let _ = writeln!(
+            s,
+            "| {} | {} | {} | {} | {} | **{}** | {} |",
+            who(p.scenario),
+            gate(&p.gate),
+            pct1(p.saved_share()),
+            pct1(p.input_saved_share()),
+            pct1(p.output_saved_share()),
+            pct1(p.cost_saved_share()),
+            dollars_per_episode(p),
+        );
+    }
+    let _ = writeln!(s);
+
+    if !f.by_model.is_empty() {
+        let _ = writeln!(
+            s,
+            "By agent model, with the habit acting only in validated contexts and a perfect \
+             System-One model deciding the rest. Pooled dollars weigh each model by its spend.{}\n",
+            if f.by_model.iter().any(|m| m.target) {
+                " Models marked *(target)* were never trained on: the habit, its features, the \
+                 closed argument sets and the validated contexts all come from the other models, \
+                 and the pooled tables above leave them out."
+            } else {
+                ""
+            }
+        );
+        let _ = writeln!(
+            s,
+            "| Agent model | Tool turns with parallel calls | Turns saved | Ceiling | Input tokens saved | Output tokens saved | $ saved | $ per episode |"
+        );
+        let _ = writeln!(s, "|---|---|---|---|---|---|---|---|");
+        for m in &f.by_model {
+            let p = &m.projection;
+            let _ = writeln!(
+                s,
+                "| {} | {} | **{}** | {} | {} | {} | {} | {} |",
+                label(&m.model, m.target),
+                pct0(m.parallel_share),
+                pct1(p.saved_share()),
+                pct1(p.ceiling_share()),
+                pct1(p.input_saved_share()),
+                pct1(p.output_saved_share()),
+                if p.cost > 0.0 {
+                    pct1(p.cost_saved_share())
+                } else {
+                    "–".to_string()
+                },
+                if p.cost > 0.0 {
+                    dollars_per_episode(p)
+                } else {
+                    "no cost recorded".to_string()
+                },
+            );
+        }
+        let _ = writeln!(s);
+    }
+}
+
+fn dollars_per_episode(p: &Projection) -> String {
+    let n = p.episodes.max(1) as f64;
+    format!("{:.4} → {:.4}", p.cost / n, (p.cost - p.cost_saved) / n)
+}
+
+fn who(scenario: Scenario) -> &'static str {
+    match scenario {
+        Scenario::HabitOnly => "pause for the LLM",
+        Scenario::HabitThenPerfectOracle => "ask a perfect System-One model",
+    }
+}
+
+fn gate(g: &GateKind) -> String {
+    match g {
+        GateKind::Threshold(t) => format!("top option ≥ {t}"),
+        GateKind::Validated(1) => "in 1 validated context".to_string(),
+        GateKind::Validated(k) => format!("in {k} validated contexts"),
+    }
+}
+
+fn pct0(x: f64) -> String {
+    format!("{:.0}%", 100.0 * x)
 }
 
 fn pct1(x: f64) -> String {
@@ -445,5 +631,6 @@ mod tests {
         assert_eq!(short_model("gpt-4.1-2025-04-14"), "gpt-4.1");
         assert_eq!(short_model("gpt-4.1-mini-2025-04-14"), "gpt-4.1-mini");
         assert_eq!(short_model("o4-mini-2025-04-16"), "o4-mini");
+        assert_eq!(short_model("openai/glm-5-fp8"), "glm-5-fp8");
     }
 }

@@ -50,6 +50,13 @@ impl Outcome {
             Outcome::End => 3,
         }
     }
+
+    /// The outcome with dense index `i`.
+    pub fn from_index(i: u32) -> Option<Self> {
+        [Outcome::Ok, Outcome::Err, Outcome::Reply, Outcome::End]
+            .get(i as usize)
+            .copied()
+    }
 }
 
 /// An abstract action and what came back.
@@ -219,6 +226,7 @@ mod tests {
         let ep = episode(vec![
             Event::User { text: "hi".into() },
             Event::Assistant {
+                usage: None,
                 text: None,
                 calls: vec![call("1", "find_user")],
             },
@@ -229,6 +237,7 @@ mod tests {
                 content: "not found".into(),
             },
             Event::Assistant {
+                usage: None,
                 text: Some("which email?".into()),
                 calls: vec![],
             },
@@ -236,6 +245,7 @@ mod tests {
                 text: "a@b.c".into(),
             },
             Event::Assistant {
+                usage: None,
                 text: None,
                 calls: vec![call("2", "find_user")],
             },
@@ -246,6 +256,7 @@ mod tests {
                 content: "u1".into(),
             },
             Event::Assistant {
+                usage: None,
                 text: Some("done".into()),
                 calls: vec![],
             },

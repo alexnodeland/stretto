@@ -8,7 +8,7 @@
 //! τ²-bench opens every conversation with a fixed assistant greeting that costs
 //! nothing and is not an LLM decision; ingest drops it.
 
-use crate::{Episode, Event, ToolCall, ToolKind, ToolManifest};
+use crate::{Episode, Event, ToolCall, ToolKind, ToolManifest, TurnUsage};
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::collections::{BTreeMap, HashMap};
@@ -141,9 +141,15 @@ fn convert_simulation(sim: RawSim, domain: &str, agent_model: &str) -> Episode {
                 for c in &calls {
                     call_names.insert(c.id.clone(), c.name.clone());
                 }
+                let usage = m.usage.map(|u| TurnUsage {
+                    prompt_tokens: u.prompt_tokens.unwrap_or(0),
+                    completion_tokens: u.completion_tokens.unwrap_or(0),
+                    cost: m.cost.unwrap_or(0.0),
+                });
                 events.push(Event::Assistant {
                     text: m.content.filter(|t| !t.is_empty()),
                     calls,
+                    usage,
                 });
             }
             "user" => events.push(Event::User {
@@ -275,6 +281,13 @@ struct RawMessage {
     id: Option<String>,
     error: Option<bool>,
     cost: Option<f64>,
+    usage: Option<RawUsage>,
+}
+
+#[derive(Deserialize)]
+struct RawUsage {
+    prompt_tokens: Option<u64>,
+    completion_tokens: Option<u64>,
 }
 
 #[derive(Deserialize)]
@@ -305,6 +318,7 @@ mod tests {
           {"role": "assistant", "content": "Hi! How can I help you today?", "cost": 0.0},
           {"role": "user", "content": "Where is order #W1?"},
           {"role": "assistant", "content": "Checking.", "cost": 0.01,
+           "usage": {"prompt_tokens": 1200, "completion_tokens": 30},
            "tool_calls": [{"id": "c1", "name": "get_order_details",
                            "arguments": {"order_id": "#W1"}, "requestor": "assistant"}]},
           {"role": "tool", "id": "c1", "content": "{\"status\": \"pending\"}", "error": false},
@@ -327,6 +341,10 @@ mod tests {
         // The free greeting is dropped: user, assistant(call), result, assistant(reply).
         assert_eq!(ep.events.len(), 4);
         assert_eq!(ep.assistant_turns(), 2);
+        let usage = ep.turn_usage();
+        assert_eq!(usage[0].map(|u| u.prompt_tokens), Some(1200));
+        assert_eq!(usage[0].map(|u| u.cost), Some(0.01));
+        assert_eq!(usage[1], None);
         match &ep.events[2] {
             Event::ToolResult {
                 name,

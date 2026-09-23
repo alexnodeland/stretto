@@ -83,6 +83,7 @@ mod tests {
             ]),
         };
         let call = |id: &str, name: &str| Event::Assistant {
+            usage: None,
             text: None,
             calls: vec![ToolCall {
                 id: id.into(),

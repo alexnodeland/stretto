@@ -39,6 +39,10 @@ enum Command {
         /// Skip learning code features from tool outputs.
         #[arg(long)]
         no_features: bool,
+        /// τ²-bench results for an agent model the habit never trains on,
+        /// measured as a transfer target (repeatable; any domain).
+        #[arg(long = "target")]
+        targets: Vec<PathBuf>,
         /// Write the Markdown report here (default: stdout).
         #[arg(long)]
         out: Option<PathBuf>,
@@ -59,6 +63,7 @@ fn main() -> Result<()> {
             min_evidence,
             seed,
             no_features,
+            targets,
             out,
             json,
         } => {
@@ -70,6 +75,7 @@ fn main() -> Result<()> {
             config.min_evidence = min_evidence;
             config.seed = seed;
             config.features = !no_features;
+            config.targets = targets;
             let report = phase0::run(&config)?;
             let md = render::markdown(&report);
             match out {

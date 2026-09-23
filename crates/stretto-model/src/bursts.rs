@@ -97,6 +97,7 @@ mod tests {
 
     fn tool(id: &str, name: &str) -> Event {
         Event::Assistant {
+            usage: None,
             text: None,
             calls: vec![ToolCall {
                 id: id.into(),
@@ -108,6 +109,7 @@ mod tests {
 
     fn reply() -> Event {
         Event::Assistant {
+            usage: None,
             text: Some("ok".into()),
             calls: vec![],
         }

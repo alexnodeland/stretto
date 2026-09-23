@@ -11,7 +11,7 @@ In a fugue, a *stretto* is where entries of the subject overlap and compress. st
 
 Flows are [fugue](https://github.com/alexnodeland/fugue) programs. The same flow can be simulated, executed, audited against recorded traces and evaluated counterfactually, just by swapping its interpreter.
 
-The design is fugue's [RFC-001](https://github.com/alexnodeland/fugue/blob/claude/jev-fugue-agent-harness-00f93u/docs/decisions/rfc/001-habit-compiler.md), and the decisions are summarized in [docs/design.md](docs/design.md).
+The design is fugue's [RFC-001](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md), and the decisions are summarized in [docs/design.md](docs/design.md).
 
 ## Status
 
@@ -22,7 +22,14 @@ git clone --depth 1 https://github.com/sierra-research/tau2-bench ../tau2-bench
 cargo run --release -p stretto-report -- phase0 --tau2 ../tau2-bench --out reports/phase0.md
 ```
 
-It takes about 10 seconds. First results, with their interpretation, are in [docs/results/phase0-2026-09-23.md](docs/results/phase0-2026-09-23.md). The headlines for airline and retail:
+It takes about 20 seconds. To also measure transfer to GLM-5, whose trajectories Sierra publishes with its τ²-bench leaderboard entry, fetch them and pass them as targets:
+
+```bash
+cargo run --release -p stretto-report -- phase0 --tau2 ../tau2-bench \
+  $(scripts/fetch-targets.sh | sed 's/^/--target /') --out reports/phase0.md
+```
+
+First results, with their interpretation, are in [docs/results/phase0-2026-09-23.md](docs/results/phase0-2026-09-23.md). The headlines for airline and retail:
 
 - **Macro-tool headroom.** About a quarter of LLM turns are spent inside runs of consecutive tool calls that a macro-tool could perform in one call.
 - **Arguments can mostly be bound.** Identifiers, items, payment methods and flights in write calls almost always appear verbatim in an earlier tool output or user message, so flows can bind them instead of generating them. The values agents actually generate are mostly closed-set choices (a cancellation reason, a flight type), which suit a Jev `Choice`, and arithmetic, which belongs in code.
@@ -32,9 +39,11 @@ It takes about 10 seconds. First results, with their interpretation, are in [doc
   - About three quarters of decisions still need content-aware judgment: that is Phase 0b's job, with Jev.
 - **Behavior transfers across models.** A habit learned from one model predicts another within 3–7 points of top-1 of that model's own habit.
 - **Projection.** Replaying held-out episodes through macro-tool flows:
-  - the habit alone saves 0–2% of LLM turns;
-  - with a System-One model that always agrees with the agent, savings reach 20.5–22%, against a 23–24% ceiling.
-  - So the ≥20% gate depends on Jev making about 7 in-flow decisions per episode nearly perfectly. Phase 0b measures that.
+  - the habit alone saves at most 1.2% of LLM turns;
+  - with a System-One model that always agrees with the agent, savings reach 22.0% (retail) and 20.6% (airline), against a 23–24% ceiling;
+  - input tokens fall faster (26–28%) and output tokens slower (19–25%). Dollars fall 32–38%, but that figure is dominated by Claude 3.7 Sonnet's uncached runs.
+- **The gate depends on how the agent calls tools.** Models that call tools one at a time leave the most to collapse: Claude 3.7 Sonnet saves 33–37%, o4-mini 23–25%. Models that batch parallel calls save less: GPT-4.1 11–19%, GPT-4.1-mini 7–12%. GLM-5, never trained on, saves 28.5% in retail but only 15.4% in airline, where its ceiling is 18.9%.
+- **Validated arbitration makes the habit a stopping rule.** Requiring ≥99% cross-validated agreement per context leaves only contexts where the habit hands back to the LLM. That is safe (no risky decisions on held-out tasks), but it leaves about 7 decisions per episode to Jev. Phase 0b measures how well Jev takes them.
 
 ## Crates
 

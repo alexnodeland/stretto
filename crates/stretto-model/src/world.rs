@@ -27,6 +27,15 @@ pub const FEATURE_SLOTS: u32 = 4096;
 /// Padding before the first step.
 const START: Symbol = u32::MAX;
 
+/// A context symbol's action id, outcome index and feature id, or `None` for
+/// the padding before the first step.
+pub fn decode(symbol: Symbol) -> Option<(u32, u32, u32)> {
+    (symbol != START).then(|| {
+        let step = symbol / FEATURE_SLOTS;
+        (step / 4, step % 4, symbol % FEATURE_SLOTS)
+    })
+}
+
 /// An episode as the model sees it.
 #[derive(Clone, Debug)]
 pub struct EncodedEpisode {
@@ -142,7 +151,9 @@ impl BackoffModel {
         self.alpha
     }
 
-    fn context(history: &[Symbol], j: usize) -> Vec<Symbol> {
+    /// The last `j` symbols of `history`, left-padded: the context key a
+    /// level-`j` prediction conditions on.
+    pub fn context(history: &[Symbol], j: usize) -> Vec<Symbol> {
         let mut c = vec![START; j.saturating_sub(history.len())];
         c.extend_from_slice(&history[history.len().saturating_sub(j)..]);
         c
@@ -484,6 +495,29 @@ mod tests {
             success: true,
             group: 0,
         }
+    }
+
+    #[test]
+    fn symbols_decode_to_action_outcome_and_feature() {
+        use crate::abstraction::{Action, Outcome, Step, Vocab};
+        let steps = vec![
+            Step {
+                action: Action::Tool("b".into()),
+                outcome: Outcome::Err,
+            },
+            Step {
+                action: Action::Respond,
+                outcome: Outcome::Reply,
+            },
+        ];
+        let vocab = Vocab::build(steps.iter(), ["a", "b"]);
+        let enc = EncodedEpisode::encode_with_features(&steps, Some(&[7, 0]), &vocab, true);
+        let b = vocab.id(&Action::Tool("b".into()));
+        assert_eq!(decode(enc.symbols[0]), Some((b, Outcome::Err.index(), 7)));
+        assert_eq!(decode(enc.symbols[1]), Some((0, Outcome::Reply.index(), 0)));
+        assert_eq!(decode(START), None);
+        assert_eq!(Outcome::from_index(3), Some(Outcome::End));
+        assert_eq!(Outcome::from_index(4), None);
     }
 
     #[test]

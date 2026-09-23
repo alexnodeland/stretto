@@ -243,6 +243,19 @@ impl FeatureMap {
         ))
     }
 
+    /// What feature `id` of `tool` stands for, as `field=value` pairs.
+    pub fn describe(&self, tool: &str, id: u32) -> Option<String> {
+        let (_, values) = self.ids.iter().find(|((t, _), &i)| t == tool && i == id)?.0;
+        Some(
+            self.fields[tool]
+                .iter()
+                .zip(values)
+                .map(|(f, v)| format!("{f}={v}"))
+                .collect::<Vec<_>>()
+                .join(", "),
+        )
+    }
+
     /// Feature id of every step.
     pub fn features(&self, outputs: &[StepOutput]) -> Vec<u32> {
         outputs
@@ -443,5 +456,8 @@ mod tests {
         let f = map.features(&all_outputs[0]);
         assert!(f[0] > 0 && f[1] == 0);
         assert_ne!(map.features(&all_outputs[1])[0], f[0]);
+        let described = map.describe("get_order", f[0]).expect("a fitted id");
+        assert!(described.starts_with("status="), "{described}");
+        assert_eq!(map.describe("get_order", 999), None);
     }
 }

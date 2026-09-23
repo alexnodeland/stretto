@@ -179,6 +179,7 @@ mod tests {
                     text: "Cancel order #W123, I no longer need it".into(),
                 },
                 Event::Assistant {
+                    usage: None,
                     text: None,
                     calls: vec![ToolCall {
                         id: "1".into(),
@@ -193,6 +194,7 @@ mod tests {
                     content: r##"{"order_id": "#W123", "items": [{"item_id": "9876543"}]}"##.into(),
                 },
                 Event::Assistant {
+                    usage: None,
                     text: None,
                     calls: vec![ToolCall {
                         id: "2".into(),
