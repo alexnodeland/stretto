@@ -259,12 +259,26 @@ pub struct ShadowReport {
     pub input_tokens: u64,
     /// Agreement per agent model, then pooled over the source models.
     pub rows: Vec<ShadowRow>,
+    /// Closed-set argument agreement per `(tool, argument)`, pooled over the
+    /// source models.
+    pub by_arg: Vec<ArgRow>,
     /// Probabilities at which the System-One pick was trusted in the
     /// projections.
     pub thresholds: Vec<f64>,
     /// Pooled projection over the source models, validated habit then the
     /// System-One model, one per threshold.
     pub projection: Vec<Projection>,
+}
+
+/// Phase 0b agreement for one closed-set argument.
+#[derive(Clone, Debug, Serialize)]
+pub struct ArgRow {
+    /// Tool.
+    pub tool: String,
+    /// Argument.
+    pub arg: String,
+    /// Agreement on it.
+    pub agreement: Agreement,
 }
 
 /// Phase 0b agreement for one agent model.
@@ -947,13 +961,15 @@ fn featured(
         .map(|sc| sc.thresholds.clone())
         .unwrap_or_default();
     let with_oracle = |inputs: &[ProjectionInput]| -> Vec<Projection> {
-        thresholds
-            .iter()
-            .map(|&t| {
+        let alone = thresholds.iter().map(|&t| Scenario::HabitThenOracle(t));
+        let two_keys = thresholds.iter().map(|&t| Scenario::TwoKeys(t));
+        alone
+            .chain(two_keys)
+            .map(|scenario| {
                 project(
                     &intent_habit,
                     inputs,
-                    Scenario::HabitThenOracle(t),
+                    scenario,
                     Gate::Validated(&validated),
                     config.min_evidence,
                 )
@@ -1148,6 +1164,24 @@ fn shadow_run(
         next: agreement(&|p: &Prepared| !p.target, true),
         args: agreement(&|p: &Prepared| !p.target, false),
     });
+    let mut args: BTreeMap<(String, String), Vec<(&Scored, &str)>> = BTreeMap::new();
+    for (d, s) in decisions.iter().zip(&scored) {
+        if let (Kind::Arg(arg), Some(tool), Some(s)) = (&d.kind, &d.tool, s) {
+            if !replayed[d.episode].0.target {
+                args.entry((tool.clone(), arg.clone()))
+                    .or_default()
+                    .push((s, d.actual.as_str()));
+            }
+        }
+    }
+    let by_arg = args
+        .into_iter()
+        .map(|((tool, arg), answers)| ArgRow {
+            tool,
+            arg,
+            agreement: Agreement::of(answers, &sc.thresholds),
+        })
+        .collect();
     let mut versions: Vec<String> = asked.responses.values().map(|r| r.model.clone()).collect();
     versions.sort();
     versions.dedup();
@@ -1166,6 +1200,7 @@ fn shadow_run(
         first_error: asked.first_error.clone(),
         input_tokens: asked.responses.values().map(|r| r.usage.input_tokens).sum(),
         rows,
+        by_arg,
         thresholds: sc.thresholds.clone(),
         projection: Vec::new(),
     };

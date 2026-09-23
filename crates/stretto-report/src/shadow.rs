@@ -144,6 +144,8 @@ pub struct Decision {
     pub step: usize,
     /// What is asked.
     pub kind: Kind,
+    /// For argument questions, the tool being called.
+    pub tool: Option<String>,
     /// The option the agent took.
     pub actual: String,
     /// The request to send, if the decision is asked about.
@@ -216,6 +218,7 @@ pub fn decisions(
                 episode: i,
                 step: k,
                 kind: Kind::Next,
+                tool: None,
                 actual: option_of(&se.steps[k].action),
                 request: Some(Request {
                     model: model.to_string(),
@@ -279,6 +282,7 @@ pub fn decisions(
                     episode: i,
                     step: k,
                     kind: Kind::Arg(arg.to_string()),
+                    tool: Some(name.clone()),
                     actual,
                     request,
                     fixed,
@@ -488,6 +492,9 @@ pub struct Agreement {
     pub ece: f64,
     /// `(threshold, share at or above it, agreement on those)`.
     pub curve: Vec<(f64, f64, f64)>,
+    /// Reliability bins over the pick's probability, tenths from 0 to 1:
+    /// `(answers, mean probability, agreement)`; empty bins are left out.
+    pub bins: Vec<(usize, f64, f64)>,
 }
 
 impl Agreement {
@@ -527,6 +534,11 @@ impl Agreement {
                     * (conf / count as f64 - right as f64 / count as f64).abs()
             })
             .sum();
+        a.bins = bins
+            .iter()
+            .filter(|b| b.0 > 0)
+            .map(|&(count, conf, right)| (count, conf / count as f64, right as f64 / count as f64))
+            .collect();
         a.curve = thresholds
             .iter()
             .map(|&t| {

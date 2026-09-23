@@ -735,13 +735,39 @@ fn shadow_section(s: &mut String, f: &FeaturedReport) {
         );
     }
     let _ = writeln!(s);
+    if !sh.by_arg.is_empty() {
+        let _ = writeln!(s, "Closed-set arguments by argument (source models):\n");
+        let _ = writeln!(
+            s,
+            "| Tool | Argument | Decisions | Agreed | p ≥ {t}: share / agreed |"
+        );
+        let _ = writeln!(s, "|---|---|---|---|---|");
+        for row in &sh.by_arg {
+            let a = &row.agreement;
+            let at = a.curve.iter().find(|c| (c.0 - t).abs() < 1e-9);
+            let _ = writeln!(
+                s,
+                "| `{}` | `{}` | {} | {} | {} |",
+                row.tool,
+                row.arg,
+                a.n,
+                pct1(a.rate()),
+                at.map_or("–".to_string(), |c| format!(
+                    "{} / {}",
+                    pct1(c.1),
+                    pct1(c.2)
+                )),
+            );
+        }
+        let _ = writeln!(s);
+    }
 
     if !sh.projection.is_empty() {
         let _ = writeln!(
             s,
             "Projection with the System-One model, pooled over the source models: the habit acts \
-             in validated contexts, the System-One pick is trusted at or above the threshold, and \
-             anything else pauses.\n"
+             in validated contexts, the System-One pick is trusted at or above the threshold (with \
+             *two keys*, only when it is also the habit's top option), and anything else pauses.\n"
         );
         let _ = writeln!(
             s,
@@ -750,10 +776,7 @@ fn shadow_section(s: &mut String, f: &FeaturedReport) {
         let _ = writeln!(s, "|---|---|---|---|---|---|---|");
         for p in &sh.projection {
             let n = p.episodes.max(1) as f64;
-            let t = match p.scenario {
-                Scenario::HabitThenOracle(t) => format!("p ≥ {t}"),
-                _ => "–".to_string(),
-            };
+            let t = column(p.scenario);
             let _ = writeln!(
                 s,
                 "| {} | **{}** | {:.2} | {:.2} | {:.1} | {:.1} | {} |",
@@ -778,8 +801,8 @@ fn shadow_section(s: &mut String, f: &FeaturedReport) {
         );
         let mut header = "| Agent model | Perfect System-One |".to_string();
         let mut rule = "|---|---|".to_string();
-        for t in &sh.thresholds {
-            let _ = write!(header, " p ≥ {t} |");
+        for p in f.by_model.first().map_or(&[][..], |m| &m.with_oracle[..]) {
+            let _ = write!(header, " {} |", column(p.scenario));
             rule.push_str("---|");
         }
         let _ = writeln!(s, "{header} Gate |\n{rule}---|");
@@ -792,14 +815,10 @@ fn shadow_section(s: &mut String, f: &FeaturedReport) {
             let passing = m
                 .with_oracle
                 .iter()
-                .filter(|p| p.saved_share() >= 0.2 && p.risky_share() <= 0.01)
-                .filter_map(|p| match p.scenario {
-                    Scenario::HabitThenOracle(t) => Some(t),
-                    _ => None,
-                })
-                .next();
+                .find(|p| p.saved_share() >= 0.2 && p.risky_share() <= 0.01)
+                .map(|p| column(p.scenario));
             let gate = match passing {
-                Some(t) => format!("**passes** at p ≥ {t}"),
+                Some(rule) => format!("**passes** ({rule})"),
                 None if m.projection.saved_share() < 0.2 => {
                     "fails: below 20% even with a perfect System-One model".to_string()
                 }
@@ -818,6 +837,15 @@ fn shadow_section(s: &mut String, f: &FeaturedReport) {
     }
 }
 
+/// A short name for an oracle scenario, for table columns.
+fn column(scenario: Scenario) -> String {
+    match scenario {
+        Scenario::HabitThenOracle(t) => format!("p ≥ {t}"),
+        Scenario::TwoKeys(t) => format!("two keys, p ≥ {t}"),
+        _ => "–".to_string(),
+    }
+}
+
 fn shadow_label(row: &crate::phase0::ShadowRow) -> String {
     if row.model == "all source models" {
         "**all source models**".to_string()
@@ -831,6 +859,9 @@ fn who(scenario: Scenario) -> String {
         Scenario::HabitOnly => "pause for the LLM".to_string(),
         Scenario::HabitThenPerfectOracle => "ask a perfect System-One model".to_string(),
         Scenario::HabitThenOracle(t) => format!("ask the System-One model, trusted at p ≥ {t}"),
+        Scenario::TwoKeys(t) => {
+            format!("ask the System-One model, trusted at p ≥ {t} when the habit agrees")
+        }
     }
 }
 
