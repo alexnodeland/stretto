@@ -131,6 +131,29 @@ enum Command {
         #[arg(long)]
         log: Option<PathBuf>,
     },
+    /// Test the policy guards (typed checks a proxy runs before a write)
+    /// against recorded τ²-bench trajectories: every write is checked
+    /// against what came before it, as `stretto-proxy --guards` checks it.
+    /// A rule that fails the writes of successful episodes is too strict,
+    /// or wrong.
+    Guards {
+        /// Path to a τ²-bench checkout (its published baselines are read).
+        #[arg(long)]
+        tau2: PathBuf,
+        /// Domains to audit.
+        #[arg(long = "domain", default_values_t = ["retail".to_string(), "airline".to_string()])]
+        domains: Vec<String>,
+        /// Extra τ²-bench results to audit: `path` or `label=path`
+        /// (repeatable; files for other domains are skipped).
+        #[arg(long = "source")]
+        sources: Vec<String>,
+        /// Write the Markdown report here (default: stdout).
+        #[arg(long)]
+        out: Option<PathBuf>,
+        /// Also write the audit as JSON here.
+        #[arg(long)]
+        json: Option<PathBuf>,
+    },
     /// Check that Jev is reachable with TYPESAFE_API_KEY: ask one small
     /// question (uncached) and print the answer, model version and latency.
     JevCheck,
@@ -412,6 +435,39 @@ fn main() -> Result<()> {
                 max_questions,
                 log,
             )
+        }
+        Command::Guards {
+            tau2,
+            domains,
+            sources,
+            out,
+            json,
+        } => {
+            let mut audits = Vec::new();
+            for domain in &domains {
+                let guards = stretto_report::guards::Guards::for_domain(domain)
+                    .with_context(|| format!("no guards for {domain}"))?;
+                let mut files = phase0::result_files(&tau2, domain)?;
+                files.extend(sources.iter().map(|s| phase0::Target::parse(s).path));
+                let mut episodes = Vec::new();
+                for path in &files {
+                    let run = stretto_trace::tau2::load_results(path)?;
+                    if run.domain == *domain {
+                        episodes.extend(run.episodes);
+                    }
+                }
+                let refs: Vec<&stretto_trace::Episode> = episodes.iter().collect();
+                audits.push(stretto_report::guards::audit(&guards, &refs));
+            }
+            let md = stretto_report::guards::markdown(&audits);
+            match out {
+                Some(path) => write(&path, md.as_bytes())?,
+                None => print!("{md}"),
+            }
+            if let Some(path) = json {
+                write(&path, &serde_json::to_vec_pretty(&audits)?)?;
+            }
+            Ok(())
         }
         Command::JevCheck => jev_check(),
         Command::ExportAnswers { oracle_cache } => {

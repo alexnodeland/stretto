@@ -19,9 +19,11 @@
 //!
 //! [`render::markdown`] turns the result into a report, and
 //! [`phase0::compile_flow`] keeps what a live read-only [`flow`] needs.
+//! [`guards`] are typed policy checks a proxy runs before a write.
 
 pub mod arbitrate;
 pub mod flow;
+pub mod guards;
 pub mod phase0;
 pub mod render;
 pub mod shadow;
