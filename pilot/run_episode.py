@@ -267,7 +267,8 @@ def main() -> None:
         elif event.get("type") == "result":
             results.append({k: event.get(k) for k in ("num_turns", "usage", "is_error")})
     tools = json.loads((episode / "tools-state.json").read_text())
-    flow = [json.loads(l) for l in (episode / "flow.jsonl").read_text().splitlines()] if serve else []
+    flow_log = episode / "flow.jsonl"
+    flow = [json.loads(l) for l in flow_log.read_text().splitlines()] if flow_log.exists() else []
     result = {
         "task_id": str(task.id),
         "arm": args.arm,
@@ -280,9 +281,10 @@ def main() -> None:
         "tool_calls": tools.get("tool_calls"),
         "flow_lookups": tools.get("flow_lookups", 0),
         "flow_queries": tools.get("flow_queries", 0),
-        "flow_hand_backs": sorted(
-            {a.get("reason", "") for a in flow if a.get("action") != "lookup"}
-        ),
+        "flow_answers": {
+            action: sum(1 for a in flow if a.get("action") == action)
+            for action in ("lookup", "hand_back")
+        },
         "customer_turns": len(customer_usage),
         "agent_results": results,
         "customer_usage": customer_usage,

@@ -82,7 +82,9 @@ First results, with their interpretation, are in [docs/results/phase0-2026-09-23
   - Airline: 78.4% and 12.6%.
   - GLM-5 still clears 20% in retail (20.3%).
   - See [the goal-free summary](docs/results/phase0b-v2-goal-free-2026-09-24-summary.md).
-- **Live pilot (in progress).** [`pilot/`](pilot/README.md) runs τ²-bench retail episodes live. GLM-5.3 is the agent, in Claude Code on Z.ai's coding endpoint, and its tools are served over MCP behind `stretto-proxy`. The flows arm adds a read-only flow behind the tools: `stretto flow-serve` compiles it goal free from cached answers, then answers each step with a lookup and its bound arguments, or hands back. A baseline smoke episode passed. Before any flows episode, the flow is checked on GLM-5's recorded episodes without an LLM ([`check_flow.py`](pilot/check_flow.py)).
+- **Live pilot (in progress).** [`pilot/`](pilot/README.md) runs τ²-bench retail episodes live. GLM-5.3 is the agent, in Claude Code on Z.ai's coding endpoint, and its tools are served over MCP behind `stretto-proxy`. The flows arm adds a read-only flow behind the tools: `stretto flow-serve` compiles it goal free from cached answers, then answers each step with a lookup and its bound arguments, or hands back. First results ([details](pilot/README.md#results-so-far)):
+  - **Replay check, no LLM** ([`check_flow.py`](pilot/check_flow.py)). GLM-5's recorded retail test episodes, replayed through the live flow, save 22.2% of LLM turns (trial 0; the offline projection is 20.3%). 89% of the flow's lookups are the agent's own.
+  - **Live smoke episode (task 90).** GLM-5.3 used the flow's lookups without repeating them: 8 LLM turns instead of 12, 28% fewer input tokens, and the same database outcome.
 
 ## Crates
 

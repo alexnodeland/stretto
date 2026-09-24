@@ -39,11 +39,25 @@ The episode directory (`runs/pilot/baseline/task-90/`) holds everything:
 - `result.json`, which records the reward, LLM turns, tool calls, parallel-call turns and token usage (and, in the flows arm, the flow's lookups and queries);
 - in the flows arm, every flow answer (`flow.jsonl`) and `flow-serve`'s log.
 
-The first smoke run, task 90 (a cancellation), passed the database check:
+## Results so far
 
-- 12 agent LLM turns, 7 tool calls and 6 customer replies;
-- 77k agent input tokens, 67k of them cached;
-- 112 s.
+**Replay check, no LLM.** Before any flows episode, `check_flow.py` replayed GLM-5's recorded retail test episodes (trial 0, 40 tasks) through the live flow. It used real Jev answers:
+
+| Flow | LLM turns saved | Flow lookups that were the agent's own | Episodes with a detour |
+|---|---|---|---|
+| Acts on the tool's probability (p ≥ 0.3) | 77 of 347 (22.2%) | 151 of 193 (78%) | 12 of 40 |
+| Acts on the tool's probability times the binding's agreement (p ≥ 0.3) | 77 of 347 (22.2%) | 151 of 169 (89%) | 8 of 40 |
+
+For comparison, the offline projection for GLM-5 (goal free, lookup first at p ≥ 0.3) is 20.3% over all four trials. The first flow's detours were mostly product walks: it looked up every product in an order, where agents look up only the products the customer asks about. The second flow multiplies by how often its argument binding picked the agent's own values in training. That is 92% for unmentioned orders and 60% for unmentioned products. With it, every dropped lookup was a detour. Most of the live flow's questions were cache hits: where it follows the agent's path, it asks byte-identical questions to the offline run.
+
+**Smoke runs, GLM-5.3.** One episode per arm on task 90, a cancellation. Both passed the database check:
+
+| Arm | LLM turns | Agent's own calls | Flow lookups | Agent input tokens (cached) | GLM requests, agent + customer | Time |
+|---|---|---|---|---|---|---|
+| Baseline | 12 | 7 | — | 76.6k (66.9k) | 12 + 6 | 112 s |
+| Flows | **8** | 3 | 4 | **55.4k** (46.0k) | 8 + 6 | 105 s |
+
+In the flows arm, the agent's first call found the user. The flow then looked up the user's details and all three orders in the same response, and handed back at the product step (p = 0.10). The agent used those results without repeating any of them. It looked up the camera itself, and the conversation went as in the baseline. This is one episode, so it shows that the mechanism works live, not how much it saves.
 
 ## Check the flow without an LLM
 
