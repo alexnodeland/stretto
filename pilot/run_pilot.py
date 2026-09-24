@@ -14,6 +14,11 @@ Friday 14:00–18:00 Singapore time, and all day from 2026-09-25 to
 2026-10-07).
 
     python run_pilot.py --tasks 10 --seed 7 --out runs/pilot --oracle-cache CACHE
+
+`--arms baseline guards` pairs the baseline with the guards arm instead, and
+`--task-ids` names the tasks instead of sampling them (the guards pilot picks
+the tasks where published trajectories show the guards firing, and says so).
+`--trials` runs each task that many times per arm, under `trial-<k>/`.
 """
 
 import argparse
@@ -28,7 +33,7 @@ from pathlib import Path
 from check_flow import flow_calls, key
 
 HERE = Path(__file__).resolve().parent
-ARMS = ("baseline", "flows")
+ARMS = ["baseline", "flows"]
 RATES = {"input_tokens": 6.9, "cache_read_input_tokens": 1.7, "cache_creation_input_tokens": 6.9, "output_tokens": 24.0}
 ALL_DAY_OFF_PEAK = (date(2026, 9, 25), date(2026, 10, 7))
 
@@ -70,6 +75,7 @@ def repeats(directory: Path) -> int:
 
 def episode_summary(directory: Path) -> dict:
     r = json.loads((directory / "result.json").read_text())
+    refusals = r.get("refusals", [])
     sim = json.loads((directory / "simulation.json").read_text())
     agent = [a["usage"] for a in r["agent_results"] if a.get("usage")]
     standard = sum(map(credits, agent)) + sum(map(credits, r["customer_usage"]))
@@ -81,6 +87,8 @@ def episode_summary(directory: Path) -> dict:
         "agent_calls": r["tool_calls"],
         "flow_lookups": r.get("flow_lookups", 0),
         "repeats": repeats(directory),
+        "refusals": len(refusals),
+        "refused": sorted({f["tool"] or "?" for f in refusals}),
         "agent_input_tokens": sum(
             u.get("input_tokens", 0) + u.get("cache_read_input_tokens", 0) + u.get("cache_creation_input_tokens", 0)
             for u in agent
@@ -93,47 +101,58 @@ def episode_summary(directory: Path) -> dict:
     }
 
 
-def summarize(out: Path, tasks: list[str]) -> dict:
+def episode_dir(out: Path, arm: str, task: str, trial: int) -> Path:
+    base = out if trial == 0 else out / f"trial-{trial}"
+    return base / arm / f"task-{task}"
+
+
+def summarize(out: Path, tasks: list[str], trials: int = 1) -> dict:
     rows = []
-    for t in tasks:
-        row = {"task_id": t}
-        for arm in ARMS:
-            d = out / arm / f"task-{t}"
-            row[arm] = episode_summary(d) if (d / "result.json").exists() else None
-        rows.append(row)
-    done = [r for r in rows if r["baseline"] and r["flows"]]
+    for trial in range(trials):
+        for t in tasks:
+            row = {"task_id": t, "trial": trial}
+            for arm in ARMS:
+                d = episode_dir(out, arm, t, trial)
+                row[arm] = episode_summary(d) if (d / "result.json").exists() else None
+            rows.append(row)
+    a, b = ARMS
+    done = [r for r in rows if r[a] and r[b]]
     total = lambda arm, k: sum(r[arm][k] for r in done)
-    diffs = [r["flows"]["llm_turns"] - r["baseline"]["llm_turns"] for r in done]
+    diffs = [r[b]["llm_turns"] - r[a]["llm_turns"] for r in done]
     summary = {
+        "arms": ARMS,
         "pairs": len(done),
         "llm_turns": {arm: total(arm, "llm_turns") for arm in ARMS},
         "agent_input_tokens": {arm: total(arm, "agent_input_tokens") for arm in ARMS},
         "passed": {arm: sum(r[arm]["reward"] >= 1 - 1e-9 for r in done) for arm in ARMS},
-        "credits_billed": round(sum(r[a]["credits_billed"] for r in rows for a in ARMS if r[a]), 1),
-        "flow_lookups": total("flows", "flow_lookups"),
-        "repeats": total("flows", "repeats"),
+        "credits_billed": round(sum(r[x]["credits_billed"] for r in rows for x in ARMS if r[x]), 1),
+        "flow_lookups": total(b, "flow_lookups"),
+        "repeats": total(b, "repeats"),
+        "refusals": total(b, "refusals"),
+        "episodes_with_refusals": sum(r[b]["refusals"] > 0 for r in done),
     }
     if done:
-        b = summary["llm_turns"]["baseline"]
-        summary["turns_saved"] = round(1 - summary["llm_turns"]["flows"] / b, 4) if b else None
-        tb = summary["agent_input_tokens"]["baseline"]
-        summary["input_tokens_saved"] = round(1 - summary["agent_input_tokens"]["flows"] / tb, 4) if tb else None
+        base = summary["llm_turns"][a]
+        summary["turns_saved"] = round(1 - summary["llm_turns"][b] / base, 4) if base else None
+        tb = summary["agent_input_tokens"][a]
+        summary["input_tokens_saved"] = round(1 - summary["agent_input_tokens"][b] / tb, 4) if tb else None
         summary["turn_difference_mean"] = round(statistics.mean(diffs), 2)
         summary["turn_difference_sd"] = round(statistics.stdev(diffs), 2) if len(diffs) > 1 else None
         summary["pairs_fewer_turns"] = sum(d < 0 for d in diffs)
         summary["pairs_more_turns"] = sum(d > 0 for d in diffs)
-    report = {"tasks": tasks, "summary": summary, "pairs": rows}
+    report = {"tasks": tasks, "trials": trials, "summary": summary, "pairs": rows}
     (out / "pilot.json").write_text(json.dumps(report, indent=1))
+    A, B = a.capitalize(), b.capitalize()
     lines = [
-        "| Task | Baseline turns | Flows turns | Flow lookups | Baseline input tokens | Flows input tokens | Baseline reward | Flows reward |",
-        "|---|---|---|---|---|---|---|---|",
+        f"| Task | Trial | {A} turns | {B} turns | Flow lookups | Refusals | {A} input tokens | {B} input tokens | {A} reward | {B} reward |",
+        "|---|---|---|---|---|---|---|---|---|---|",
     ]
     for r in rows:
-        b, f = r["baseline"], r["flows"]
+        x, y = r[a], r[b]
         cell = lambda e, k: "—" if e is None else f"{e[k]:,}" if isinstance(e[k], int) else f"{e[k]}"
         lines.append(
-            f"| {r['task_id']} | {cell(b, 'llm_turns')} | {cell(f, 'llm_turns')} | {cell(f, 'flow_lookups')} "
-            f"| {cell(b, 'agent_input_tokens')} | {cell(f, 'agent_input_tokens')} | {cell(b, 'reward')} | {cell(f, 'reward')} |"
+            f"| {r['task_id']} | {r['trial']} | {cell(x, 'llm_turns')} | {cell(y, 'llm_turns')} | {cell(y, 'flow_lookups')} "
+            f"| {cell(y, 'refusals')} | {cell(x, 'agent_input_tokens')} | {cell(y, 'agent_input_tokens')} | {cell(x, 'reward')} | {cell(y, 'reward')} |"
         )
     (out / "pilot.md").write_text("\n".join(lines) + "\n\n```json\n" + json.dumps(summary, indent=1) + "\n```\n")
     return summary
@@ -150,26 +169,38 @@ def main() -> None:
     parser.add_argument("--oracle-cache", type=Path, required=True)
     parser.add_argument("--flow", type=Path, help="a compiled flow (`stretto compile`), else compiled per episode")
     parser.add_argument("--summarize-only", action="store_true")
+    parser.add_argument("--arms", nargs=2, default=ARMS, help="the two arms to pair, baseline first")
+    parser.add_argument("--task-ids", nargs="*", help="these tasks instead of a sample")
+    parser.add_argument("--trials", type=int, default=1, help="episodes per task and arm")
+    parser.add_argument(
+        "--only", nargs="*", default=[],
+        help="ARM:TASK pairs to run; other episodes must already be recorded (reused)",
+    )
     args = parser.parse_args()
+    ARMS[:] = args.arms
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    tasks = sample(args.tau2, args.domain, args.tasks, args.seed, set(args.exclude))
-    print("tasks:", " ".join(tasks), flush=True)
+    tasks = args.task_ids or sample(args.tau2, args.domain, args.tasks, args.seed, set(args.exclude))
+    print("tasks:", " ".join(tasks), "arms:", " ".join(ARMS), "trials:", args.trials, flush=True)
     if not args.summarize_only:
-        for t in tasks:
-            for arm in ARMS:
-                if (out / arm / f"task-{t}" / "result.json").exists():
-                    continue
-                command = [
-                    sys.executable, str(HERE / "run_episode.py"),
-                    "--domain", args.domain, "--task-id", t, "--out", str(out), "--arm", arm,
-                    "--tau2", str(args.tau2), "--oracle-cache", str(args.oracle_cache),
-                ] + (["--flow", str(args.flow)] if args.flow else [])
-                done = subprocess.run(command, capture_output=True, text=True, check=False)
-                (out / f"{arm}-task-{t}.log").write_text(done.stdout + done.stderr)
-                result = [l for l in done.stdout.splitlines() if l.startswith("RESULT")]
-                print(result[-1] if result else f"FAILED {arm} task {t} (exit {done.returncode})", flush=True)
-    print("SUMMARY", json.dumps(summarize(out, tasks)), flush=True)
+        for trial in range(args.trials):
+            for t in tasks:
+                for arm in ARMS:
+                    episode = episode_dir(out, arm, t, trial)
+                    if (episode / "result.json").exists():
+                        continue
+                    if args.only and f"{arm}:{t}" not in args.only:
+                        continue
+                    command = [
+                        sys.executable, str(HERE / "run_episode.py"),
+                        "--domain", args.domain, "--task-id", t, "--out", str(episode.parent.parent),
+                        "--arm", arm, "--tau2", str(args.tau2), "--oracle-cache", str(args.oracle_cache),
+                    ] + (["--flow", str(args.flow)] if args.flow else [])
+                    done = subprocess.run(command, capture_output=True, text=True, check=False)
+                    (episode.parent.parent / f"{arm}-task-{t}.log").write_text(done.stdout + done.stderr)
+                    result = [l for l in done.stdout.splitlines() if l.startswith("RESULT")]
+                    print(result[-1] if result else f"FAILED {arm} task {t} (exit {done.returncode})", flush=True)
+    print("SUMMARY", json.dumps(summarize(out, tasks, args.trials)), flush=True)
 
 
 if __name__ == "__main__":

@@ -932,6 +932,9 @@ pub struct Audit {
     pub refused: [usize; 2],
     /// Every rule.
     pub rules: Vec<RuleAudit>,
+    /// By task: episodes (successful, failed), and those in which an
+    /// enforced rule would refuse an accepted write (successful, failed).
+    pub tasks: BTreeMap<String, [usize; 4]>,
 }
 
 /// Test every guard against the writes of `episodes`: each write is checked
@@ -1016,8 +1019,11 @@ pub fn audit(guards: &Guards, episodes: &[&Episode]) -> Audit {
                 .expect("every rule has an entry")
                 .episodes_failed[side] += 1;
         }
+        let task = out.tasks.entry(ep.task_id.clone()).or_default();
+        task[side] += 1;
         if failing.iter().any(|id| rules[id].enforced) {
             out.refused[side] += 1;
+            task[2 + side] += 1;
         }
     }
     out.rules = rules.into_values().collect();

@@ -12,6 +12,12 @@ The episode is scored with τ²-bench's own evaluator on the final database
 (the environment check; natural-language assertions need an LLM judge and
 are left out).
 
+The guards arm (`--arm guards`) is the same episode with the proxy checking
+each of the agent's calls against stretto's policy guards for the domain: a
+call an enforced rule refuses never reaches the tools, and the agent gets an
+error result that says why. The harness hands the proxy the conversation
+(`context.jsonl`), which MCP does not carry.
+
 The flows arm (`--arm flows`) is the same episode with a read-only flow
 behind the tools: `stretto flow-serve` is compiled before the agent starts
 (from cached System-One answers, goal free) and `tau2_mcp.py` asks it after
@@ -101,7 +107,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--domain", default="retail")
     parser.add_argument("--task-id", required=True)
-    parser.add_argument("--arm", default="baseline", choices=["baseline", "flows"])
+    parser.add_argument("--arm", default="baseline", choices=["baseline", "flows", "guards"])
     parser.add_argument("--out", type=Path, default=Path("runs/pilot"))
     parser.add_argument("--model", default="glm-5.3")
     parser.add_argument("--max-calls", type=int, default=60)
@@ -124,8 +130,15 @@ def main() -> None:
     env = registry.get_env_constructor(args.domain)()
     episode = (args.out / args.arm / f"task-{args.task_id}").resolve()
     episode.mkdir(parents=True, exist_ok=True)
-    for stale in ("trajectory.jsonl", "events.jsonl", "tools-state.json", "flow.jsonl"):
+    for stale in ("trajectory.jsonl", "events.jsonl", "tools-state.json", "flow.jsonl", "context.jsonl"):
         (episode / stale).unlink(missing_ok=True)
+    context = episode / "context.jsonl"
+
+    def say(role: str, text: str) -> None:
+        """Hand the proxy a message of the conversation (guards arm)."""
+        if args.arm == "guards":
+            with open(context, "a") as f:
+                f.write(json.dumps({"role": role, "content": text}) + "\n")
     serve, flow_address = start_flow(args, episode) if args.arm == "flows" else (None, None)
     started, t0 = now(), time.time()
 
@@ -146,6 +159,8 @@ def main() -> None:
         AssistantMessage(role="assistant", content=GREETING),
         UserMessage(role="user", content=first),
     )
+    say("assistant", GREETING)
+    say("user", first)
 
     python = Path(subprocess.check_output(["which", "python"], text=True).strip())
     config = {
@@ -156,6 +171,7 @@ def main() -> None:
                     "--record", str(episode / "log"),
                     "--domain", args.domain,
                     "--agent-model", args.model,
+                ] + (["--guards", "--context", str(context)] if args.arm == "guards" else []) + [
                     "--",
                     str(python), str(HERE / "tau2_mcp.py"),
                     "--domain", args.domain,
@@ -210,6 +226,7 @@ def main() -> None:
             break
         dialogue.append(("agent", text))
         record(AssistantMessage(role="assistant", content=text))
+        say("assistant", text)
         state = json.loads((episode / "tools-state.json").read_text())
         if state.get("over_budget"):
             ending = "max_steps"
@@ -218,6 +235,7 @@ def main() -> None:
         customer_usage.append(usage)
         dialogue.append(("customer", reply))
         record(UserMessage(role="user", content=reply))
+        say("user", reply)
         if any(token in reply for token in STOPS):
             ending = "user_stop"
             break
@@ -273,6 +291,23 @@ def main() -> None:
         elif event.get("type") == "result":
             results.append({k: event.get(k) for k in ("num_turns", "usage", "is_error")})
     tools = json.loads((episode / "tools-state.json").read_text())
+    # The proxy's refusals, from its session log (guards arm).
+    refusals = []
+    for log in sorted((episode / "log").glob("*.jsonl")):
+        if log.name.endswith(".flow.jsonl"):
+            continue
+        calls = {}
+        for line in log.read_text().splitlines()[1:]:
+            entry = json.loads(line)
+            m = entry.get("message") or {}
+            if not isinstance(m, dict):
+                continue
+            if entry.get("from") == "client" and m.get("method") == "tools/call":
+                calls[json.dumps(m.get("id"))] = m.get("params", {}).get("name")
+            elif entry.get("from") == "proxy" and isinstance(m.get("result"), dict):
+                text = " ".join(c.get("text", "") for c in m["result"].get("content", []))
+                if m["result"].get("isError") and text.startswith("Refused by the policy check"):
+                    refusals.append({"tool": calls.get(json.dumps(m.get("id"))), "reason": text})
     flow_log = episode / "flow.jsonl"
     flow = [json.loads(l) for l in flow_log.read_text().splitlines()] if flow_log.exists() else []
     result = {
@@ -291,6 +326,7 @@ def main() -> None:
             action: sum(1 for a in flow if a.get("action") == action)
             for action in ("lookup", "hand_back")
         },
+        "refusals": refusals,
         "customer_turns": len(customer_usage),
         "agent_results": results,
         "customer_usage": customer_usage,
@@ -301,6 +337,7 @@ def main() -> None:
         "RESULT",
         json.dumps(
             {k: result[k] for k in ("task_id", "arm", "reward", "termination", "llm_turns", "tool_calls", "flow_lookups", "customer_turns", "duration_s")}
+            | {"refusals": len(refusals)}
         ),
     )
 
