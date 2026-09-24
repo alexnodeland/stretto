@@ -160,3 +160,37 @@ fn a_flow_learned_from_sessions_continues_a_live_one() {
         Proposal::HandBack { .. } => {}
     }
 }
+
+#[test]
+fn an_audit_scores_new_sessions_under_the_flow() {
+    use stretto_report::audit::{audit, decisions, score};
+    let flow = learned_flow();
+    let oracle = MockOracle {
+        confidence: 0.6,
+        noul: 0.5,
+    };
+    let new: Vec<Episode> = (100..110)
+        .map(|i| {
+            let mut ep = session(i);
+            ep.task_id = ep.id.clone();
+            ep
+        })
+        .collect();
+    let a = audit(&flow, &new, &oracle);
+    assert_eq!(a.episodes, 10);
+    assert!(a.decisions >= 30, "{}", a.decisions);
+    assert_eq!(a.unanswered, 0);
+    // The sessions follow the training script, so the flow fits them well.
+    assert!(a.agreement > 0.8, "{}", a.agreement);
+    // fugue's score is the sum of the flow's log-probabilities of the
+    // agent's steps.
+    let (ds, _) = decisions(&flow, &new[0], &oracle);
+    let by_hand: f64 = ds.iter().map(|d| d.probs[d.actual].ln()).sum();
+    assert!((score(&ds).log_prior - by_hand).abs() < 1e-9);
+    // An agent that skips the orders surprises it more.
+    let mut odd = session(200);
+    odd.task_id = odd.id.clone();
+    odd.events.drain(5..9);
+    let surprised = audit(&flow, &[odd], &oracle);
+    assert!(surprised.mean_log_prob < a.mean_log_prob);
+}

@@ -154,6 +154,40 @@ enum Command {
         #[arg(long)]
         json: Option<PathBuf>,
     },
+    /// Audit a flow against recorded episodes: score the agent's own steps
+    /// under the flow's decisions, run as a fugue program, for agreement,
+    /// calibration and surprise per site and per episode. Run it on new
+    /// sessions before trusting a flow compiled from older ones.
+    Audit {
+        /// The flow IR to audit.
+        #[arg(long)]
+        flow: PathBuf,
+        /// Sessions recorded by stretto-proxy (a directory of `*.jsonl`).
+        #[arg(long)]
+        sessions: Option<PathBuf>,
+        /// τ²-bench results files (repeatable); files for other domains are
+        /// skipped.
+        #[arg(long = "results")]
+        results: Vec<PathBuf>,
+        /// With --results: keep only the test split of this τ²-bench
+        /// checkout, the tasks a flow compiled from it never trained on.
+        #[arg(long)]
+        tau2: Option<PathBuf>,
+        /// Who answers the flow's questions: `replay` (the cache only;
+        /// decisions it cannot answer are left out), `jev` (needs
+        /// TYPESAFE_API_KEY; about $0.0001 per decision) or `mock`.
+        #[arg(long, value_enum, default_value_t = OracleArg::Replay)]
+        oracle: OracleArg,
+        /// Replay cache for oracle answers.
+        #[arg(long, default_value = ".oracle-cache")]
+        oracle_cache: PathBuf,
+        /// Write the Markdown report here (default: stdout).
+        #[arg(long)]
+        out: Option<PathBuf>,
+        /// Also write the audit as JSON here.
+        #[arg(long)]
+        json: Option<PathBuf>,
+    },
     /// Check that Jev is reachable with TYPESAFE_API_KEY: ask one small
     /// question (uncached) and print the answer, model version and latency.
     JevCheck,
@@ -444,6 +478,70 @@ fn main() -> Result<()> {
             }
             if let Some(path) = json {
                 write(&path, &serde_json::to_vec_pretty(&audits)?)?;
+            }
+            Ok(())
+        }
+        Command::Audit {
+            flow,
+            sessions,
+            results,
+            tau2,
+            oracle,
+            oracle_cache,
+            out,
+            json,
+        } => {
+            let flow = stretto_report::flow::Flow::load(&flow)?;
+            let domain = flow.domain().to_string();
+            let mut episodes = Vec::new();
+            if let Some(dir) = sessions {
+                for log in stretto_trace::mcp::read_sessions(&dir)? {
+                    let mut ep = stretto_trace::mcp::episode(&log);
+                    ep.task_id = ep.id.clone();
+                    episodes.push(ep);
+                }
+            }
+            let test = match &tau2 {
+                Some(root) => Some(
+                    stretto_trace::tau2::load_split(
+                        &root.join(format!("data/tau2/domains/{domain}/split_tasks.json")),
+                    )?
+                    .test,
+                ),
+                None => None,
+            };
+            for path in &results {
+                let run = stretto_trace::tau2::load_results(path)?;
+                if run.domain != domain {
+                    continue;
+                }
+                episodes.extend(
+                    run.episodes
+                        .into_iter()
+                        .filter(|ep| test.as_ref().is_none_or(|t| t.contains(&ep.task_id))),
+                );
+            }
+            if episodes.is_empty() {
+                anyhow::bail!("no episodes to audit: pass --sessions or --results for {domain}");
+            }
+            let mut sc = ShadowConfig::new(oracle_kind(oracle));
+            sc.cache_dir = oracle_cache;
+            let oracle = sc.build()?;
+            let started = Instant::now();
+            let audit = stretto_report::audit::audit(&flow, &episodes, oracle.as_ref());
+            eprintln!(
+                "stretto: audited {} decisions in {} episodes in {:.1} s",
+                audit.decisions,
+                audit.episodes,
+                started.elapsed().as_secs_f64()
+            );
+            let md = stretto_report::audit::markdown(&audit);
+            match out {
+                Some(path) => write(&path, md.as_bytes())?,
+                None => print!("{md}"),
+            }
+            if let Some(path) = json {
+                write(&path, &serde_json::to_vec_pretty(&audit)?)?;
             }
             Ok(())
         }

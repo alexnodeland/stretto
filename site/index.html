@@ -303,7 +303,7 @@
     <li><strong>Read-only flows with Bayesian arbitration</strong> (§3.3–3.6): a System-One model weighed against the habit, its own record per site, and state predicates by a cross-fitted conditional logit, acting on the probability that the whole call, arguments included, is the agent's.</li>
     <li><strong>A live form that needs no cooperation from the agent</strong> (§3.7, §5.6): the flow runs behind the agent's own tool calls and returns its lookups in the same response, measured live with GLM-5.3.</li>
     <li><strong>Typed policy guards, audited against traces</strong> (§3.8, §5.7): checks compiled from the written policy that pass, fail or do not know, tested on 2,624 trajectories before any is enforced.</li>
-    <li><strong>An open implementation</strong> (§4): a Rust MCP proxy that records sessions and serves flows, a versioned flow IR, and learning from recorded sessions of any MCP server.</li>
+    <li><strong>An open implementation</strong> (§4): a Rust MCP proxy that records sessions and serves flows, guards and a commit tool for any MCP server; a versioned flow IR; learning from recorded sessions; and an audit that scores new sessions under a flow run as a fugue program (§5.8).</li>
   </ul>
 </section>
 
@@ -392,7 +392,7 @@
         <tr><td><code>stretto-trace</code></td><td class="ok">built</td><td class="wrap">Canonical episode schema; τ²-bench results and MCP session logs in; tool manifests with docs and read-only hints.</td></tr>
         <tr><td><code>stretto-model</code></td><td class="ok">built</td><td class="wrap">Action abstraction; hierarchical Dirichlet back-off habit; α posterior by MH in fugue; code features; argument provenance; tool runs.</td></tr>
         <tr><td><code>stretto-oracle</code></td><td class="ok">built</td><td class="wrap"><code>Oracle</code> trait; Jev client; on-disk replay cache keyed by request hash; mock.</td></tr>
-        <tr><td><code>stretto-report</code></td><td class="ok">built</td><td class="wrap">The <code>stretto</code> CLI: Phase 0 reports; System-One questions; arbiter; flows (<code>compile</code>, <code>learn</code>, <code>serve</code>); guards and their audit.</td></tr>
+        <tr><td><code>stretto-report</code></td><td class="ok">built</td><td class="wrap">The <code>stretto</code> CLI: Phase 0 reports; System-One questions; arbiter; flows (<code>compile</code>, <code>learn</code>, <code>serve</code>); guards and their audit; the flow audit, with fugue (<code>audit</code>).</td></tr>
         <tr><td><code>stretto-proxy</code></td><td class="ok" id="proxy-state">built</td><td class="wrap" id="proxy-what">A stdio MCP proxy for any MCP server. It records sessions; in active mode it runs a flow behind the agent's calls, refuses writes the guards fail, adds <code>stretto_commit</code>, and logs the conversation a host hands it.</td></tr>
       </tbody>
     </table>
@@ -500,6 +500,24 @@
   <details><summary>Show the per-rule audit</summary><div class="table-wrap"><table id="guards-table"></table></div></details>
 </section>
 
+  <h3><span class="num">5.8</span>Auditing a flow, as a fugue program</h3>
+  <p>A flow's decisions over an episode are a probabilistic program: at each decision, a categorical choice among the site's options, weighted by the arbiter. <code>stretto audit</code> builds that program in fugue, one <code>sample</code> per decision at address <code>decision#i</code>. It then runs it under two handlers. <code>ScoreGivenTrace</code>, given a trace of the agent's own steps, returns the log-probability of what the agent did, so the flow's surprise per decision, per site and per episode. <code>PriorHandler</code> runs the same program as a stochastic policy. The check it serves: before trusting a flow on new sessions, score them.</p>
+  <div class="table-wrap">
+    <table>
+      <caption><b>Table 4.</b> The pilots' goal-free flows audited on GLM-5's published test episodes (tasks the flows never trained on). The replay cache answered every question, so the audit cost nothing.</caption>
+      <thead><tr><th></th><th>Retail</th><th>Airline</th></tr></thead>
+      <tbody>
+        <tr><td>Decisions scored</td><td>724 (160 episodes)</td><td>228 (80 episodes)</td></tr>
+        <tr><td>Flow's likeliest option was the agent's step</td><td>85.9%</td><td>64.5%</td></tr>
+        <tr><td>Surprise, nats per decision</td><td>0.42</td><td>1.02</td></tr>
+        <tr><td>Expected calibration error</td><td>0.088 (underconfident)</td><td>0.070 (overconfident)</td></tr>
+        <tr><td>Weakest site</td><td>after an order is read, 61%</td><td>after a reservation is read, 42%</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The retail flow fits GLM-5 as well as the offline agreement said (85.7% in Table 2). The airline flow does not, and the audit says where: GLM-5 in τ²-bench's harness reads several reservations in one turn, while the flow decides one lookup at a time. That matches the projection of under 5% saved (Figure 6), and it is the warning an audit exists to give. Calibration also runs opposite ways in the two domains. In retail, a top option the flow gives 0.8–0.9 is right 96% of the time; in airline, 74%. So a deployment should recalibrate on its own sessions, and the audit says in which direction. Full tables are in <a href="https://github.com/alexnodeland/stretto/blob/main/docs/results/audit-2026-09-24.md"><code>docs/results/audit-2026-09-24.md</code></a>.</p>
+</section>
+
 <!-- ==================================================================== -->
 <section id="discussion">
   <h2><span class="num">6</span>Discussion</h2>
@@ -515,7 +533,7 @@
   <ul>
     <li><strong>A paired run large enough to bound pass^1</strong>, with the detour cost measured live, on more agent models, starting with the sequential callers the projection favors.</li>
     <li><strong>Flows that end in writes</strong>, named by the LLM as macro-tools: <code>plan_*</code> reads and proposes, and <code>commit_*</code> executes in one call the writes the LLM specified after the customer's yes, each checked by the guards.</li>
-    <li><strong>Flows as fugue programs.</strong> A flow's decisions are a probabilistic program, so replaying recorded sessions through fugue's handlers scores them (audit), and logged propensities allow counterfactual evaluation of a changed flow before it runs<a class="cite" href="#rf6">[F6]</a>.</li>
+    <li><strong>Counterfactual evaluation.</strong> The audit's program already scores and simulates a flow (§5.8). With the propensities the proxy logs at every live decision, the same program can estimate how a changed flow would have done, before it runs<a class="cite" href="#rf6">[F6]</a>.</li>
     <li><strong>Predicate refinement</strong>: propose System-One predicates where the arbiter is least sure, and keep one when it raises the held-out likelihood of the traces, in the style of counterexample-guided refinement<a class="cite" href="#rf2">[F2]</a>.</li>
   </ul>
 </section>

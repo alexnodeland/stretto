@@ -1,0 +1,161 @@
+{
+  "domain": "airline",
+  "episodes": 80,
+  "decisions": 228,
+  "unanswered": 0,
+  "log_prob": -232.28257394405435,
+  "mean_log_prob": -1.01878321905287,
+  "agreement": 0.6447368421052632,
+  "expected_agreement": 0.5353783759769833,
+  "ece": 0.06951724909421192,
+  "calibration": [
+    {
+      "from": 0.3,
+      "decisions": 5,
+      "mean_prob": 0.36694359835505036,
+      "agreement": 0.4
+    },
+    {
+      "from": 0.4,
+      "decisions": 26,
+      "mean_prob": 0.4674774662464032,
+      "agreement": 0.5769230769230769
+    },
+    {
+      "from": 0.5,
+      "decisions": 46,
+      "mean_prob": 0.5494908384832271,
+      "agreement": 0.5217391304347826
+    },
+    {
+      "from": 0.6,
+      "decisions": 46,
+      "mean_prob": 0.6553842010002124,
+      "agreement": 0.5869565217391305
+    },
+    {
+      "from": 0.7,
+      "decisions": 41,
+      "mean_prob": 0.7447045145338564,
+      "agreement": 0.6585365853658537
+    },
+    {
+      "from": 0.8,
+      "decisions": 38,
+      "mean_prob": 0.8499982655989181,
+      "agreement": 0.7368421052631579
+    },
+    {
+      "from": 0.9,
+      "decisions": 26,
+      "mean_prob": 0.9454613039529551,
+      "agreement": 0.9230769230769231
+    }
+  ],
+  "sites": [
+    {
+      "site": "get_reservation_details",
+      "decisions": 74,
+      "agreement": 0.4189189189189189,
+      "mean_log_prob": -1.7194575879237965
+    },
+    {
+      "site": "get_user_details",
+      "decisions": 68,
+      "agreement": 0.8529411764705882,
+      "mean_log_prob": -0.5070488424795223
+    },
+    {
+      "site": "search_direct_flight",
+      "decisions": 45,
+      "agreement": 0.6666666666666666,
+      "mean_log_prob": -0.7633529799268269
+    },
+    {
+      "site": "search_onestop_flight",
+      "decisions": 18,
+      "agreement": 0.7777777777777778,
+      "mean_log_prob": -0.6467750940798985
+    },
+    {
+      "site": "get_flight_status",
+      "decisions": 12,
+      "agreement": 0.25,
+      "mean_log_prob": -1.7828083095404403
+    },
+    {
+      "site": "cancel_reservation",
+      "decisions": 7,
+      "agreement": 1.0,
+      "mean_log_prob": -0.0903715652860817
+    },
+    {
+      "site": "list_all_airports",
+      "decisions": 4,
+      "agreement": 1.0,
+      "mean_log_prob": -0.6360636718631546
+    }
+  ],
+  "surprising": [
+    {
+      "episode": "62304e1f-a542-4b3d-9167-eaf6cc781ad8",
+      "task": "24",
+      "decisions": 4,
+      "mean_log_prob": -2.8067870107812896
+    },
+    {
+      "episode": "0288203b-45e7-41c1-abbd-8db542266c71",
+      "task": "24",
+      "decisions": 4,
+      "mean_log_prob": -2.747634302736946
+    },
+    {
+      "episode": "cfe9ff8a-db79-43e7-bbfd-af17a89c87bd",
+      "task": "24",
+      "decisions": 4,
+      "mean_log_prob": -2.744699228393772
+    },
+    {
+      "episode": "9f66ec5b-9a9a-4d10-b141-01939b439971",
+      "task": "22",
+      "decisions": 3,
+      "mean_log_prob": -2.690755541479845
+    },
+    {
+      "episode": "11b54961-50e8-4dee-af84-372e707afed6",
+      "task": "22",
+      "decisions": 3,
+      "mean_log_prob": -2.6386245847841434
+    },
+    {
+      "episode": "897fac30-6169-4318-b60d-4b942da2964c",
+      "task": "18",
+      "decisions": 2,
+      "mean_log_prob": -2.298510488812434
+    },
+    {
+      "episode": "247f1bb3-fe26-4025-aa9d-3f1f8d9ae2cc",
+      "task": "18",
+      "decisions": 3,
+      "mean_log_prob": -2.017826384668871
+    },
+    {
+      "episode": "2b589816-5dfd-4eac-9c1a-7ecb699ac5d8",
+      "task": "30",
+      "decisions": 3,
+      "mean_log_prob": -1.9904544111680822
+    },
+    {
+      "episode": "1126b2a1-d47a-4c6f-95f1-30a6c6cfe14e",
+      "task": "22",
+      "decisions": 3,
+      "mean_log_prob": -1.9391954425943838
+    },
+    {
+      "episode": "ada92693-23b8-4c19-a83c-87c2e821d749",
+      "task": "45",
+      "decisions": 2,
+      "mean_log_prob": -1.8485615072617878
+    }
+  ]
+}

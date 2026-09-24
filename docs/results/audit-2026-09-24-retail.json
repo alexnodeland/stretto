@@ -1,0 +1,209 @@
+{
+  "domain": "retail",
+  "episodes": 160,
+  "decisions": 724,
+  "unanswered": 0,
+  "log_prob": -303.9014985720755,
+  "mean_log_prob": -0.41975345106640266,
+  "agreement": 0.8591160220994475,
+  "expected_agreement": 0.723469026704697,
+  "ece": 0.08755253409998437,
+  "calibration": [
+    {
+      "from": 0.3,
+      "decisions": 1,
+      "mean_prob": 0.3838668079928532,
+      "agreement": 0.0
+    },
+    {
+      "from": 0.4,
+      "decisions": 32,
+      "mean_prob": 0.4731446412109211,
+      "agreement": 0.53125
+    },
+    {
+      "from": 0.5,
+      "decisions": 88,
+      "mean_prob": 0.5523193695907231,
+      "agreement": 0.6022727272727273
+    },
+    {
+      "from": 0.6,
+      "decisions": 121,
+      "mean_prob": 0.6482149826117253,
+      "agreement": 0.8016528925619835
+    },
+    {
+      "from": 0.7,
+      "decisions": 138,
+      "mean_prob": 0.7550730323124689,
+      "agreement": 0.855072463768116
+    },
+    {
+      "from": 0.8,
+      "decisions": 137,
+      "mean_prob": 0.8485774188793254,
+      "agreement": 0.9562043795620438
+    },
+    {
+      "from": 0.9,
+      "decisions": 207,
+      "mean_prob": 0.9486082190109373,
+      "agreement": 0.9951690821256038
+    }
+  ],
+  "sites": [
+    {
+      "site": "get_order_details",
+      "decisions": 167,
+      "agreement": 0.6107784431137725,
+      "mean_log_prob": -0.7290601465298365
+    },
+    {
+      "site": "get_user_details",
+      "decisions": 147,
+      "agreement": 0.9659863945578231,
+      "mean_log_prob": -0.2646886580681142
+    },
+    {
+      "site": "find_user_id_by_name_zip",
+      "decisions": 134,
+      "agreement": 0.8507462686567164,
+      "mean_log_prob": -0.5464028681261647
+    },
+    {
+      "site": "get_product_details",
+      "decisions": 118,
+      "agreement": 0.940677966101695,
+      "mean_log_prob": -0.27660289094465595
+    },
+    {
+      "site": "modify_pending_order_items",
+      "decisions": 45,
+      "agreement": 0.9777777777777777,
+      "mean_log_prob": -0.16731158534638663
+    },
+    {
+      "site": "return_delivered_order_items",
+      "decisions": 24,
+      "agreement": 1.0,
+      "mean_log_prob": -0.03103644847802756
+    },
+    {
+      "site": "find_user_id_by_email",
+      "decisions": 20,
+      "agreement": 1.0,
+      "mean_log_prob": -0.2717208129047902
+    },
+    {
+      "site": "cancel_pending_order",
+      "decisions": 18,
+      "agreement": 1.0,
+      "mean_log_prob": -0.025454565239154743
+    },
+    {
+      "site": "modify_pending_order_address",
+      "decisions": 17,
+      "agreement": 0.9411764705882353,
+      "mean_log_prob": -0.14505268731038268
+    },
+    {
+      "site": "modify_user_address",
+      "decisions": 10,
+      "agreement": 1.0,
+      "mean_log_prob": -0.26843122772651307
+    },
+    {
+      "site": "find_user_id_by_email (error)",
+      "decisions": 9,
+      "agreement": 0.8888888888888888,
+      "mean_log_prob": -1.1848451743186525
+    },
+    {
+      "site": "list_all_product_types",
+      "decisions": 8,
+      "agreement": 1.0,
+      "mean_log_prob": -0.16414506773960463
+    },
+    {
+      "site": "calculate",
+      "decisions": 3,
+      "agreement": 1.0,
+      "mean_log_prob": -0.04393783216908751
+    },
+    {
+      "site": "find_user_id_by_name_zip (error)",
+      "decisions": 3,
+      "agreement": 0.3333333333333333,
+      "mean_log_prob": -1.97958335349809
+    },
+    {
+      "site": "return_delivered_order_items (error)",
+      "decisions": 1,
+      "agreement": 1.0,
+      "mean_log_prob": -0.018062739415987048
+    }
+  ],
+  "surprising": [
+    {
+      "episode": "3874b661-ec32-4844-8752-740fe6c1e7fd",
+      "task": "68",
+      "decisions": 3,
+      "mean_log_prob": -1.4466957968258638
+    },
+    {
+      "episode": "f476644e-a2f8-4358-9f07-0359500faff6",
+      "task": "51",
+      "decisions": 5,
+      "mean_log_prob": -1.1962435791905657
+    },
+    {
+      "episode": "957d7227-17ee-432c-84e4-a1bd027d880b",
+      "task": "55",
+      "decisions": 6,
+      "mean_log_prob": -1.1780345871639673
+    },
+    {
+      "episode": "1b73fbc9-bf5e-449e-8627-3feabf0e26f1",
+      "task": "102",
+      "decisions": 6,
+      "mean_log_prob": -0.976804699668267
+    },
+    {
+      "episode": "ee85ba4a-b9f0-450d-8783-5ed613fef52d",
+      "task": "100",
+      "decisions": 4,
+      "mean_log_prob": -0.9613094526777397
+    },
+    {
+      "episode": "78654dbe-98b6-4bf1-aea6-f957548bba79",
+      "task": "49",
+      "decisions": 4,
+      "mean_log_prob": -0.9347018517513228
+    },
+    {
+      "episode": "21a506e8-2c23-4f54-a8d7-af512190085e",
+      "task": "49",
+      "decisions": 4,
+      "mean_log_prob": -0.8415772837902797
+    },
+    {
+      "episode": "43a5a210-07f5-4fcc-8858-b46ca39354a4",
+      "task": "49",
+      "decisions": 4,
+      "mean_log_prob": -0.8080838036771774
+    },
+    {
+      "episode": "e3de752b-7210-4f88-8a6d-9f0e88385971",
+      "task": "39",
+      "decisions": 7,
+      "mean_log_prob": -0.7691823980936914
+    },
+    {
+      "episode": "3a94c14e-8d8c-4800-b134-9236b08f2875",
+      "task": "27",
+      "decisions": 4,
+      "mean_log_prob": -0.703852918084756
+    }
+  ]
+}

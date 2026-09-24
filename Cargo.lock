@@ -1080,6 +1080,8 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap",
+ "fugue-ppl",
+ "rand 0.8.8",
  "serde",
  "serde_json",
  "stretto-model",
