@@ -9,12 +9,13 @@ crates/
   stretto-trace/   episode schema, τ²-bench and MCP proxy log ingest, tool manifests
   stretto-model/   abstraction, back-off world model, α posterior (fugue), provenance, runs, policy
   stretto-oracle/  Oracle trait, Jev client (feature "http"), replay cache, mock
-  stretto-report/  `stretto` CLI, the Phase 0 report, Phase 0b (`shadow`: System-One questions at held-out decisions; `arbitrate`: combining them with the habit), and live read-only flows (`flow`, served by `stretto flow-serve`)
-  stretto-proxy/   stdio MCP proxy that records sessions (Phase 1), plus a demo MCP server
+  stretto-report/  `stretto` CLI: the Phase 0 report; Phase 0b (`shadow`: System-One questions at held-out decisions; `arbitrate`: combining them with the habit); read-only flows (`flow`: compile, learn, serve); policy guards (`guards`); the flow audit as a fugue program (`audit`)
+  stretto-proxy/   stdio MCP proxy: records sessions, and in active mode (`active`) runs a flow, guards, `stretto_commit` and the conversation context; plus a demo MCP server (echo or a tiny retail world)
 pilot/             live τ²-bench episodes: GLM in Claude Code, tools over MCP, the flows arm, and a replay check
+site/              the working paper, deployed to GitHub Pages by .github/workflows/pages.yml
 docs/
-  design.md        decisions and architecture
-  results/         dated Phase 0 results with interpretation
+  design.md        decisions, architecture and implementation status
+  results/         dated results with interpretation
 ```
 
 ## Conventions

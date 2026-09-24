@@ -62,16 +62,35 @@ The flow binds arguments from earlier outputs. Offline, an argument counted as b
 ## Pieces
 
 ```text
-τ²-bench logs ──────────────────┐
-stretto-proxy (records MCP) ────┼─► stretto-trace (Episode) ─► stretto-model (abstraction, world model,
-                                │                              provenance, projection)
-                                │                                      │
-                                │         stretto-report (Phase 0, 0b) ◄── stretto-oracle (Jev, cache)
-                                │
-                                ├─ stretto flow-serve (live read-only flows, D0) ◄── the pilot's MCP server
-                                │
-                                └─ later: stretto-compile (flow IR → fugue Model) ─► stretto-proxy
-                                          serving macro-tools, with the arbitration runtime
+τ²-bench results ───────────┐
+stretto-proxy session logs ─┼─► stretto-trace (Episode) ─► stretto-model (abstraction, habit, α posterior
+                            │                              with fugue, provenance, projection)
+                            │                                      │
+                            │   stretto-report ◄───────────────────┤◄── stretto-oracle (Jev, replay cache)
+                            │     phase0 (measure), compile / learn ─► flow IR (JSON)
+                            │     guards (policy checks, audited), audit (a flow as a fugue program)
+                            │                                      │
+                            └── stretto-proxy, active mode ◄───────┘
+                                  flow behind the agent's calls (D0), guards on its calls (B, E),
+                                  stretto_commit, conversation context, session logs (v2)
 ```
 
-Today `stretto-proxy` only records: it forwards every line unchanged and writes a session log. In the pilot, the flow runs next to the tool server rather than in the proxy. Serving compiled flows as `plan_*` / `resume_*` / `commit_*` macro-tools, and checking raw writes against compiled rules, are later phases in the proxy.
+## Implementation status (2026-09-24)
+
+| Piece | State | Where |
+|---|---|---|
+| Measure on published trajectories (Phase 0) | Built | `stretto phase0` |
+| System-One questions and the arbiter (Phase 0b, v2) | Built | `stretto phase0 --oracle … --questions v2`; `shadow.rs`, `arbitrate.rs` |
+| Flow IR: compile from τ²-bench, learn from sessions, serve | Built | `stretto compile`, `learn`, `serve`; `flow.rs` |
+| Read-only flows live (arm D0) | Built; paired pilots in retail and airline | `stretto-proxy --flow`; the pilot harness (`pilot/`) |
+| Policy guards (arms B and E) | Built, audited against τ²-bench | `guards.rs`; `stretto guards`; `stretto-proxy --guards` |
+| Confirmed writes in one call | Built | `stretto-proxy --commit` (`stretto_commit`) |
+| The conversation for flows and guards | Built | `stretto-proxy --context` |
+| Record, learn, serve from any MCP server | Built, tested end to end | `crates/stretto-proxy/tests/active.rs` |
+| A flow as a fugue program: score and simulate | Built | `stretto audit`; `audit.rs` |
+| `plan_*` / `resume_*` macro-tools the LLM names (arms C and D) | Not built | — |
+| Counterfactual evaluation from logged propensities | Not built; the proxy logs every decision's probabilities | — |
+| Predicate refinement (§3.4) | Not built; three hand-proposed predicates | `data/predicates-v2.json` |
+| Streamable HTTP transport | Not supported; stdio only | — |
+
+Flows only read, so a flow's wrong pick costs a lookup, not an action. Writes stay with the LLM: one at a time, or several confirmed ones in one `stretto_commit`. The guards check both before the server sees them.
