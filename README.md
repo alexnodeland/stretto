@@ -15,7 +15,34 @@ The design is fugue's [RFC-001](https://github.com/alexnodeland/fugue/blob/main/
 
 ## Status
 
-Pre-alpha. **Phase 0 (measure) runs today, with no API keys**, on τ²-bench's published trajectories:
+Pre-alpha, with every piece of the first design built ([implementation status](docs/design.md#implementation-status-2026-09-24)).
+
+## Use it with your agent
+
+`stretto-proxy` wraps any stdio MCP server. Record your agent's sessions through it, learn a flow from them, serve the flow behind the agent's calls, and audit it on new sessions:
+
+```bash
+cargo install --path crates/stretto-proxy && cargo install --path crates/stretto-report
+
+# 1. In the MCP host's config, run the server behind the proxy. The host may append
+#    the conversation to the context file, one JSON line per message.
+stretto-proxy --record ~/.stretto/logs --domain orders --context ~/.stretto/context.jsonl -- <server command>
+
+# 2. Learn a flow from the recorded sessions (asks Jev held-out questions: TYPESAFE_API_KEY).
+stretto learn --sessions ~/.stretto/logs --domain orders --out ~/.stretto/orders.flow.json
+
+# 3. Serve it: after each of the agent's calls, the flow's lookups ride in the same result.
+stretto-proxy --record ~/.stretto/logs --domain orders --flow ~/.stretto/orders.flow.json -- <server command>
+
+# 4. Before trusting it on new sessions, audit it.
+stretto audit --flow ~/.stretto/orders.flow.json --sessions ~/.stretto/logs --oracle jev
+```
+
+Flows only call tools the server marks `readOnlyHint: true`. `--commit` adds `stretto_commit`, for confirmed writes in one call. `--guards` checks writes against the policy guards compiled for τ²-bench's retail and airline domains. See the [proxy's README](crates/stretto-proxy/README.md).
+
+## Reproduce the results
+
+**Phase 0 (measure) runs with no API keys**, on τ²-bench's published trajectories:
 
 ```bash
 git clone --depth 1 https://github.com/sierra-research/tau2-bench ../tau2-bench
