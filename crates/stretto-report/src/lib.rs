@@ -17,9 +17,11 @@
 //! the answers, and re-runs the projection with them. With the v2 questions,
 //! [`arbitrate`] also combines the answers with the habit (RFC-001 §3.6).
 //!
-//! [`render::markdown`] turns the result into a report.
+//! [`render::markdown`] turns the result into a report, and
+//! [`phase0::compile_flow`] keeps what a live read-only [`flow`] needs.
 
 pub mod arbitrate;
+pub mod flow;
 pub mod phase0;
 pub mod render;
 pub mod shadow;

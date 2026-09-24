@@ -56,68 +56,98 @@ pub struct Arbitrated {
     pub probs: Vec<f64>,
 }
 
-/// Arbitrate every case with a model fitted on the fittable cases of the
-/// other `folds - 1` folds (`group % folds`). Also returns the weights,
-/// averaged over folds, with the reliability weight last.
-pub fn cross_fit(cases: &[Case], folds: u64) -> (Vec<Arbitrated>, Vec<f64>) {
-    let dims = cases.first().map_or(0, |c| c.features[0].len()) + 1;
-    let mut out = vec![
-        Arbitrated {
-            top: 0,
-            prob: 0.0,
-            probs: Vec::new(),
-        };
-        cases.len()
-    ];
-    let mut mean = vec![0.0; dims];
-    let folds = folds.max(1);
-    for fold in 0..folds {
-        let train: Vec<&Case> = cases
-            .iter()
-            .filter(|c| c.fit && c.group % folds != fold)
-            .collect();
+/// An arbiter fitted on some cases, ready to judge others.
+#[derive(Clone, Debug)]
+pub struct Fitted {
+    /// The weights, the reliability weight last.
+    pub weights: Vec<f64>,
+    rates: Rates,
+}
+
+impl Fitted {
+    /// Fit on the fittable cases of `train`, whose options carry `features`
+    /// features each.
+    pub fn fit(train: &[&Case], features: usize) -> Self {
+        let train: Vec<&Case> = train.iter().copied().filter(|c| c.fit).collect();
         let rates = Rates::of(&train);
         let data: Vec<(Vec<Vec<f64>>, usize)> = train
             .iter()
             .filter_map(|c| c.actual.map(|y| (rates.design(c), y)))
             .collect();
-        let w = fit(&data, dims);
-        for (m, x) in mean.iter_mut().zip(&w) {
-            *m += x / folds as f64;
-        }
-        for (i, c) in cases.iter().enumerate() {
-            if c.group % folds != fold {
-                continue;
-            }
-            let cover = rates.coverage(&c.site);
-            let probs: Vec<f64> = softmax(&scores(&rates.design(c), &w))
-                .into_iter()
-                .map(|p| p * cover)
-                .collect();
-            let top = argmax(&probs);
-            out[i] = Arbitrated {
-                top,
-                prob: probs[top],
-                probs,
-            };
+        Fitted {
+            weights: fit(&data, features + 1),
+            rates,
         }
     }
+
+    /// The arbiter's answer to `case` (its `actual` and `fit` are not read).
+    pub fn judge(&self, case: &Case) -> Arbitrated {
+        let cover = self.rates.coverage(&case.site);
+        let probs: Vec<f64> = softmax(&scores(&self.rates.design(case), &self.weights))
+            .into_iter()
+            .map(|p| p * cover)
+            .collect();
+        let top = argmax(&probs);
+        Arbitrated {
+            top,
+            prob: probs[top],
+            probs,
+        }
+    }
+}
+
+/// One arbiter per fold (`group % folds`), each fitted on the fittable cases
+/// of the other `folds - 1` folds.
+pub fn fit_folds(cases: &[Case], folds: u64) -> Vec<Fitted> {
+    let folds = folds.max(1);
+    let features = cases.first().map_or(0, |c| c.features[0].len());
+    (0..folds)
+        .map(|fold| {
+            let train: Vec<&Case> = cases.iter().filter(|c| c.group % folds != fold).collect();
+            Fitted::fit(&train, features)
+        })
+        .collect()
+}
+
+/// Arbitrate every case with a model fitted on the fittable cases of the
+/// other `folds - 1` folds (`group % folds`). Also returns the weights,
+/// averaged over folds, with the reliability weight last.
+pub fn cross_fit(cases: &[Case], folds: u64) -> (Vec<Arbitrated>, Vec<f64>) {
+    let (out, mean, _) = cross_fit_folds(cases, folds);
     (out, mean)
 }
 
+/// As [`cross_fit`], also returning the arbiter of each fold.
+pub fn cross_fit_folds(cases: &[Case], folds: u64) -> (Vec<Arbitrated>, Vec<f64>, Vec<Fitted>) {
+    let folds = folds.max(1);
+    let fitted = fit_folds(cases, folds);
+    let out = cases
+        .iter()
+        .map(|c| fitted[(c.group % folds) as usize].judge(c))
+        .collect();
+    let mut mean = vec![0.0; fitted[0].weights.len()];
+    for f in &fitted {
+        for (m, x) in mean.iter_mut().zip(&f.weights) {
+            *m += x / folds as f64;
+        }
+    }
+    (out, mean, fitted)
+}
+
 /// Jev's agreement and the options' coverage, per site and overall.
-struct Rates<'a> {
-    sites: HashMap<&'a str, (f64, f64, f64)>,
+#[derive(Clone, Debug)]
+struct Rates {
+    sites: HashMap<String, (f64, f64, f64)>,
     agree: f64,
     cover: f64,
 }
 
-impl<'a> Rates<'a> {
-    fn of(train: &[&'a Case]) -> Self {
-        let mut sites: HashMap<&str, (f64, f64, f64)> = HashMap::new();
+impl Rates {
+    fn of(train: &[&Case]) -> Self {
+        let mut sites: HashMap<String, (f64, f64, f64)> = HashMap::new();
         let (mut n, mut agreed, mut covered) = (0.0, 0.0, 0.0);
         for c in train {
-            let e = sites.entry(c.site.as_str()).or_default();
+            let e = sites.entry(c.site.clone()).or_default();
             let right = (c.actual == Some(c.pick)) as u8 as f64;
             let offered = c.actual.is_some() as u8 as f64;
             e.0 += 1.0;

@@ -20,6 +20,7 @@ The full rationale, prior work and risks are in fugue's [RFC-001](https://github
 | Models | Transfer first: flows compiled from published frontier-model trajectories, run by GLM (Z.ai) and MiniMax. American frontier models later |
 | Phase 0 data | τ²-bench's published trajectories |
 | Win conditions | Fewer LLM calls, tokens and dollars; higher pass^k; Jev agreeing with the frontier model at branch points, and well calibrated; fewer policy violations |
+| First live form (2026-09-24) | Transparent continuation: after each of the agent's own calls, a goal-free read-only flow makes the lookups it is sure enough of and returns them in the same tool response. No new tools and no prompt change. Named macro-tools come next |
 
 ## The principle for macro-tools
 
@@ -41,6 +42,22 @@ The full rationale, prior work and risks are in fugue's [RFC-001](https://github
 | C | Raw tools + macro-tools | The LLM, via a pause at every branch |
 | D | Raw tools + macro-tools | Habit, then Jev, then LLM, by arbitration |
 | E | As D, plus rule checks on raw writes | As D |
+| D0 (pilot) | Raw tools; each response may carry a flow's extra lookups | Habit and Jev by arbitration, lookup first; the LLM for everything else |
+
+## Live flows (2026-09-24)
+
+The first live arm is D0: the smallest change to what the agent sees.
+
+1. The agent calls a tool.
+2. Its result goes back to the flow. The flow asks the v2 questions, arbitrates, and makes the likeliest lookup if its probability is at least 0.3.
+3. The flow repeats step 2 until it hands back.
+4. The agent gets its own result and the flow's lookups in the same response.
+
+Nobody names the goal. The offline run without it (`--no-intent`) agrees and saves as much as the run with it.
+
+The flow binds arguments from earlier outputs. Offline, an argument counted as bindable if its value appeared earlier. Live, the flow must pick one: for each lookup argument, it learns which tool and path the values came from in training (`get_user_details` at `$.orders[*]`, for example). It then takes the first value there that it has not already looked up, preferring one the customer mentioned. An argument only the customer or the LLM can supply hands back.
+
+`stretto flow-serve` compiles the flow from the replay cache and answers over a local port. The agent's process never holds the Jev key.
 
 ## Pieces
 
@@ -51,8 +68,10 @@ stretto-proxy (records MCP) ────┼─► stretto-trace (Episode) ─►
                                 │                                      │
                                 │         stretto-report (Phase 0, 0b) ◄── stretto-oracle (Jev, cache)
                                 │
+                                ├─ stretto flow-serve (live read-only flows, D0) ◄── the pilot's MCP server
+                                │
                                 └─ later: stretto-compile (flow IR → fugue Model) ─► stretto-proxy
                                           serving macro-tools, with the arbitration runtime
 ```
 
-Today `stretto-proxy` only records: it forwards every line unchanged and writes a session log. Serving compiled flows as `plan_*` / `resume_*` / `commit_*` macro-tools, and checking raw writes against compiled rules, are later phases in the same process.
+Today `stretto-proxy` only records: it forwards every line unchanged and writes a session log. In the pilot, the flow runs next to the tool server rather than in the proxy. Serving compiled flows as `plan_*` / `resume_*` / `commit_*` macro-tools, and checking raw writes against compiled rules, are later phases in the proxy.

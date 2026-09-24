@@ -592,32 +592,12 @@ pub fn decisions_v2(
             } else {
                 RESPOND.to_string()
             };
-            let options = sites.options(prev, failed);
             let before = &items[..step_items[k]];
             // A site where the agent never looked anything up hands back.
-            let (request, fixed) = if options.is_empty() {
-                (None, Some(RESPOND.to_string()))
-            } else {
-                let mut questions = next_questions_v2(manifest, sites, prev, failed, &options);
-                for p in predicates {
-                    questions.insert(
-                        format!("pred_{}", p.id),
-                        Question::Noul {
-                            instructions: format!("{V2_CONTEXT} {}", p.question),
-                            criteria: Some(NoulCriteria {
-                                yes: p.yes.clone(),
-                                no: p.no.clone(),
-                            }),
-                        },
-                    );
-                }
-                let request = Request {
-                    model: model.to_string(),
-                    state: slice(before, se.goal, None),
-                    questions,
-                };
-                (Some(request), None)
-            };
+            let request = next_step_request(
+                before, se.goal, manifest, sites, predicates, prev, failed, model,
+            );
+            let fixed = request.is_none().then(|| RESPOND.to_string());
             out.push(Decision {
                 episode: i,
                 step: k,
@@ -697,6 +677,82 @@ pub fn decisions_v2(
         }
     }
     out
+}
+
+/// The v2 next-step request after `before`, at the site after `prev`
+/// (failed or not), or `None` at a site with no lookups (hand back).
+#[allow(clippy::too_many_arguments)]
+fn next_step_request(
+    before: &[Item],
+    goal: &str,
+    manifest: &ToolManifest,
+    sites: &Sites,
+    predicates: &[Predicate],
+    prev: &str,
+    failed: bool,
+    model: &str,
+) -> Option<Request> {
+    let options = sites.options(prev, failed);
+    if options.is_empty() {
+        return None;
+    }
+    let mut questions = next_questions_v2(manifest, sites, prev, failed, &options);
+    for p in predicates {
+        questions.insert(
+            format!("pred_{}", p.id),
+            Question::Noul {
+                instructions: format!("{V2_CONTEXT} {}", p.question),
+                criteria: Some(NoulCriteria {
+                    yes: p.yes.clone(),
+                    no: p.no.clone(),
+                }),
+            },
+        );
+    }
+    Some(Request {
+        model: model.to_string(),
+        state: slice(before, goal, None),
+        questions,
+    })
+}
+
+/// The decision a live flow faces once the last tool call of `episode` has
+/// returned.
+#[derive(Clone, Debug)]
+pub struct LiveSite {
+    /// The tool that just returned.
+    pub prev: String,
+    /// Whether it failed.
+    pub failed: bool,
+    /// The v2 request, or `None` at a site with no lookups (hand back).
+    pub request: Option<Request>,
+}
+
+/// The v2 question a live flow asks after the last step of `episode`, which
+/// must be a tool call that has returned; `None` otherwise.
+pub fn live_request(
+    episode: &Episode,
+    goal: &str,
+    manifest: &ToolManifest,
+    sites: &Sites,
+    predicates: &[Predicate],
+    model: &str,
+) -> Option<LiveSite> {
+    let st = stretto_model::steps(episode);
+    let last = st.last()?;
+    let Action::Tool(prev) = &last.action else {
+        return None;
+    };
+    let failed = last.outcome == Outcome::Err;
+    let (items, _) = timeline(episode);
+    let request = next_step_request(
+        &items, goal, manifest, sites, predicates, prev, failed, model,
+    );
+    Some(LiveSite {
+        prev: prev.clone(),
+        failed,
+        request,
+    })
 }
 
 /// Answers to [`decisions`], by request key; failures counted, not fatal.
@@ -1310,8 +1366,11 @@ fn slice(before: &[Item], goal: &str, pending: Option<Value>) -> Value {
         .collect();
     let mut s = json!({
         "customer_request": customer.first().map(|t| clip(t, MAX_TEXT)),
-        "flow_goal": goal,
     });
+    // Without a named goal (a live flow nobody named) the field is left out.
+    if !goal.is_empty() {
+        s["flow_goal"] = json!(goal);
+    }
     if customer.len() > 1 {
         let later: Vec<String> = customer[1..]
             .iter()

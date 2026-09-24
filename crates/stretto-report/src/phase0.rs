@@ -1,6 +1,7 @@
 //! The Phase 0 pipeline.
 
-use crate::arbitrate::{self, Case};
+use crate::arbitrate::{self, Case, Fitted};
+use crate::flow::{Bindings, Flow};
 use crate::shadow::{
     self, Agreement, Decision, Favors, Kind, Predicate, QuestionSet, Scored, ShadowConfig,
     ShadowEpisode, Sites, RESPOND,
@@ -76,6 +77,13 @@ pub struct Config {
     /// Whether τ²-bench's own published baselines (in the checkout) are
     /// training sources.
     pub baselines: bool,
+    /// Whether flows know the episode's goal (the writes it goes on to make,
+    /// as the LLM would name them in a macro-tool call): the habit is
+    /// conditioned on it and System-One questions name it. Off for flows
+    /// nobody names, such as live flows that continue an agent's lookups.
+    pub intent: bool,
+    /// Also keep what a live flow needs (see [`compile_flow`]).
+    pub flow: bool,
     /// Extra τ²-bench results files to train on, like the baselines. Files
     /// for other domains are skipped.
     pub sources: Vec<Target>,
@@ -139,6 +147,8 @@ impl Config {
             validated_min_tasks: 10,
             validated_min_agreement: 0.99,
             baselines: true,
+            intent: true,
+            flow: false,
             sources: Vec::new(),
             targets: Vec::new(),
             shadow: None,
@@ -477,7 +487,7 @@ pub fn run(config: &Config) -> Result<Report> {
     let domains = config
         .domains
         .iter()
-        .map(|d| domain(config, d, oracle.as_deref()))
+        .map(|d| domain(config, d, oracle.as_deref()).map(|(report, _)| report))
         .collect::<Result<Vec<_>>>()?;
     Ok(Report {
         settings: Settings {
@@ -502,6 +512,22 @@ pub fn run(config: &Config) -> Result<Report> {
         },
         domains,
     })
+}
+
+/// Compile the live read-only flow for `domain` (RFC-001 §3.13): Phase 0b
+/// v2 as `config` sets it up, goal free, keeping what a flow needs to act.
+/// `oracle` answers the held-out questions the arbiter is fitted on.
+pub fn compile_flow(
+    config: &Config,
+    domain_name: &str,
+    oracle: &(dyn Oracle + Sync),
+) -> Result<Flow> {
+    let mut config = config.clone();
+    config.intent = false;
+    config.flow = true;
+    config.features = true;
+    let (_, flow) = domain(&config, domain_name, Some(oracle))?;
+    flow.context("a live flow needs the v2 questions")
 }
 
 /// Results files for `domain` under the checkout's published baselines.
@@ -535,7 +561,7 @@ fn domain(
     config: &Config,
     domain: &str,
     oracle: Option<&(dyn Oracle + Sync)>,
-) -> Result<DomainReport> {
+) -> Result<(DomainReport, Option<Flow>)> {
     let root = &config.tau2_dir;
     let manifest = load_manifest(
         domain,
@@ -683,8 +709,8 @@ fn domain(
     top_runs.truncate(config.top_runs);
 
     let target_episodes: Vec<&Episode> = targets.iter().flat_map(|m| &m.run.episodes).collect();
-    let featured = if config.features {
-        Some(featured(
+    let (featured, flow) = if config.features {
+        let (report, flow) = featured(
             config,
             &all_episodes,
             &target_episodes,
@@ -693,12 +719,13 @@ fn domain(
             &manifest,
             alpha_used,
             oracle,
-        )?)
+        )?;
+        (Some(report), flow)
     } else {
-        None
+        (None, None)
     };
 
-    Ok(DomainReport {
+    let report = DomainReport {
         domain: domain.to_string(),
         train_tasks: split.train.len(),
         test_tasks: split.test.len(),
@@ -721,7 +748,8 @@ fn domain(
         top_runs,
         provenance: provenance(&all_episodes, &manifest),
         featured,
-    })
+    };
+    Ok((report, flow))
 }
 
 struct Prepared<'a> {
@@ -800,7 +828,7 @@ fn featured(
     manifest: &ToolManifest,
     alpha_used: f64,
     oracle: Option<&(dyn Oracle + Sync)>,
-) -> Result<FeaturedReport> {
+) -> Result<(FeaturedReport, Option<Flow>)> {
     let train_ids: HashSet<&str> = split.train.iter().map(String::as_str).collect();
     let test_ids: HashSet<&str> = split.test.iter().map(String::as_str).collect();
     let prepared: Vec<Prepared> = episodes
@@ -824,7 +852,11 @@ fn featured(
             target,
             test: test_ids.contains(ep.task_id.as_str()),
             group: task_group(&ep.task_id),
-            intent: intent(ep, manifest),
+            intent: if config.intent {
+                intent(ep, manifest)
+            } else {
+                String::new()
+            },
         })
         .collect();
     let habit_set: Vec<&Prepared> = prepared.iter().filter(|p| p.train && p.success).collect();
@@ -1000,6 +1032,32 @@ fn featured(
             &habit_set,
             &intent_habit,
         )?),
+        _ => None,
+    };
+    // A live flow, from the same pieces.
+    let flow = match (&shadow, &config.shadow) {
+        (Some(run), Some(sc)) if config.flow && sc.questions == QuestionSet::V2 => {
+            let Some(&group) = intent_ids.get("") else {
+                bail!("a live flow is goal free: compile it without intents");
+            };
+            Some(Flow {
+                vocab: vocab.clone(),
+                manifest: manifest.clone(),
+                map: map.clone(),
+                group,
+                habit: intent_habit.clone(),
+                sites: run.sites.clone(),
+                predicates: sc.predicates.clone(),
+                weighed: if sc.predicate_features {
+                    sc.predicates.clone()
+                } else {
+                    Vec::new()
+                },
+                folds: run.folds.clone(),
+                bindings: Bindings::learn(habit_set.iter().map(|p| p.ep), manifest),
+                model: sc.model.clone(),
+            })
+        }
         _ => None,
     };
     let input = |i: usize| {
@@ -1179,7 +1237,7 @@ fn featured(
         })
         .collect();
 
-    Ok(FeaturedReport {
+    let report = FeaturedReport {
         candidates: candidates.len(),
         selected,
         intents: prepared
@@ -1203,7 +1261,8 @@ fn featured(
         projection,
         by_model,
         shadow,
-    })
+    };
+    Ok((report, flow))
 }
 
 /// Phase 0b's answers for one held-out episode, laid out per step for the
@@ -1219,6 +1278,10 @@ struct ShadowRun {
     combined: Option<Vec<Answers>>,
     /// v2: the most likely lookup of each combined answer.
     lookup_first: Option<Vec<Answers>>,
+    /// The sites the questions were asked at.
+    sites: Sites,
+    /// v2: the arbiter fitted for each fold (empty for v1).
+    folds: Vec<Fitted>,
 }
 
 /// Probabilities at which a read-only flow takes its most likely lookup.
@@ -1251,11 +1314,11 @@ fn shadow_run(
         })
         .collect();
     let v2 = sc.questions == QuestionSet::V2;
+    let mut sites = Sites::learn(habit_set.iter().map(|p| p.steps.as_slice()), manifest);
+    if sc.hints {
+        sites.learn_feeds(habit_set.iter().map(|p| p.ep), manifest);
+    }
     let decisions = if v2 {
-        let mut sites = Sites::learn(habit_set.iter().map(|p| p.steps.as_slice()), manifest);
-        if sc.hints {
-            sites.learn_feeds(habit_set.iter().map(|p| p.ep), manifest);
-        }
         shadow::decisions_v2(
             &episodes,
             manifest,
@@ -1281,8 +1344,8 @@ fn shadow_run(
         .iter()
         .map(|d| shadow::predicate_answers(d, &asked))
         .collect();
-    let (combined, weights) = if v2 {
-        let (c, w) = combine(
+    let (combined, weights, folds) = if v2 {
+        let (c, w, f) = combine(
             &decisions,
             &scored,
             &split,
@@ -1296,9 +1359,9 @@ fn shadow_run(
             habit,
             vocab,
         );
-        (Some(c), w)
+        (Some(c), w, f)
     } else {
-        (None, Vec::new())
+        (None, Vec::new(), Vec::new())
     };
     // The most likely lookup, wherever there is one.
     let lookup_first: Option<Vec<Option<Scored>>> = combined.as_ref().map(|c| {
@@ -1473,28 +1536,30 @@ fn shadow_run(
         raw,
         combined: combined_answers,
         lookup_first: lookup_first_answers,
+        sites,
+        folds,
     })
 }
 
+/// The combined answers, the arbiter's mean weights (named), and the
+/// arbiter of each fold.
+type Combined = (Vec<Option<Scored>>, Vec<(String, f64)>, Vec<Fitted>);
+
 /// v2: combine each asked next-step answer with the habit (see
 /// [`arbitrate`]); argument answers and decisions settled without asking
-/// pass through. Returns the answers and the arbiter's mean weights.
+/// pass through. Returns the answers, the arbiter's mean weights, and the
+/// arbiter fitted for each fold.
 #[allow(clippy::too_many_arguments)]
 fn combine(
     decisions: &[Decision],
     scored: &[Option<Scored>],
     split: &[Option<Scored>],
     predicates: &[BTreeMap<String, f64>],
-    asked: &[Predicate],
+    weighed: &[Predicate],
     replayed: &[(&Prepared, &EncodedEpisode)],
     habit: &GroupedModel,
     vocab: &Vocab,
-) -> (Vec<Option<Scored>>, Vec<(String, f64)>) {
-    let ln = |v: f64| v.max(1e-6).ln();
-    let logit = |v: f64| {
-        let v = v.clamp(1e-4, 1.0 - 1e-4);
-        (v / (1.0 - v)).ln()
-    };
+) -> Combined {
     let mut cases: Vec<Case> = Vec::new();
     let mut at: Vec<usize> = Vec::new();
     for (i, d) in decisions.iter().enumerate() {
@@ -1505,74 +1570,37 @@ fn combine(
             continue;
         };
         let (p, enc) = replayed[d.episode];
-        let options: Vec<&String> = one.probs.keys().collect();
-        let Some(respond) = options.iter().position(|o| o.as_str() == RESPOND) else {
+        let Step {
+            action: Action::Tool(prev),
+            outcome,
+        } = &p.steps[d.step - 1]
+        else {
             continue;
         };
-        // The habit's prediction as a read-only flow would act on it: all
-        // mass on steps it cannot take (replies, writes, lookups not offered)
-        // goes to handing back.
         let predicted = habit.predict_at(enc, d.step);
-        let mut prior: Vec<f64> = options
-            .iter()
-            .map(|o| {
-                if o.as_str() == RESPOND {
-                    0.0
-                } else {
-                    predicted[vocab.id(&Action::Tool((*o).clone())) as usize]
-                }
-            })
-            .collect();
-        prior[respond] = (1.0 - prior.iter().sum::<f64>()).max(0.0);
-        let (site, prev) = match &p.steps[d.step - 1] {
-            Step {
-                action: Action::Tool(t),
-                outcome,
-            } => (Sites::name(t, *outcome == Outcome::Err), t.as_str()),
-            _ => continue,
+        let Some((mut case, options)) = case_of(
+            one,
+            two,
+            &predicates[i],
+            weighed,
+            &predicted,
+            prev,
+            *outcome == Outcome::Err,
+            p.group,
+            vocab,
+        ) else {
+            continue;
         };
-        let features = options
-            .iter()
-            .enumerate()
-            .map(|(a, o)| {
-                let mut x = vec![
-                    ln(prior[a]),
-                    ln(one.probs[*o]),
-                    ln(two.probs.get(*o).copied().unwrap_or(0.0)),
-                    (a == respond) as u8 as f64,
-                ];
-                // Each predicate's answer, on the options it bears on (zero
-                // where it was not asked).
-                for q in asked {
-                    let on = match q.favors {
-                        Favors::SameLookup => o.as_str() == prev,
-                        Favors::AnyLookup => a != respond,
-                        Favors::HandBack => a == respond,
-                    };
-                    let answer = predicates[i].get(&q.id).copied().map_or(0.0, logit);
-                    x.push(if on { answer } else { 0.0 });
-                }
-                x
-            })
-            .collect();
-        cases.push(Case {
-            group: p.group,
-            site,
-            features,
-            pick: options
-                .iter()
-                .position(|o| **o == one.pick)
-                .unwrap_or(respond),
-            actual: options.iter().position(|o| **o == d.actual),
-            fit: !p.target,
-        });
+        case.actual = options.iter().position(|o| *o == d.actual);
+        case.fit = !p.target;
+        cases.push(case);
         at.push(i);
     }
-    let (arbitrated, weights) = arbitrate::cross_fit(&cases, FOLDS);
+    let (arbitrated, weights, folds) = arbitrate::cross_fit_folds(&cases, FOLDS);
     let names = ["habit", "one question", "split", "handing back"]
         .into_iter()
         .map(String::from)
-        .chain(asked.iter().map(|q| format!("predicate {}", q.id)))
+        .chain(weighed.iter().map(|q| format!("predicate {}", q.id)))
         .chain(["the model's record at the site".to_string()]);
     let weights: Vec<(String, f64)> = if cases.is_empty() {
         Vec::new()
@@ -1589,7 +1617,85 @@ fn combine(
         let probs: BTreeMap<String, f64> = options.iter().cloned().zip(a.probs).collect();
         out[i] = Some(Scored::of(probs, options[a.top].clone(), &d.actual));
     }
-    (out, weights)
+    (out, weights, folds)
+}
+
+/// The arbiter's view of one v2 next-step decision (see [`arbitrate`]): the
+/// options the System-One model was offered (their order is the case's) and
+/// each option's features, from its answers (`one`, `two`, the predicates'
+/// answers, of which `weighed` are features) and the habit's prediction
+/// `predicted` at the decision, which follows a call to `prev` that failed
+/// or not. The case's `actual` and `fit` are left for the caller. `None` if
+/// handing back is not an option.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn case_of(
+    one: &Scored,
+    two: &Scored,
+    predicates: &BTreeMap<String, f64>,
+    weighed: &[Predicate],
+    predicted: &[f64],
+    prev: &str,
+    failed: bool,
+    group: u64,
+    vocab: &Vocab,
+) -> Option<(Case, Vec<String>)> {
+    let ln = |v: f64| v.max(1e-6).ln();
+    let logit = |v: f64| {
+        let v = v.clamp(1e-4, 1.0 - 1e-4);
+        (v / (1.0 - v)).ln()
+    };
+    let options: Vec<String> = one.probs.keys().cloned().collect();
+    let respond = options.iter().position(|o| o == RESPOND)?;
+    // The habit's prediction as a read-only flow would act on it: all mass
+    // on steps it cannot take (replies, writes, lookups not offered) goes to
+    // handing back.
+    let mut prior: Vec<f64> = options
+        .iter()
+        .map(|o| {
+            if o == RESPOND {
+                0.0
+            } else {
+                predicted[vocab.id(&Action::Tool(o.clone())) as usize]
+            }
+        })
+        .collect();
+    prior[respond] = (1.0 - prior.iter().sum::<f64>()).max(0.0);
+    let features = options
+        .iter()
+        .enumerate()
+        .map(|(a, o)| {
+            let mut x = vec![
+                ln(prior[a]),
+                ln(one.probs[o]),
+                ln(two.probs.get(o).copied().unwrap_or(0.0)),
+                (a == respond) as u8 as f64,
+            ];
+            // Each predicate's answer, on the options it bears on (zero
+            // where it was not asked).
+            for q in weighed {
+                let on = match q.favors {
+                    Favors::SameLookup => o == prev,
+                    Favors::AnyLookup => a != respond,
+                    Favors::HandBack => a == respond,
+                };
+                let answer = predicates.get(&q.id).copied().map_or(0.0, logit);
+                x.push(if on { answer } else { 0.0 });
+            }
+            x
+        })
+        .collect();
+    let case = Case {
+        group,
+        site: Sites::name(prev, failed),
+        features,
+        pick: options
+            .iter()
+            .position(|o| *o == one.pick)
+            .unwrap_or(respond),
+        actual: None,
+        fit: false,
+    };
+    Some((case, options))
 }
 
 #[allow(clippy::type_complexity)]
@@ -1628,7 +1734,7 @@ fn parallel_share<'a, 'b: 'a>(episodes: impl Iterator<Item = &'a Prepared<'b>>) 
 }
 
 /// A stable group id for a task, so all of its episodes share a fold.
-fn task_group(task_id: &str) -> u64 {
+pub(crate) fn task_group(task_id: &str) -> u64 {
     task_id.bytes().fold(1469598103934665603u64, |h, b| {
         (h ^ b as u64).wrapping_mul(1099511628211)
     })

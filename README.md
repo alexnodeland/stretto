@@ -77,6 +77,12 @@ First results, with their interpretation, are in [docs/results/phase0-2026-09-23
     - Qwen3.5 clears 20% offline in both domains (29.7% and 22.5%). Qwen3-Max does too, but in airline only with lookup first.
     - Gemini 3 and Claude Sonnet 4.5 clear it in retail, and so does GPT-5.2 with reasoning off, with lookup first.
     - GLM-5 clears it in retail only with predicates (20.5%). The heavy parallel callers stay under 7% in airline.
+- **Goal-free flows lose nothing offline.** A live flow continues the agent's lookups, and nobody names the episode's goal. `--no-intent` stops conditioning the habit on the goal and leaves it out of the questions. Agreement and savings hold:
+  - Retail: 80.5% combined agreement, and 17.3% of turns saved with lookup first at p ≥ 0.3.
+  - Airline: 78.4% and 12.6%.
+  - GLM-5 still clears 20% in retail (20.3%).
+  - See [the goal-free report](docs/results/phase0b-v2-goal-free-2026-09-24-report.md).
+- **Live pilot (in progress).** [`pilot/`](pilot/README.md) runs τ²-bench retail episodes live. GLM-5.3 is the agent, in Claude Code on Z.ai's coding endpoint, and its tools are served over MCP behind `stretto-proxy`. The flows arm adds a read-only flow behind the tools: `stretto flow-serve` compiles it goal free from cached answers, then answers each step with a lookup and its bound arguments, or hands back. A baseline smoke episode passed. Before any flows episode, the flow is checked on GLM-5's recorded episodes without an LLM ([`check_flow.py`](pilot/check_flow.py)).
 
 ## Crates
 
@@ -85,7 +91,7 @@ First results, with their interpretation, are in [docs/results/phase0-2026-09-23
 | `stretto-trace` | Canonical episode schema; τ²-bench results ingest; MCP proxy log ingest; tool manifests with docs |
 | `stretto-model` | Action abstraction; hierarchical Dirichlet back-off world model; concentration posterior via fugue; argument provenance; tool runs; policy checks |
 | `stretto-oracle` | `Oracle` trait; Jev HTTP client (`POST /v1/systemone`); on-disk replay cache; mock |
-| `stretto-report` | The `stretto` CLI, the Phase 0 report, and Phase 0b (System-One questions at held-out decisions) |
+| `stretto-report` | The `stretto` CLI, the Phase 0 report, Phase 0b (System-One questions at held-out decisions), and live read-only flows (`stretto flow-serve`) |
 | `stretto-proxy` | A stdio MCP proxy that forwards every line unchanged and records sessions for `stretto-trace` ([README](crates/stretto-proxy/README.md)) |
 
 ## Roadmap
@@ -95,7 +101,7 @@ First results, with their interpretation, are in [docs/results/phase0-2026-09-23
 | 0a | Predictability, headroom and provenance on published trajectories | Nothing (done) |
 | 0b | Replayed shadow mode: ask Jev at every decision a flow would hand it (next step, closed-set arguments), score agreement and calibration, and re-run the projection with its answers. First run done (v1 questions); next: narrower questions, Bayesian arbitration, matching descriptions to records | `TYPESAFE_API_KEY` (set) |
 | 1 | Rust MCP proxy that records traffic (recording done: `stretto-proxy`); rule checks compiled from policy and tested against traces | — |
-| 2 | Flow compiler; `plan_*` / `resume_*` / `commit_*` macro-tools; arbitration runtime; live τ²-bench arms on GLM and MiniMax | GLM (Z.ai) and MiniMax keys |
+| 2 | Flow compiler; `plan_*` / `resume_*` / `commit_*` macro-tools; arbitration runtime; live τ²-bench arms on GLM and MiniMax. Started: live read-only flows (`flow-serve`) and the retail pilot harness ([`pilot/`](pilot/README.md)) | GLM (Z.ai coding plan, set); MiniMax |
 | 3 | Predicate refinement, per-decision counterfactual evaluation, flow search with fugue-evo, then American frontier models | — |
 
 ## Development

@@ -12,12 +12,21 @@ The episode is scored with τ²-bench's own evaluator on the final database
 (the environment check; natural-language assertions need an LLM judge and
 are left out).
 
+The flows arm (`--arm flows`) is the same episode with a read-only flow
+behind the tools: `stretto flow-serve` is compiled before the agent starts
+(from cached System-One answers, goal free) and `tau2_mcp.py` asks it after
+every call, making the lookups it names within the same tool response.
+
     python run_episode.py --task-id 90 --out runs/pilot
+    python run_episode.py --task-id 90 --out runs/pilot --arm flows \
+        --oracle-cache ../.oracle-cache
 """
 
 import argparse
 import json
+import os
 import subprocess
+import threading
 import time
 import uuid
 from datetime import datetime, timezone
@@ -35,6 +44,8 @@ from tau2.user.user_simulator_base import OUT_OF_SCOPE, STOP, TRANSFER
 HERE = Path(__file__).resolve().parent
 WRAPPER = HERE / "glm-claude.sh"
 PROXY = HERE.parent / "target" / "release" / "stretto-proxy"
+STRETTO = HERE.parent / "target" / "release" / "stretto"
+TAU2 = Path(os.environ.get("TAU2_DIR", HERE.parent.parent / "sierra-research" / "tau2-bench"))
 GREETING = "Hi! How can I help you today?"
 STOPS = (STOP, TRANSFER, OUT_OF_SCOPE)
 
@@ -43,16 +54,62 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def start_flow(args, episode: Path) -> tuple[subprocess.Popen, str]:
+    """Compile and serve the flow; once it listens, return it and its
+    address."""
+    command = [
+        str(STRETTO), "flow-serve",
+        "--tau2", str(args.tau2),
+        "--domain", args.domain,
+        "--oracle", args.flow_oracle,
+        "--questions", "v2",
+        "--predicates", str(HERE.parent / "data" / "predicates-v2.json"),
+        "--oracle-cache", str(args.oracle_cache),
+        "--oracle-budget", "0.5",
+        "--threshold", str(args.flow_threshold),
+        "--log", str(episode / "flow.jsonl"),
+    ]
+    serve = subprocess.Popen(
+        command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True
+    )
+    log = open(episode / "flow-serve.stderr", "w")
+    for line in serve.stderr:
+        log.write(line)
+        log.flush()
+        if "flow ready on " in line:
+            address = line.split("flow ready on ", 1)[1].strip()
+            break
+    else:
+        raise RuntimeError(f"flow-serve exited: see {episode / 'flow-serve.stderr'}")
+
+    def drain() -> None:
+        for line in serve.stderr:
+            log.write(line)
+            log.flush()
+
+    threading.Thread(target=drain, daemon=True).start()
+    return serve, address
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--domain", default="retail")
     parser.add_argument("--task-id", required=True)
-    parser.add_argument("--arm", default="baseline", choices=["baseline"])
+    parser.add_argument("--arm", default="baseline", choices=["baseline", "flows"])
     parser.add_argument("--out", type=Path, default=Path("runs/pilot"))
     parser.add_argument("--model", default="glm-5.3")
     parser.add_argument("--max-calls", type=int, default=60)
     parser.add_argument("--max-turns", type=int, default=30)
+    parser.add_argument("--tau2", type=Path, default=TAU2, help="τ²-bench checkout (flows arm)")
+    parser.add_argument("--oracle-cache", type=Path, help="System-One replay cache (flows arm)")
+    parser.add_argument(
+        "--flow-oracle", default="jev", choices=["jev", "mock"],
+        help="who answers live flow questions (mock: plumbing checks only)",
+    )
+    parser.add_argument("--flow-threshold", type=float, default=0.3)
     args = parser.parse_args()
+    if args.arm == "flows" and not args.oracle_cache:
+        parser.error("the flows arm needs --oracle-cache")
 
     task = next(
         t for t in registry.get_tasks_loader(args.domain)() if str(t.id) == args.task_id
@@ -60,8 +117,9 @@ def main() -> None:
     env = registry.get_env_constructor(args.domain)()
     episode = (args.out / args.arm / f"task-{args.task_id}").resolve()
     episode.mkdir(parents=True, exist_ok=True)
-    for stale in ("trajectory.jsonl", "events.jsonl", "tools-state.json"):
+    for stale in ("trajectory.jsonl", "events.jsonl", "tools-state.json", "flow.jsonl"):
         (episode / stale).unlink(missing_ok=True)
+    serve, flow_address = start_flow(args, episode) if args.arm == "flows" else (None, None)
     started, t0 = now(), time.time()
 
     trajectory = episode / "trajectory.jsonl"
@@ -97,7 +155,7 @@ def main() -> None:
                     "--task-id", args.task_id,
                     "--episode-dir", str(episode),
                     "--max-calls", str(args.max_calls),
-                ],
+                ] + (["--flow-address", flow_address] if serve else []),
             }
         }
     }
@@ -165,6 +223,9 @@ def main() -> None:
     except subprocess.TimeoutExpired:
         agent.kill()
     events.close()
+    if serve:
+        serve.terminate()
+        serve.wait(timeout=30)
 
     kinds = {"assistant": AssistantMessage, "user": UserMessage, "tool": ToolMessage}
     messages = [
@@ -205,6 +266,7 @@ def main() -> None:
         elif event.get("type") == "result":
             results.append({k: event.get(k) for k in ("num_turns", "usage", "is_error")})
     tools = json.loads((episode / "tools-state.json").read_text())
+    flow = [json.loads(l) for l in (episode / "flow.jsonl").read_text().splitlines()] if serve else []
     result = {
         "task_id": str(task.id),
         "arm": args.arm,
@@ -215,6 +277,11 @@ def main() -> None:
         "tool_turns": sum(1 for n in responses.values() if n > 0),
         "parallel_turns": sum(1 for n in responses.values() if n > 1),
         "tool_calls": tools.get("tool_calls"),
+        "flow_lookups": tools.get("flow_lookups", 0),
+        "flow_queries": tools.get("flow_queries", 0),
+        "flow_hand_backs": sorted(
+            {a.get("reason", "") for a in flow if a.get("action") != "lookup"}
+        ),
         "customer_turns": len(customer_usage),
         "agent_results": results,
         "customer_usage": customer_usage,
@@ -224,7 +291,7 @@ def main() -> None:
     print(
         "RESULT",
         json.dumps(
-            {k: result[k] for k in ("task_id", "reward", "termination", "llm_turns", "tool_calls", "customer_turns", "duration_s")}
+            {k: result[k] for k in ("task_id", "arm", "reward", "termination", "llm_turns", "tool_calls", "flow_lookups", "customer_turns", "duration_s")}
         ),
     )
 

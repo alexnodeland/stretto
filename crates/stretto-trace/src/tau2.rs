@@ -116,6 +116,14 @@ pub fn parse_results(json: &str) -> Result<Tau2Run> {
     })
 }
 
+/// One simulation as τ²-bench records it (`{"id", "task_id", "messages", …}`),
+/// as an episode. For conversations recorded outside a results file, such as
+/// a live run in progress.
+pub fn parse_simulation(json: &str, domain: &str, agent_model: &str) -> Result<Episode> {
+    let raw: RawSim = serde_json::from_str(json)?;
+    Ok(convert_simulation(raw, domain, agent_model))
+}
+
 fn convert_simulation(sim: RawSim, domain: &str, agent_model: &str) -> Episode {
     let mut events = Vec::with_capacity(sim.messages.len());
     let mut call_names: HashMap<String, String> = HashMap::new();
@@ -388,6 +396,23 @@ mod tests {
         ]
       }]
     }"##;
+
+    #[test]
+    fn parses_a_simulation_on_its_own() {
+        let json = r##"{"id": "live", "task_id": "90", "messages": [
+            {"role": "assistant", "content": "Hi! How can I help you today?"},
+            {"role": "user", "content": "Cancel #W1 please"},
+            {"role": "assistant", "content": null, "tool_calls": [{"id": "c1", "name": "get_order_details", "arguments": {"order_id": "#W1"}, "requestor": "assistant"}]},
+            {"role": "tool", "id": "c1", "content": "{\"status\": \"pending\"}", "requestor": "assistant", "error": false}
+        ]}"##;
+        let ep = parse_simulation(json, "retail", "glm").unwrap();
+        assert_eq!(ep.task_id, "90");
+        // The scripted greeting is dropped; the user, the call and its result stay.
+        assert_eq!(ep.events.len(), 3);
+        assert!(
+            matches!(&ep.events[2], Event::ToolResult { name, .. } if name == "get_order_details")
+        );
+    }
 
     #[test]
     fn converts_a_simulation() {
