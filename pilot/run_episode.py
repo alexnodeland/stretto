@@ -67,6 +67,7 @@ def start_flow(args, episode: Path) -> tuple[subprocess.Popen, str]:
         "--oracle-cache", str(args.oracle_cache),
         "--oracle-budget", "0.5",
         "--threshold", str(args.flow_threshold),
+        "--max-questions", str(getattr(args, "flow_max_questions", 300)),
         "--log", str(episode / "flow.jsonl"),
     ]
     serve = subprocess.Popen(

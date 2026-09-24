@@ -32,7 +32,7 @@ use stretto_model::features::{step_outputs, FeatureMap, FOLDS};
 use stretto_model::world::Predictor;
 use stretto_model::{steps, EncodedEpisode, GroupedModel, Vocab};
 use stretto_oracle::{request_key, Oracle};
-use stretto_trace::{Episode, Event, ToolKind, ToolManifest};
+use stretto_trace::{Episode, Event, ToolCall, ToolKind, ToolManifest};
 
 /// A share of a lookup argument's training values a source must account for
 /// before the flow binds from it.
@@ -96,6 +96,9 @@ pub struct Next {
     pub probs: BTreeMap<String, f64>,
     /// The probability of the most likely lookup.
     pub prob: Option<f64>,
+    /// The chance that its bound arguments are the agent's own (see
+    /// [`Bindings::bind`]).
+    pub binding: Option<f64>,
     /// The System-One model's answer to the one question.
     pub oracle: BTreeMap<String, f64>,
     /// The predicates' answers (the probability of "yes").
@@ -110,10 +113,17 @@ impl Flow {
         &self.manifest.domain
     }
 
+    /// How often each lookup's binding agreed with the agent in training
+    /// (see [`Bindings::agreement`]).
+    pub fn binding_agreement(&self) -> &BTreeMap<String, [(usize, usize); 2]> {
+        self.bindings.agreement()
+    }
+
     /// What the flow does after the last step of `episode`, a tool call that
-    /// has returned: take the most likely lookup if the arbiter gives it at
-    /// least `threshold`, else hand back (also if `oracle`, asked one
-    /// request, fails).
+    /// has returned: take the most likely lookup if its probability (the
+    /// arbiter's for the tool, times the chance that the bound arguments are
+    /// the agent's) is at least `threshold`, else hand back (also if
+    /// `oracle`, asked one request, fails).
     pub fn next(&self, episode: &Episode, oracle: &dyn Oracle, threshold: f64) -> Result<Next> {
         let mut next = Next {
             proposal: Proposal::HandBack {
@@ -122,6 +132,7 @@ impl Flow {
             site: None,
             probs: BTreeMap::new(),
             prob: None,
+            binding: None,
             oracle: BTreeMap::new(),
             predicates: BTreeMap::new(),
             key: None,
@@ -218,8 +229,17 @@ impl Flow {
         if p < threshold {
             return hand_back(next, format!("{tool} at {p:.2}, below {threshold}"));
         }
+        // The lookup is the agent's next step only if the tool is and the
+        // arguments are its own.
         match self.bindings.bind(tool, episode) {
-            Ok(arguments) => {
+            Ok((arguments, chance)) => {
+                next.binding = Some(chance);
+                if p * chance < threshold {
+                    return hand_back(
+                        next,
+                        format!("{tool} at {p:.2}, times {chance:.2} for its arguments, below {threshold}"),
+                    );
+                }
                 next.proposal = Proposal::Lookup {
                     tool: tool.clone(),
                     arguments,
@@ -231,13 +251,18 @@ impl Flow {
     }
 }
 
-/// Where each lookup's arguments came from in training.
+/// Where each lookup's arguments came from in training, and how often
+/// binding them that way picked the agent's own values.
 #[derive(Clone, Debug, Default)]
 pub struct Bindings {
     /// Per lookup: calls seen, and how many of them passed each argument.
     args: BTreeMap<String, (usize, BTreeMap<String, usize>)>,
     /// Per lookup and argument: see [`Traced`].
     sources: BTreeMap<(String, String), Traced>,
+    /// Per lookup: how often the binding picked the agent's own arguments at
+    /// the agent's calls in training, `(agreed, calls)`, when its pick was
+    /// not (`[0]`) or was (`[1]`) mentioned by the customer.
+    agreed: BTreeMap<String, [(usize, usize); 2]>,
 }
 
 /// String values one lookup argument took, and how many of them were found
@@ -247,12 +272,16 @@ type Traced = (usize, BTreeMap<(String, String), usize>);
 impl Bindings {
     /// Learn from training episodes: each string argument of each lookup is
     /// traced to the most recent successful output that holds it as a value.
+    /// Then, at each of the agent's lookups, the binding is tried on what
+    /// came before, and scored against the agent's own arguments.
     pub fn learn<'a>(
         episodes: impl IntoIterator<Item = &'a Episode>,
         manifest: &ToolManifest,
     ) -> Self {
+        let episodes: Vec<&Episode> = episodes.into_iter().collect();
+        let is_read = |c: &ToolCall| manifest.tools.get(&c.name) == Some(&ToolKind::Read);
         let mut b = Bindings::default();
-        for ep in episodes {
+        for ep in &episodes {
             let mut outputs: Vec<(&str, Value)> = Vec::new();
             for e in &ep.events {
                 match e {
@@ -263,10 +292,7 @@ impl Bindings {
                         ..
                     } => outputs.push((name.as_str(), parse(content))),
                     Event::Assistant { calls, .. } => {
-                        for c in calls {
-                            if manifest.tools.get(&c.name) != Some(&ToolKind::Read) {
-                                continue;
-                            }
+                        for c in calls.iter().filter(|c| is_read(c)) {
                             let Value::Object(args) = &c.arguments else {
                                 continue;
                             };
@@ -297,16 +323,76 @@ impl Bindings {
                 }
             }
         }
+        let mut agreed: BTreeMap<String, [(usize, usize); 2]> = BTreeMap::new();
+        for ep in &episodes {
+            for (i, e) in ep.events.iter().enumerate() {
+                let Event::Assistant { calls, .. } = e else {
+                    continue;
+                };
+                for (j, c) in calls.iter().enumerate() {
+                    if !is_read(c) {
+                        continue;
+                    }
+                    // Calls earlier in the same turn count as made.
+                    let Ok((args, mentioned)) = b.pick(&c.name, &ep.events[..i], &calls[..j])
+                    else {
+                        continue;
+                    };
+                    if args.is_empty() {
+                        continue;
+                    }
+                    let same = args
+                        .iter()
+                        .all(|(k, v)| c.arguments.get(k).map(value_text) == Some(value_text(v)));
+                    let tally = &mut agreed.entry(c.name.clone()).or_default()[mentioned as usize];
+                    tally.0 += same as usize;
+                    tally.1 += 1;
+                }
+            }
+        }
+        b.agreed = agreed;
         b
     }
 
-    /// Arguments for a call to `tool` after the last step of `episode`, or
-    /// why there are none. Each required argument takes the first value
-    /// found at one of its sources (most recent output first, in document
-    /// order) that the episode has not already passed it, preferring a value
-    /// the customer mentioned (or one whose record they did, by another of
-    /// its fields). A lookup without arguments is made once.
-    pub fn bind(&self, tool: &str, episode: &Episode) -> std::result::Result<Value, String> {
+    /// Per lookup: how often the binding picked the agent's own arguments in
+    /// training, `(agreed, calls)` for unmentioned and mentioned picks.
+    pub fn agreement(&self) -> &BTreeMap<String, [(usize, usize); 2]> {
+        &self.agreed
+    }
+
+    /// Arguments for a call to `tool` after the last step of `episode`, with
+    /// the chance that they are the agent's own: how often the binding
+    /// picked the agent's arguments in training, for picks the customer
+    /// mentioned or not (Laplace-smoothed; 1 for a lookup without
+    /// arguments). See [`Bindings::pick`] for the rule.
+    pub fn bind(&self, tool: &str, episode: &Episode) -> std::result::Result<(Value, f64), String> {
+        let (args, mentioned) = self.pick(tool, &episode.events, &[])?;
+        let chance = if args.is_empty() {
+            1.0
+        } else {
+            let (agreed, n) = self
+                .agreed
+                .get(tool)
+                .map_or((0, 0), |a| a[mentioned as usize]);
+            (agreed as f64 + 1.0) / (n as f64 + 2.0)
+        };
+        Ok((Value::Object(args), chance))
+    }
+
+    /// Arguments for a call to `tool` after `events` (and `also`, calls
+    /// already made in the same turn), and whether the customer mentioned
+    /// every value picked; or why there are none. Each required argument
+    /// takes the first value found at one of its sources (most recent output
+    /// first, in document order) that has not been passed to it already,
+    /// preferring a value the customer mentioned (or one whose record they
+    /// did, by another of its fields). A lookup without arguments is made
+    /// once.
+    fn pick(
+        &self,
+        tool: &str,
+        events: &[Event],
+        also: &[ToolCall],
+    ) -> std::result::Result<(serde_json::Map<String, Value>, bool), String> {
         let Some((calls, args)) = self.args.get(tool) else {
             return Err("never called in training".to_string());
         };
@@ -317,9 +403,8 @@ impl Bindings {
             .collect();
         let mut outputs: Vec<(&str, Value)> = Vec::new();
         let mut customer = String::new();
-        let mut used: BTreeSet<(&str, String)> = BTreeSet::new();
-        let mut called = false;
-        for e in &episode.events {
+        let mut made: Vec<&ToolCall> = Vec::new();
+        for e in events {
             match e {
                 Event::User { text } => {
                     customer.push_str(&text.to_lowercase());
@@ -331,27 +416,30 @@ impl Bindings {
                     error: false,
                     ..
                 } => outputs.push((name.as_str(), parse(content))),
-                Event::Assistant { calls, .. } => {
-                    for c in calls.iter().filter(|c| c.name == tool) {
-                        called = true;
-                        if let Value::Object(a) = &c.arguments {
-                            for (k, v) in a {
-                                used.insert((k.as_str(), value_text(v)));
-                            }
-                        }
-                    }
-                }
+                Event::Assistant { calls, .. } => made.extend(calls.iter()),
                 _ => {}
+            }
+        }
+        made.extend(also.iter());
+        let mut used: BTreeSet<(&str, String)> = BTreeSet::new();
+        let mut called = false;
+        for c in made.iter().filter(|c| c.name == tool) {
+            called = true;
+            if let Value::Object(a) = &c.arguments {
+                for (k, v) in a {
+                    used.insert((k.as_str(), value_text(v)));
+                }
             }
         }
         if required.is_empty() {
             return if called {
                 Err("already looked up".to_string())
             } else {
-                Ok(Value::Object(Default::default()))
+                Ok((Default::default(), true))
             };
         }
         let mut bound = serde_json::Map::new();
+        let mut all_mentioned = true;
         for arg in required {
             let Some((values, sources)) = self.sources.get(&(tool.to_string(), arg.clone())) else {
                 return Err(format!("`{arg}` never took a string in training"));
@@ -382,9 +470,10 @@ impl Bindings {
                 .iter()
                 .find(|(_, m)| *m)
                 .or(candidates.first())
-                .map(|(v, _)| v.clone());
+                .cloned();
             match pick {
-                Some(v) => {
+                Some((v, mentioned)) => {
+                    all_mentioned &= mentioned;
                     bound.insert(arg.clone(), Value::String(v));
                 }
                 None if rules.is_empty() => {
@@ -393,7 +482,7 @@ impl Bindings {
                 None => return Err(format!("nothing left to pass as `{arg}`")),
             }
         }
-        Ok(Value::Object(bound))
+        Ok((bound, all_mentioned))
     }
 }
 
@@ -564,28 +653,75 @@ mod tests {
             events.extend(extra);
             episode(events)
         };
-        assert_eq!(
-            b.bind("get_order_details", &live(vec![])),
-            Ok(json!({"order_id": "#W7"}))
-        );
+        let args = |e: &Episode| b.bind("get_order_details", e).map(|(v, _)| v);
+        assert_eq!(args(&live(vec![])), Ok(json!({"order_id": "#W7"})));
         let after_one = live(vec![
             call("b", "get_order_details", json!({"order_id": "#W7"})),
             result("b", "get_order_details", json!({"order_id": "#W7"})),
         ]);
-        assert_eq!(
-            b.bind("get_order_details", &after_one),
-            Ok(json!({"order_id": "#W8"}))
-        );
+        assert_eq!(args(&after_one), Ok(json!({"order_id": "#W8"})));
         // The customer names an order: it goes first.
         let named = live(vec![Event::User {
             text: "It's order W9".to_string(),
         }]);
-        assert_eq!(
-            b.bind("get_order_details", &named),
-            Ok(json!({"order_id": "#W9"}))
-        );
+        assert_eq!(args(&named), Ok(json!({"order_id": "#W9"})));
+        // In training the agent walked the list in order: the binding agreed
+        // at both of its order lookups in all three episodes.
+        let (_, chance) = b.bind("get_order_details", &live(vec![])).unwrap();
+        assert!((chance - 7.0 / 8.0).abs() < 1e-9, "{chance}");
         // A user id comes from the customer, never from an output: no rule.
         assert!(b.bind("get_user_details", &live(vec![])).is_err());
+    }
+
+    #[test]
+    fn a_pick_the_customer_did_not_mention_earns_less_trust() {
+        let mut manifest = manifest();
+        manifest
+            .tools
+            .insert("get_product_details".to_string(), ToolKind::Read);
+        let order = json!({"items": [
+            {"name": "Desk Lamp", "product_id": "p1"},
+            {"name": "Water Bottle", "product_id": "p2"},
+        ]});
+        // The agent always looks up the water bottle; half the time the
+        // customer named it.
+        let training: Vec<Episode> = (0..8)
+            .map(|i| {
+                let said = if i % 2 == 0 {
+                    "my water bottle leaks"
+                } else {
+                    "an item broke"
+                };
+                episode(vec![
+                    Event::User {
+                        text: said.to_string(),
+                    },
+                    call("a", "get_order_details", json!({"order_id": "#W1"})),
+                    result("a", "get_order_details", order.clone()),
+                    call("b", "get_product_details", json!({"product_id": "p2"})),
+                    result("b", "get_product_details", json!({"product_id": "p2"})),
+                ])
+            })
+            .collect();
+        let b = Bindings::learn(&training, &manifest);
+        assert_eq!(b.agreement()["get_product_details"], [(0, 4), (4, 4)]);
+        let live = |said: &str| {
+            episode(vec![
+                Event::User {
+                    text: said.to_string(),
+                },
+                call("a", "get_order_details", json!({"order_id": "#W5"})),
+                result("a", "get_order_details", order.clone()),
+            ])
+        };
+        let (args, chance) = b
+            .bind("get_product_details", &live("the desk lamp"))
+            .unwrap();
+        assert_eq!(args, json!({"product_id": "p1"}));
+        assert!((chance - 5.0 / 6.0).abs() < 1e-9, "{chance}");
+        let (args, chance) = b.bind("get_product_details", &live("hello")).unwrap();
+        assert_eq!(args, json!({"product_id": "p1"}));
+        assert!((chance - 1.0 / 6.0).abs() < 1e-9, "{chance}");
     }
 
     #[test]

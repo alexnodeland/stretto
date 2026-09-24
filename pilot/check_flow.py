@@ -74,10 +74,12 @@ async def replay(task_id: str, messages: list, episode: Path, address: str, args
         async with stdio_client(server, errlog=errlog) as (read, write):
             async with ClientSession(read, write) as session:
                 await session.initialize()
-                for m in messages:
+                for i, m in enumerate(messages):
                     if m["role"] == "tool":
                         continue  # the server records its own results
-                    if m["role"] == "assistant":
+                    # τ²-bench's scripted greeting is not an LLM turn.
+                    greeting = i == 0 and not m.get("tool_calls")
+                    if m["role"] == "assistant" and not greeting:
                         turns += 1
                     if not m.get("tool_calls"):
                         with open(trajectory, "a") as f:
@@ -158,6 +160,7 @@ def main() -> None:
             flow_oracle=args.flow_oracle,
             oracle_cache=args.oracle_cache,
             flow_threshold=args.flow_threshold,
+            flow_max_questions=50 * len(episodes),
         ),
         out,
     )

@@ -370,6 +370,12 @@ fn flow_serve(
         flow.domain(),
         start.elapsed().as_secs_f64()
     );
+    for (tool, [not, named]) in flow.binding_agreement() {
+        eprintln!(
+            "stretto: binding {tool}: agreed {}/{} unmentioned, {}/{} mentioned",
+            not.0, not.1, named.0, named.1
+        );
+    }
     let listener =
         std::net::TcpListener::bind(listen).with_context(|| format!("listening on {listen}"))?;
     // The harness waits for this line.
