@@ -28,7 +28,7 @@ PATH=~/.venvs/tau2/bin:$PATH python run_episode.py --task-id 90 --out runs/pilot
   --arm flows --oracle-cache ../.oracle-cache
 ```
 
-The flows arm needs `cargo build --release -p stretto-report` and a replay cache holding the goal-free v2 answers. Fill it with `stretto phase0 --oracle jev --questions v2 --predicates data/predicates-v2.json --no-intent`, or import the published bundles (the v2 bundle and its goal-free supplement, in `docs/results/`). Pilot tasks come from the test split, so the habit never trained on them. Each task is judged by the arbiter of its own fold, which never saw it.
+The flows arm needs `cargo build --release -p stretto-report` and a replay cache holding the goal-free v2 answers. `--arm habit` runs the same flow on the habit alone; it still compiles from the cache, but asks Jev nothing live. Fill it with `stretto phase0 --oracle jev --questions v2 --predicates data/predicates-v2.json --no-intent`, or import the published bundles (the v2 bundle and its goal-free supplement, in `docs/results/`). Pilot tasks come from the test split, so the habit never trained on them. Each task is judged by the arbiter of its own fold, which never saw it.
 
 The episode directory (`runs/pilot/baseline/task-90/`) holds everything:
 
@@ -80,6 +80,12 @@ In the flows arm, the agent's first call found the user. The flow then looked up
 - With the guards on, 7 of the 8 episodes passed; the failure (task 31) was the agent's cost error from the airline pilot, with nothing refused.
 - The proxy checked 9 writes live and passed them all, among them task 32's upgrade-then-change, which a rule briefly changed that morning would have refused.
 - 223 Z.ai credits.
+
+**Habit-only pilot, retail.** The habit arm (`run_episode.py --arm habit`) is the flows arm with the flow deciding on the habit alone (`--decider habit`), never asking Jev. It ran on the retail pilot's ten tasks, paired with that pilot's no-flow and D0 episodes. See [the summary](../docs/results/pilot-habit-2026-09-24.md):
+
+- 79 LLM turns, against 110 with no flow and 84 with D0: 28.2% fewer than with no flow, with fewer turns in all ten pairs. Against D0, a change of −0.5 turns per episode (95% interval −1.4 to +0.4).
+- 37 flow lookups, none repeated by the agent; 9 of 10 passed.
+- 109 Z.ai credits.
 
 ## Check the flow without an LLM
 

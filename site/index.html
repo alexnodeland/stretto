@@ -272,7 +272,7 @@
 <div class="abstract">
   <span class="k">Abstract</span>
   <p>An LLM agent pays for every tool call with a turn of the LLM, and many of those calls are predictable lookups. We treat an agent's trace as a walk over the action space its tools define, learn a Bayesian model of that walk from recorded episodes, and compile its predictable parts into <em>flows</em>: read-only continuations that run between the agent's turns. Each branch point is decided by weighing the learned habit against a calibrated System-One model (TypeSafe's Jev), and each lookup's arguments are bound from results already in hand. Because a flow never writes, a wrong pick costs one extra lookup rather than a wrong action.</p>
-  <p>On τ²-bench's published trajectories, read-only flows save 17% of LLM turns in retail and 13% in airline offline, and they transfer to nine agent models they never saw. Replayed without Jev, the habit alone saves as many turns; the System-One model's answers buy precision, cutting detours in airline by half to two-thirds. A flow that hands every branch back to the LLM saves almost nothing, and naming flows as macro-tools could add at most 2% of turns in retail and 8% in airline. Live, with GLM-5.3 as the agent and the flow behind its MCP tools, adding no tools and changing no prompt, ten paired retail tasks took 24% fewer LLM turns and 21% fewer input tokens at the same pass rate. In airline, 17% fewer LLM turns, with 9 of 10 tasks passed against 8 without the flow. Policy guards compiled from the written policy refuse a policy-breaking write in 38% of failed airline episodes and in 1% of successful ones, each of which τ²-bench's own task notes forbid. Live, GLM-5.3 made no write they had to refuse. The system is open source: a Rust MCP proxy, a flow IR, and the measurement pipeline.</p>
+  <p>On τ²-bench's published trajectories, read-only flows save 17% of LLM turns in retail and 13% in airline offline, and they transfer to nine agent models they never saw. Replayed without Jev, the habit alone saves as many turns, and live it did too; the System-One model's answers buy precision, cutting detours in airline by half to two-thirds. When traces are scarce, they carry the savings: with the habit trained on three retail tasks, the flow saves 20% of turns with Jev and 2% without. A flow that hands every branch back to the LLM saves almost nothing, and naming flows as macro-tools could add at most 2% of turns in retail and 8% in airline. Live, with GLM-5.3 as the agent and the flow behind its MCP tools, adding no tools and changing no prompt, ten paired retail tasks took 24% fewer LLM turns and 21% fewer input tokens at the same pass rate. In airline, 17% fewer LLM turns, with 9 of 10 tasks passed against 8 without the flow. Policy guards compiled from the written policy refuse a policy-breaking write in 38% of failed airline episodes and in 1% of successful ones, each of which τ²-bench's own task notes forbid. Live, GLM-5.3 made no write they had to refuse. Asked whether the customer agreed to each write, Jev beat the guards' word list on 30 of 40 hand-labelled writes where the two disagreed. The system is open source: a Rust MCP proxy, a flow IR, and the measurement pipeline.</p>
 </div>
 
 <p class="epigraph"><span>stretto</span> (It., "narrow, tight"): the passage of a fugue in which entries of the subject overlap, each voice entering before the previous one has finished. Here, a flow's lookups enter before the agent's turn is over.</p>
@@ -282,7 +282,7 @@
   <h2><span class="num">1</span>Introduction</h2>
   <p>A tool-using agent works in turns. The LLM reads the conversation, emits a tool call, waits for the result, reads everything again, and emits the next call. In τ²-bench's customer-service domains, about a quarter of all LLM turns are spent inside runs of consecutive tool calls, before the agent says anything to the customer (§5.1). Most of those calls are lookups whose tool and arguments follow from what the previous call returned: a user's profile lists their orders, so the next call reads an order.</p>
   <p>That regularity is visible in traces. An agent's trace is a walk over a small alphabet, the tools it may call plus "reply to the customer", and the walk is far more predictable than the text around it<a class="cite" href="#r8">[8]</a><a class="cite" href="#r17">[17]</a>. Prior work has mined such traces into workflows, but leaves the branch points to the LLM or to hand-written rules<a class="cite" href="#r24">[24]</a>, or skips the LLM one step at a time on an uncalibrated score<a class="cite" href="#r13">[13]</a>. What has been missing is a cheap decider for the branch points: something that answers a typed question about the state, fast, with a probability that means something.</p>
-  <p>System-One models now fill that role. Jev takes a state and typed questions (a choice among options, a score, a yes/no) and returns calibrated probabilities in 70–500 ms, at $0.042 per million input tokens. It never generates text. Stretto combines the two: it learns the habit from traces, compiles it into flows with explicit decision sites, and decides each site by weighing the habit against Jev and a few yes/no questions about the state, handing back to the LLM whenever the answer is not good enough. §5.9 measures what Jev adds: for read-only flows, precision rather than savings.</p>
+  <p>System-One models now fill that role. Jev takes a state and typed questions (a choice among options, a score, a yes/no) and returns calibrated probabilities in 70–500 ms, at $0.042 per million input tokens. It never generates text. Stretto combines the two: it learns the habit from traces, compiles it into flows with explicit decision sites, and decides each site by weighing the habit against Jev and a few yes/no questions about the state, handing back to the LLM whenever the answer is not good enough. §5.9–5.11 measure what Jev adds. For read-only flows it adds precision when traces are plentiful, and the savings themselves when they are scarce. It also judges a customer's confirmation better than a word list.</p>
 
   <figure id="fig-score">
     <div class="legend" aria-hidden="true">
@@ -303,6 +303,7 @@
     <li><strong>Read-only flows with Bayesian arbitration</strong> (§3.3–3.6): a System-One model weighed against the habit, its own record per site, and state predicates by a cross-fitted conditional logit, acting on the probability that the whole call, arguments included, is the agent's.</li>
     <li><strong>A live form that needs no cooperation from the agent</strong> (§3.7, §5.6): the flow runs behind the agent's own tool calls and returns its lookups in the same response, measured live with GLM-5.3.</li>
     <li><strong>Typed policy guards, audited against traces</strong> (§3.8, §5.7): checks compiled from the written policy that pass, fail or do not know, tested on 2,624 trajectories before any is enforced.</li>
+    <li><strong>What the System-One model adds</strong> (§5.9–5.11): measured against the habit alone, offline and live, with plentiful and with scarce traces, and as a judge of confirmation.</li>
     <li><strong>An open implementation</strong> (§4): a Rust MCP proxy that records sessions and serves flows, guards and a commit tool for any MCP server; a versioned flow IR; learning from recorded sessions; and an audit that scores new sessions under a flow run as a fugue program (§5.8).</li>
   </ul>
 </section>
@@ -392,7 +393,7 @@
         <tr><td><code>stretto-trace</code></td><td class="ok">built</td><td class="wrap">Canonical episode schema; τ²-bench results and MCP session logs in; tool manifests with docs and read-only hints.</td></tr>
         <tr><td><code>stretto-model</code></td><td class="ok">built</td><td class="wrap">Action abstraction; hierarchical Dirichlet back-off habit; α posterior by MH in fugue; code features; argument provenance; tool runs.</td></tr>
         <tr><td><code>stretto-oracle</code></td><td class="ok">built</td><td class="wrap"><code>Oracle</code> trait; Jev client; on-disk replay cache keyed by request hash; mock.</td></tr>
-        <tr><td><code>stretto-report</code></td><td class="ok">built</td><td class="wrap">The <code>stretto</code> CLI: Phase 0 reports; System-One questions; arbiter; flows (<code>compile</code>, <code>learn</code>, <code>serve</code>); guards and their audit; the flow audit, with fugue (<code>audit</code>).</td></tr>
+        <tr><td><code>stretto-report</code></td><td class="ok">built</td><td class="wrap">The <code>stretto</code> CLI: Phase 0 reports; System-One questions; arbiter; flows (<code>compile</code>, <code>learn</code>, <code>serve</code>); guards and their audit; the flow audit, with fugue (<code>audit</code>); the confirmation judge (<code>confirm</code>).</td></tr>
         <tr><td><code>stretto-proxy</code></td><td class="ok" id="proxy-state">built</td><td class="wrap" id="proxy-what">A stdio MCP proxy for any MCP server. It records sessions; in active mode it runs a flow behind the agent's calls, refuses writes the guards fail, adds <code>stretto_commit</code>, and logs the conversation a host hands it.</td></tr>
       </tbody>
     </table>
@@ -503,7 +504,7 @@
     <li>The proxy checked 9 writes live and passed them all. They include task 32's upgrade-then-change, the path the briefly mistaken rule would have refused.</li>
   </ul>
   <p>So guards are insurance whose value depends on the agent. Against the 2025 agents they would have refused a write in 38% of failed airline episodes; against GLM-5.3, on the tasks where those failures concentrate, in none. They cost nothing when they do not fire. The pilot cost 223 Z.ai credits (<a href="https://github.com/alexnodeland/stretto/blob/main/docs/results/pilot-guards-2026-09-24.md">details</a>).</p>
-  <p>The audit also demoted a rule. Detecting an explicit "yes" with a word list misses about as often in successful episodes as in failed ones (3.2% and 3.9% of accepted writes in retail, 6.9% and 6.5% in airline), so both confirmation rules are logged and never enforced. Judging a confirmation is a natural System-One question, not a keyword match.</p>
+  <p>The audit also demoted a rule. Detecting an explicit "yes" with a word list misses about as often in successful episodes as in failed ones (3.2% and 3.9% of accepted writes in retail, 6.9% and 6.5% in airline), so both confirmation rules are logged and never enforced. Judging a confirmation is a natural System-One question, not a keyword match, and §5.11 asks it.</p>
   <details><summary>Show the per-rule audit</summary><div class="table-wrap"><table id="guards-table"></table></div></details>
 
   <h3><span class="num">5.8</span>Auditing a flow, as a fugue program</h3>
@@ -543,8 +544,36 @@
     <li><strong>Retail:</strong> 1.2 points more (−0.5 to 3.0), with the same 58 detours.</li>
     <li><strong>Airline:</strong> 2.2 points more (0.6 to 4.2), with twice the detours, 50 against 26.</li>
   </ul>
-  <p>Weighing Jev's answers buys precision, not savings. The same holds on Claude 3.7 Sonnet's test episodes, one of the four source agents. There the habit alone saves 1.2 points more in retail (−0.6 to 2.9) and 2.6 more in airline (1.1 to 4.5). It makes 101 detours against 73 in retail, and 95 against 29 in airline. So a flow can run on its habit alone, with no key and no latency per question (<code>--flow-decider habit</code>), at the price of more detours in airline. In airline GLM-5 saves less here than live (Table 3), because in τ²-bench's harness it makes several calls per turn, and a turn counts as saved only when the flow made all of them.</p>
+  <p>Weighing Jev's answers buys precision, not savings. The same holds on Claude 3.7 Sonnet's test episodes, one of the four source agents. There the habit alone saves 1.2 points more in retail (−0.6 to 2.9) and 2.6 more in airline (1.1 to 4.5). It makes 101 detours against 73 in retail, and 95 against 29 in airline. So, given enough traces (§5.10), a flow can run on its habit alone, with no key and no latency per question (<code>--flow-decider habit</code>), at the price of more detours in airline. In airline GLM-5 saves less here than live (Table 3), because in τ²-bench's harness it makes several calls per turn, and a turn counts as saved only when the flow made all of them.</p>
+  <p><strong>Live.</strong> The habit-only flow then ran live on the retail pilot's ten tasks (§5.6), one episode each, with GLM-5.3 in Claude Code. It took 79 LLM turns, against 110 without a flow and 84 with D0. That is 28% fewer than without, with fewer turns on all ten tasks, and against D0 a change of −0.5 turns per episode (95% interval −1.4 to +0.4). It made 37 lookups, none of which the agent repeated, and passed 9 of 10 (8 of 10 in both earlier arms). It asked Jev nothing, and cost 109 Z.ai credits. It ran later the same day than the other two arms, so model drift cannot be ruled out, and ten tasks cannot bound a pass-rate effect (<a href="https://github.com/alexnodeland/stretto/blob/main/docs/results/pilot-habit-2026-09-24.md">details</a>).</p>
   <p>Naming a flow would add only one kind of lookup: one inside a run that needs a value from the conversation, such as a city the customer named or a date the agent works out. A flow behind the tools cannot bind such a value. Across the thirteen agent models these lookups are 0.0–1.9% of LLM turns in retail and 0.9–7.9% in airline (GLM-5: 1.6% and 2.9%). Lookups a flow can bind are 6–38%. That bounds what <code>plan_*</code> could add, even if the agent adopted it and passed the right values, so it was not built. The top of the airline range is flight searches, by the agents that search many dates: Gemini 3 Flash and Qwen3.5. Details are in <a href="https://github.com/alexnodeland/stretto/blob/main/docs/results/arms-2026-09-24.md"><code>docs/results/arms-2026-09-24.md</code></a>.</p>
+
+  <h3><span class="num">5.10</span>Fewer traces</h3>
+  <p>The habit of §5.9 learned from 831 successful retail episodes and 246 airline ones: four agents on every training task. A new deployment starts with far fewer. So the habit was trained on less. <code>--train-fraction</code> keeps a fixed pseudo-random share of the training tasks, nested so that each smaller sample is part of every larger one, down to a single task. The habit, the sites a flow acts at and the bindings learn from those tasks alone. Each flow then replayed GLM-5's test episodes as in §5.9, deciding by the arbiter and by the habit alone (Figure 9).</p>
+  <figure>
+    <div class="legend" aria-hidden="true"><span><i class="sw-dot bg-a"></i>Arbiter, with Jev</span><span><i class="sw-dot bg-b"></i>Habit alone</span></div>
+    <div class="multiples"><div><div class="panel-title">Retail</div><div id="sweep-retail"></div></div><div><div class="panel-title">Airline</div><div id="sweep-airline"></div></div></div>
+    <figcaption><span><b>Figure 9.</b> LLM turns saved on GLM-5's test episodes, all four trials, by flows whose habit learned from fewer training tasks, lookup first at p ≥ 0.3. Each point is one nested sample of tasks. With one airline task, neither flow saves a turn. Hover for detours and training episodes.</span></figcaption>
+    <details><summary>Show table</summary><div class="table-wrap"><table id="sweep-table"></table></div></details>
+  </figure>
+  <p>With enough traces the habit carries the savings. From 7 retail tasks (67 episodes) and 8 airline tasks (75), the habit alone saves what it saves with every task, 1–3 points more than the arbiter, which again buys fewer detours. Below that, Jev's answers carry them. With 3 retail tasks the arbiter saves 20.4% of turns, nearly all it saves with every task, and the habit alone 1.8% (the difference: −18.6 points, 95% interval −21.1 to −16.0). The habit is unsure where agents read the next order: its probability is 0.19 at the median and never above 0.25. So under the 0.3 rule it never reads one, where the arbiter reads 394. With a single task, the habit copies that task's path and reads product lists nobody asked for: 260 detours, and 4.9% saved against the arbiter's 10.0% with 28 detours. In airline, with 3 tasks, the arbiter saves 5.6% with one detour and the habit 4.1% with 37, a difference the interval does not resolve.</p>
+  <p>The traces still set a flow's reach. A flow acts only at sites where training shows a lookup, and offers only those lookups: 4 sites with one retail task, 19 with all 74. With one airline task, neither decider saved a turn. Two cautions. Only the habit's side shrank: the arbiter was fitted as always on the source agents' held-out decisions, at least 2,344 in retail and 992 in airline at every size. A deployment with few traces would fit it on its own few sessions, so the sweep flatters the arbiter. And each size is one draw of tasks, so the sweep locates the crossover, between 3 and 7 retail tasks, rather than tracing a curve. The sweep's Jev answers cost $1.12 (<a href="https://github.com/alexnodeland/stretto/blob/main/docs/results/sweep-2026-09-24.md">details</a>).</p>
+
+  <h3><span class="num">5.11</span>Judging a confirmation</h3>
+  <p>τ²-bench's policies require the customer's explicit yes before a write. The guards test for it with a word list, which §5.7 found no better in failed episodes than in successful ones. <code>stretto confirm</code> puts the question to Jev instead, once per write in the published trajectories. Jev sees three things: what the agent said last before the customer's last message, that message, and the call about to be made. It is asked whether the reply explicitly agreed to this change, and fails the write when its probability of a yes is below 0.5. The 3,863 questions cost $0.12.</p>
+  <p>Jev fails more accepted writes than the word list. In retail it separates the two kinds of episode better: it fails 8.5% of the accepted writes in failed episodes and 5.0% in successful ones, where the list fails 3.9% and 3.2%. In airline it separates them no better. Episode outcome is a weak test, though, since τ²-bench checks the database and not the conversation. So the disagreements were labelled by hand. The two judges agree on 94.9% of the 3,484 accepted writes. From the other 178, a random 20 of each kind were labelled blind to both judges (Table 6).</p>
+  <div class="table-wrap">
+    <table>
+      <caption><b>Table 6.</b> Hand labels on the writes where Jev and the word list disagree, 20 of each kind drawn at random from τ²-bench's published trajectories. A write counts as confirmed only when the agent had described this exact change and the customer's last message agreed to it. One annotator labelled them: Claude, which also ran the analysis.</caption>
+      <thead><tr><th>Where they disagree</th><th>Writes</th><th>Jev right</th><th>Word list right</th></tr></thead>
+      <tbody>
+        <tr><td>Jev says no, the word list says yes</td><td>20</td><td>16</td><td>4</td></tr>
+        <tr><td>Jev says yes, the word list says no</td><td>20</td><td>14</td><td>6</td></tr>
+        <tr><td>All</td><td>40</td><td>30 (75%)</td><td>10 (25%)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Weighted by how often each kind occurs, Jev is right on 78% of the disagreements. The most valuable catches are mismatches. The customer says yes to one change, and the agent makes another: "Yes, please process those returns," and the agent cancels an order; "Yes, please use gift_card_8190333," and it charges a credit card. No word list can see that, because it never reads the call. Jev also hears agreement without the words ("Please book the second option"). Most of its errors are too easy a yes. Six of its ten are a yes to a change the agent never described first, which a second question (was this exact change described?) could catch. Enforced, Jev's judgment would refuse 5–11% of accepted writes in successful episodes, so whether refusing them costs pass^1 or turns is for a live run. Until then the guards only log it (<a href="https://github.com/alexnodeland/stretto/blob/main/docs/results/confirm-2026-09-24.md">details</a>).</p>
 </section>
 
 <!-- ==================================================================== -->
@@ -552,9 +581,9 @@
   <h2><span class="num">6</span>Discussion</h2>
   <p><strong>What is new.</strong> Stated narrowly: branch points decided by calibrated, typed answers weighed against a learned habit; a safety argument that comes from what a flow may do (read) rather than how sure it is; argument bindings trusted per call; and guards whose enforcement is decided by an audit. A skeptical reader could call it AutoTool plus TraceCompiler plus a calibrated router. That is roughly right, and each of those lacks something another supplies.</p>
   <p><strong>Why read-only matters.</strong> The zero-shot result (§5.3) looked like a dead end: a well-calibrated decider at 72% cannot carry writes. The same decider, weighed and restricted to reads, saves most of the ceiling, because the cost of being wrong fell from a wrong action to a few hundred tokens. The general lesson is to design the action space so that the fast path's errors are cheap, then let it act on weaker evidence.</p>
-  <p><strong>What the System-One model is for.</strong> The design put Jev at every branch point, and §5.9 shows that read-only flows do not need it to save turns: the habit alone, acting on the same rule, saves as many. The arbiter's weighed answers make the flow stop where the habit would guess, which cuts detours in airline by half to two-thirds. That is a real gain in tokens and in how often the agent sees irrelevant results. But it is precision, not the savings the design claimed. The habit here learned from four agents on 74 training tasks. Where traces are scarce, or where a decision turns on content the habit cannot see (matching a description to a record, judging a confirmation), a zero-shot typed decider should matter more. Neither case was measured here.</p>
+  <p><strong>What the System-One model is for.</strong> The design put Jev at every branch point. For read-only flows with plenty of traces, §5.9 shows it is not what saves turns: the habit alone saves as many, offline and live. Jev's weighed answers make the flow stop where the habit would guess, which cuts detours in airline by half to two-thirds. That is precision, not the savings the design claimed. §5.10 finds where it does carry the savings: when traces are scarce. Trained on three retail tasks, the habit alone saves 2% of turns, and with Jev the flow saves 20%, nearly all it saves with every task. So a deployment can start on Jev and let the habit take over as its traces accumulate. Jev is also the judge for decisions the habit cannot see. It judged a customer's confirmation better than a word list (§5.11). Matching a description to a record is still untested.</p>
   <p><strong>Who benefits.</strong> Savings follow the agent's calling style more than its accuracy. Sequential callers gain the most, and the heaviest parallel callers little in airline. A deployment should measure its own agent's runs before expecting a number, which stretto's Phase 0 does from logs alone.</p>
-  <p><strong>Limitations.</strong> The live pilots are ten tasks per domain, one episode per arm, and the simulated customer is the same model as the agent. The reward omits τ²-bench's natural-language assertions. Agreement is measured against agents that fail 21–50% of tasks. Provenance is a text-matching heuristic, and the guards were compiled by an LLM and reviewed only through the audit. The comparisons in §5.9 are replays, which assume the agent would have acted the same with the flow's results in hand. The offline results use mid-2025 models, and GPT-4.1 simulated the customer where the leaderboard used GPT-5.2, so the targets differ from the baselines in more than the agent.</p>
+  <p><strong>Limitations.</strong> The live pilots are ten tasks per domain, one episode per arm, and the simulated customer is the same model as the agent. The reward omits τ²-bench's natural-language assertions. Agreement is measured against agents that fail 21–50% of tasks. Provenance is a text-matching heuristic, and the guards were compiled by an LLM and reviewed only through the audit. The comparisons in §5.9–5.10 are replays, which assume the agent would have acted the same with the flow's results in hand. The sweep in §5.10 shrank only the habit's data, and its arbiter was fitted on thousands of held-out decisions at every size. The confirmation labels in §5.11 come from one annotator, the model that ran the analysis. The offline results use mid-2025 models, and GPT-4.1 simulated the customer where the leaderboard used GPT-5.2, so the targets differ from the baselines in more than the agent.</p>
 </section>
 
 <!-- ==================================================================== -->
@@ -562,7 +591,8 @@
   <h2><span class="num">7</span>What comes next</h2>
   <ul>
     <li><strong>A paired run large enough to bound pass^1</strong>, with the detour cost measured live, on more agent models, starting with the sequential callers the projection favors.</li>
-    <li><strong>Where a System-One model earns its place.</strong> Train the habit on fewer traces and find where Jev's answers start to carry savings, not only precision. Then test the roles that turn on content: matching descriptions to records, and judging confirmations before a write.</li>
+    <li><strong>Cold starts, live.</strong> A flow learned from a handful of recorded sessions, with the arbiter fitted on those sessions alone, run live against its habit alone. Also flows whose options come from the tool manifest as well as from traces, so that Jev can act where the traces are silent.</li>
+    <li><strong>Confirmation, enforced.</strong> Refuse a write Jev judges unconfirmed, add a second question (did the agent describe this exact change?), and measure what refusing costs in pass^1 and turns. Matching descriptions to records is the other content role still untested.</li>
     <li><strong>Confirmed writes in one call.</strong> <code>stretto_commit</code> is built, and no live run has used it. Named <code>plan_*</code> flows are not planned: §5.9 bounds what naming could add at 2% of turns in retail and 8% in airline.</li>
     <li><strong>Counterfactual evaluation.</strong> The audit's program already scores and simulates a flow (§5.8). With the propensities the proxy logs at every live decision, the same program can estimate how a changed flow would have done, before it runs<a class="cite" href="#rf6">[F6]</a>.</li>
     <li><strong>Guards where they bite:</strong> agents that make the writes the guards refuse, such as the smaller or cheaper models the design plans to run on flows compiled from frontier traces.</li>
@@ -577,7 +607,7 @@
   <pre><code>git clone --depth 1 https://github.com/sierra-research/tau2-bench ../tau2-bench
 cargo run --release -p stretto-report -- phase0 --tau2 ../tau2-bench --out reports/phase0.md
 cargo run --release -p stretto-report -- guards --tau2 ../tau2-bench</code></pre>
-  <p>Every Jev answer behind §5.3–5.5 is published in the repository and replays without a key (<code>stretto import-answers</code>, then <code>--oracle replay</code>). Asked the same questions a second time, Jev chose the same option 97% of the time, and §5.3's headline figures moved by at most 0.3 points. §5.9's replays run from the same answers (<code>pilot/check_flow.py --flow-decider arbiter|habit</code>). All the System-One questions behind this paper cost under $7, and the live pilot's harness is in <a href="https://github.com/alexnodeland/stretto/tree/main/pilot"><code>pilot/</code></a>. Per-phase results, with every number above, are in <a href="https://github.com/alexnodeland/stretto/tree/main/docs/results"><code>docs/results/</code></a>, and the design and its amendments are fugue's <a href="https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md">RFC-001</a>.</p>
+  <p>Every Jev answer behind §5.3–5.5 and §5.9–5.11 is published in the repository and replays without a key (<code>stretto import-answers</code>, then <code>--oracle replay</code>). Asked the same questions a second time, Jev chose the same option 97% of the time, and §5.3's headline figures moved by at most 0.3 points. §5.9 and §5.10 replay from them too (<code>pilot/check_flow.py --flow-decider arbiter|habit</code>, with flows from <code>stretto compile --train-fraction</code>), and so does §5.11 (<code>stretto confirm</code>). All the System-One questions behind this paper cost about $8, and the live pilot's harness is in <a href="https://github.com/alexnodeland/stretto/tree/main/pilot"><code>pilot/</code></a>. Per-phase results, with every number above, are in <a href="https://github.com/alexnodeland/stretto/tree/main/docs/results"><code>docs/results/</code></a>, and the design and its amendments are fugue's <a href="https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md">RFC-001</a>.</p>
 </section>
 
 <!-- ==================================================================== -->
@@ -720,6 +750,13 @@ const GUARDS = {
     ["airline.own_reservation", true, [223, 0, 41], [373, 0, 98], [59, 0, 15], [0, 0]],
     ["airline.same_passenger_count", true, [29, 0, 0], [9, 0, 0], [0, 1, 0], [0, 0]]
   ] }
+};
+
+// Figure 9: [training tasks, successful training episodes, turns saved by
+// the arbiter, its detours, turns saved by the habit alone, its detours].
+const SWEEP = {
+  retail: [[1, 3, 0.0997, 28, 0.0491, 260], [3, 21, 0.2038, 26, 0.0181, 23], [7, 67, 0.2023, 38, 0.224, 63], [19, 196, 0.2074, 30, 0.2247, 53], [37, 414, 0.2117, 28, 0.2247, 53], [74, 831, 0.2124, 58, 0.2247, 58]],
+  airline: [[1, 15, 0, 0, 0, 0], [3, 28, 0.0556, 1, 0.0413, 37], [8, 75, 0.0603, 11, 0.0873, 76], [15, 129, 0.0587, 53, 0.0873, 92], [30, 246, 0.0651, 26, 0.0873, 50]]
 };
 
 // ---------------------------------------------------------------------------
@@ -1124,6 +1161,42 @@ responsive(document.getElementById("guards-chart"), (svg, W, narrow) => {
 });
 fillTable(document.getElementById("guards-table"), ["Rule", "Enforced", "Accepted, successful: pass / fail / unknown", "Accepted, failed: pass / fail / unknown", "Refused by the tool: pass / fail / unknown", "Episodes failed: successful / failed"],
   ["airline", "retail"].flatMap((dom) => GUARDS[dom].rules.map(([rule, enf, s, f, r, e]) => [rule, enf ? "yes" : "logged", s.join(" / "), f.join(" / "), r.join(" / "), e.join(" / ")])));
+
+// ---------------------------------------------------------------------------
+// Figure 9: fewer traces
+// ---------------------------------------------------------------------------
+function sweepChart(dom) {
+  responsive(document.getElementById(`sweep-${dom}`), (svg, W) => {
+    svg.setAttribute("aria-label", `${cap(dom)}: LLM turns saved against the number of training tasks, by the arbiter with Jev and by the habit alone`);
+    const m = { t: 12, r: 16, b: 40, l: 44 };
+    const H = 250;
+    const rows = SWEEP[dom];
+    const lo = Math.log(0.8), hi = Math.log(rows[rows.length - 1][0] * 1.25);
+    const x = (t) => m.l + (W - m.l - m.r) * ((Math.log(t) - lo) / (hi - lo));
+    const y = (v) => m.t + (H - m.t - m.b) * (1 - v / 0.25);
+    for (let k = 0; k <= 5; k++) {
+      const v = k * 0.05;
+      svgEl("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), class: v === 0 ? "axis" : "grid" }, svg);
+      text(svg, m.l - 8, y(v) + 4, pct(v), "tick", "end");
+    }
+    for (const [t] of rows) text(svg, x(t), y(0) + 18, String(t), "tick", "middle");
+    text(svg, (m.l + W - m.r) / 2, H - 4, "Training tasks (log scale)", "tick", "middle");
+    const group = svgEl("g", {}, svg);
+    [[2, 3, "arbiter, with Jev", "--rule-a", "a"], [4, 5, "habit alone", "--rule-b", "b"]].forEach(([si, di, label, key, cls]) => {
+      svgEl("path", { d: rows.map((r, i) => `${i ? "L" : "M"}${x(r[0])},${y(r[si])}`).join(" "), class: `line-${cls}` }, group);
+      for (const r of rows) {
+        const mark = svgEl("circle", { cx: x(r[0]), cy: y(r[si]), r: 4.5, class: `mark dot-${cls}` }, group);
+        const hit = svgEl("circle", { cx: x(r[0]), cy: y(r[si]), r: 11, class: "hit" }, svg);
+        bind(hit, [{ value: pct1(r[si]), label: `turns saved · ${label}`, key }, { value: String(r[di]), label: "detours" }, { value: `${r[0]} tasks`, label: `${r[1]} successful training episodes` }], group, mark);
+      }
+    });
+    return H;
+  });
+}
+sweepChart("retail");
+sweepChart("airline");
+fillTable(document.getElementById("sweep-table"), ["Domain", "Training tasks", "Successful episodes", "Arbiter: turns saved", "Arbiter: detours", "Habit alone: turns saved", "Habit alone: detours"],
+  ["retail", "airline"].flatMap((dom) => SWEEP[dom].map(([t, e, as, ad, hs, hd]) => [cap(dom), t, e, pct1(as), ad, pct1(hs), hd])));
 </script>
 </body>
 </html>

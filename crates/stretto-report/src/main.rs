@@ -167,6 +167,49 @@ enum Command {
         #[arg(long)]
         json: Option<PathBuf>,
     },
+    /// Judge the customer's confirmation before each write with a
+    /// System-One model, next to the guards' word list, on τ²-bench's
+    /// published trajectories: one yes/no question per write, sorted by
+    /// whether the tool accepted it and the episode passed.
+    Confirm {
+        /// Path to a τ²-bench checkout (its published baselines are read).
+        #[arg(long)]
+        tau2: PathBuf,
+        /// Domains to judge.
+        #[arg(long = "domain", default_values_t = ["retail".to_string(), "airline".to_string()])]
+        domains: Vec<String>,
+        /// Extra τ²-bench results to judge: `path` or `label=path`
+        /// (repeatable; files for other domains are skipped).
+        #[arg(long = "source")]
+        sources: Vec<String>,
+        /// Who judges: `jev` (needs TYPESAFE_API_KEY; pays once per distinct
+        /// question), `replay` (the cache only) or `mock`.
+        #[arg(long, value_enum, default_value_t = OracleArg::Replay)]
+        oracle: OracleArg,
+        /// Replay cache for oracle answers.
+        #[arg(long, default_value = ".oracle-cache")]
+        oracle_cache: PathBuf,
+        /// Refuse to start if uncached questions could cost more than this
+        /// many dollars.
+        #[arg(long, default_value_t = 2.0)]
+        oracle_budget: f64,
+        /// The judge fails a write below this probability of an explicit yes.
+        #[arg(long, default_value_t = 0.5)]
+        threshold: f64,
+        /// Disagreements to show, of each kind, per domain.
+        #[arg(long, default_value_t = 8)]
+        examples: usize,
+        /// Write every distinct question to this file (JSON lines; the
+        /// domain is added to the file name).
+        #[arg(long)]
+        oracle_dump: Option<PathBuf>,
+        /// Write the Markdown report here (default: stdout).
+        #[arg(long)]
+        out: Option<PathBuf>,
+        /// Also write every judged write, and the audits, as JSON here.
+        #[arg(long)]
+        json: Option<PathBuf>,
+    },
     /// Audit a flow against recorded episodes: score the agent's own steps
     /// under the flow's decisions, run as a fugue program, for agreement,
     /// calibration and surprise per site and per episode. Run it on new
@@ -317,6 +360,11 @@ struct Phase0Args {
     /// name).
     #[arg(long)]
     oracle_log: Option<PathBuf>,
+    /// Train on this share of the training tasks: a fixed sample by task
+    /// id, each smaller share part of every larger one. To see how flows
+    /// do with fewer traces.
+    #[arg(long, default_value_t = 1.0)]
+    train_fraction: f64,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -520,6 +568,62 @@ fn main() -> Result<()> {
             }
             Ok(())
         }
+        Command::Confirm {
+            tau2,
+            domains,
+            sources,
+            oracle,
+            oracle_cache,
+            oracle_budget,
+            threshold,
+            examples,
+            oracle_dump,
+            out,
+            json,
+        } => {
+            let mut sc = ShadowConfig::new(oracle_kind(oracle));
+            sc.cache_dir = oracle_cache;
+            sc.budget = oracle_budget;
+            sc.dump = oracle_dump;
+            let model = sc.model.clone();
+            let judge = sc.build()?;
+            let (mut audits, mut judged) = (Vec::new(), Vec::new());
+            for domain in &domains {
+                let guards = stretto_report::guards::Guards::for_domain(domain)
+                    .with_context(|| format!("no guards for {domain}"))?;
+                let mut files = phase0::result_files(&tau2, domain)?;
+                files.extend(sources.iter().map(|s| phase0::Target::parse(s).path));
+                let mut episodes = Vec::new();
+                for path in &files {
+                    let run = stretto_trace::tau2::load_results(path)?;
+                    if run.domain == *domain {
+                        episodes.extend(run.episodes);
+                    }
+                }
+                let refs: Vec<&stretto_trace::Episode> = episodes.iter().collect();
+                let good = refs.iter().filter(|e| e.succeeded()).count();
+                let mut items = stretto_report::confirm::writes(&guards, &refs, &model);
+                stretto_report::confirm::judge(judge.as_ref(), &mut items, &sc, domain)?;
+                audits.push(stretto_report::confirm::audit(
+                    domain,
+                    &items,
+                    [good, refs.len() - good],
+                    threshold,
+                    examples,
+                ));
+                judged.extend(items);
+            }
+            let md = stretto_report::confirm::markdown(&audits);
+            match out {
+                Some(path) => write(&path, md.as_bytes())?,
+                None => print!("{md}"),
+            }
+            if let Some(path) = json {
+                let all = serde_json::json!({"audits": audits, "writes": judged});
+                write(&path, &serde_json::to_vec_pretty(&all)?)?;
+            }
+            Ok(())
+        }
         Command::Audit {
             flow,
             sessions,
@@ -642,8 +746,13 @@ fn phase0_config(data: Phase0Args) -> Result<phase0::Config> {
         oracle_model,
         oracle_dump,
         oracle_log,
+        train_fraction,
     } = data;
+    if !(train_fraction > 0.0 && train_fraction <= 1.0) {
+        anyhow::bail!("--train-fraction must be in (0, 1]");
+    }
     let mut config = phase0::Config::new(tau2);
+    config.train_fraction = train_fraction;
     config.domains = domains;
     config.order = order;
     config.alpha_samples = alpha_samples;

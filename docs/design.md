@@ -22,7 +22,7 @@ The full rationale, prior work and risks are in fugue's [RFC-001](https://github
 | Win conditions | Fewer LLM calls, tokens and dollars; higher pass^k; Jev agreeing with the frontier model at branch points, and well calibrated; fewer policy violations |
 | First live form (2026-09-24) | Transparent continuation: after each of the agent's own calls, a goal-free read-only flow makes the lookups it is sure enough of and returns them in the same tool response. No new tools and no prompt change. |
 | Named macro-tools (2026-09-24) | Not built. Naming could add at most 0–1.9% of LLM turns in retail and 0.9–7.9% in airline over D0: only lookups that need a value from the conversation ([arms](results/arms-2026-09-24.md)) |
-| Deciding without Jev (2026-09-24) | Allowed: `--flow-decider habit`. Replayed, the habit alone saves as many turns as the arbiter; the arbiter makes fewer detours in airline ([arms](results/arms-2026-09-24.md)) |
+| Deciding without Jev (2026-09-24) | Allowed: `--flow-decider habit`, once there are enough traces. Replayed, the habit alone saves as many turns as the arbiter, and live it did too; the arbiter makes fewer detours in airline ([arms](results/arms-2026-09-24.md), [pilot](results/pilot-habit-2026-09-24.md)). With few traces, keep the arbiter: below 7 retail training tasks, Jev's answers carry the savings ([sweep](results/sweep-2026-09-24.md)) |
 
 ## The principle for macro-tools
 
@@ -94,7 +94,9 @@ stretto-proxy session logs ─┼─► stretto-trace (Episode) ─► stretto-m
 | Record, learn, serve from any MCP server | Built, tested end to end | `crates/stretto-proxy/tests/active.rs` |
 | A flow as a fugue program: score and simulate | Built | `stretto audit`; `audit.rs` |
 | `plan_*` / `resume_*` macro-tools the LLM names (arms C and D) | Not built, by decision: naming could add at most 0–1.9% of turns in retail and 0.9–7.9% in airline | Phase 0's *Lookups inside runs* |
-| Arm C and the habit alone, as flows behind the tools | Built; replayed against D0 on GLM-5's test episodes ([arms](results/arms-2026-09-24.md)) | `--flow-decider habit` in `stretto-proxy`, `serve`, `flow-serve` and `pilot/check_flow.py` |
+| Arm C and the habit alone, as flows behind the tools | Built; replayed against D0 on GLM-5's test episodes ([arms](results/arms-2026-09-24.md)); the habit alone live in retail ([pilot](results/pilot-habit-2026-09-24.md)) | `--flow-decider habit` in `stretto-proxy`, `serve`, `flow-serve` and `pilot/check_flow.py`; `pilot/run_episode.py --arm habit` |
+| Fewer traces | Built, and replayed: the habit trains on a fixed, nested share of the training tasks. With 3 retail tasks, the arbiter saves 20.4% of turns and the habit alone 1.8% ([sweep](results/sweep-2026-09-24.md)) | `--train-fraction` on `phase0` and `compile` |
+| Judging a confirmation with Jev | Built, measured offline against the word list and hand labels ([results](results/confirm-2026-09-24.md)); not enforced | `stretto confirm`; `confirm.rs` |
 | Counterfactual evaluation from logged propensities | Not built; the proxy logs every decision's probabilities | — |
 | Predicate refinement (§3.4) | Not built; three hand-proposed predicates | `data/predicates-v2.json` |
 | Streamable HTTP transport | Not supported; stdio only | — |

@@ -23,6 +23,10 @@ behind the tools: `stretto flow-serve` is compiled before the agent starts
 (from cached System-One answers, goal free) and `tau2_mcp.py` asks it after
 every call, making the lookups it names within the same tool response.
 
+The habit arm (`--arm habit`) is the flows arm with the flow deciding on the
+habit's prediction alone (`--decider habit`): it never asks the System-One
+model.
+
     python run_episode.py --task-id 90 --out runs/pilot
     python run_episode.py --task-id 90 --out runs/pilot --arm flows \
         --oracle-cache ../.oracle-cache
@@ -54,6 +58,8 @@ STRETTO = HERE.parent / "target" / "release" / "stretto"
 TAU2 = Path(os.environ.get("TAU2_DIR", HERE.parent.parent / "sierra-research" / "tau2-bench"))
 GREETING = "Hi! How can I help you today?"
 STOPS = (STOP, TRANSFER, OUT_OF_SCOPE)
+# The arms with a flow behind the tools, and who decides in each.
+FLOW_ARMS = {"flows": "arbiter", "habit": "habit"}
 
 
 def now() -> str:
@@ -108,7 +114,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--domain", default="retail")
     parser.add_argument("--task-id", required=True)
-    parser.add_argument("--arm", default="baseline", choices=["baseline", "flows", "guards"])
+    parser.add_argument("--arm", default="baseline", choices=["baseline", "flows", "habit", "guards"])
     parser.add_argument("--out", type=Path, default=Path("runs/pilot"))
     parser.add_argument("--model", default="glm-5.3")
     parser.add_argument("--max-calls", type=int, default=60)
@@ -122,8 +128,9 @@ def main() -> None:
     parser.add_argument("--flow-threshold", type=float, default=0.3)
     parser.add_argument("--flow", type=Path, help="a compiled flow (`stretto compile`), else compiled here")
     args = parser.parse_args()
-    if args.arm == "flows" and not args.oracle_cache:
-        parser.error("the flows arm needs --oracle-cache")
+    if args.arm in FLOW_ARMS and not args.oracle_cache:
+        parser.error(f"the {args.arm} arm needs --oracle-cache")
+    args.flow_decider = FLOW_ARMS.get(args.arm, "arbiter")
 
     task = next(
         t for t in registry.get_tasks_loader(args.domain)() if str(t.id) == args.task_id
@@ -140,7 +147,7 @@ def main() -> None:
         if args.arm == "guards":
             with open(context, "a") as f:
                 f.write(json.dumps({"role": role, "content": text}) + "\n")
-    serve, flow_address = start_flow(args, episode) if args.arm == "flows" else (None, None)
+    serve, flow_address = start_flow(args, episode) if args.arm in FLOW_ARMS else (None, None)
     started, t0 = now(), time.time()
 
     trajectory = episode / "trajectory.jsonl"

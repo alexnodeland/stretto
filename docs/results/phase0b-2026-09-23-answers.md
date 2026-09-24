@@ -22,7 +22,7 @@ This reproduces the report exactly, line for line. Current `main` also replays `
 
 ## Asked twice
 
-While the original answers were thought lost, the same 8,946 questions were asked again, on 2026-09-24, of the same model version ($1.11). That second set is kept as a determinism check, in [phase0b-2026-09-23-reasked-answers.jsonl.gz](phase0b-2026-09-23-reasked-answers.jsonl.gz). It replays at fb10755 to [phase0b-2026-09-23-reasked-report.md](phase0b-2026-09-23-reasked-report.md), with [its aggregates](phase0b-2026-09-23-reasked-aggregates.json).
+While the original answers were thought lost, the same 8,946 questions were asked again of the same model version: 8,346 on 2026-09-24 ($1.11), and 600 in the 2026-09-23 pilot, which asked them apart from the first run. That second set is kept as a determinism check, in [phase0b-2026-09-23-reasked-answers.jsonl.gz](phase0b-2026-09-23-reasked-answers.jsonl.gz). It replays at fb10755 to [phase0b-2026-09-23-reasked-report.md](phase0b-2026-09-23-reasked-report.md), with [its aggregates](phase0b-2026-09-23-reasked-aggregates.json).
 
 Jev does not answer identically twice:
 

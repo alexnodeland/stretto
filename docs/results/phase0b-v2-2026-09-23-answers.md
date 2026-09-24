@@ -4,7 +4,8 @@
 
 - **Key:** the SHA-256 of the exact request.
 - **Response:** Jev's picks, probabilities and token usage.
-- **Excluded:** no request text, benchmark data or credentials.
+- **What else is in it:** the options the probabilities are keyed by. These are tool names and, in 681 answers to argument questions, closed-set values from τ²-bench's synthetic database, such as order ids, dates and airports.
+- **Excluded:** request text and credentials.
 
 It answers every question of these runs, so all of them replay without a key:
 

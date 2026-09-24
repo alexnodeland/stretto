@@ -15,7 +15,8 @@ Friday 14:00–18:00 Singapore time, and all day from 2026-09-25 to
 
     python run_pilot.py --tasks 10 --seed 7 --out runs/pilot --oracle-cache CACHE
 
-`--arms baseline guards` pairs the baseline with the guards arm instead, and
+`--arms baseline guards` pairs the baseline with the guards arm instead
+(`--arms baseline habit`: the flow on the habit alone), and
 `--task-ids` names the tasks instead of sampling them (the guards pilot picks
 the tasks where published trajectories show the guards firing, and says so).
 `--trials` runs each task that many times per arm, under `trial-<k>/`.

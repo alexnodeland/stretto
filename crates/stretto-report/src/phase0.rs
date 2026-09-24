@@ -94,6 +94,9 @@ pub struct Config {
     /// Phase 0b: ask a System-One model at every held-out decision a flow
     /// would hand it.
     pub shadow: Option<ShadowConfig>,
+    /// Train on this share of the training tasks (see [`sample_tasks`]), to
+    /// see how the habit and the System-One model do with fewer traces.
+    pub train_fraction: f64,
 }
 
 /// A results file for a transfer target, optionally relabeled.
@@ -152,6 +155,7 @@ impl Config {
             sources: Vec::new(),
             targets: Vec::new(),
             shadow: None,
+            train_fraction: 1.0,
         }
     }
 }
@@ -530,8 +534,24 @@ pub fn compile_flow(
     config.intent = false;
     config.flow = true;
     config.features = true;
-    let (_, flow) = domain(&config, domain_name, Some(oracle))?;
+    let (report, flow) = domain(&config, domain_name, Some(oracle))?;
+    warn_unanswered(report.featured.as_ref().and_then(|f| f.shadow.as_ref()));
     flow.context("a live flow needs the v2 questions")
+}
+
+/// Say so when questions went unanswered, as a question missing from a
+/// replay cache does: the arbiter is then fitted without them, and the flow
+/// differs from one compiled with every answer.
+fn warn_unanswered(shadow: Option<&ShadowReport>) {
+    if let Some(sh) = shadow.filter(|sh| sh.errors > 0) {
+        eprintln!(
+            "stretto: warning: {} of {} questions went unanswered, so the arbiter was fitted \
+             without them (first: {})",
+            sh.errors,
+            sh.distinct,
+            sh.first_error.as_deref().unwrap_or("unknown error")
+        );
+    }
 }
 
 /// Compile a live flow from `episodes` of one domain rather than from
@@ -605,7 +625,7 @@ pub fn compile_flow_from_episodes(
         config.fixed_alpha
     };
     let refs: Vec<&Episode> = episodes.iter().collect();
-    let (_, flow) = featured(
+    let (report, flow) = featured(
         &config,
         &refs,
         &[],
@@ -615,6 +635,7 @@ pub fn compile_flow_from_episodes(
         alpha_used,
         Some(oracle),
     )?;
+    warn_unanswered(report.shadow.as_ref());
     flow.context("a live flow needs the v2 questions")
 }
 
@@ -655,7 +676,10 @@ fn domain(
         domain,
         &root.join(format!("src/tau2/domains/{domain}/tools.py")),
     )?;
-    let split = load_split(&root.join(format!("data/tau2/domains/{domain}/split_tasks.json")))?;
+    let mut split = load_split(&root.join(format!("data/tau2/domains/{domain}/split_tasks.json")))?;
+    if config.train_fraction < 1.0 {
+        split.train = sample_tasks(&split.train, config.train_fraction);
+    }
 
     let mut runs_by_model = Vec::new();
     if config.baselines {
@@ -1856,6 +1880,18 @@ fn parallel_share<'a, 'b: 'a>(episodes: impl Iterator<Item = &'a Prepared<'b>>) 
     parallel as f64 / tool_turns.max(1) as f64
 }
 
+/// The first `fraction` of `tasks` (at least one) in a fixed pseudo-random
+/// order, kept in their original order. The order does not depend on
+/// `fraction`, so a smaller sample is part of every larger one, and it is
+/// salted so the sample does not follow the arbiter's folds.
+pub(crate) fn sample_tasks(tasks: &[String], fraction: f64) -> Vec<String> {
+    let mut ranked: Vec<&String> = tasks.iter().collect();
+    ranked.sort_by_key(|t| task_group(&format!("train-sample/{t}")));
+    let n = ((tasks.len() as f64 * fraction).round() as usize).clamp(1, tasks.len().max(1));
+    let keep: HashSet<&String> = ranked.into_iter().take(n).collect();
+    tasks.iter().filter(|t| keep.contains(t)).cloned().collect()
+}
+
 /// A stable group id for a task, so all of its episodes share a fold.
 pub(crate) fn task_group(task_id: &str) -> u64 {
     task_id.bytes().fold(1469598103934665603u64, |h, b| {
@@ -1940,7 +1976,23 @@ fn provenance(episodes: &[&Episode], manifest: &ToolManifest) -> Vec<ProvenanceR
 
 #[cfg(test)]
 mod tests {
-    use super::Target;
+    use super::{sample_tasks, Target};
+
+    #[test]
+    fn smaller_task_samples_nest_in_larger_ones() {
+        let tasks: Vec<String> = (0..74).map(|i| i.to_string()).collect();
+        let tenth = sample_tasks(&tasks, 0.1);
+        let quarter = sample_tasks(&tasks, 0.25);
+        let half = sample_tasks(&tasks, 0.5);
+        assert_eq!((tenth.len(), quarter.len(), half.len()), (7, 19, 37));
+        assert!(tenth.iter().all(|t| quarter.contains(t)));
+        assert!(quarter.iter().all(|t| half.contains(t)));
+        // The original order is kept, and the whole set is the whole set.
+        let pos = |t: &String| tasks.iter().position(|u| u == t).unwrap();
+        assert!(half.windows(2).all(|w| pos(&w[0]) < pos(&w[1])));
+        assert_eq!(sample_tasks(&tasks, 1.0), tasks);
+        assert_eq!(sample_tasks(&tasks, 0.001).len(), 1);
+    }
 
     #[test]
     fn targets_parse_with_or_without_a_label() {
