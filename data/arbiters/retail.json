@@ -1,0 +1,225 @@
+{
+  "stretto_arbiter": 1,
+  "domain": "retail",
+  "provenance": {
+    "stretto": "0.0.1",
+    "sources": [
+      "claude-3-7-sonnet-20250219",
+      "gpt-4.1-2025-04-14",
+      "gpt-4.1-mini-2025-04-14",
+      "o4-mini-2025-04-16"
+    ],
+    "habit_episodes": 831,
+    "arbiter_cases": 4513,
+    "compiled_unix_ms": 1790287463668
+  },
+  "predicates": [
+    {
+      "id": "list_pending",
+      "favors": "same_lookup",
+      "question": "Is the agent working through a list of records one lookup at a time (orders, items, products, reservations, flights or dates), with some it has not looked up yet?",
+      "yes": "Records the customer asked about, or that the results list, are still unchecked, and the agent is checking them one by one.",
+      "no": "Every record the agent needs has been looked up, or it is not working through a list."
+    },
+    {
+      "id": "needs_options",
+      "favors": "any_lookup",
+      "question": "Does the customer's request need options the agent has not looked up yet, such as another version of an item, other products, or flights on a date or route not yet searched?",
+      "yes": "The request depends on options that no result so far shows.",
+      "no": "The results so far show every option the request needs, or it needs none."
+    },
+    {
+      "id": "must_ask",
+      "favors": "hand_back",
+      "question": "Does the agent need something only the customer can give before any further lookup would help, such as identification, a choice between options, or a confirmation?",
+      "yes": "The next useful step is a question to the customer.",
+      "no": "The agent can make progress with lookups alone."
+    }
+  ],
+  "weighed": [
+    {
+      "id": "list_pending",
+      "favors": "same_lookup",
+      "question": "Is the agent working through a list of records one lookup at a time (orders, items, products, reservations, flights or dates), with some it has not looked up yet?",
+      "yes": "Records the customer asked about, or that the results list, are still unchecked, and the agent is checking them one by one.",
+      "no": "Every record the agent needs has been looked up, or it is not working through a list."
+    },
+    {
+      "id": "needs_options",
+      "favors": "any_lookup",
+      "question": "Does the customer's request need options the agent has not looked up yet, such as another version of an item, other products, or flights on a date or route not yet searched?",
+      "yes": "The request depends on options that no result so far shows.",
+      "no": "The results so far show every option the request needs, or it needs none."
+    },
+    {
+      "id": "must_ask",
+      "favors": "hand_back",
+      "question": "Does the agent need something only the customer can give before any further lookup would help, such as identification, a choice between options, or a confirmation?",
+      "yes": "The next useful step is a question to the customer.",
+      "no": "The agent can make progress with lookups alone."
+    }
+  ],
+  "fitted": {
+    "weights": [
+      0.2719489498384302,
+      0.1673080203464346,
+      0.34536493295912846,
+      0.23139391841515733,
+      0.9338724443545685,
+      0.25637401504797896,
+      0.3028698185574397,
+      0.3231925457536992
+    ],
+    "rates": {
+      "sites": [
+        [
+          "calculate",
+          [
+            26.0,
+            26.0,
+            26.0
+          ]
+        ],
+        [
+          "cancel_pending_order",
+          [
+            119.0,
+            113.0,
+            116.0
+          ]
+        ],
+        [
+          "exchange_delivered_order_items (error)",
+          [
+            43.0,
+            33.0,
+            41.0
+          ]
+        ],
+        [
+          "find_user_id_by_email",
+          [
+            80.0,
+            59.0,
+            80.0
+          ]
+        ],
+        [
+          "find_user_id_by_email (error)",
+          [
+            48.0,
+            34.0,
+            34.0
+          ]
+        ],
+        [
+          "find_user_id_by_name_zip",
+          [
+            556.0,
+            364.0,
+            556.0
+          ]
+        ],
+        [
+          "find_user_id_by_name_zip (error)",
+          [
+            29.0,
+            26.0,
+            28.0
+          ]
+        ],
+        [
+          "get_order_details",
+          [
+            1618.0,
+            1152.0,
+            1618.0
+          ]
+        ],
+        [
+          "get_order_details (error)",
+          [
+            34.0,
+            17.0,
+            34.0
+          ]
+        ],
+        [
+          "get_product_details",
+          [
+            681.0,
+            526.0,
+            681.0
+          ]
+        ],
+        [
+          "get_user_details",
+          [
+            608.0,
+            450.0,
+            608.0
+          ]
+        ],
+        [
+          "list_all_product_types",
+          [
+            38.0,
+            35.0,
+            38.0
+          ]
+        ],
+        [
+          "modify_pending_order_address",
+          [
+            113.0,
+            91.0,
+            112.0
+          ]
+        ],
+        [
+          "modify_pending_order_items",
+          [
+            250.0,
+            227.0,
+            236.0
+          ]
+        ],
+        [
+          "modify_pending_order_items (error)",
+          [
+            40.0,
+            34.0,
+            40.0
+          ]
+        ],
+        [
+          "modify_user_address",
+          [
+            60.0,
+            48.0,
+            54.0
+          ]
+        ],
+        [
+          "return_delivered_order_items",
+          [
+            148.0,
+            139.0,
+            148.0
+          ]
+        ],
+        [
+          "return_delivered_order_items (error)",
+          [
+            22.0,
+            19.0,
+            22.0
+          ]
+        ]
+      ],
+      "agree": 0.7518280522933747,
+      "cover": 0.9909151340571681
+    }
+  },
+  "model": "jev-latest"
+}

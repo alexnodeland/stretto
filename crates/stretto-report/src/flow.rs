@@ -48,6 +48,74 @@ const MIN_MENTION: usize = 4;
 /// The flow file format this build reads and writes.
 pub const FLOW_VERSION: u32 = 1;
 
+/// The arbiter file format this build reads and writes.
+pub const ARBITER_VERSION: u32 = 1;
+
+/// A flow's arbiter on its own: the predicates it weighs, the System-One
+/// model it asks, and one fit of its weights and of Jev's record. It ships
+/// with the compiler and serves a habit learned elsewhere
+/// ([`Flow::with_arbiter`]), such as one learned from a deployment's first
+/// few sessions. [`Flow::arbiter`] takes it from a flow whose folds share
+/// one fit ([`crate::phase0::Config::pooled_arbiter`]).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Arbiter {
+    /// The format version; see [`ARBITER_VERSION`].
+    stretto_arbiter: u32,
+    /// The domain whose decisions it was fitted on.
+    domain: String,
+    /// The flow it was taken from.
+    provenance: Provenance,
+    predicates: Vec<Predicate>,
+    weighed: Vec<Predicate>,
+    fitted: Fitted,
+    model: String,
+}
+
+impl Arbiter {
+    /// The domain whose decisions it was fitted on.
+    pub fn domain(&self) -> &str {
+        &self.domain
+    }
+
+    /// Where it came from: the flow's sources, and the held-out decisions
+    /// it was fitted on.
+    pub fn provenance(&self) -> &Provenance {
+        &self.provenance
+    }
+
+    /// Write the arbiter to `path` as JSON.
+    pub fn save(&self, path: &std::path::Path) -> Result<()> {
+        let file = std::fs::File::create(path)
+            .map_err(|e| anyhow::anyhow!("creating {}: {e}", path.display()))?;
+        serde_json::to_writer_pretty(std::io::BufWriter::new(file), self)?;
+        Ok(())
+    }
+
+    /// Read an arbiter written by [`Arbiter::save`].
+    pub fn load(path: &std::path::Path) -> Result<Self> {
+        let text = std::fs::read_to_string(path)
+            .map_err(|e| anyhow::anyhow!("reading {}: {e}", path.display()))?;
+        Self::from_json(&text)
+    }
+
+    /// Parse an arbiter file.
+    pub fn from_json(text: &str) -> Result<Self> {
+        #[derive(Deserialize)]
+        struct Version {
+            stretto_arbiter: u32,
+        }
+        let v: Version = serde_json::from_str(text)
+            .map_err(|e| anyhow::anyhow!("not a stretto arbiter: {e}"))?;
+        if v.stretto_arbiter != ARBITER_VERSION {
+            anyhow::bail!(
+                "arbiter format {} is not supported (this build reads {ARBITER_VERSION})",
+                v.stretto_arbiter
+            );
+        }
+        Ok(serde_json::from_str(text)?)
+    }
+}
+
 /// A compiled live flow for one domain. It serializes as the flow IR (see
 /// [`Flow::save`]).
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -171,6 +239,55 @@ impl Flow {
         self.take_arbiter(other);
         self.provenance.sources.extend(from);
         Ok(self)
+    }
+
+    /// This flow's arbiter on its own, to ship ([`Arbiter`]). Its folds must
+    /// share one fit: a flow compiled with
+    /// [`crate::phase0::Config::pooled_arbiter`], or learned from sessions.
+    /// Cross-fitted folds are fitted apart, each for the tasks the others
+    /// saw, so none of them is the arbiter for new tasks.
+    pub fn arbiter(&self) -> Result<Arbiter> {
+        let Some(first) = self.folds.first() else {
+            anyhow::bail!("the flow has no arbiter");
+        };
+        let one = serde_json::to_value(first)?;
+        for fold in &self.folds[1..] {
+            if serde_json::to_value(fold)? != one {
+                anyhow::bail!(
+                    "the flow's folds were fitted apart; compile it with --pooled-arbiter \
+                     to fit one arbiter on every held-out decision"
+                );
+            }
+        }
+        Ok(Arbiter {
+            stretto_arbiter: ARBITER_VERSION,
+            domain: self.domain().to_string(),
+            provenance: self.provenance.clone(),
+            predicates: self.predicates.clone(),
+            weighed: self.weighed.clone(),
+            fitted: first.clone(),
+            model: self.model.clone(),
+        })
+    }
+
+    /// This flow's habit, sites and bindings, with a shipped arbiter
+    /// ([`Arbiter`]), which judges every session. The sources record where
+    /// the arbiter came from. At a site its fitting never saw, such as any
+    /// site of another domain, it weighs Jev's answers by their record over
+    /// all the sites it was fitted on.
+    pub fn with_arbiter(mut self, arbiter: Arbiter) -> Self {
+        let from = arbiter
+            .provenance
+            .sources
+            .iter()
+            .map(|s| format!("arbiter ({}): {s}", arbiter.domain));
+        self.provenance.sources.extend(from);
+        self.provenance.arbiter_cases = arbiter.provenance.arbiter_cases;
+        self.predicates = arbiter.predicates;
+        self.weighed = arbiter.weighed;
+        self.folds = vec![arbiter.fitted; FOLDS as usize];
+        self.model = arbiter.model;
+        self
     }
 
     /// Serve `other`'s arbiter: its predicates, its fitted weights and the

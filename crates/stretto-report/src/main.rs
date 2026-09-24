@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 use stretto_oracle::{Answer, MockOracle, NoulCriteria, Oracle, Question, ReplayCache, Request};
 use stretto_report::confirm::Second;
-use stretto_report::flow::Decider;
+use stretto_report::flow::{Arbiter, Decider};
 use stretto_report::shadow::{OracleKind, QuestionSet, ShadowConfig};
 use stretto_report::{phase0, render};
 
@@ -119,8 +119,10 @@ enum Command {
         #[arg(long, conflicts_with = "habit_only")]
         refit_habit: bool,
         /// Ask no System-One model while learning: every session trains the
-        /// habit, and the flow serves the arbiter of this flow instead, such
-        /// as one `compile` fitted on other agents' traces.
+        /// habit, and the flow serves this arbiter instead. It is an arbiter
+        /// file (`export-arbiter`; `data/arbiters/` ships two), or a flow
+        /// whose arbiter to take, such as one `compile` fitted on other
+        /// agents' traces.
         #[arg(long, conflicts_with_all = ["habit_only", "refit_habit"])]
         arbiter_from: Option<PathBuf>,
         /// Offer every read-only tool at every site (see `compile`).
@@ -337,6 +339,19 @@ enum Command {
     /// Check that Jev is reachable with TYPESAFE_API_KEY: ask one small
     /// question (uncached) and print the answer, model version and latency.
     JevCheck,
+    /// Write a flow's arbiter to its own file, to ship: the predicates it
+    /// weighs, the model it asks, and one fit of its weights. `learn
+    /// --arbiter-from` serves it with a habit learned from new sessions. The
+    /// flow's folds must share one fit (`compile --pooled-arbiter`, or a
+    /// flow from `learn`).
+    ExportArbiter {
+        /// The flow whose arbiter to write.
+        #[arg(long)]
+        flow: PathBuf,
+        /// Where to write it.
+        #[arg(long)]
+        out: PathBuf,
+    },
     /// Write every cached oracle answer to stdout as JSON lines
     /// (`{"key", "response"}`). Answers carry no benchmark text, so the
     /// bundle can be shared to replay Phase 0b without a key.
@@ -429,6 +444,12 @@ struct Phase0Args {
     /// lookup training never made is bound by argument name.
     #[arg(long)]
     manifest_options: bool,
+    /// v2, `compile`: give the flow one arbiter, fitted on every held-out
+    /// decision, in place of one per fold, so that `export-arbiter` can
+    /// ship it. Replayed on the same test tasks it has seen other agents'
+    /// decisions on them, so compare flows without it.
+    #[arg(long)]
+    pooled_arbiter: bool,
     /// Replay cache for oracle answers.
     #[arg(long, default_value = ".oracle-cache")]
     oracle_cache: PathBuf,
@@ -641,9 +662,19 @@ fn main() -> Result<()> {
             config.domains = vec![domain.clone()];
             config.refit_habit = refit_habit;
             let flow = if let Some(path) = arbiter_from {
-                let other = stretto_report::flow::Flow::load(&path)?;
-                phase0::compile_habit_flow_from_episodes(&config, &episodes, &manifest)?
-                    .with_arbiter_of(other)?
+                let habit =
+                    phase0::compile_habit_flow_from_episodes(&config, &episodes, &manifest)?;
+                let text = std::fs::read_to_string(&path)
+                    .with_context(|| format!("reading {}", path.display()))?;
+                let is_arbiter = serde_json::from_str::<serde_json::Value>(&text)
+                    .with_context(|| format!("parsing {}", path.display()))?
+                    .get("stretto_arbiter")
+                    .is_some();
+                if is_arbiter {
+                    habit.with_arbiter(Arbiter::from_json(&text)?)
+                } else {
+                    habit.with_arbiter_of(stretto_report::flow::Flow::from_json(&text)?)?
+                }
             } else if habit_only {
                 phase0::compile_habit_flow_from_episodes(&config, &episodes, &manifest)?
             } else {
@@ -909,6 +940,17 @@ fn main() -> Result<()> {
             Ok(())
         }
         Command::JevCheck => jev_check(),
+        Command::ExportArbiter { flow, out } => {
+            let arbiter = stretto_report::flow::Flow::load(&flow)?.arbiter()?;
+            arbiter.save(&out)?;
+            eprintln!(
+                "stretto: wrote the {} arbiter, fitted on {} held-out decisions, to {}",
+                arbiter.domain(),
+                arbiter.provenance().arbiter_cases,
+                out.display()
+            );
+            Ok(())
+        }
         Command::ExportAnswers { oracle_cache } => {
             let cache: ReplayCache<MockOracle> = ReplayCache::new(oracle_cache, None);
             let mut out = std::io::stdout().lock();
@@ -997,6 +1039,7 @@ fn phase0_config(data: Phase0Args) -> Result<phase0::Config> {
         predicates,
         no_predicate_features,
         manifest_options,
+        pooled_arbiter,
         oracle_cache,
         oracle_concurrency,
         oracle_limit,
@@ -1013,6 +1056,7 @@ fn phase0_config(data: Phase0Args) -> Result<phase0::Config> {
     let mut config = phase0::Config::new(tau2);
     config.train_fraction = train_fraction;
     config.train_tasks = train_tasks;
+    config.pooled_arbiter = pooled_arbiter;
     config.domains = domains;
     config.order = order;
     config.alpha_samples = alpha_samples;

@@ -308,3 +308,48 @@ fn a_habit_learned_from_few_sessions_can_serve_an_arbiter_fitted_elsewhere() {
     let live = new_customer();
     assert!(flow.next(&live, &MOCK, 0.3).is_ok());
 }
+
+#[test]
+fn an_arbiter_ships_on_its_own_and_serves_a_habit_learned_elsewhere() {
+    use stretto_report::flow::{Arbiter, Flow};
+    // A learned flow's folds share one fit, so its arbiter can ship.
+    let elsewhere = learned_flow();
+    let arbiter = elsewhere.arbiter().unwrap();
+    assert_eq!(arbiter.domain(), "shop");
+    assert_eq!(
+        arbiter.provenance().arbiter_cases,
+        elsewhere.provenance().arbiter_cases
+    );
+    let text = serde_json::to_string(&arbiter).unwrap();
+    let arbiter = Arbiter::from_json(&text).unwrap();
+    let mut newer: Value = serde_json::from_str(&text).unwrap();
+    newer["stretto_arbiter"] = json!(2);
+    assert!(Arbiter::from_json(&newer.to_string()).is_err());
+
+    // Served with a habit from three new sessions, it judges them as the
+    // flow it came from does.
+    let mut config = Config::new(PathBuf::new());
+    config.alpha_samples = 0;
+    let three: Vec<Episode> = (0..3).map(session).collect();
+    let habit = compile_habit_flow_from_episodes(&config, &three, &manifest()).unwrap();
+    let flow = habit.with_arbiter(arbiter);
+    assert!(flow.has_arbiter());
+    assert_eq!(flow.provenance().habit_episodes, 3);
+    assert!(flow
+        .provenance()
+        .sources
+        .iter()
+        .any(|s| s.starts_with("arbiter (shop): ")));
+    let as_json = |f: &Flow| serde_json::to_value(f).unwrap();
+    assert_eq!(as_json(&flow)["folds"], as_json(&elsewhere)["folds"]);
+    assert!(flow.next(&new_customer(), &MOCK, 0.3).is_ok());
+
+    // Folds fitted apart are no one arbiter, and a habit alone has none.
+    let mut apart = as_json(&elsewhere);
+    apart["folds"][1]["weights"][0] = json!(9.0);
+    let apart = Flow::from_json(&apart.to_string()).unwrap();
+    let err = apart.arbiter().unwrap_err();
+    assert!(format!("{err:#}").contains("--pooled-arbiter"), "{err:#}");
+    let none = compile_habit_flow_from_episodes(&config, &three, &manifest()).unwrap();
+    assert!(none.arbiter().is_err());
+}

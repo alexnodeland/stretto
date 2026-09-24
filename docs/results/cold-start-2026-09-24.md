@@ -111,7 +111,7 @@ In airline, from five random sessions, the refitted flow saves 6.0% (40 detours)
 
 - **A flow can start from a deployment's first handful of sessions.** The habit alone, learned from every one of them, saved 17.8–18.9% of turns on three of four random draws of five, against 22.4% from every training task, and needs no key. That revises [the sweep](sweep-2026-09-24.md)'s reading that Jev's answers carry the savings when traces are scarce. That held for its clustered samples, with an arbiter fitted on thousands of other agents' decisions. It does not hold for a random handful of an agent's own sessions.
 - **Fit a deployment's own arbiter once it has some twenty sessions.** Below that, the held-out split costs the habit more than the arbiter gives back.
-- **Where an arbiter fitted elsewhere exists, it is cheap insurance against a narrow start.** It raised the narrow draw from 2.7% to 11.1% of turns and cost at most two points on the others.
+- **Where an arbiter fitted elsewhere exists, it is cheap insurance against a narrow start.** It raised the narrow draw from 2.7% to 11.1% of turns and cost at most two points on the others. It need not come from the same domain: [an arbiter fitted on airline decisions](arbiter-transfer-2026-09-24.md) did the same for these retail habits, and two such arbiters now ship in `data/arbiters/`.
 - **Five draws are still few.** The spread between them, 2.7% to 18.9% for the habit alone, is as large as any difference between deciders on one draw.
 
 ## Cost

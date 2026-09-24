@@ -1,0 +1,161 @@
+{
+  "stretto_arbiter": 1,
+  "domain": "airline",
+  "provenance": {
+    "stretto": "0.0.1",
+    "sources": [
+      "claude-3-7-sonnet-20250219",
+      "gpt-4.1-2025-04-14",
+      "gpt-4.1-mini-2025-04-14",
+      "o4-mini-2025-04-16"
+    ],
+    "habit_episodes": 246,
+    "arbiter_cases": 2042,
+    "compiled_unix_ms": 1790287469038
+  },
+  "predicates": [
+    {
+      "id": "list_pending",
+      "favors": "same_lookup",
+      "question": "Is the agent working through a list of records one lookup at a time (orders, items, products, reservations, flights or dates), with some it has not looked up yet?",
+      "yes": "Records the customer asked about, or that the results list, are still unchecked, and the agent is checking them one by one.",
+      "no": "Every record the agent needs has been looked up, or it is not working through a list."
+    },
+    {
+      "id": "needs_options",
+      "favors": "any_lookup",
+      "question": "Does the customer's request need options the agent has not looked up yet, such as another version of an item, other products, or flights on a date or route not yet searched?",
+      "yes": "The request depends on options that no result so far shows.",
+      "no": "The results so far show every option the request needs, or it needs none."
+    },
+    {
+      "id": "must_ask",
+      "favors": "hand_back",
+      "question": "Does the agent need something only the customer can give before any further lookup would help, such as identification, a choice between options, or a confirmation?",
+      "yes": "The next useful step is a question to the customer.",
+      "no": "The agent can make progress with lookups alone."
+    }
+  ],
+  "weighed": [
+    {
+      "id": "list_pending",
+      "favors": "same_lookup",
+      "question": "Is the agent working through a list of records one lookup at a time (orders, items, products, reservations, flights or dates), with some it has not looked up yet?",
+      "yes": "Records the customer asked about, or that the results list, are still unchecked, and the agent is checking them one by one.",
+      "no": "Every record the agent needs has been looked up, or it is not working through a list."
+    },
+    {
+      "id": "needs_options",
+      "favors": "any_lookup",
+      "question": "Does the customer's request need options the agent has not looked up yet, such as another version of an item, other products, or flights on a date or route not yet searched?",
+      "yes": "The request depends on options that no result so far shows.",
+      "no": "The results so far show every option the request needs, or it needs none."
+    },
+    {
+      "id": "must_ask",
+      "favors": "hand_back",
+      "question": "Does the agent need something only the customer can give before any further lookup would help, such as identification, a choice between options, or a confirmation?",
+      "yes": "The next useful step is a question to the customer.",
+      "no": "The agent can make progress with lookups alone."
+    }
+  ],
+  "fitted": {
+    "weights": [
+      0.2463176541200974,
+      0.2098611226622703,
+      0.12363773291740765,
+      0.26522707568791387,
+      1.2557430983846674,
+      -0.04195844890470836,
+      0.8121343700979645,
+      0.6331723381921859
+    ],
+    "rates": {
+      "sites": [
+        [
+          "calculate",
+          [
+            80.0,
+            79.0,
+            79.0
+          ]
+        ],
+        [
+          "calculate (error)",
+          [
+            1.0,
+            0.0,
+            1.0
+          ]
+        ],
+        [
+          "cancel_reservation",
+          [
+            91.0,
+            80.0,
+            88.0
+          ]
+        ],
+        [
+          "get_flight_status",
+          [
+            189.0,
+            54.0,
+            189.0
+          ]
+        ],
+        [
+          "get_reservation_details",
+          [
+            739.0,
+            510.0,
+            739.0
+          ]
+        ],
+        [
+          "get_user_details",
+          [
+            253.0,
+            171.0,
+            252.0
+          ]
+        ],
+        [
+          "list_all_airports",
+          [
+            5.0,
+            5.0,
+            5.0
+          ]
+        ],
+        [
+          "search_direct_flight",
+          [
+            615.0,
+            394.0,
+            610.0
+          ]
+        ],
+        [
+          "search_onestop_flight",
+          [
+            47.0,
+            40.0,
+            47.0
+          ]
+        ],
+        [
+          "update_reservation_flights (error)",
+          [
+            22.0,
+            18.0,
+            18.0
+          ]
+        ]
+      ],
+      "agree": 0.6616062683643487,
+      "cover": 0.9931439764936337
+    }
+  },
+  "model": "jev-latest"
+}
