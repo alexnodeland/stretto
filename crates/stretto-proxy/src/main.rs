@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use clap::{Parser, ValueEnum};
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -131,6 +131,12 @@ fn active(cli: &Cli) -> Result<Active> {
                 DeciderArg::Arbiter => Decider::Arbiter,
                 DeciderArg::Habit => Decider::Habit,
             };
+            if decider == Decider::Arbiter && !flow.has_arbiter() {
+                bail!(
+                    "{} was learned without a System-One model: serve it with --flow-decider habit",
+                    path.display()
+                );
+            }
             // The habit alone asks no one, so it needs no key.
             let mut sc = ShadowConfig::new(match (decider, cli.oracle) {
                 (Decider::Habit, _) | (_, OracleArg::Mock) => OracleKind::Mock,

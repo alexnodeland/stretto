@@ -97,6 +97,20 @@ pub struct Config {
     /// Train on this share of the training tasks (see [`sample_tasks`]), to
     /// see how the habit and the System-One model do with fewer traces.
     pub train_fraction: f64,
+    /// Train on these training tasks only, in place of `train_fraction`: a
+    /// sample named exactly (see [`training_tasks`]).
+    pub train_tasks: Vec<String>,
+    /// Give a compiled flow one arbiter, fitted on every held-out decision,
+    /// in place of one per fold. That is right when the flow will only judge
+    /// tasks the arbiter was not fitted on, as a flow learned from a
+    /// deployment's own sessions does ([`compile_flow_from_episodes`] sets
+    /// it).
+    pub pooled_arbiter: bool,
+    /// Once [`compile_flow_from_episodes`] has fitted the arbiter on the
+    /// held-out tasks, learn the habit, the sites and the bindings again from
+    /// every task, as stacking refits its base model: the arbiter's weights
+    /// stay fitted out of sample, and the habit it weighs uses every session.
+    pub refit_habit: bool,
 }
 
 /// A results file for a transfer target, optionally relabeled.
@@ -156,6 +170,9 @@ impl Config {
             targets: Vec::new(),
             shadow: None,
             train_fraction: 1.0,
+            train_tasks: Vec::new(),
+            pooled_arbiter: false,
+            refit_habit: false,
         }
     }
 }
@@ -557,21 +574,48 @@ fn warn_unanswered(shadow: Option<&ShadowReport>) {
 /// Compile a live flow from `episodes` of one domain rather than from
 /// τ²-bench results: for example sessions recorded by `stretto-proxy` (see
 /// [`stretto_trace::mcp`]). The pipeline is [`compile_flow`]'s, with each
-/// episode its own task and a split by episode id standing in for
-/// τ²-bench's: 70% train the habit, the sites and the bindings (the
+/// episode its own task and a split by task standing in for τ²-bench's (see
+/// [`learn_split`]): 70% train the habit, the sites and the bindings (the
 /// successful ones, reward 1), and `oracle` is asked at every decision of
 /// the other 30%, where the arbiter is fitted. An episode's task id is kept
-/// when it has one, so episodes of one task share a side of the split.
+/// when it has one, so episodes of one task share a side of the split. The
+/// flow will judge new tasks, so it gets one arbiter, fitted on every
+/// held-out decision (see [`Config::pooled_arbiter`]). With
+/// [`Config::refit_habit`], the habit, the sites and the bindings then learn
+/// from every task.
 pub fn compile_flow_from_episodes(
     config: &Config,
     episodes: &[Episode],
     manifest: &ToolManifest,
     oracle: &(dyn Oracle + Sync),
 ) -> Result<Flow> {
+    learn_flow(config, episodes, manifest, Some(oracle))
+}
+
+/// A flow of the habit alone, learned from `episodes` as
+/// [`compile_flow_from_episodes`] learns one, but without a System-One
+/// model: every task trains the habit, the sites and the bindings, and
+/// nothing is held out or asked. The flow has no arbiter, so it decides with
+/// the habit ([`crate::flow::Decider::Habit`]).
+pub fn compile_habit_flow_from_episodes(
+    config: &Config,
+    episodes: &[Episode],
+    manifest: &ToolManifest,
+) -> Result<Flow> {
+    learn_flow(config, episodes, manifest, None)
+}
+
+fn learn_flow(
+    config: &Config,
+    episodes: &[Episode],
+    manifest: &ToolManifest,
+    oracle: Option<&(dyn Oracle + Sync)>,
+) -> Result<Flow> {
     let mut config = config.clone();
     config.intent = false;
     config.flow = true;
     config.features = true;
+    config.pooled_arbiter = true;
     let episodes: Vec<Episode> = episodes
         .iter()
         .cloned()
@@ -582,26 +626,25 @@ pub fn compile_flow_from_episodes(
             e
         })
         .collect();
-    let mut split = Split {
-        train: Vec::new(),
-        test: Vec::new(),
+    let mut seen = HashSet::new();
+    let tasks: Vec<String> = episodes
+        .iter()
+        .filter(|e| seen.insert(e.task_id.as_str()))
+        .map(|e| e.task_id.clone())
+        .collect();
+    let split = match oracle {
+        Some(_) => learn_split(&tasks).with_context(|| {
+            format!(
+                "{} episodes of {} tasks are too few to split into training and held-out tasks",
+                episodes.len(),
+                tasks.len()
+            )
+        })?,
+        None => Split {
+            train: tasks,
+            test: Vec::new(),
+        },
     };
-    for ep in &episodes {
-        let side = if task_group(&ep.task_id) % 10 < 7 {
-            &mut split.train
-        } else {
-            &mut split.test
-        };
-        if !side.contains(&ep.task_id) {
-            side.push(ep.task_id.clone());
-        }
-    }
-    if split.train.is_empty() || split.test.is_empty() {
-        bail!(
-            "{} episodes are too few to split into training and held-out tasks",
-            episodes.len()
-        );
-    }
     let all_steps: Vec<Vec<Step>> = episodes.iter().map(steps).collect();
     let vocab = Vocab::build(
         all_steps.iter().flatten(),
@@ -633,10 +676,16 @@ pub fn compile_flow_from_episodes(
         &vocab,
         manifest,
         alpha_used,
-        Some(oracle),
+        oracle,
     )?;
     warn_unanswered(report.shadow.as_ref());
-    flow.context("a live flow needs the v2 questions")
+    let flow = flow.context("a live flow needs the v2 questions")?;
+    if oracle.is_none() || !config.refit_habit {
+        return Ok(flow);
+    }
+    let mut refit = learn_flow(&config, &episodes, manifest, None)?;
+    refit.take_arbiter(flow);
+    Ok(refit)
 }
 
 /// Results files for `domain` under the checkout's published baselines.
@@ -677,9 +726,7 @@ fn domain(
         &root.join(format!("src/tau2/domains/{domain}/tools.py")),
     )?;
     let mut split = load_split(&root.join(format!("data/tau2/domains/{domain}/split_tasks.json")))?;
-    if config.train_fraction < 1.0 {
-        split.train = sample_tasks(&split.train, config.train_fraction);
-    }
+    split.train = training_tasks(&split.train, &config.train_tasks, config.train_fraction)?;
 
     let mut runs_by_model = Vec::new();
     if config.baselines {
@@ -1149,9 +1196,44 @@ fn featured(
         )?),
         _ => None,
     };
-    // A live flow, from the same pieces.
-    let flow = match (&shadow, &config.shadow) {
-        (Some(run), Some(sc)) if config.flow && sc.questions == QuestionSet::V2 => {
+    // A live flow, from the same pieces: the questions and the arbiter, or
+    // none of them for a flow of the habit alone.
+    struct Parts {
+        sites: Sites,
+        folds: Vec<Fitted>,
+        cases: usize,
+        predicates: Vec<Predicate>,
+        weighed: Vec<Predicate>,
+        model: String,
+    }
+    let parts = match (&shadow, &config.shadow) {
+        (Some(run), Some(sc)) if config.flow && sc.questions == QuestionSet::V2 => Some(Parts {
+            sites: run.sites.clone(),
+            folds: match (&run.pooled, config.pooled_arbiter) {
+                (Some(pooled), true) => vec![pooled.clone(); FOLDS as usize],
+                _ => run.folds.clone(),
+            },
+            cases: run.cases,
+            predicates: sc.predicates.clone(),
+            weighed: if sc.predicate_features {
+                sc.predicates.clone()
+            } else {
+                Vec::new()
+            },
+            model: sc.model.clone(),
+        }),
+        (None, _) if config.flow && oracle.is_none() => Some(Parts {
+            sites: Sites::learn(habit_set.iter().map(|p| p.steps.as_slice()), manifest),
+            folds: Vec::new(),
+            cases: 0,
+            predicates: Vec::new(),
+            weighed: Vec::new(),
+            model: String::new(),
+        }),
+        _ => None,
+    };
+    let flow = match parts {
+        Some(parts) => {
             let Some(&group) = intent_ids.get("") else {
                 bail!("a live flow is goal free: compile it without intents");
             };
@@ -1168,7 +1250,7 @@ fn featured(
                     stretto: env!("CARGO_PKG_VERSION").to_string(),
                     sources,
                     habit_episodes: habit_set.len(),
-                    arbiter_cases: run.cases,
+                    arbiter_cases: parts.cases,
                     compiled_unix_ms: std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
                         .map_or(0, |d| d.as_millis() as u64),
@@ -1178,19 +1260,15 @@ fn featured(
                 map: map.clone(),
                 group,
                 habit: intent_habit.clone(),
-                sites: run.sites.clone(),
-                predicates: sc.predicates.clone(),
-                weighed: if sc.predicate_features {
-                    sc.predicates.clone()
-                } else {
-                    Vec::new()
-                },
-                folds: run.folds.clone(),
+                sites: parts.sites,
+                predicates: parts.predicates,
+                weighed: parts.weighed,
+                folds: parts.folds,
                 bindings: Bindings::learn(habit_set.iter().map(|p| p.ep), manifest),
-                model: sc.model.clone(),
+                model: parts.model,
             })
         }
-        _ => None,
+        None => None,
     };
     let input = |i: usize| {
         let (p, enc) = replayed[i];
@@ -1414,6 +1492,8 @@ struct ShadowRun {
     sites: Sites,
     /// v2: the arbiter fitted for each fold (empty for v1).
     folds: Vec<Fitted>,
+    /// v2: one arbiter fitted on every held-out decision.
+    pooled: Option<Fitted>,
     /// v2: the held-out decisions the arbiter was fitted on.
     cases: usize,
 }
@@ -1452,6 +1532,9 @@ fn shadow_run(
     if sc.hints {
         sites.learn_feeds(habit_set.iter().map(|p| p.ep), manifest);
     }
+    if sc.manifest_options {
+        sites.offer_every_read();
+    }
     let decisions = if v2 {
         shadow::decisions_v2(
             &episodes,
@@ -1478,8 +1561,8 @@ fn shadow_run(
         .iter()
         .map(|d| shadow::predicate_answers(d, &asked))
         .collect();
-    let (combined, weights, folds, cases) = if v2 {
-        let (c, w, f, n) = combine(
+    let (combined, weights, folds, pooled, cases) = if v2 {
+        let (c, w, f, p, n) = combine(
             &decisions,
             &scored,
             &split,
@@ -1493,9 +1576,9 @@ fn shadow_run(
             habit,
             vocab,
         );
-        (Some(c), w, f, n)
+        (Some(c), w, f, Some(p), n)
     } else {
-        (None, Vec::new(), Vec::new(), 0)
+        (None, Vec::new(), Vec::new(), None, 0)
     };
     // The most likely lookup, wherever there is one.
     let lookup_first: Option<Vec<Option<Scored>>> = combined.as_ref().map(|c| {
@@ -1672,18 +1755,26 @@ fn shadow_run(
         lookup_first: lookup_first_answers,
         sites,
         folds,
+        pooled,
         cases,
     })
 }
 
 /// The combined answers, the arbiter's mean weights (named), the arbiter of
-/// each fold, and the number of cases it was fitted on.
-type Combined = (Vec<Option<Scored>>, Vec<(String, f64)>, Vec<Fitted>, usize);
+/// each fold, one arbiter fitted on every case, and the number of cases
+/// they were fitted on.
+type Combined = (
+    Vec<Option<Scored>>,
+    Vec<(String, f64)>,
+    Vec<Fitted>,
+    Fitted,
+    usize,
+);
 
 /// v2: combine each asked next-step answer with the habit (see
 /// [`arbitrate`]); argument answers and decisions settled without asking
-/// pass through. Returns the answers, the arbiter's mean weights, and the
-/// arbiter fitted for each fold.
+/// pass through. Returns the answers, the arbiter's mean weights, the
+/// arbiter fitted for each fold, and one fitted on every case.
 #[allow(clippy::too_many_arguments)]
 fn combine(
     decisions: &[Decision],
@@ -1732,6 +1823,7 @@ fn combine(
         at.push(i);
     }
     let (arbitrated, weights, folds) = arbitrate::cross_fit_folds(&cases, FOLDS);
+    let pooled = arbitrate::fit_pooled(&cases);
     let names = ["habit", "one question", "split", "handing back"]
         .into_iter()
         .map(String::from)
@@ -1753,7 +1845,7 @@ fn combine(
         out[i] = Some(Scored::of(probs, options[a.top].clone(), &d.actual));
     }
     let fitted_on = cases.iter().filter(|c| c.fit).count();
-    (out, weights, folds, fitted_on)
+    (out, weights, folds, pooled, fitted_on)
 }
 
 /// The habit's prediction `predicted` as a read-only flow would act on it,
@@ -1880,16 +1972,63 @@ fn parallel_share<'a, 'b: 'a>(episodes: impl Iterator<Item = &'a Prepared<'b>>) 
     parallel as f64 / tool_turns.max(1) as f64
 }
 
+/// The training tasks to use, of `train`, the split's: those named in
+/// `only` if any (each must be a training task), else a `fraction` of them
+/// (see [`sample_tasks`]).
+pub fn training_tasks(train: &[String], only: &[String], fraction: f64) -> Result<Vec<String>> {
+    if only.is_empty() {
+        return Ok(if fraction < 1.0 {
+            sample_tasks(train, fraction)
+        } else {
+            train.to_vec()
+        });
+    }
+    let unknown: Vec<&String> = only.iter().filter(|t| !train.contains(t)).collect();
+    if !unknown.is_empty() {
+        bail!("not training tasks of the split: {unknown:?}");
+    }
+    Ok(train.iter().filter(|t| only.contains(t)).cloned().collect())
+}
+
 /// The first `fraction` of `tasks` (at least one) in a fixed pseudo-random
-/// order, kept in their original order. The order does not depend on
-/// `fraction`, so a smaller sample is part of every larger one, and it is
-/// salted so the sample does not follow the arbiter's folds.
-pub(crate) fn sample_tasks(tasks: &[String], fraction: f64) -> Vec<String> {
+/// order (see [`rank`]), kept in their original order. The order does not
+/// depend on `fraction`, so a smaller sample is part of every larger one,
+/// and it is salted so the sample does not follow the arbiter's folds.
+pub fn sample_tasks(tasks: &[String], fraction: f64) -> Vec<String> {
     let mut ranked: Vec<&String> = tasks.iter().collect();
-    ranked.sort_by_key(|t| task_group(&format!("train-sample/{t}")));
+    ranked.sort_by_key(|t| rank("train-sample", t));
     let n = ((tasks.len() as f64 * fraction).round() as usize).clamp(1, tasks.len().max(1));
     let keep: HashSet<&String> = ranked.into_iter().take(n).collect();
     tasks.iter().filter(|t| keep.contains(t)).cloned().collect()
+}
+
+/// Split a deployment's tasks for [`compile_flow_from_episodes`]: 30% held
+/// out, where the arbiter is fitted, and the rest, which train the habit,
+/// each side at least one task (`None` for fewer than two). A fixed
+/// pseudo-random order picks them, salted so the split follows neither the
+/// folds nor [`sample_tasks`].
+pub(crate) fn learn_split(tasks: &[String]) -> Option<Split> {
+    if tasks.len() < 2 {
+        return None;
+    }
+    let mut ranked: Vec<&String> = tasks.iter().collect();
+    ranked.sort_by_key(|t| rank("learn-split", t));
+    let held = ((tasks.len() as f64 * 0.3).round() as usize).clamp(1, tasks.len() - 1);
+    let test: HashSet<&String> = ranked.into_iter().take(held).collect();
+    let (test, train): (Vec<String>, Vec<String>) =
+        tasks.iter().cloned().partition(|t| test.contains(t));
+    Some(Split { train, test })
+}
+
+/// A task's place in a fixed pseudo-random order, salted by `salt`. Task
+/// ids that differ only in their last characters (`104`, `105`) have nearby
+/// FNV hashes, so sorting by [`task_group`] alone keeps them together; the
+/// hash is mixed first (splitmix64's finalizer).
+fn rank(salt: &str, task: &str) -> u64 {
+    let mut z = task_group(&format!("{salt}/{task}"));
+    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    z ^ (z >> 31)
 }
 
 /// A stable group id for a task, so all of its episodes share a fold.
@@ -1976,7 +2115,25 @@ fn provenance(episodes: &[&Episode], manifest: &ToolManifest) -> Vec<ProvenanceR
 
 #[cfg(test)]
 mod tests {
-    use super::{sample_tasks, Target};
+    use super::{learn_split, sample_tasks, task_group, training_tasks, Target, FOLDS};
+    use std::collections::HashSet;
+
+    #[test]
+    fn a_learn_split_holds_out_a_share_and_keeps_both_sides() {
+        let tasks = |n: usize| -> Vec<String> { (0..n).map(|i| format!("session-{i}")).collect() };
+        assert!(learn_split(&tasks(1)).is_none());
+        for n in 2..=12 {
+            let split = learn_split(&tasks(n)).unwrap();
+            let held = ((n as f64 * 0.3).round() as usize).clamp(1, n - 1);
+            assert_eq!(split.test.len(), held, "{n} tasks");
+            assert_eq!(split.train.len() + split.test.len(), n, "{n} tasks");
+        }
+        // The held-out tasks fall in every fold: the split does not follow
+        // the folds.
+        let split = learn_split(&tasks(100)).unwrap();
+        let folds: HashSet<u64> = split.test.iter().map(|t| task_group(t) % FOLDS).collect();
+        assert_eq!(folds.len(), FOLDS as usize);
+    }
 
     #[test]
     fn smaller_task_samples_nest_in_larger_ones() {
@@ -1992,6 +2149,37 @@ mod tests {
         assert!(half.windows(2).all(|w| pos(&w[0]) < pos(&w[1])));
         assert_eq!(sample_tasks(&tasks, 1.0), tasks);
         assert_eq!(sample_tasks(&tasks, 0.001).len(), 1);
+    }
+
+    #[test]
+    fn named_training_tasks_are_kept_in_the_splits_order() {
+        let ids = |xs: &[&str]| -> Vec<String> { xs.iter().map(|s| s.to_string()).collect() };
+        let train = ids(&["3", "1", "2"]);
+        assert_eq!(
+            training_tasks(&train, &ids(&["2", "3"]), 1.0).unwrap(),
+            ids(&["3", "2"])
+        );
+        assert_eq!(training_tasks(&train, &[], 1.0).unwrap(), train);
+        assert_eq!(training_tasks(&train, &[], 0.01).unwrap().len(), 1);
+        assert!(training_tasks(&train, &ids(&["9"]), 1.0).is_err());
+    }
+
+    #[test]
+    fn a_sample_of_numbered_tasks_is_not_a_run_of_neighbours() {
+        // A tenth of tasks 0..99 comes from all over, not one decade.
+        let tasks: Vec<String> = (0..100).map(|i| i.to_string()).collect();
+        let tens: HashSet<usize> = sample_tasks(&tasks, 0.1)
+            .iter()
+            .map(|t| t.parse::<usize>().unwrap() / 10)
+            .collect();
+        assert!(tens.len() >= 5, "{tens:?}");
+        let held: HashSet<usize> = learn_split(&tasks)
+            .unwrap()
+            .test
+            .iter()
+            .map(|t| t.parse::<usize>().unwrap() / 10)
+            .collect();
+        assert!(held.len() >= 8, "{held:?}");
     }
 
     #[test]

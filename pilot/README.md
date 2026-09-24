@@ -6,7 +6,7 @@ be measured on real traffic rather than replays.
 - **Agent:** GLM in Claude Code, on Z.ai's GLM Coding Plan endpoint. That is the setup Z.ai documents for its coding plan, which may only be used in supported tools. [`glm-claude.sh`](glm-claude.sh) runs Claude Code with a clean environment, so a Claude Code session that starts it is not affected. The agent has no built-in tools; it gets τ²-bench's system prompt (instructions and domain policy).
 - **Tools:** [`tau2_mcp.py`](tau2_mcp.py) serves one task's tools over MCP, behind [`stretto-proxy`](../crates/stretto-proxy), which records the session. It appends every call and result to the episode's `trajectory.jsonl` in τ²-bench's message format.
 - **Customer:** τ²-bench's user-simulator prompt, answered by GLM through the same route ([`customer.py`](customer.py)), one short request per reply.
-- **Episode:** [`run_episode.py`](run_episode.py) keeps one Claude Code process alive for the whole episode (stream-json in and out). Each agent turn ends with a message to the customer, and the customer's reply is the next turn, as in τ²-bench.
+- **Episode:** [`run_episode.py`](run_episode.py) keeps one Claude Code process alive for the whole episode (stream-json in and out). Each agent turn ends with a message to the customer, and the customer's reply is the next turn, as in τ²-bench. The episode ends when the customer stops, or when the agent transfers them to a human agent. τ²-bench's customer is told to end the conversation at a transfer, and the simulated one here did not always do so (the cold start's task 27, below).
 - **Scoring:** τ²-bench's own evaluator checks the final database. Natural-language assertions need an LLM judge and are left out, so the reward here is the database check alone.
 - **Flows arm:** the same episode with a read-only flow behind the tools (RFC-001 §3.13). `stretto flow-serve` compiles the flow before the agent starts, from cached System-One answers, goal free (no one names the episode's goal live). After each of the agent's calls, `tau2_mcp.py` asks it what comes next, makes the lookup it names, records it like any other call and asks again, until the flow hands back. The agent gets its own result followed by the flow's lookups in the same tool response, so those lookups cost it no turns. The flow asks Jev one question per step (`TYPESAFE_API_KEY`, read by `flow-serve` only, never by the agent's process).
 
@@ -27,6 +27,8 @@ PATH=~/.venvs/tau2/bin:$PATH python run_episode.py --task-id 90 --out runs/pilot
 PATH=~/.venvs/tau2/bin:$PATH python run_episode.py --task-id 90 --out runs/pilot \
   --arm flows --oracle-cache ../.oracle-cache
 ```
+
+`--record-context` hands the proxy the conversation, as the guards arm does, so the session log in `log/` can train a flow with `stretto learn` (see the cold start below). `--flow` serves a compiled or learned flow instead of compiling one per episode.
 
 The flows arm needs `cargo build --release -p stretto-report` and a replay cache holding the goal-free v2 answers. `--arm habit` runs the same flow on the habit alone; it still compiles from the cache, but asks Jev nothing live. Fill it with `stretto phase0 --oracle jev --questions v2 --predicates data/predicates-v2.json --no-intent`, or import the published bundles (the v2 bundle and its goal-free supplement, in `docs/results/`). Pilot tasks come from the test split, so the habit never trained on them. Each task is judged by the arbiter of its own fold, which never saw it.
 
@@ -86,6 +88,12 @@ In the flows arm, the agent's first call found the user. The flow then looked up
 - 79 LLM turns, against 110 with no flow and 84 with D0: 28.2% fewer than with no flow, with fewer turns in all ten pairs. Against D0, a change of −0.5 turns per episode (95% interval −1.4 to +0.4).
 - 37 flow lookups, none repeated by the agent; 9 of 10 passed.
 - 109 Z.ai credits.
+
+**Cold start, live.** A flow learned from five sessions GLM-5.3 ran on training tasks through the proxy (`--record-context`), with `stretto learn`. Three sessions trained the habit, and two held out the 15 decisions its arbiter was fitted on. It ran on the retail pilot's tasks, costliest first, until the round's 200-credit budget was nearly spent. See [the results](../docs/results/cold-start-2026-09-24.md):
+
+- **Three tasks finished.** Task 101 took 12 LLM turns against 19 without the flow, and task 36 took 14 against 16. Both passed.
+- **Task 27 failed, as it did without the flow and with D0.** The agent filed a return, which blocks the exchange the customer also wanted. The simulated customer then carried on after each transfer to a human, and the episode ran to 26 LLM turns. The harness now ends an episode at a transfer.
+- **Cost.** 182 Z.ai credits in all: 79 to record the five sessions, 97 for the three tasks, and 6 for a fourth, stopped to stay under the budget.
 
 ## Check the flow without an LLM
 

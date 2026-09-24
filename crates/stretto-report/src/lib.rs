@@ -27,6 +27,7 @@ pub mod audit;
 pub mod confirm;
 pub mod flow;
 pub mod guards;
+pub mod matching;
 pub mod phase0;
 pub mod render;
 pub mod shadow;

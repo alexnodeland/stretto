@@ -110,6 +110,13 @@ pub fn fit_folds(cases: &[Case], folds: u64) -> Vec<Fitted> {
         .collect()
 }
 
+/// One arbiter fitted on every fittable case, for decisions on tasks that
+/// none of the cases came from.
+pub fn fit_pooled(cases: &[Case]) -> Fitted {
+    let features = cases.first().map_or(0, |c| c.features[0].len());
+    Fitted::fit(&cases.iter().collect::<Vec<_>>(), features)
+}
+
 /// Arbitrate every case with a model fitted on the fittable cases of the
 /// other `folds - 1` folds (`group % folds`). Also returns the weights,
 /// averaged over folds, with the reliability weight last.

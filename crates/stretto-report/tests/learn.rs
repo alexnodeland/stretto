@@ -5,8 +5,10 @@ use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use stretto_oracle::MockOracle;
-use stretto_report::flow::Proposal;
-use stretto_report::phase0::{compile_flow_from_episodes, Config};
+use stretto_report::flow::{Decider, Proposal};
+use stretto_report::phase0::{
+    compile_flow_from_episodes, compile_habit_flow_from_episodes, Config,
+};
 use stretto_report::shadow::{OracleKind, QuestionSet, ShadowConfig};
 use stretto_trace::{Episode, Event, ToolCall, ToolKind, ToolManifest};
 
@@ -103,18 +105,30 @@ fn session(i: usize) -> Episode {
     }
 }
 
-pub fn learned_flow() -> stretto_report::flow::Flow {
-    let episodes: Vec<Episode> = (0..60).map(session).collect();
+fn mock_config() -> Config {
     let mut config = Config::new(PathBuf::new());
     config.alpha_samples = 0;
     let mut sc = ShadowConfig::new(OracleKind::Mock);
     sc.questions = QuestionSet::V2;
     config.shadow = Some(sc);
-    let oracle = MockOracle {
-        confidence: 0.6,
-        noul: 0.5,
-    };
-    compile_flow_from_episodes(&config, &episodes, &manifest(), &oracle).unwrap()
+    config
+}
+
+const MOCK: MockOracle = MockOracle {
+    confidence: 0.6,
+    noul: 0.5,
+};
+
+pub fn learned_flow() -> stretto_report::flow::Flow {
+    let episodes: Vec<Episode> = (0..60).map(session).collect();
+    compile_flow_from_episodes(&mock_config(), &episodes, &manifest(), &MOCK).unwrap()
+}
+
+/// A new customer's session, just after the agent found their account.
+fn new_customer() -> Episode {
+    let mut live = session(999);
+    live.events.truncate(3);
+    live
 }
 
 #[test]
@@ -193,4 +207,104 @@ fn an_audit_scores_new_sessions_under_the_flow() {
     odd.events.drain(5..9);
     let surprised = audit(&flow, &[odd], &oracle);
     assert!(surprised.mean_log_prob < a.mean_log_prob);
+}
+
+#[test]
+fn a_learned_flow_judges_every_new_session_with_one_arbiter() {
+    // The sessions a learned flow serves are new tasks, so its arbiter is
+    // fitted on every held-out decision, whatever fold a session falls in.
+    let flow = learned_flow();
+    let probs: Vec<_> = (0..20)
+        .map(|k| {
+            let mut live = new_customer();
+            live.task_id = format!("new-{k}");
+            flow.next(&live, &MOCK, 0.3).unwrap().probs
+        })
+        .collect();
+    assert!(!probs[0].is_empty());
+    assert!(probs.windows(2).all(|w| w[0] == w[1]), "{probs:?}");
+}
+
+#[test]
+fn a_flow_learns_from_three_sessions_but_not_from_one() {
+    let three: Vec<Episode> = (0..3).map(session).collect();
+    let flow = compile_flow_from_episodes(&mock_config(), &three, &manifest(), &MOCK).unwrap();
+    assert_eq!(flow.provenance().habit_episodes, 2);
+    assert!(flow.provenance().arbiter_cases > 0);
+    let err =
+        compile_flow_from_episodes(&mock_config(), &[session(0)], &manifest(), &MOCK).unwrap_err();
+    assert!(format!("{err:#}").contains("too few"), "{err:#}");
+}
+
+#[test]
+fn a_habit_only_flow_learns_from_every_session_and_has_no_arbiter() {
+    let episodes: Vec<Episode> = (0..60).map(session).collect();
+    let mut config = Config::new(PathBuf::new());
+    config.alpha_samples = 0;
+    let flow = compile_habit_flow_from_episodes(&config, &episodes, &manifest()).unwrap();
+    assert!(!flow.has_arbiter());
+    assert_eq!(flow.provenance().habit_episodes, 60);
+    assert_eq!(flow.provenance().arbiter_cases, 0);
+    let live = new_customer();
+    let next = flow.next_with(&live, &MOCK, 0.3, Decider::Habit).unwrap();
+    assert_eq!(
+        next.proposal,
+        Proposal::Lookup {
+            tool: "get_account".to_string(),
+            arguments: json!({"account_id": "acct_999"}),
+        },
+        "{next:?}"
+    );
+    // It has nothing to arbitrate with.
+    assert!(flow.next(&live, &MOCK, 0.3).is_err());
+}
+
+#[test]
+fn a_refitted_flow_keeps_its_arbiter_and_learns_its_habit_from_every_session() {
+    let three: Vec<Episode> = (0..3).map(session).collect();
+    let split = compile_flow_from_episodes(&mock_config(), &three, &manifest(), &MOCK).unwrap();
+    let mut config = mock_config();
+    config.refit_habit = true;
+    let refit = compile_flow_from_episodes(&config, &three, &manifest(), &MOCK).unwrap();
+    // The habit learns from all three sessions, as a habit-only flow's does.
+    assert_eq!(split.provenance().habit_episodes, 2);
+    assert_eq!(refit.provenance().habit_episodes, 3);
+    // The arbiter is the one fitted on the held-out session.
+    assert!(refit.has_arbiter());
+    assert_eq!(
+        refit.provenance().arbiter_cases,
+        split.provenance().arbiter_cases
+    );
+    let as_json = |f: &stretto_report::flow::Flow| serde_json::to_value(f).unwrap();
+    assert_eq!(as_json(&refit)["folds"], as_json(&split)["folds"]);
+    let live = new_customer();
+    assert!(refit.next(&live, &MOCK, 0.3).is_ok());
+}
+
+#[test]
+fn a_habit_learned_from_few_sessions_can_serve_an_arbiter_fitted_elsewhere() {
+    let elsewhere = learned_flow();
+    let mut config = Config::new(PathBuf::new());
+    config.alpha_samples = 0;
+    let three: Vec<Episode> = (0..3).map(session).collect();
+    let habit = compile_habit_flow_from_episodes(&config, &three, &manifest()).unwrap();
+    // Only a flow with an arbiter can lend one.
+    let none = compile_habit_flow_from_episodes(&config, &three, &manifest()).unwrap();
+    assert!(habit.clone().with_arbiter_of(none).is_err());
+    let flow = habit.with_arbiter_of(elsewhere.clone()).unwrap();
+    assert!(flow.has_arbiter());
+    assert_eq!(flow.provenance().habit_episodes, 3);
+    assert_eq!(
+        flow.provenance().arbiter_cases,
+        elsewhere.provenance().arbiter_cases
+    );
+    assert!(flow
+        .provenance()
+        .sources
+        .iter()
+        .any(|s| s.starts_with("arbiter: ")));
+    let as_json = |f: &stretto_report::flow::Flow| serde_json::to_value(f).unwrap();
+    assert_eq!(as_json(&flow)["folds"], as_json(&elsewhere)["folds"]);
+    let live = new_customer();
+    assert!(flow.next(&live, &MOCK, 0.3).is_ok());
 }

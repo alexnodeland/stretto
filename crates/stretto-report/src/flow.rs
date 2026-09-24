@@ -146,6 +146,46 @@ impl Flow {
         &self.manifest
     }
 
+    /// Whether the flow has an arbiter. One learned without a System-One
+    /// model ([`crate::phase0::compile_habit_flow_from_episodes`]) has none
+    /// and decides with the habit alone.
+    pub fn has_arbiter(&self) -> bool {
+        !self.folds.is_empty()
+    }
+
+    /// This flow's habit, sites and bindings, with the arbiter of `other`: a
+    /// flow learned from a few sessions without a System-One model can take
+    /// the arbiter fitted where decisions are plentiful, such as a flow
+    /// compiled from other agents' traces. The sources record where the
+    /// arbiter came from.
+    pub fn with_arbiter_of(mut self, other: Flow) -> Result<Self> {
+        if !other.has_arbiter() {
+            anyhow::bail!("the flow to take an arbiter from has none");
+        }
+        let from: Vec<String> = other
+            .provenance
+            .sources
+            .iter()
+            .map(|s| format!("arbiter: {s}"))
+            .collect();
+        self.take_arbiter(other);
+        self.provenance.sources.extend(from);
+        Ok(self)
+    }
+
+    /// Serve `other`'s arbiter: its predicates, its fitted weights and the
+    /// System-One model it asks, with this flow's habit, sites and bindings.
+    pub(crate) fn take_arbiter(&mut self, other: Flow) {
+        self.predicates = other.predicates;
+        self.weighed = other.weighed;
+        self.folds = other.folds;
+        self.model = other.model;
+        self.provenance.arbiter_cases = other.provenance.arbiter_cases;
+        if other.sites.offers_every_read() {
+            self.sites.offer_every_read();
+        }
+    }
+
     /// Write the flow IR to `path` as JSON.
     pub fn save(&self, path: &std::path::Path) -> Result<()> {
         let file = std::fs::File::create(path)
@@ -248,6 +288,9 @@ impl Flow {
             };
             return self.look_up(next, episode, &options, &prior, threshold);
         }
+        if !self.has_arbiter() {
+            anyhow::bail!("this flow has no arbiter, so it decides with the habit alone");
+        }
         let key = request_key(&request);
         next.key = Some(key.clone());
         let response = match oracle.ask(&request) {
@@ -330,8 +373,17 @@ impl Flow {
             return hand_back(next, format!("{tool} at {p:.2}, below {threshold}"));
         }
         // The lookup is the agent's next step only if the tool is and the
-        // arguments are its own.
-        match self.bindings.bind(tool, episode) {
+        // arguments are its own. One training never made (offered from the
+        // manifest) is bound by argument name.
+        let bound = if self.bindings.knows(tool) {
+            self.bindings.bind(tool, episode)
+        } else {
+            match self.manifest.docs.get(tool) {
+                Some(doc) => self.bindings.bind_by_name(tool, &doc.args, episode),
+                None => Err("never called in training, and its arguments are unknown".into()),
+            }
+        };
+        match bound {
             Ok((arguments, chance)) => {
                 next.binding = Some(chance);
                 if p * chance < threshold {
@@ -481,6 +533,90 @@ impl Bindings {
     /// training, `(agreed, calls)` for unmentioned and mentioned picks.
     pub fn agreement(&self) -> &BTreeMap<String, [(usize, usize); 2]> {
         &self.agreed
+    }
+
+    /// Whether training called `tool`.
+    pub fn knows(&self, tool: &str) -> bool {
+        self.args.contains_key(tool)
+    }
+
+    /// Arguments for `tool`, which training never called, by name: each of
+    /// `args` takes the first string under a key of that name in an earlier
+    /// output (most recent first) that has not been passed to it, preferring
+    /// one the customer mentioned (or whose record they did). With no calls
+    /// to go on, the chance that they are the agent's own is 1/2, as
+    /// [`Bindings::bind`] would smooth it.
+    pub fn bind_by_name(
+        &self,
+        tool: &str,
+        args: &BTreeMap<String, String>,
+        episode: &Episode,
+    ) -> std::result::Result<(Value, f64), String> {
+        let mut outputs: Vec<Value> = Vec::new();
+        let mut customer = String::new();
+        let mut used: BTreeSet<(&str, String)> = BTreeSet::new();
+        let mut called = false;
+        for e in &episode.events {
+            match e {
+                Event::User { text } => {
+                    customer.push_str(&text.to_lowercase());
+                    customer.push('\n');
+                }
+                Event::ToolResult {
+                    content,
+                    error: false,
+                    ..
+                } => outputs.push(parse(content)),
+                Event::Assistant { calls, .. } => {
+                    for c in calls.iter().filter(|c| c.name == tool) {
+                        called = true;
+                        if let Value::Object(a) = &c.arguments {
+                            for (k, v) in a {
+                                used.insert((k.as_str(), value_text(v)));
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        if args.is_empty() {
+            return if called {
+                Err("already looked up".to_string())
+            } else {
+                Ok((Value::Object(Default::default()), 1.0))
+            };
+        }
+        let mut bound = serde_json::Map::new();
+        for arg in args.keys() {
+            let mut candidates: Vec<(String, bool)> = Vec::new();
+            for out in outputs.iter().rev() {
+                let mut found = Vec::new();
+                named(out, arg, &mut found);
+                for (value, siblings) in found {
+                    if used.contains(&(arg.as_str(), value.clone()))
+                        || candidates.iter().any(|(v, _)| *v == value)
+                    {
+                        continue;
+                    }
+                    let mentioned = mentions(&customer, &value)
+                        || siblings
+                            .iter()
+                            .any(|s| s.chars().count() >= MIN_MENTION && mentions(&customer, s));
+                    candidates.push((value, mentioned));
+                }
+            }
+            let Some((value, _)) = candidates
+                .iter()
+                .find(|(_, m)| *m)
+                .or(candidates.first())
+                .cloned()
+            else {
+                return Err(format!("no `{arg}` in earlier results to pass"));
+            };
+            bound.insert(arg.clone(), Value::String(value));
+        }
+        Ok((Value::Object(bound), 0.5))
     }
 
     /// Arguments for a call to `tool` after the last step of `episode`, with
@@ -634,6 +770,35 @@ fn mentions(customer: &str, value: &str) -> bool {
     !bare.is_empty() && (customer.contains(v) || customer.contains(bare))
 }
 
+/// The string values under key `key` anywhere in `v`, in document order,
+/// each with the other string values of its object.
+fn named(v: &Value, key: &str, out: &mut Vec<(String, Vec<String>)>) {
+    match v {
+        Value::Object(m) => {
+            for (k, child) in m {
+                match child {
+                    Value::String(s) if k == key => {
+                        let siblings = m
+                            .values()
+                            .filter_map(|x| x.as_str())
+                            .filter(|x| *x != s)
+                            .map(String::from)
+                            .collect();
+                        out.push((s.clone(), siblings));
+                    }
+                    _ => named(child, key, out),
+                }
+            }
+        }
+        Value::Array(items) => {
+            for child in items {
+                named(child, key, out);
+            }
+        }
+        _ => {}
+    }
+}
+
 /// The paths at which `target` is a string value of `v`, array indices
 /// written `[*]`.
 fn find(v: &Value, target: &str, path: &str, out: &mut Vec<String>) {
@@ -701,6 +866,55 @@ mod tests {
     use super::*;
     use serde_json::json;
     use stretto_trace::ToolCall;
+
+    #[test]
+    fn a_lookup_training_never_made_is_bound_by_argument_name() {
+        let b = Bindings::default();
+        assert!(!b.knows("get_item"));
+        let result = |content: serde_json::Value| Event::ToolResult {
+            call_id: "1".to_string(),
+            name: "get_order".to_string(),
+            error: false,
+            content: content.to_string(),
+        };
+        let mut ep = Episode {
+            id: "e".to_string(),
+            task_id: "t".to_string(),
+            trial: 0,
+            domain: "retail".to_string(),
+            agent_model: "m".to_string(),
+            reward: 1.0,
+            events: vec![
+                Event::User {
+                    text: "The lamp in my order, please.".to_string(),
+                },
+                result(json!({"items": [
+                    {"item_id": "111", "name": "Chair"},
+                    {"item_id": "222", "name": "Lamp"},
+                ]})),
+            ],
+        };
+        let args = BTreeMap::from([("item_id".to_string(), "The item's id.".to_string())]);
+        // The item whose record the customer mentioned, at a chance of 1/2.
+        let (bound, chance) = b.bind_by_name("get_item", &args, &ep).unwrap();
+        assert_eq!(bound, json!({"item_id": "222"}));
+        assert_eq!(chance, 0.5);
+        // Once it has been looked up, the next one.
+        ep.events.push(Event::Assistant {
+            text: None,
+            calls: vec![ToolCall {
+                id: "2".to_string(),
+                name: "get_item".to_string(),
+                arguments: json!({"item_id": "222"}),
+            }],
+            usage: None,
+        });
+        let (bound, _) = b.bind_by_name("get_item", &args, &ep).unwrap();
+        assert_eq!(bound, json!({"item_id": "111"}));
+        // Nothing of that name: no lookup.
+        let other = BTreeMap::from([("user_id".to_string(), String::new())]);
+        assert!(b.bind_by_name("get_user", &other, &ep).is_err());
+    }
 
     fn manifest() -> ToolManifest {
         ToolManifest {

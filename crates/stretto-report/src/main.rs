@@ -1,10 +1,11 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::io::{BufRead, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 use stretto_oracle::{Answer, MockOracle, NoulCriteria, Oracle, Question, ReplayCache, Request};
+use stretto_report::confirm::Second;
 use stretto_report::flow::Decider;
 use stretto_report::shadow::{OracleKind, QuestionSet, ShadowConfig};
 use stretto_report::{phase0, render};
@@ -79,10 +80,52 @@ enum Command {
     /// logs in a directory) and write its IR, as `compile` does from
     /// τ²-bench results. The tools come from the sessions' `tools/list`
     /// responses (their `readOnlyHint` annotations), or from `--manifest`.
+    /// With `--results`, the sessions are τ²-bench episodes on a checkout's
+    /// training tasks instead, as if a deployment had recorded them.
     Learn {
         /// Directory of session logs (`*.jsonl`).
+        #[arg(long, required_unless_present = "results")]
+        sessions: Option<PathBuf>,
+        /// τ²-bench results to learn from in place of `--sessions`
+        /// (repeatable): their episodes on the training tasks of the
+        /// `--tau2` checkout's split, with their rewards. The tools come
+        /// from the checkout.
+        #[arg(
+            long = "results",
+            requires = "tau2",
+            conflicts_with_all = ["sessions", "manifest", "rewards"]
+        )]
+        results: Vec<PathBuf>,
+        /// The τ²-bench checkout that `--results` belong to.
         #[arg(long)]
-        sessions: PathBuf,
+        tau2: Option<PathBuf>,
+        /// With `--results`, learn from this share of the training tasks:
+        /// the sample `compile --train-fraction` takes.
+        #[arg(long, default_value_t = 1.0)]
+        train_fraction: f64,
+        /// With `--results`, learn from these training tasks only
+        /// (comma-separated), in place of `--train-fraction`.
+        #[arg(long, value_delimiter = ',', conflicts_with = "train_fraction")]
+        train_tasks: Vec<String>,
+        /// With `--results`, only these trials of each task (default: all).
+        #[arg(long, num_args = 1..)]
+        trials: Vec<u32>,
+        /// Ask no System-One model: every session trains the habit, and the
+        /// flow has no arbiter (serve it with `--decider habit`).
+        #[arg(long)]
+        habit_only: bool,
+        /// Once the arbiter is fitted on the held-out sessions, learn the
+        /// habit, the sites and the bindings again from every session.
+        #[arg(long, conflicts_with = "habit_only")]
+        refit_habit: bool,
+        /// Ask no System-One model while learning: every session trains the
+        /// habit, and the flow serves the arbiter of this flow instead, such
+        /// as one `compile` fitted on other agents' traces.
+        #[arg(long, conflicts_with_all = ["habit_only", "refit_habit"])]
+        arbiter_from: Option<PathBuf>,
+        /// Offer every read-only tool at every site (see `compile`).
+        #[arg(long)]
+        manifest_options: bool,
         /// The domain to name the flow for.
         #[arg(long)]
         domain: String,
@@ -199,6 +242,12 @@ enum Command {
         /// Disagreements to show, of each kind, per domain.
         #[arg(long, default_value_t = 8)]
         examples: usize,
+        /// Also ask a second question about each write: whether the agent had
+        /// `proposed` this change before the customer's reply, or (the first
+        /// wording, too literal) whether its message `described` it. The
+        /// judge then fails a write unless both answers are yes.
+        #[arg(long, value_enum)]
+        second_question: Option<SecondArg>,
         /// Write every distinct question to this file (JSON lines; the
         /// domain is added to the file name).
         #[arg(long)]
@@ -207,6 +256,47 @@ enum Command {
         #[arg(long)]
         out: Option<PathBuf>,
         /// Also write every judged write, and the audits, as JSON here.
+        #[arg(long)]
+        json: Option<PathBuf>,
+    },
+    /// Match descriptions to records (RFC-001): at each write in τ²-bench's
+    /// published trajectories that picks records out of earlier results
+    /// (items of an order, a new variant, a payment method, a reservation),
+    /// ask the System-One model which one the customer means, without the
+    /// agent's pick, and score both against the task's expected actions.
+    Match {
+        /// Path to a τ²-bench checkout.
+        #[arg(long)]
+        tau2: PathBuf,
+        /// Domains to judge.
+        #[arg(long = "domain", default_values_t = ["retail".to_string(), "airline".to_string()])]
+        domains: Vec<String>,
+        /// Extra τ²-bench results to judge, besides the published baselines
+        /// (repeatable).
+        #[arg(long = "source")]
+        sources: Vec<String>,
+        /// Who answers: `jev` (needs TYPESAFE_API_KEY), `replay` (the cache
+        /// only) or `mock`.
+        #[arg(long, value_enum, default_value_t = OracleArg::Jev)]
+        oracle: OracleArg,
+        /// Replay cache for oracle answers.
+        #[arg(long, default_value = ".oracle-cache")]
+        oracle_cache: PathBuf,
+        /// Refuse to start if uncached questions could cost more than this
+        /// many dollars.
+        #[arg(long, default_value_t = 2.0)]
+        oracle_budget: f64,
+        /// Disagreements to show, of each kind, per domain.
+        #[arg(long, default_value_t = 8)]
+        examples: usize,
+        /// Write every distinct question to this file (JSON lines; the
+        /// domain is added to the file name).
+        #[arg(long)]
+        oracle_dump: Option<PathBuf>,
+        /// Write the Markdown report here (default: stdout).
+        #[arg(long)]
+        out: Option<PathBuf>,
+        /// Also write every choice, and the audits, as JSON here.
         #[arg(long)]
         json: Option<PathBuf>,
     },
@@ -334,6 +424,11 @@ struct Phase0Args {
     /// measure what they add.
     #[arg(long)]
     no_predicate_features: bool,
+    /// v2: offer every read-only tool at every site, not only the lookups
+    /// seen there in training, for the System-One model to choose from. A
+    /// lookup training never made is bound by argument name.
+    #[arg(long)]
+    manifest_options: bool,
     /// Replay cache for oracle answers.
     #[arg(long, default_value = ".oracle-cache")]
     oracle_cache: PathBuf,
@@ -365,6 +460,10 @@ struct Phase0Args {
     /// do with fewer traces.
     #[arg(long, default_value_t = 1.0)]
     train_fraction: f64,
+    /// Train on these training tasks only (comma-separated), in place of
+    /// `--train-fraction`: a sample named exactly.
+    #[arg(long, value_delimiter = ',', conflicts_with = "train_fraction")]
+    train_tasks: Vec<String>,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -384,6 +483,21 @@ enum QuestionArg {
 enum DeciderArg {
     Arbiter,
     Habit,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum SecondArg {
+    Described,
+    Proposed,
+}
+
+impl From<SecondArg> for Second {
+    fn from(q: SecondArg) -> Self {
+        match q {
+            SecondArg::Described => Second::Described,
+            SecondArg::Proposed => Second::Proposed,
+        }
+    }
 }
 
 impl From<DeciderArg> for Decider {
@@ -460,6 +574,15 @@ fn main() -> Result<()> {
         }
         Command::Learn {
             sessions,
+            results,
+            tau2,
+            train_fraction,
+            train_tasks,
+            trials,
+            habit_only,
+            refit_habit,
+            arbiter_from,
+            manifest_options,
             domain,
             manifest,
             rewards,
@@ -469,42 +592,75 @@ fn main() -> Result<()> {
             predicates,
             out,
         } => {
-            let rewards: BTreeMap<String, f64> = match rewards {
-                Some(path) => serde_json::from_str(
-                    &std::fs::read_to_string(&path)
-                        .with_context(|| format!("reading {}", path.display()))?,
-                )?,
-                None => BTreeMap::new(),
+            if !(train_fraction > 0.0 && train_fraction <= 1.0) {
+                anyhow::bail!("--train-fraction must be in (0, 1]");
+            }
+            let (episodes, manifest) = match sessions {
+                Some(sessions) => {
+                    if train_fraction < 1.0 || !train_tasks.is_empty() || !trials.is_empty() {
+                        anyhow::bail!(
+                            "--train-fraction, --train-tasks and --trials apply to --results"
+                        );
+                    }
+                    let rewards: BTreeMap<String, f64> = match rewards {
+                        Some(path) => serde_json::from_str(
+                            &std::fs::read_to_string(&path)
+                                .with_context(|| format!("reading {}", path.display()))?,
+                        )?,
+                        None => BTreeMap::new(),
+                    };
+                    let logs = stretto_trace::mcp::read_sessions(&sessions)?;
+                    let manifest = match manifest {
+                        Some(path) => serde_json::from_str(&std::fs::read_to_string(&path)?)?,
+                        None => stretto_trace::mcp::manifest_of(&logs, &domain),
+                    };
+                    let episodes: Vec<stretto_trace::Episode> = logs
+                        .iter()
+                        .map(|log| {
+                            let mut ep = stretto_trace::mcp::episode(log);
+                            ep.domain = domain.clone();
+                            ep.reward = rewards.get(&ep.id).copied().unwrap_or(1.0);
+                            ep
+                        })
+                        .collect();
+                    (episodes, manifest)
+                }
+                None => {
+                    let tau2 = tau2.context("--results needs --tau2")?;
+                    tau2_sessions(
+                        &tau2,
+                        &domain,
+                        &results,
+                        &train_tasks,
+                        train_fraction,
+                        &trials,
+                    )?
+                }
             };
-            let logs = stretto_trace::mcp::read_sessions(&sessions)?;
-            let manifest = match manifest {
-                Some(path) => serde_json::from_str(&std::fs::read_to_string(&path)?)?,
-                None => stretto_trace::mcp::manifest_of(&logs, &domain),
-            };
-            let episodes: Vec<stretto_trace::Episode> = logs
-                .iter()
-                .map(|log| {
-                    let mut ep = stretto_trace::mcp::episode(log);
-                    ep.domain = domain.clone();
-                    ep.reward = rewards.get(&ep.id).copied().unwrap_or(1.0);
-                    ep
-                })
-                .collect();
             let mut config = phase0::Config::new(PathBuf::new());
             config.domains = vec![domain.clone()];
-            let mut sc = ShadowConfig::new(oracle_kind(oracle));
-            sc.cache_dir = oracle_cache;
-            sc.budget = oracle_budget;
-            sc.questions = QuestionSet::V2;
-            if let Some(path) = predicates {
-                sc.predicates =
-                    serde_json::from_str::<PredicateFile>(&std::fs::read_to_string(&path)?)?
-                        .predicates;
-            }
-            let oracle = sc.build()?;
-            config.shadow = Some(sc);
-            let flow =
-                phase0::compile_flow_from_episodes(&config, &episodes, &manifest, oracle.as_ref())?;
+            config.refit_habit = refit_habit;
+            let flow = if let Some(path) = arbiter_from {
+                let other = stretto_report::flow::Flow::load(&path)?;
+                phase0::compile_habit_flow_from_episodes(&config, &episodes, &manifest)?
+                    .with_arbiter_of(other)?
+            } else if habit_only {
+                phase0::compile_habit_flow_from_episodes(&config, &episodes, &manifest)?
+            } else {
+                let mut sc = ShadowConfig::new(oracle_kind(oracle));
+                sc.cache_dir = oracle_cache;
+                sc.budget = oracle_budget;
+                sc.questions = QuestionSet::V2;
+                sc.manifest_options = manifest_options;
+                if let Some(path) = predicates {
+                    sc.predicates =
+                        serde_json::from_str::<PredicateFile>(&std::fs::read_to_string(&path)?)?
+                            .predicates;
+                }
+                let oracle = sc.build()?;
+                config.shadow = Some(sc);
+                phase0::compile_flow_from_episodes(&config, &episodes, &manifest, oracle.as_ref())?
+            };
             flow.save(&out)?;
             eprintln!(
                 "stretto: learned the {domain} flow from {} sessions ({} tools) and wrote {}",
@@ -525,6 +681,11 @@ fn main() -> Result<()> {
             log,
         } => {
             let flow = stretto_report::flow::Flow::load(&flow)?;
+            if decider == DeciderArg::Arbiter && !flow.has_arbiter() {
+                anyhow::bail!(
+                    "this flow was learned without a System-One model: serve it with --decider habit"
+                );
+            }
             let mut sc = ShadowConfig::new(oracle_kind(oracle));
             sc.cache_dir = oracle_cache;
             let oracle = sc.build()?;
@@ -577,6 +738,7 @@ fn main() -> Result<()> {
             oracle_budget,
             threshold,
             examples,
+            second_question,
             oracle_dump,
             out,
             json,
@@ -603,13 +765,15 @@ fn main() -> Result<()> {
                 let refs: Vec<&stretto_trace::Episode> = episodes.iter().collect();
                 let good = refs.iter().filter(|e| e.succeeded()).count();
                 let mut items = stretto_report::confirm::writes(&guards, &refs, &model);
-                stretto_report::confirm::judge(judge.as_ref(), &mut items, &sc, domain)?;
+                let second = second_question.map(Second::from);
+                stretto_report::confirm::judge(judge.as_ref(), &mut items, &sc, domain, second)?;
                 audits.push(stretto_report::confirm::audit(
                     domain,
                     &items,
                     [good, refs.len() - good],
                     threshold,
                     examples,
+                    second,
                 ));
                 judged.extend(items);
             }
@@ -621,6 +785,62 @@ fn main() -> Result<()> {
             if let Some(path) = json {
                 let all = serde_json::json!({"audits": audits, "writes": judged});
                 write(&path, &serde_json::to_vec_pretty(&all)?)?;
+            }
+            Ok(())
+        }
+        Command::Match {
+            tau2,
+            domains,
+            sources,
+            oracle,
+            oracle_cache,
+            oracle_budget,
+            examples,
+            oracle_dump,
+            out,
+            json,
+        } => {
+            use stretto_report::matching;
+            let mut sc = ShadowConfig::new(oracle_kind(oracle));
+            sc.cache_dir = oracle_cache;
+            sc.budget = oracle_budget;
+            sc.dump = oracle_dump;
+            let model = sc.model.clone();
+            let judge = sc.build()?;
+            let (mut audits, mut all) = (Vec::new(), Vec::new());
+            for domain in &domains {
+                let manifest = stretto_trace::tau2::load_manifest(
+                    domain,
+                    &tau2.join(format!("src/tau2/domains/{domain}/tools.py")),
+                )?;
+                let mut files = phase0::result_files(&tau2, domain)?;
+                files.extend(sources.iter().map(|s| phase0::Target::parse(s).path));
+                let mut items = Vec::new();
+                for path in &files {
+                    let run = stretto_trace::tau2::load_results(path)?;
+                    if run.domain != *domain {
+                        continue;
+                    }
+                    for ep in &run.episodes {
+                        let gold = run
+                            .gold_actions
+                            .get(&ep.task_id)
+                            .map_or(&[][..], Vec::as_slice);
+                        items.extend(matching::choices(ep, gold, &manifest, &model));
+                    }
+                }
+                matching::judge(judge.as_ref(), &mut items, &sc, domain)?;
+                audits.push(matching::audit(domain, &items, examples));
+                all.extend(items);
+            }
+            let md = matching::markdown(&audits);
+            match out {
+                Some(path) => write(&path, md.as_bytes())?,
+                None => print!("{md}"),
+            }
+            if let Some(path) = json {
+                let doc = serde_json::json!({"audits": audits, "choices": all});
+                write(&path, &serde_json::to_vec_pretty(&doc)?)?;
             }
             Ok(())
         }
@@ -719,6 +939,43 @@ fn main() -> Result<()> {
     }
 }
 
+/// τ²-bench episodes from `results`, as a deployment's sessions for
+/// `learn`: those on the training tasks of the checkout's split (the ones
+/// named in `only`, or a `fraction` of them, as `compile` samples them), of
+/// the named `trials` if any, with the checkout's tools for `domain`.
+fn tau2_sessions(
+    tau2: &Path,
+    domain: &str,
+    results: &[PathBuf],
+    only: &[String],
+    fraction: f64,
+    trials: &[u32],
+) -> Result<(Vec<stretto_trace::Episode>, stretto_trace::ToolManifest)> {
+    use stretto_trace::tau2::{load_manifest, load_results, load_split};
+    let manifest = load_manifest(
+        domain,
+        &tau2.join(format!("src/tau2/domains/{domain}/tools.py")),
+    )?;
+    let split = load_split(&tau2.join(format!("data/tau2/domains/{domain}/split_tasks.json")))?;
+    let tasks: HashSet<String> = phase0::training_tasks(&split.train, only, fraction)?
+        .into_iter()
+        .collect();
+    let mut episodes = Vec::new();
+    for path in results {
+        let run = load_results(path).with_context(|| format!("reading {}", path.display()))?;
+        if run.domain != domain {
+            anyhow::bail!("{} is for {}, not {domain}", path.display(), run.domain);
+        }
+        episodes.extend(run.episodes.into_iter().filter(|e| {
+            tasks.contains(&e.task_id) && (trials.is_empty() || trials.contains(&e.trial))
+        }));
+    }
+    if episodes.is_empty() {
+        anyhow::bail!("the results have no episodes on the sampled training tasks");
+    }
+    Ok((episodes, manifest))
+}
+
 /// The Phase 0 configuration the arguments ask for.
 fn phase0_config(data: Phase0Args) -> Result<phase0::Config> {
     let Phase0Args {
@@ -739,6 +996,7 @@ fn phase0_config(data: Phase0Args) -> Result<phase0::Config> {
         dataflow_hints,
         predicates,
         no_predicate_features,
+        manifest_options,
         oracle_cache,
         oracle_concurrency,
         oracle_limit,
@@ -747,12 +1005,14 @@ fn phase0_config(data: Phase0Args) -> Result<phase0::Config> {
         oracle_dump,
         oracle_log,
         train_fraction,
+        train_tasks,
     } = data;
     if !(train_fraction > 0.0 && train_fraction <= 1.0) {
         anyhow::bail!("--train-fraction must be in (0, 1]");
     }
     let mut config = phase0::Config::new(tau2);
     config.train_fraction = train_fraction;
+    config.train_tasks = train_tasks;
     config.domains = domains;
     config.order = order;
     config.alpha_samples = alpha_samples;
@@ -780,6 +1040,7 @@ fn phase0_config(data: Phase0Args) -> Result<phase0::Config> {
         sc.hints = dataflow_hints;
         sc.predicates = predicates.clone();
         sc.predicate_features = !no_predicate_features;
+        sc.manifest_options = manifest_options;
         sc.questions = match questions {
             QuestionArg::V1 => QuestionSet::V1,
             QuestionArg::V2 => QuestionSet::V2,

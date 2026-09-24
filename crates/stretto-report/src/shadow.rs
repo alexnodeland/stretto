@@ -182,6 +182,9 @@ pub struct ShadowConfig {
     /// v2: whether the arbiter weighs the predicates' answers (off: they are
     /// asked but ignored, to measure what they add).
     pub predicate_features: bool,
+    /// v2: offer every read-only tool at every site (see
+    /// [`Sites::offer_every_read`]).
+    pub manifest_options: bool,
 }
 
 impl ShadowConfig {
@@ -202,6 +205,7 @@ impl ShadowConfig {
             hints: false,
             predicates: Vec::new(),
             predicate_features: true,
+            manifest_options: false,
         }
     }
 
@@ -404,8 +408,9 @@ pub fn decisions(
 
 /// The lookups a read-only flow may make at each site: after a call to a
 /// tool that succeeded (or failed), every read-only tool the agent called
-/// next in training. Optionally also what each lookup is for (see
-/// [`Sites::learn_feeds`]).
+/// next in training, or every read-only tool the manifest lists (see
+/// [`Sites::offer_every_read`]). Optionally also what each lookup is for
+/// (see [`Sites::learn_feeds`]).
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Sites {
     reads: BTreeSet<String>,
@@ -413,6 +418,8 @@ pub struct Sites {
     next: BTreeMap<(String, bool), BTreeMap<String, usize>>,
     #[serde(with = "feeds_pairs")]
     feeds: BTreeMap<String, BTreeMap<(String, String), usize>>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    every_read: bool,
 }
 
 /// [`Sites`]' feeds, with each lookup's `(write, argument)` counts as pairs.
@@ -465,7 +472,22 @@ impl Sites {
             reads,
             next,
             feeds: BTreeMap::new(),
+            every_read: false,
         }
+    }
+
+    /// Offer every read-only tool at every site, not only the lookups seen
+    /// there in training, and at sites training never showed a lookup. The
+    /// System-One model can then choose a lookup the traces never made; the
+    /// habit gives such a lookup little weight, and the arbiter weighs the
+    /// two.
+    pub fn offer_every_read(&mut self) {
+        self.every_read = true;
+    }
+
+    /// Whether every read-only tool is offered at every site.
+    pub fn offers_every_read(&self) -> bool {
+        self.every_read
     }
 
     /// Learn which write arguments each lookup's results supply, from
@@ -568,8 +590,12 @@ impl Sites {
         self.reads.contains(tool)
     }
 
-    /// The lookups seen after `tool` (failed or not), by name.
+    /// The lookups seen after `tool` (failed or not), by name: every
+    /// read-only tool, if the sites offer every one.
     pub fn options(&self, tool: &str, failed: bool) -> Vec<String> {
+        if self.every_read {
+            return self.reads.iter().cloned().collect();
+        }
         self.next
             .get(&(tool.to_string(), failed))
             .map(|m| m.keys().cloned().collect())
@@ -1719,6 +1745,17 @@ mod tests {
         let sites = Sites::learn([train.as_slice()], &manifest());
         assert_eq!(sites.options("get_order", false), vec!["get_order"]);
         assert!(sites.options("cancel", false).is_empty());
+        // Offering every read-only tool reaches a site training never
+        // showed, and says so in the flow IR only when on.
+        let mut every = sites.clone();
+        assert!(!serde_json::to_string(&every)
+            .unwrap()
+            .contains("every_read"));
+        every.offer_every_read();
+        assert_eq!(every.options("cancel", false), vec!["get_order"]);
+        assert_eq!(every.options("get_order", true), vec!["get_order"]);
+        let back: Sites = serde_json::from_str(&serde_json::to_string(&every).unwrap()).unwrap();
+        assert_eq!(back.options("cancel", false), vec!["get_order"]);
 
         // Held out: get_order, then cancel (a write), then a reply.
         let ep = episode();

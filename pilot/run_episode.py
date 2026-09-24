@@ -127,6 +127,11 @@ def main() -> None:
     )
     parser.add_argument("--flow-threshold", type=float, default=0.3)
     parser.add_argument("--flow", type=Path, help="a compiled flow (`stretto compile`), else compiled here")
+    parser.add_argument(
+        "--record-context", action="store_true",
+        help="hand the proxy the conversation (as the guards arm does), so its session log can "
+        "train a flow with `stretto learn`",
+    )
     args = parser.parse_args()
     if args.arm in FLOW_ARMS and not args.oracle_cache:
         parser.error(f"the {args.arm} arm needs --oracle-cache")
@@ -143,8 +148,8 @@ def main() -> None:
     context = episode / "context.jsonl"
 
     def say(role: str, text: str) -> None:
-        """Hand the proxy a message of the conversation (guards arm)."""
-        if args.arm == "guards":
+        """Hand the proxy a message of the conversation (guards arm, or when recording it)."""
+        if args.arm == "guards" or args.record_context:
             with open(context, "a") as f:
                 f.write(json.dumps({"role": role, "content": text}) + "\n")
     serve, flow_address = start_flow(args, episode) if args.arm in FLOW_ARMS else (None, None)
@@ -179,7 +184,8 @@ def main() -> None:
                     "--record", str(episode / "log"),
                     "--domain", args.domain,
                     "--agent-model", args.model,
-                ] + (["--guards", "--context", str(context)] if args.arm == "guards" else []) + [
+                ] + (["--guards"] if args.arm == "guards" else [])
+                + (["--context", str(context)] if args.arm == "guards" or args.record_context else []) + [
                     "--",
                     str(python), str(HERE / "tau2_mcp.py"),
                     "--domain", args.domain,
@@ -225,6 +231,16 @@ def main() -> None:
                 return event.get("result") or ""
         return None
 
+    def transferred() -> bool:
+        """Whether the agent has handed the customer to a human agent. τ²-bench's
+        customer is told to end the conversation then (###TRANSFER###); the
+        simulated one here may not, and would talk on to the same agent."""
+        return any(
+            call.get("name") == "transfer_to_human_agents"
+            for m in map(json.loads, trajectory.read_text().splitlines())
+            for call in m.get("tool_calls") or []
+        )
+
     ending = None
     send(first)
     for _ in range(args.max_turns):
@@ -238,6 +254,9 @@ def main() -> None:
         state = json.loads((episode / "tools-state.json").read_text())
         if state.get("over_budget"):
             ending = "max_steps"
+            break
+        if transferred():
+            ending = "transfer"
             break
         reply, usage = customer.reply(sim_prompt, dialogue)
         customer_usage.append(usage)
@@ -267,6 +286,8 @@ def main() -> None:
     ]
     termination = {
         "user_stop": TerminationReason.USER_STOP,
+        # As τ²-bench records its customer's ###TRANSFER###.
+        "transfer": TerminationReason.USER_STOP,
         "max_steps": TerminationReason.MAX_STEPS,
         "agent_error": TerminationReason.AGENT_ERROR,
     }[ending]
