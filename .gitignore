@@ -4,3 +4,5 @@ reports/
 *.profraw
 .env
 .data/
+pilot/runs/
+__pycache__/
