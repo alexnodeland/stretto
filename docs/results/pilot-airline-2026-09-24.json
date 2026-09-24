@@ -1,0 +1,350 @@
+{
+ "tasks": [
+  "6",
+  "8",
+  "16",
+  "18",
+  "24",
+  "25",
+  "26",
+  "30",
+  "31",
+  "37"
+ ],
+ "summary": {
+  "pairs": 10,
+  "llm_turns": {
+   "baseline": 127,
+   "flows": 105
+  },
+  "agent_input_tokens": {
+   "baseline": 996580,
+   "flows": 849367
+  },
+  "passed": {
+   "baseline": 8,
+   "flows": 9
+  },
+  "credits_billed": 334.0,
+  "flow_lookups": 24,
+  "repeats": 0,
+  "turns_saved": 0.1732,
+  "input_tokens_saved": 0.1477,
+  "turn_difference_mean": -2.2,
+  "turn_difference_sd": 2.35,
+  "pairs_fewer_turns": 7,
+  "pairs_more_turns": 1
+ },
+ "pairs": [
+  {
+   "task_id": "6",
+   "baseline": {
+    "reward": 0.0,
+    "termination": "user_stop",
+    "llm_turns": 13,
+    "agent_calls": 4,
+    "flow_lookups": 0,
+    "repeats": 0,
+    "agent_input_tokens": 104973,
+    "agent_output_tokens": 4672,
+    "customer_turns": 10,
+    "credits_standard": 55.71,
+    "credits_billed": 27.85,
+    "duration_s": 315.2
+   },
+   "flows": {
+    "reward": 1.0,
+    "termination": "user_stop",
+    "llm_turns": 7,
+    "agent_calls": 1,
+    "flow_lookups": 1,
+    "repeats": 0,
+    "agent_input_tokens": 42231,
+    "agent_output_tokens": 2183,
+    "customer_turns": 7,
+    "credits_standard": 25.17,
+    "credits_billed": 12.58,
+    "duration_s": 144.3
+   }
+  },
+  {
+   "task_id": "8",
+   "baseline": {
+    "reward": 1.0,
+    "termination": "user_stop",
+    "llm_turns": 8,
+    "agent_calls": 8,
+    "flow_lookups": 0,
+    "repeats": 0,
+    "agent_input_tokens": 55742,
+    "agent_output_tokens": 2021,
+    "customer_turns": 5,
+    "credits_standard": 21.99,
+    "credits_billed": 10.99,
+    "duration_s": 255.1
+   },
+   "flows": {
+    "reward": 1.0,
+    "termination": "user_stop",
+    "llm_turns": 7,
+    "agent_calls": 3,
+    "flow_lookups": 5,
+    "repeats": 0,
+    "agent_input_tokens": 48374,
+    "agent_output_tokens": 1601,
+    "customer_turns": 5,
+    "credits_standard": 19.37,
+    "credits_billed": 9.68,
+    "duration_s": 93.3
+   }
+  },
+  {
+   "task_id": "16",
+   "baseline": {
+    "reward": 1.0,
+    "termination": "user_stop",
+    "llm_turns": 8,
+    "agent_calls": 6,
+    "flow_lookups": 0,
+    "repeats": 0,
+    "agent_input_tokens": 56954,
+    "agent_output_tokens": 2669,
+    "customer_turns": 5,
+    "credits_standard": 26.39,
+    "credits_billed": 13.19,
+    "duration_s": 245.0
+   },
+   "flows": {
+    "reward": 1.0,
+    "termination": "user_stop",
+    "llm_turns": 8,
+    "agent_calls": 4,
+    "flow_lookups": 2,
+    "repeats": 0,
+    "agent_input_tokens": 56592,
+    "agent_output_tokens": 1831,
+    "customer_turns": 5,
+    "credits_standard": 21.19,
+    "credits_billed": 10.59,
+    "duration_s": 184.3
+   }
+  },
+  {
+   "task_id": "18",
+   "baseline": {
+    "reward": 0.0,
+    "termination": "user_stop",
+    "llm_turns": 28,
+    "agent_calls": 25,
+    "flow_lookups": 0,
+    "repeats": 0,
+    "agent_input_tokens": 304056,
+    "agent_output_tokens": 6356,
+    "customer_turns": 4,
+    "credits_standard": 79.61,
+    "credits_billed": 39.81,
+    "duration_s": 272.1
+   },
+   "flows": {
+    "reward": 1.0,
+    "termination": "user_stop",
+    "llm_turns": 23,
+    "agent_calls": 20,
+    "flow_lookups": 4,
+    "repeats": 0,
+    "agent_input_tokens": 256215,
+    "agent_output_tokens": 5063,
+    "customer_turns": 4,
+    "credits_standard": 65.93,
+    "credits_billed": 32.97,
+    "duration_s": 202.7
+   }
+  },
+  {
+   "task_id": "24",
+   "baseline": {
+    "reward": 1.0,
+    "termination": "user_stop",
+    "llm_turns": 22,
+    "agent_calls": 16,
+    "flow_lookups": 0,
+    "repeats": 0,
+    "agent_input_tokens": 161999,
+    "agent_output_tokens": 3904,
+    "customer_turns": 7,
+    "credits_standard": 47.87,
+    "credits_billed": 23.93,
+    "duration_s": 181.7
+   },
+   "flows": {
+    "reward": 1.0,
+    "termination": "user_stop",
+    "llm_turns": 18,
+    "agent_calls": 12,
+    "flow_lookups": 1,
+    "repeats": 0,
+    "agent_input_tokens": 138374,
+    "agent_output_tokens": 4074,
+    "customer_turns": 7,
+    "credits_standard": 47.62,
+    "credits_billed": 23.81,
+    "duration_s": 162.4
+   }
+  },
+  {
+   "task_id": "25",
+   "baseline": {
+    "reward": 1.0,
+    "termination": "user_stop",
+    "llm_turns": 9,
+    "agent_calls": 4,
+    "flow_lookups": 0,
+    "repeats": 0,
+    "agent_input_tokens": 62638,
+    "agent_output_tokens": 1881,
+    "customer_turns": 6,
+    "credits_standard": 23.08,
+    "credits_billed": 11.54,
+    "duration_s": 95.3
+   },
+   "flows": {
+    "reward": 1.0,
+    "termination": "user_stop",
+    "llm_turns": 8,
+    "agent_calls": 3,
+    "flow_lookups": 1,
+    "repeats": 0,
+    "agent_input_tokens": 55681,
+    "agent_output_tokens": 1888,
+    "customer_turns": 6,
+    "credits_standard": 22.11,
+    "credits_billed": 11.05,
+    "duration_s": 105.4
+   }
+  },
+  {
+   "task_id": "26",
+   "baseline": {
+    "reward": 1.0,
+    "termination": "user_stop",
+    "llm_turns": 9,
+    "agent_calls": 3,
+    "flow_lookups": 0,
+    "repeats": 0,
+    "agent_input_tokens": 55785,
+    "agent_output_tokens": 2647,
+    "customer_turns": 7,
+    "credits_standard": 30.78,
+    "credits_billed": 15.39,
+    "duration_s": 158.2
+   },
+   "flows": {
+    "reward": 1.0,
+    "termination": "user_stop",
+    "llm_turns": 6,
+    "agent_calls": 1,
+    "flow_lookups": 2,
+    "repeats": 0,
+    "agent_input_tokens": 36303,
+    "agent_output_tokens": 1864,
+    "customer_turns": 6,
+    "credits_standard": 21.53,
+    "credits_billed": 10.76,
+    "duration_s": 109.5
+   }
+  },
+  {
+   "task_id": "30",
+   "baseline": {
+    "reward": 1.0,
+    "termination": "user_stop",
+    "llm_turns": 8,
+    "agent_calls": 4,
+    "flow_lookups": 0,
+    "repeats": 0,
+    "agent_input_tokens": 47244,
+    "agent_output_tokens": 1543,
+    "customer_turns": 5,
+    "credits_standard": 16.77,
+    "credits_billed": 8.38,
+    "duration_s": 101.1
+   },
+   "flows": {
+    "reward": 1.0,
+    "termination": "user_stop",
+    "llm_turns": 8,
+    "agent_calls": 3,
+    "flow_lookups": 1,
+    "repeats": 0,
+    "agent_input_tokens": 50082,
+    "agent_output_tokens": 1925,
+    "customer_turns": 6,
+    "credits_standard": 23.55,
+    "credits_billed": 11.77,
+    "duration_s": 115.5
+   }
+  },
+  {
+   "task_id": "31",
+   "baseline": {
+    "reward": 1.0,
+    "termination": "user_stop",
+    "llm_turns": 7,
+    "agent_calls": 4,
+    "flow_lookups": 0,
+    "repeats": 0,
+    "agent_input_tokens": 39408,
+    "agent_output_tokens": 1034,
+    "customer_turns": 4,
+    "credits_standard": 14.57,
+    "credits_billed": 7.29,
+    "duration_s": 74.8
+   },
+   "flows": {
+    "reward": 0.0,
+    "termination": "user_stop",
+    "llm_turns": 8,
+    "agent_calls": 6,
+    "flow_lookups": 3,
+    "repeats": 0,
+    "agent_input_tokens": 68479,
+    "agent_output_tokens": 5270,
+    "customer_turns": 5,
+    "credits_standard": 32.88,
+    "credits_billed": 16.44,
+    "duration_s": 123.2
+   }
+  },
+  {
+   "task_id": "37",
+   "baseline": {
+    "reward": 1.0,
+    "termination": "user_stop",
+    "llm_turns": 15,
+    "agent_calls": 10,
+    "flow_lookups": 0,
+    "repeats": 0,
+    "agent_input_tokens": 107781,
+    "agent_output_tokens": 3166,
+    "customer_turns": 6,
+    "credits_standard": 36.08,
+    "credits_billed": 18.04,
+    "duration_s": 155.6
+   },
+   "flows": {
+    "reward": 1.0,
+    "termination": "user_stop",
+    "llm_turns": 12,
+    "agent_calls": 7,
+    "flow_lookups": 4,
+    "repeats": 0,
+    "agent_input_tokens": 97036,
+    "agent_output_tokens": 3666,
+    "customer_turns": 6,
+    "credits_standard": 35.9,
+    "credits_billed": 17.95,
+    "duration_s": 128.9
+   }
+  }
+ ]
+}

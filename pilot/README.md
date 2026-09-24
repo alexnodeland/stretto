@@ -66,6 +66,14 @@ In the flows arm, the agent's first call found the user. The flow then looked up
 - 8 of 10 passed the database check in each arm. The two failures were the same agent error in both.
 - 236.5 Z.ai credits at the off-peak rate, 16% less in the flows arm.
 
+**Paired pilot, airline.** The same setup on ten airline test tasks (`run_pilot.py --domain airline`, seed 7). See [the summary](../docs/results/pilot-airline-2026-09-24.md):
+
+- 127 LLM turns without the flow and 105 with it, 17.3% fewer: 2.2 per episode (95% interval 0.5 to 3.9), with fewer turns in 7 of 10 pairs.
+- Agent input tokens fell 15%. The flow acted on every task, with 24 lookups, and the agent repeated none of them.
+- 8 of 10 passed the database check without the flow and 9 of 10 with it. None of the failures came from a flow decision. The one in the flows arm, a basic-economy ticket upgraded so that its flights could change, is now refused by the policy guards.
+- GLM-5.3 in Claude Code calls tools one at a time (parallel calls in 3.8% of tool turns), unlike GLM-5 in τ²-bench's harness (45%). So airline saved far more than the offline projection for GLM-5 (under 5%).
+- 334 Z.ai credits, 11% less in the flows arm.
+
 ## Check the flow without an LLM
 
 [`check_flow.py`](check_flow.py) replays recorded episodes' tool calls through `tau2_mcp.py` with the flow behind it. It takes an episode from this harness, or τ²-bench results, by default one trial of each test-split task. A recorded call the flow has already made is skipped. A recorded turn whose calls were all skipped is a turn the flow saves, if the agent otherwise behaved the same. A flow lookup the agent never made is a detour. This is the offline projection's measure, but with the live flow's own argument bindings and questions, and no GLM calls.

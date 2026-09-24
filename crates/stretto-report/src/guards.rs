@@ -125,6 +125,9 @@ struct Facts {
     orders: HashMap<String, Value>,
     products: HashMap<String, Value>,
     reservations: HashMap<String, Value>,
+    /// Each reservation's cabin when the episode first showed it, before
+    /// any change the agent made.
+    first_cabin: HashMap<String, String>,
     /// Flight statuses by (flight number, date).
     flights: HashMap<(String, String), String>,
     /// Successful writes so far, by tool, with their arguments.
@@ -188,6 +191,9 @@ impl Facts {
                         f.orders.insert(id, parsed.clone());
                     }
                     if let Some(id) = text(&parsed, "reservation_id") {
+                        if let Some(cabin) = text(&parsed, "cabin") {
+                            f.first_cabin.entry(id.clone()).or_insert(cabin);
+                        }
                         f.reservations.insert(id, parsed.clone());
                     }
                     if let Some((tool, a)) = args.get(call_id.as_str()) {
@@ -650,14 +656,19 @@ fn airline() -> Vec<Rule> {
         },
         Rule {
             id: "airline.basic_economy_flights",
-            policy: "Basic economy flights cannot be changed.",
+            policy: "Basic economy flights cannot be changed, even after an upgrade of the cabin.",
             tools: &["update_reservation_flights"],
             enforce: true,
             check: |f, c| {
-                let Some(r) = arg(c, "reservation_id").and_then(|id| f.reservations.get(id)) else {
+                let Some(id) = arg(c, "reservation_id") else {
+                    return Verdict::Unknown("no reservation id".to_string());
+                };
+                let Some(r) = f.reservations.get(id) else {
                     return Verdict::Unknown("the reservation was not looked up".to_string());
                 };
-                if r.get("cabin").and_then(Value::as_str) != Some("basic_economy") {
+                // The cabin it was booked in: upgrading first does not open
+                // a way around the rule.
+                if f.first_cabin.get(id).map(String::as_str) != Some("basic_economy") {
                     return Verdict::Pass;
                 }
                 let key = |fl: &Value| {
@@ -673,7 +684,10 @@ fn airline() -> Vec<Rule> {
                 if old == new {
                     Verdict::Pass
                 } else {
-                    Verdict::Fail("the reservation is basic economy, whose flights cannot change".to_string())
+                    Verdict::Fail(
+                        "the reservation was booked in basic economy, whose flights cannot change"
+                            .to_string(),
+                    )
                 }
             },
         },
@@ -1313,6 +1327,59 @@ mod tests {
             )
             .unwrap();
         assert!(why.contains("airline.cancel_allowed"), "{why}");
+    }
+
+    #[test]
+    fn upgrading_a_basic_economy_cabin_does_not_free_its_flights() {
+        let g = Guards::for_domain("airline").unwrap();
+        let reservation = |cabin: &str| {
+            json!({"reservation_id": "R1", "user_id": "u1", "cabin": cabin,
+                   "flights": [{"flight_number": "HAT1", "date": "2024-05-17"}]})
+        };
+        let update = |id: &str, cabin: &str, flight: &str| ToolCall {
+            id: id.to_string(),
+            name: "update_reservation_flights".to_string(),
+            arguments: json!({"reservation_id": "R1", "cabin": cabin, "payment_id": "credit_card_1",
+                              "flights": [{"flight_number": flight, "date": "2024-05-17"}]}),
+        };
+        let mut events = vec![
+            call("1", "get_user_details", json!({"user_id": "u1"})),
+            result(
+                "1",
+                "get_user_details",
+                json!({"user_id": "u1", "payment_methods": {"credit_card_1": {}}}),
+            ),
+            call(
+                "2",
+                "get_reservation_details",
+                json!({"reservation_id": "R1"}),
+            ),
+            result("2", "get_reservation_details", reservation("basic_economy")),
+            Event::User {
+                text: "Yes, go ahead.".to_string(),
+            },
+        ];
+        // Changing the cabin alone is allowed.
+        let upgrade = update("3", "economy", "HAT1");
+        assert_eq!(g.refusal(&episode(events.clone()), &upgrade), None);
+        events.push(call(
+            "3",
+            "update_reservation_flights",
+            upgrade.arguments.clone(),
+        ));
+        events.push(result(
+            "3",
+            "update_reservation_flights",
+            reservation("economy"),
+        ));
+        events.push(Event::User {
+            text: "Yes, now change the flight.".to_string(),
+        });
+        // Now economy, but booked in basic economy: its flights stay put.
+        let why = g
+            .refusal(&episode(events), &update("4", "economy", "HAT2"))
+            .unwrap();
+        assert!(why.contains("airline.basic_economy_flights"), "{why}");
     }
 
     #[test]
