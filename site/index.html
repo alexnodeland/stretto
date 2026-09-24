@@ -1,0 +1,1078 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stretto</title>
+<meta name="description" content="Compiling LLM agent behavior into typed probabilistic flows: a working paper on read-only flows, calibrated System-One decisions and policy guards, measured on τ²-bench.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #fbfbfa;
+    --surface: #ffffff;
+    --ink: #15181e;
+    --fg: #2c313b;
+    --muted: #677084;
+    --hairline: rgba(40, 52, 80, 0.15);
+    --grid: #e7e8ec;
+    --axis: #c3c7d0;
+    --accent: #1f5fbf;
+    --panel: rgba(40, 52, 80, 0.045);
+
+    /* data: domain identity and arms (validated pair) */
+    --retail: #0969da;
+    --airline: #9a6700;
+    --without: #8a93a5;
+    /* data: rules (validated pair) */
+    --rule-a: #0969da;
+    --rule-b: #eb6834;
+    /* data: voices of the score */
+    --v-customer: #8a93a5;
+    --v-agent: #15181e;
+    --v-flow: #0969da;
+    --v-write: #c2410c;
+
+    --serif: "Source Serif 4", "Source Serif Pro", Georgia, "Times New Roman", serif;
+    --sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0e1116;
+      --surface: #141920;
+      --ink: #eef1f6;
+      --fg: #c8ced9;
+      --muted: #8c95a8;
+      --hairline: rgba(160, 175, 210, 0.16);
+      --grid: #212835;
+      --axis: #36415a;
+      --accent: #6ea8ff;
+      --panel: rgba(160, 175, 210, 0.06);
+      --retail: #3987e5;
+      --airline: #c98500;
+      --without: #6b7489;
+      --rule-a: #3987e5;
+      --rule-b: #d95926;
+      --v-customer: #6b7489;
+      --v-agent: #eef1f6;
+      --v-flow: #58a6ff;
+      --v-write: #f08a4b;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0e1116;
+    --surface: #141920;
+    --ink: #eef1f6;
+    --fg: #c8ced9;
+    --muted: #8c95a8;
+    --hairline: rgba(160, 175, 210, 0.16);
+    --grid: #212835;
+    --axis: #36415a;
+    --accent: #6ea8ff;
+    --panel: rgba(160, 175, 210, 0.06);
+    --retail: #3987e5;
+    --airline: #c98500;
+    --without: #6b7489;
+    --rule-a: #3987e5;
+    --rule-b: #d95926;
+    --v-customer: #6b7489;
+    --v-agent: #eef1f6;
+    --v-flow: #58a6ff;
+    --v-write: #f08a4b;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--serif);
+    font-size: 18px;
+    line-height: 1.62;
+    padding-inline: max(18px, env(safe-area-inset-left, 0px));
+    padding-block: 48px 72px;
+  }
+  .paper { max-width: 760px; margin: 0 auto; display: grid; gap: 34px; }
+  p { margin: 0; }
+  a { color: var(--accent); text-underline-offset: 2px; text-decoration-thickness: 1px; }
+  a:focus-visible, [tabindex]:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  code { font-family: var(--mono); font-size: 0.8em; background: var(--panel); padding: 1px 5px; border-radius: 4px; }
+  pre { font-family: var(--mono); font-size: 13.5px; line-height: 1.55; background: var(--panel); border-radius: 8px; padding: 12px 14px; overflow-x: auto; margin: 0; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  em { font-style: italic; }
+  strong { color: var(--ink); font-weight: 600; }
+  sup.cite, a.cite { font-family: var(--sans); font-size: 0.72em; }
+  a.cite { text-decoration: none; }
+
+  header.title { display: grid; gap: 16px; }
+  .eyebrow { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  h1 { font-family: var(--serif); font-weight: 700; font-size: clamp(2.2rem, 6vw, 3.3rem); line-height: 1.08; letter-spacing: -0.015em; color: var(--ink); margin: 0; text-wrap: balance; }
+  .subtitle { font-size: clamp(1.15rem, 2.6vw, 1.35rem); line-height: 1.4; color: var(--fg); text-wrap: balance; }
+  .byline { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px 24px; font-family: var(--sans); font-size: 13.5px; border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); padding-block: 12px; }
+  .byline div { display: grid; gap: 1px; }
+  .byline .k { color: var(--muted); font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .byline .v { color: var(--ink); }
+
+  .abstract { display: grid; gap: 10px; background: var(--panel); border-radius: 10px; padding: 18px 20px; font-size: 16.5px; line-height: 1.58; }
+  .abstract .k { font-family: var(--sans); font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+  .epigraph { font-style: italic; color: var(--muted); font-size: 16px; border-left: 2px solid var(--hairline); padding-left: 14px; }
+  .epigraph span { font-style: normal; font-variant: small-caps; letter-spacing: 0.02em; }
+
+  section { display: grid; gap: 16px; }
+  h2 { font-family: var(--serif); font-weight: 700; font-size: 1.55rem; line-height: 1.22; color: var(--ink); margin: 14px 0 0; text-wrap: balance; display: flex; gap: 12px; align-items: baseline; }
+  h3 { font-family: var(--serif); font-weight: 600; font-size: 1.16rem; line-height: 1.3; color: var(--ink); margin: 8px 0 0; text-wrap: balance; display: flex; gap: 10px; align-items: baseline; }
+  .num { font-family: var(--mono); font-weight: 500; font-size: 0.72em; color: var(--muted); min-width: 1.8em; }
+  ul, ol { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
+  .contrib li::marker { color: var(--muted); }
+
+  figure { margin: 0; background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; padding: 16px 16px 12px; display: grid; gap: 12px; font-family: var(--sans); }
+  figcaption { font-size: 14px; line-height: 1.5; color: var(--fg); display: grid; gap: 4px; }
+  figcaption b { color: var(--ink); font-weight: 600; }
+  .fig-note { font-size: 12.5px; color: var(--muted); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--fg); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .legend svg { width: 14px; height: 12px; flex: 0 0 auto; display: inline-block; overflow: visible; }
+  .scroll-x { overflow-x: auto; overscroll-behavior-x: contain; }
+  .sw-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .sw-hollow { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--without); display: inline-block; }
+  .sw-tick { width: 2px; height: 12px; background: var(--ink); display: inline-block; }
+  .sw-dash { width: 18px; height: 0; border-top: 1.5px dashed var(--muted); display: inline-block; }
+  .multiples { display: flex; flex-wrap: wrap; gap: 18px; }
+  .multiples > div { flex: 1 1 300px; min-width: 0; display: grid; gap: 4px; align-content: start; }
+  .panel-title { font-size: 13px; font-weight: 600; color: var(--ink); }
+
+  svg { width: 100%; height: auto; display: block; overflow: visible; }
+  svg text { font-family: var(--sans); }
+  .grid { stroke: var(--grid); stroke-width: 1; }
+  .axis { stroke: var(--axis); stroke-width: 1; }
+  .tick { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .cat { fill: var(--fg); font-size: 12.5px; }
+  .subcat { fill: var(--muted); font-size: 11.5px; }
+  .dlabel { fill: var(--ink); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .halo { paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+  .hit { fill: transparent; }
+  .hit:focus-visible { outline: none; stroke: var(--accent); stroke-width: 2; }
+  .gate-line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
+  .diag { stroke: var(--axis); stroke-width: 1.5; stroke-dasharray: 4 4; }
+  .ceil { stroke: var(--ink); stroke-width: 2; }
+  .ceil-halo { stroke: var(--surface); stroke-width: 5; }
+  .s-retail { fill: var(--retail); } .s-airline { fill: var(--airline); }
+  .bg-retail { background: var(--retail); } .bg-airline { background: var(--airline); } .bg-ink { background: var(--ink); }
+  .bg-a { background: var(--rule-a); } .bg-b { background: var(--rule-b); } .bg-flow { background: var(--v-flow); } .bg-write { background: var(--v-write); } .bg-customer { background: var(--v-customer); }
+  .line-retail { stroke: var(--retail); stroke-width: 2; fill: none; }
+  .line-airline { stroke: var(--airline); stroke-width: 2; fill: none; }
+  .line-a { stroke: var(--rule-a); stroke-width: 2; fill: none; }
+  .line-b { stroke: var(--rule-b); stroke-width: 2; fill: none; }
+  .dot-retail { fill: var(--retail); stroke: var(--surface); stroke-width: 2; }
+  .dot-airline { fill: var(--airline); stroke: var(--surface); stroke-width: 2; }
+  .dot-a { fill: var(--rule-a); stroke: var(--surface); stroke-width: 2; }
+  .dot-b { fill: var(--rule-b); stroke: var(--surface); stroke-width: 2; }
+  .dot-ink { fill: var(--ink); stroke: var(--surface); stroke-width: 2; }
+  .dot-hollow { fill: var(--surface); stroke: var(--without); stroke-width: 2; }
+  .link { stroke: var(--axis); stroke-width: 2; }
+  .mark { transition: opacity 120ms ease; }
+  .dim .mark { opacity: 0.4; }
+  .dim .mark.on { opacity: 1; }
+
+  /* the score */
+  .staff { stroke: var(--grid); stroke-width: 1.2; }
+  .barline { stroke: var(--axis); stroke-width: 1.2; }
+  .voice-label { fill: var(--muted); font-size: 11.5px; font-weight: 500; letter-spacing: 0.02em; }
+  .system-label { fill: var(--ink); font-size: 13px; font-weight: 600; }
+  .n-customer { fill: var(--v-customer); }
+  .n-agent { fill: var(--v-agent); }
+  .n-write { fill: var(--v-write); }
+  .n-flow { fill: var(--v-flow); }
+  .n-say { fill: var(--surface); stroke: var(--v-agent); stroke-width: 1.8; }
+  .stem { stroke: var(--v-flow); stroke-width: 1.5; stroke-dasharray: 2 3; }
+  .turn-num { fill: var(--muted); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+  .note-label { fill: var(--fg); font-size: 10.5px; }
+
+  /* the architecture */
+  .arch { display: grid; grid-template-columns: 1fr auto 1.35fr auto 1fr; align-items: stretch; gap: 8px; font-size: 13px; }
+  .box { border: 1px solid var(--hairline); border-radius: 8px; padding: 10px 12px; background: var(--bg); display: grid; gap: 4px; align-content: start; }
+  .box b { color: var(--ink); font-size: 13.5px; }
+  .box small { color: var(--muted); font-size: 12px; line-height: 1.4; }
+  .box.core { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .box ul { padding-left: 1.1em; gap: 2px; font-size: 12.5px; }
+  .arrow { align-self: center; color: var(--muted); font-size: 18px; line-height: 1; text-align: center; }
+  .arch-below { display: grid; grid-template-columns: 1fr 1.35fr 1fr; gap: 8px; font-size: 13px; }
+  .arch-below .box { grid-column: 2; }
+  @media (max-width: 640px) {
+    .arch { grid-template-columns: 1fr; }
+    .arrow { transform: rotate(90deg); }
+    .arch-below { grid-template-columns: 1fr; }
+    .arch-below .box { grid-column: 1; }
+  }
+
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; font-family: var(--sans); font-size: 13.5px; font-variant-numeric: tabular-nums; width: 100%; }
+  caption { text-align: left; font-size: 14px; color: var(--fg); padding-bottom: 8px; caption-side: top; }
+  caption b { color: var(--ink); }
+  th, td { padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--hairline); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { color: var(--muted); font-weight: 500; }
+  td.wrap, th.wrap { white-space: normal; }
+  tr.group th { color: var(--ink); font-weight: 600; background: var(--panel); }
+  details { font-family: var(--sans); font-size: 13.5px; }
+  summary { cursor: pointer; color: var(--muted); width: fit-content; }
+  details .table-wrap { margin-top: 8px; }
+
+  .callout { background: var(--panel); border-radius: 10px; padding: 14px 16px; display: grid; gap: 8px; font-size: 16.5px; }
+  .kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+  .kv div { background: var(--surface); border: 1px solid var(--hairline); border-radius: 8px; padding: 10px 12px; display: grid; gap: 2px; font-family: var(--sans); }
+  .kv .v { font-size: 1.45rem; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .kv .l { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+
+  .status td:nth-child(2) { font-weight: 600; }
+  .ok { color: var(--retail); } .wip { color: var(--airline); }
+
+  ol.refs { font-size: 15px; line-height: 1.5; gap: 8px; padding-left: 2.2em; }
+  ol.refs li::marker { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  footer { font-family: var(--sans); font-size: 13.5px; color: var(--muted); border-top: 1px solid var(--hairline); padding-top: 16px; display: grid; gap: 6px; }
+
+  #tip { position: fixed; z-index: 10; pointer-events: none; background: var(--surface); color: var(--fg); border: 1px solid var(--hairline); border-radius: 8px; padding: 8px 10px; font-family: var(--sans); font-size: 12.5px; box-shadow: 0 6px 20px rgba(0,0,0,0.14); display: grid; gap: 4px; max-width: 280px; }
+  .tip-row { display: grid; grid-template-columns: 14px auto 1fr; gap: 8px; align-items: center; }
+  .tip-row strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .tip-key { width: 14px; height: 3px; border-radius: 2px; }
+  .tip-row.nokey { grid-template-columns: auto 1fr; }
+
+  @media (max-width: 520px) {
+    body { font-size: 17px; }
+    .abstract { padding: 14px 14px; }
+    figure { padding: 12px 10px 10px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .mark { transition: none; } }
+</style>
+</head>
+<body>
+<article class="paper">
+
+<header class="title">
+  <div class="eyebrow">Working paper · v0.1 · 24 September 2026</div>
+  <h1>Stretto</h1>
+  <p class="subtitle">Compiling LLM agent behavior into typed probabilistic flows, with calibrated System-One decisions at the branch points</p>
+  <div class="byline">
+    <div><span class="k">Author</span><span class="v">Alex Nodeland</span></div>
+    <div><span class="k">Code</span><span class="v"><a href="https://github.com/alexnodeland/stretto">alexnodeland/stretto</a></span></div>
+    <div><span class="k">Design</span><span class="v"><a href="https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md">fugue RFC-001</a></span></div>
+    <div><span class="k">Built on</span><span class="v"><a href="https://github.com/alexnodeland/fugue">fugue</a> · <a href="https://typesafe.ai">Jev</a> · <a href="https://github.com/sierra-research/tau2-bench">τ²-bench</a></span></div>
+  </div>
+</header>
+
+<div class="abstract">
+  <span class="k">Abstract</span>
+  <p>An LLM agent pays for every tool call with a turn of the LLM, and many of those calls are predictable lookups. We treat an agent's trace as a walk over the action space its tools define, learn a Bayesian model of that walk from recorded episodes, and compile its predictable parts into <em>flows</em>: read-only continuations that run between the agent's turns. Each branch point is decided by weighing the learned habit against a calibrated System-One model (TypeSafe's Jev), and each lookup's arguments are bound from results already in hand. Because a flow never writes, a wrong pick costs one extra lookup rather than a wrong action.</p>
+  <p>On τ²-bench's published trajectories, read-only flows save 17% of LLM turns in retail and 13% in airline offline, and they transfer to nine agent models they never saw. Live, with GLM-5.3 as the agent and the flow behind its MCP tools, adding no tools and changing no prompt, ten paired retail tasks took 24% fewer LLM turns and 21% fewer input tokens at the same pass rate. In airline, 17% fewer LLM turns, with 9 of 10 tasks passed against 8 without the flow. Policy guards compiled from the written policy refuse a policy-breaking write in 38% of failed airline episodes and in 1% of successful ones, each of which τ²-bench's own task notes forbid. The system is open source: a Rust MCP proxy, a flow IR, and the measurement pipeline.</p>
+</div>
+
+<p class="epigraph"><span>stretto</span> (It., "narrow, tight"): the passage of a fugue in which entries of the subject overlap, each voice entering before the previous one has finished. Here, a flow's lookups enter before the agent's turn is over.</p>
+
+<!-- ==================================================================== -->
+<section id="intro">
+  <h2><span class="num">1</span>Introduction</h2>
+  <p>A tool-using agent works in turns. The LLM reads the conversation, emits a tool call, waits for the result, reads everything again, and emits the next call. In τ²-bench's customer-service domains, about a quarter of all LLM turns are spent inside runs of consecutive tool calls, before the agent says anything to the customer (§5.1). Most of those calls are lookups whose tool and arguments follow from what the previous call returned: a user's profile lists their orders, so the next call reads an order.</p>
+  <p>That regularity is visible in traces. An agent's trace is a walk over a small alphabet, the tools it may call plus "reply to the customer", and the walk is far more predictable than the text around it<a class="cite" href="#r8">[8]</a><a class="cite" href="#r17">[17]</a>. Prior work has mined such traces into workflows, but leaves the branch points to the LLM or to hand-written rules<a class="cite" href="#r24">[24]</a>, or skips the LLM one step at a time on an uncalibrated score<a class="cite" href="#r13">[13]</a>. What has been missing is a cheap decider for the branch points: something that answers a typed question about the state, fast, with a probability that means something.</p>
+  <p>System-One models now fill that role. Jev takes a state and typed questions (a choice among options, a score, a yes/no) and returns calibrated probabilities in 70–500 ms, at $0.042 per million input tokens. It never generates text. Stretto combines the two: it learns the habit from traces, compiles it into flows with explicit decision sites, and decides each site by weighing the habit against Jev and a few yes/no questions about the state, handing back to the LLM whenever the answer is not good enough.</p>
+
+  <figure id="fig-score">
+    <div class="legend" aria-hidden="true">
+      <span><i class="sw-dot bg-customer"></i>Customer message</span>
+      <span><svg width="12" height="12" viewBox="0 0 12 12"><ellipse cx="6" cy="6" rx="5" ry="3.8" transform="rotate(-20 6 6)" class="n-agent"/></svg>Agent tool call (one LLM turn)</span>
+      <span><svg width="12" height="12" viewBox="0 0 12 12"><ellipse cx="6" cy="6" rx="5" ry="3.8" transform="rotate(-20 6 6)" class="n-say"/></svg>Agent reply (one LLM turn)</span>
+      <span><svg width="12" height="12" viewBox="0 0 12 12"><ellipse cx="6" cy="6" rx="5" ry="3.8" transform="rotate(-20 6 6)" class="n-write"/></svg>Write</span>
+      <span><svg width="12" height="12" viewBox="0 0 12 12"><ellipse cx="6" cy="6" rx="5" ry="3.8" transform="rotate(-20 6 6)" class="n-flow"/></svg>Flow lookup (no LLM turn)</span>
+    </div>
+    <div class="scroll-x"><div id="score-chart"></div></div>
+    <figcaption><span><b>Figure 1.</b> One live episode, scored in three voices: τ²-bench retail task 51, GLM-5.3 as the agent, with and without a flow. A customer asks to return a digital camera. Without the flow, the agent reads the user's profile and four orders one LLM turn at a time. With it, the flow's two lookups arrive in the response to the agent's first call, and the agent goes straight back to the customer. Bar lines mark the customer's turns. 10 LLM turns become 5; both episodes pass τ²-bench's database check.</span></figcaption>
+  </figure>
+
+  <p>The design choice that makes this safe is that flows only read. Between the agent's turns a flow may call tools its server marks read-only. Anything that changes the world goes back to the LLM. A flow that picks the wrong next step therefore makes one extra lookup and hands back. It costs a pause and some tokens, and changes nothing in the environment. This turns the question "is the System-One model accurate enough to act?" into "is it accurate enough to be worth a lookup?", which it is.</p>
+  <p>Our contributions:</p>
+  <ul class="contrib">
+    <li><strong>A measurement method on public trajectories</strong> (§5.1–5.3): how many LLM turns macro-tools could remove, where write arguments come from, how predictable the next action is, and how well a habit transfers across models.</li>
+    <li><strong>Read-only flows with Bayesian arbitration</strong> (§3.3–3.6): a System-One model weighed against the habit, its own record per site, and state predicates by a cross-fitted conditional logit, acting on the probability that the whole call, arguments included, is the agent's.</li>
+    <li><strong>A live form that needs no cooperation from the agent</strong> (§3.7, §5.6): the flow runs behind the agent's own tool calls and returns its lookups in the same response, measured live with GLM-5.3.</li>
+    <li><strong>Typed policy guards, audited against traces</strong> (§3.8, §5.7): checks compiled from the written policy that pass, fail or do not know, tested on 2,624 trajectories before any is enforced.</li>
+    <li><strong>An open implementation</strong> (§4): a Rust MCP proxy that records sessions and serves flows, a versioned flow IR, and learning from recorded sessions of any MCP server.</li>
+  </ul>
+</section>
+
+<!-- ==================================================================== -->
+<section id="related">
+  <h2><span class="num">2</span>Related work</h2>
+  <p><strong>Learned models of agents.</strong> AgentGuard<a class="cite" href="#r1">[1]</a>, TriCEGAR<a class="cite" href="#r2">[2]</a>, ProbGuard<a class="cite" href="#r3">[3]</a> and ATLAS<a class="cite" href="#r9">[9]</a> learn MDPs, Markov chains or automata from agent traces and model-check them, to flag, re-prompt or halt an agent. They monitor; stretto uses the same kind of model to <em>execute</em> the predictable part. Automata from Agent Traces<a class="cite" href="#r8">[8]</a> finds under one bit per step on harness-level alphabets, which is both our motivation and a caution: tool choice is far more predictable than arguments<a class="cite" href="#r17">[17]</a>.</p>
+  <p><strong>Compiling and speculating.</strong> TraceCompiler<a class="cite" href="#r24">[24]</a> mines argument dataflow and recurring macros into mostly deterministic workflows, and Agent Workflow Memory and plan caching<a class="cite" href="#r25">[25]</a> reuse past workflows. Their branch points go to the LLM or to rules. AutoTool<a class="cite" href="#r13">[13]</a> executes a predicted next tool without the LLM when a heuristic score clears a threshold. Speculative actions<a class="cite" href="#r15">[15]</a><a class="cite" href="#r16">[16]</a> and parallel tool execution<a class="cite" href="#r14">[14]</a> keep the LLM confirming every step. Stretto decides branch points with calibrated, typed answers, and makes the decision safe by construction rather than by confirmation.</p>
+  <p><strong>Escalation.</strong> R2V and ReDAct<a class="cite" href="#r23">[23]</a> route steps from a small generative model to a large one with a calibrated router. Stretto's fast path is not generative: it chooses among a site's options, and its arguments are bound from data, not written.</p>
+  <p><strong>Policy enforcement.</strong> ShieldAgent and AgentSpec<a class="cite" href="#r5">[5]</a> check agent actions against rules at runtime. Stretto's guards are closest to AgentSpec's runtime rules. What we add is a three-valued verdict (a rule that lacks the facts does not refuse) and an audit against recorded trajectories that decides which rules are enforced.</p>
+</section>
+
+<!-- ==================================================================== -->
+<section id="method">
+  <h2><span class="num">3</span>Method</h2>
+
+  <h3><span class="num">3.1</span>Traces as walks over the action space</h3>
+  <p>An episode is a sequence of events: customer messages, assistant turns (text and zero or more tool calls), and tool results. Stretto abstracts each assistant turn to an <em>action</em>, a tool name or <code>respond</code>, and each result to an <em>outcome</em>, ok or error. The alphabet comes from the live tool manifest, so a model can only ever propose actions the agent is allowed to take. Tools the server marks read-only (MCP's <code>readOnlyHint</code>) are <em>lookups</em>; everything else is a write.</p>
+
+  <h3><span class="num">3.2</span>The habit</h3>
+  <p>The habit predicts the next action from the last <em>k</em> steps and their outcomes with a hierarchical Dirichlet back-off model: counts at each context length are smoothed toward the next shorter context, down to the unigram, with one concentration α. Stretto infers α by Metropolis–Hastings over the prequential marginal likelihood of the training episodes, in fugue, and uses the posterior median. Enum-like fields read from tool outputs (an order's status, a cabin class) can extend the context. Each is kept only if it improves held-out prediction under five-fold cross-validation grouped by task, which rejects fields that merely identify a task. The habit is learned from successful training episodes only.</p>
+
+  <h3><span class="num">3.3</span>Flows and their decision sites</h3>
+  <p>A flow is a read-only continuation. Its decision site is the lookup that just returned; its options are the lookups agents made next at that site in training, plus handing back to the LLM. At each site the flow puts a slice of the state (the customer's messages, the calls so far, the latest result) to the System-One model as typed questions:</p>
+  <ul>
+    <li><em>which comes next</em>, asked two ways: as one <code>Choice</code> among the site's lookups and handing back, and split into a yes/no question (is more needed?) and a choice among the lookups;</li>
+    <li>three yes/no predicates about the state, as <code>Noul</code> questions: are records in a list still unchecked, are options still missing, is something needed that only the customer can give.</li>
+  </ul>
+  <p>All questions go in one request, and Jev evaluates them in parallel. Answers are cached by the SHA-256 of the request, so a repeated question is free, and replaying a run needs no key.</p>
+
+  <h3><span class="num">3.4</span>Arbitration, not pooling</h3>
+  <p>Jev's pick is not taken at its word. A conditional logit scores each option <em>o</em> at a site from features of that option:</p>
+  <pre><code>s(o) = w₁·ln P_habit(o) + w₂·ln P_one(o) + w₃·ln P_split(o) + w₄·[o = hand back]
+     + Σⱼ w₅ⱼ·[o ∈ Oⱼ]·logit P(yes to predicate j)
+     + w_r·[o = Jev's pick]·logit r(site)</code></pre>
+  <p>Here <em>P</em><sub>habit</sub> is the habit's prediction with all mass on steps a flow cannot take moved to handing back, <em>O</em><sub>j</sub> is the set of options predicate <em>j</em> bears on (the same lookup again, any lookup, or handing back), and <em>r</em>(site) is Jev's agreement with the agent at that site on other tasks, shrunk toward its overall agreement: a one-coin Dawid–Skene sensor<a class="cite" href="#rf3">[F3]</a> whose labels are known. <em>P</em>(o) ∝ exp <em>s</em>(o), scaled by how often the agent's step was among the site's options at all. The weights are fitted by maximum likelihood on the agents' own next steps, with a ridge penalty, cross-fitted over five folds of tasks, so no decision is ever scored by weights that saw its task. A live flow judges each task with the fold that held it out.</p>
+
+  <h3><span class="num">3.5</span>Acting: lookup first</h3>
+  <p>For a read-only flow, handing back costs an LLM turn and a wrong lookup does not. The cost-optimal rule is therefore to take the likeliest lookup whenever it is likely enough to pay for its tokens. Stretto takes the best lookup when <em>P</em>(tool) × <em>P</em>(arguments are the agent's) ≥ 0.3, and hands back otherwise. Every wrong lookup still has to be carried in later prompts, so the projection charges each one the tokens of a typical lookup (about 250) in every later turn.</p>
+
+  <h3><span class="num">3.6</span>Binding arguments</h3>
+  <p>A lookup needs arguments, and in τ²-bench 85–91% of write-argument values appear verbatim in an earlier tool output (§5.1). For each argument of each lookup, stretto learns from training where the agent's values came from: a source tool and a JSON path in its result, such as <code>get_user_details</code> at <code>$.orders[*]</code>. Live, it takes the first candidate at that path that has not been looked up yet, preferring one the customer mentioned. How much to trust a binding is measured per call: in training, how often the arguments it would have bound, all at once, matched the agent's own call, split by whether the customer had mentioned the value. For retail that is 92% for orders and 60% for products the customer did not mention (95% and 76% when mentioned).</p>
+
+  <h3><span class="num">3.7</span>The live form: flows behind the agent's own calls</h3>
+  <p>A flow could be exposed as a macro-tool the LLM calls by name, but that asks the agent to adopt a new tool. The first live form asks nothing of it. After each of the agent's own tool calls, the flow asks its questions, makes the lookups it is sure enough of, and appends their results to the same tool response under a short header, until it hands back. The agent sees more of what it needs per call and spends fewer turns gathering it. The flow is goal-free: nobody tells it what the customer wants, and §5.5 shows it does not need to know.</p>
+
+  <h3><span class="num">3.8</span>Policy guards</h3>
+  <p>Flows never write, but agents do. A guard is one rule of a domain's written policy compiled into a check a proxy runs before a write reaches the server. It reads only what the episode has shown: the user the agent authenticated, the records it looked up, what the customer said. So it returns one of three verdicts:</p>
+  <ul>
+    <li><strong>pass</strong>;</li>
+    <li><strong>fail</strong>, with a reason, when the facts in hand break the rule;</li>
+    <li><strong>unknown</strong>, when a record the rule needs was never looked up.</li>
+  </ul>
+  <p>Only a failure of an enforced rule refuses the write. The agent then gets the reason and the rule's id in place of the tool's result. τ²-bench's policies yield 12 retail and 10 airline rules. An LLM (Claude, while drafting the module) compiled them from the policy text. Which of them are enforced is decided by an audit against recorded trajectories (§5.7), not by the compiler.</p>
+</section>
+
+<!-- ==================================================================== -->
+<section id="system">
+  <h2><span class="num">4</span>System</h2>
+  <p>Stretto is five Rust crates and a CLI, released under the MIT license. The live path is an MCP proxy that sits between any MCP client and server:</p>
+  <figure id="fig-arch">
+    <div class="arch" role="img" aria-label="Architecture: the agent talks MCP to stretto-proxy, which records the session, serves a flow and checks writes against guards, and forwards calls to the MCP server. The flow asks Jev. Recorded sessions are learned into a flow IR.">
+      <div class="box"><b>Agent</b><small>Any MCP client: Claude Code, an SDK harness. Unchanged prompt and tools.</small></div>
+      <div class="arrow" aria-hidden="true">⇄</div>
+      <div class="box core"><b>stretto-proxy</b>
+        <ul>
+          <li>forwards every line and records the session (JSONL, v2)</li>
+          <li>after a lookup, runs the flow and appends its lookups</li>
+          <li>before a write, checks the guards</li>
+        </ul>
+      </div>
+      <div class="arrow" aria-hidden="true">⇄</div>
+      <div class="box"><b>MCP server</b><small>The tools. Read-only hints decide what a flow may call.</small></div>
+    </div>
+    <div class="arch-below">
+      <div class="box"><b>Flow IR</b><small>Versioned JSON: habit, sites, fitted arbiter folds, bindings, provenance. <code>stretto compile</code> builds it from τ²-bench results; <code>stretto learn</code> from recorded sessions. Decisions ask Jev (cached by request hash).</small></div>
+    </div>
+    <figcaption><span><b>Figure 2.</b> The live path. The pilot of §5.6 ran the same flow through a harness around τ²-bench's MCP tool server (<code>pilot/</code>), which also records every flow decision.</span></figcaption>
+  </figure>
+  <div class="table-wrap">
+    <table class="status">
+      <caption><b>Table 1.</b> What each crate does, and what is built.</caption>
+      <thead><tr><th>Crate</th><th>State</th><th class="wrap">What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>stretto-trace</code></td><td class="ok">built</td><td class="wrap">Canonical episode schema; τ²-bench results and MCP session logs in; tool manifests with docs and read-only hints.</td></tr>
+        <tr><td><code>stretto-model</code></td><td class="ok">built</td><td class="wrap">Action abstraction; hierarchical Dirichlet back-off habit; α posterior by MH in fugue; code features; argument provenance; tool runs.</td></tr>
+        <tr><td><code>stretto-oracle</code></td><td class="ok">built</td><td class="wrap"><code>Oracle</code> trait; Jev client; on-disk replay cache keyed by request hash; mock.</td></tr>
+        <tr><td><code>stretto-report</code></td><td class="ok">built</td><td class="wrap">The <code>stretto</code> CLI: Phase 0 reports; System-One questions; arbiter; flows (<code>compile</code>, <code>learn</code>, <code>serve</code>); guards and their audit.</td></tr>
+        <tr><td><code>stretto-proxy</code></td><td class="wip" id="proxy-state">recording</td><td class="wrap" id="proxy-what">A stdio MCP proxy that forwards every line unchanged and records sessions. Serving flows and guards in the proxy itself is in progress; the pilot serves them from its harness.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<section id="setup">
+  <h2><span class="num">5</span>Experiments</h2>
+  <p><strong>Data.</strong> τ²-bench<a class="cite" href="#r26">[26]</a> publishes trajectories for four 2025 agent models (Claude 3.7 Sonnet, GPT-4.1, GPT-4.1 mini and o4-mini, with GPT-4.1 simulating the customer), four trials per task: 2,624 episodes in retail and airline. Everything is learned on τ²-bench's official train split and measured on its test split. As transfer targets we use nine runs from Sierra's τ²-bench leaderboard (5,904 episodes): GLM-5, Qwen3.5-397B, Qwen3-Max, GPT-5.2 with reasoning high and off, Claude Opus 4.5 and Sonnet 4.5, and Gemini 3 Pro and Flash. Nothing is ever learned from them.</p>
+  <p><strong>Measures.</strong> The unit of cost is the LLM turn: one assistant message, whatever it contains. Offline, we replay held-out episodes through a flow and count the turns it would have removed. A <em>detour</em> is a lookup the agent did not make. <em>Agreement</em> is how often a decider's pick matches the agent's actual next step. That is conservative, since an equally good step counts as a miss, and it is not correctness: the agents fail 21–50% of tasks.</p>
+
+  <h3><span class="num">5.1</span>A quarter of LLM turns sit inside tool runs</h3>
+  <p>If every run of consecutive tool calls were one macro-tool call, 23.8% of LLM turns would disappear in retail and 25.1% in airline (Figure 3). How much a model leaves on the table depends on how it calls tools: models that batch parallel calls have already collapsed part of the work.</p>
+  <figure>
+    <div class="legend" aria-hidden="true"><span><i class="sw bg-retail"></i>Retail</span><span><i class="sw bg-airline"></i>Airline</span></div>
+    <div id="headroom-chart"></div>
+    <figcaption><span><b>Figure 3.</b> Macro-tool headroom: the share of LLM turns beyond the first call of each tool run, by agent model, all tasks and trials.</span></figcaption>
+    <details><summary>Show table</summary><div class="table-wrap"><table id="headroom-table"></table></div></details>
+  </figure>
+  <p>The arguments are mostly already there. Of 12,730 write-argument values in retail, 91.2% appear verbatim in an earlier tool output, 3.0% only in what the customer said, and 1.6% were generated by the agent (airline: 84.5%, 1.5%, 3.2% of 6,792). What agents do generate is mostly a closed-set choice, such as a cancellation reason, or arithmetic, which belongs in code.</p>
+
+  <h3><span class="num">5.2</span>A habit takes a slice; content decides the rest</h3>
+  <p>On the action sequence alone, the habit is rarely sure right after a tool returns: at 0.8 confidence with at least five supporting observations, it can take 8.3% of those decisions in retail and 5.8% in airline. Code features lift that to 13.8% in retail, and naming the episode's intent to 19.5%. In airline they add under two points: its 30 training tasks are too few to support them. Where it acts, it agrees with the agent 82–99% of the time. That is not enough to act on alone: held to 99% cross-validated agreement per context, over at least ten distinct tasks, one context per domain survives, and in both the habit's call is to hand back. Whether a run continues depends on what the tool returned, which is the System-One model's job.</p>
+  <p>Habits do carry across models. A habit learned from one model predicts another's held-out behavior within 3–7 points of top-1 agreement of that model's own habit, and habits from the 2025 baselines predict GLM-5 within 4 points of its own in retail and match it in airline. That is what licenses compiling flows from one set of trajectories and serving them to another model.</p>
+
+  <h3><span class="num">5.3</span>Zero-shot, Jev is calibrated but not accurate enough to carry writes</h3>
+  <p>Phase 0b asked jev-1.13.0 at every held-out decision a flow would hand it: which tool comes next, or whether to hand back, with every tool as an option, and each closed-set argument. That was 8,946 questions, 28M input tokens, for $1.19. Jev agreed with the agent 72% of the time, and 92–93% when it was at least 0.9 sure (Figure 4; expected calibration error 0.06). Its probability means something, but flows that also <em>write</em> need roughly 99%. Trusted at p ≥ 0.9, such flows would save 3.9% of turns in retail and 4.7% in airline while making a call the agent did not make in 6% and 13% of episodes. That result is what led to read-only flows.</p>
+  <figure>
+    <div class="legend" aria-hidden="true"><span><i class="sw-dot bg-retail"></i>Retail</span><span><i class="sw-dot bg-airline"></i>Airline</span><span><i class="sw-dash"></i>Perfect calibration</span></div>
+    <div id="rel-chart"></div>
+    <figcaption><span><b>Figure 4.</b> How often Jev's zero-shot pick matched the agent's next step, by how sure it was. Next-step questions, four 2025 models pooled; bins with fewer than 20 picks are omitted.</span></figcaption>
+    <details><summary>Show table</summary><div class="table-wrap"><table id="rel-table"></table></div></details>
+  </figure>
+
+  <h3><span class="num">5.4</span>Read-only flows, weighed answers, lookup first</h3>
+  <p>Making flows read-only costs little ceiling: with a perfect System-One model they would save 21.0% of turns in retail and 17.7% in airline, against 22.3% and 20.6% for flows that may also write. Narrower questions alone did not make Jev more accurate (73–78% on the same decisions). Weighing its answers did (Table 2). Where the combination is at least 0.99 sure, it agrees 99.2% of the time in retail (on 10.6% of decisions) and 97.0% in airline (on 25.2%). Of the predicates, "records still unchecked" carries the most weight.</p>
+  <div class="table-wrap">
+    <table>
+      <caption><b>Table 2.</b> Agreement with the agent's next step at held-out decisions. 32,116 answers from jev-1.13.0, 80.7M input tokens, $3.39.</caption>
+      <thead><tr><th>Decider</th><th>Retail</th><th>Airline</th><th>GLM-5, retail</th><th>GLM-5, airline</th></tr></thead>
+      <tbody>
+        <tr><td>Jev alone, one question</td><td>76.2%</td><td>72.4%</td><td>77.9%</td><td>63.3%</td></tr>
+        <tr><td>Combined with the habit</td><td>77.9%</td><td>74.3%</td><td>81.7%</td><td>69.5%</td></tr>
+        <tr><td>Combined, with predicates</td><td>80.5%</td><td>78.9%</td><td>85.7%</td><td>75.8%</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Because a detour is harmless, flows can act on weaker picks. Taking the likeliest lookup at p ≥ 0.3 saves 17.4% of LLM turns in retail and 12.8% in airline, pooled over the 2025 models, with at least one detour in 57–67% of episodes (Figure 5). Dollars fall faster than turns even after charging every detour, because a typical lookup returns only 200–250 tokens.</p>
+  <figure>
+    <div class="legend" aria-hidden="true"><span><i class="sw-dot bg-a"></i>Combined answer, p ≥ 0.9, 0.7, 0.5</span><span><i class="sw-dot bg-b"></i>Lookup first, p ≥ 0.4, 0.3, 0.2</span><span><i class="sw-dot bg-ink"></i>Perfect System-One model</span><span><i class="sw-dash"></i>20% target</span></div>
+    <div class="multiples"><div><div class="panel-title">Retail</div><div id="ro-retail"></div></div><div><div class="panel-title">Airline</div><div id="ro-airline"></div></div></div>
+    <figcaption><span><b>Figure 5.</b> LLM turns saved against episodes with a detour, read-only flows on held-out tasks, pooled over the four 2025 models. Points are thresholds on the combined probability.</span></figcaption>
+    <details><summary>Show table</summary><div class="table-wrap"><table id="ro-table"></table></div></details>
+  </figure>
+  <p>Across the nine leaderboard models, none of them trained on, the savings track how each model calls tools (Figure 6). Models that call one tool at a time leave long runs to shorten: Qwen3.5 saves 34.1% in retail and 27.8% in airline. The heaviest parallel callers have already done that work themselves. In airline, Claude Opus 4.5, GLM-5 and GPT-5.2 stay under 5%, against read-only ceilings of 12–17%.</p>
+  <figure>
+    <div class="legend" aria-hidden="true"><span><i class="sw bg-retail"></i>Retail</span><span><i class="sw bg-airline"></i>Airline</span><span><i class="sw-tick"></i>Read-only ceiling</span><span><i class="sw-dash"></i>20% target</span></div>
+    <div id="targets-chart"></div>
+    <figcaption><span><b>Figure 6.</b> LLM turns saved by read-only flows on the nine leaderboard models, held-out tasks, lookup first at p ≥ 0.3. Models are ordered by how often they call tools in parallel in retail, least first. Ticks mark each model's ceiling with a perfect System-One model.</span></figcaption>
+    <details><summary>Show table</summary><div class="table-wrap"><table id="targets-table"></table></div></details>
+  </figure>
+
+  <h3><span class="num">5.5</span>Flows do not need the goal</h3>
+  <p>Every run above told the flow the episode's goal (the writes it goes on to make), as a macro-tool call would name it. A flow running behind the agent's calls gets no such thing. Asked again without it, 8,092 more questions for $0.93, nothing measurable changed: agreement 80.5% in retail and 78.4% in airline (80.5% and 78.9% with the goal), and 17.3% and 12.6% of turns saved (17.4% and 12.8%). GLM-5 still clears 20% in retail (20.3%). This fits what read-only flows decide. Which record to read next, and whether there is enough, is in the lookups already made and in what the customer said. It is not in the goal.</p>
+
+  <h3><span class="num">5.6</span>Live</h3>
+  <p><strong>Replay first.</strong> Before any live run, GLM-5's recorded retail test episodes were replayed through the live flow, with real Jev answers and no LLM; a recorded call the flow had already made was skipped. Over all four trials, 160 episodes and 1,384 LLM turns, the live flow saved 294 turns (21.2%), where the offline projection saves 281 (20.3%). 91% of its lookups were the agent's own, and 27 episodes had a detour, against 45 projected. Weighing each lookup by its binding agreement (§3.6) had cut detours from 42 to 18 on one trial without losing a saved turn. Where the flow follows the agent's path it asks byte-identical questions to the offline run, so they come from the replay cache.</p>
+  <p><strong>Paired pilot.</strong> The agent was GLM-5.3 in Claude Code, on Z.ai's GLM Coding Plan, with τ²-bench's tools served over MCP. GLM-5.3 also played the customer, from τ²-bench's user-simulator prompt. Ten test tasks per domain were drawn at random, seeded, and each ran once without and once with the flow. The flow was compiled goal-free from the 2025 baselines, and it asked Jev live. The reward is τ²-bench's database check alone. Its natural-language assertions need an LLM judge and were left out.</p>
+  <div class="table-wrap">
+    <table>
+      <caption><b>Table 3.</b> The paired live pilots: ten random test tasks per domain, one episode per arm, GLM-5.3 in Claude Code.</caption>
+      <thead><tr><th></th><th>Retail, without</th><th>Retail, with</th><th>Airline, without</th><th>Airline, with</th></tr></thead>
+      <tbody>
+        <tr><td>LLM turns</td><td>110</td><td>84 (−23.6%)</td><td>127</td><td>105 (−17.3%)</td></tr>
+        <tr><td>Saved per episode, 95% interval</td><td></td><td>2.6 (1.0 to 4.2)</td><td></td><td>2.2 (0.5 to 3.9)</td></tr>
+        <tr><td>Agent input tokens</td><td>723,926</td><td>571,528 (−21.1%)</td><td>996,580</td><td>849,367 (−14.8%)</td></tr>
+        <tr><td>Agent's own tool calls</td><td>69</td><td>42</td><td>84</td><td>60</td></tr>
+        <tr><td>Flow lookups (repeated by the agent)</td><td></td><td>26 (3)</td><td></td><td>24 (0)</td></tr>
+        <tr><td>Passed the database check</td><td>8 of 10</td><td>8 of 10</td><td>8 of 10</td><td>9 of 10</td></tr>
+        <tr><td>Z.ai credits</td><td>128.5</td><td>108.0</td><td>176.4</td><td>157.6</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <figure>
+    <div class="legend" aria-hidden="true"><span><i class="sw-hollow"></i>Without the flow</span><span><i class="sw-dot bg-retail"></i>With the flow, retail</span><span id="airline-legend" hidden><i class="sw-dot bg-airline"></i>With the flow, airline</span></div>
+    <div class="multiples stacked"><div><div class="panel-title">Retail</div><div id="pilot-retail"></div></div><div id="pilot-airline-wrap" hidden><div class="panel-title">Airline</div><div id="pilot-airline"></div></div></div>
+    <figcaption><span><b>Figure 7.</b> LLM turns per task without and with the flow, one live episode per arm. GLM-5.3 as the agent in Claude Code. The labels count the flow's lookups. Hover for tokens and the database check.</span></figcaption>
+    <details><summary>Show table</summary><div class="table-wrap"><table id="pilot-table"></table></div></details>
+  </figure>
+  <p>In retail the flow saved 2.6 LLM turns per episode (95% interval 1.0 to 4.2). It acted on 9 of the 10 tasks, making 26 lookups, and the agent repeated 3 of them. On those nine tasks turns fell by 26%. The one task where it never acted took a turn more, because the simulated customer never replies the same way twice. <span id="airline-live">In airline the flow acted on every task, with 24 lookups the agent never repeated, and saved 2.2 turns per episode (95% interval 0.5 to 3.9). None of the three failures came from a flow decision. Without the flow, the agent booked a flight on a task that expects no write, and added a paid bag nobody asked for. With it, on task 31, the simulated customer pushed for an exception, and the agent upgraded a basic-economy ticket so that it could then change its flights. The task expects no change, and the flow's three lookups there were the agent's own. That episode is what sharpened the basic-economy guard (§5.7).</span></p>
+  <p>The airline result exceeds its projection. Offline, flows save GLM-5 under 5% of turns in airline (Figure 6), because GLM-5 in τ²-bench's own harness makes parallel calls in 45% of its airline tool turns. GLM-5.3 in Claude Code made them in 3.8% (3.0% in retail), so it behaves like the sequential callers at the top of Figure 6. The live agent differs from the leaderboard run in model version as well as harness. Either way, what matters for flows is how the agent in front of them calls tools, and that is measurable from a few recorded sessions. The two pilots cost 571 Z.ai credits and a few cents of Jev questions.</p>
+  <p>Ten pairs cannot bound a one-point loss of pass^1. They show that the mechanism works live, without the agent's cooperation, and give a first effect size.</p>
+
+  <h3><span class="num">5.7</span>Guards against recorded trajectories</h3>
+  <p><code>stretto guards</code> checks every write in every published trajectory against what came before it, as a proxy would, and sorts it by whether the tool accepted it. A guard that fails a write the tool also refused agrees with the tool. A guard that fails a write the tool accepted, in an episode that then succeeded, is a false alarm, or a policy the episode broke and passed anyway. τ²-bench grades the database, not every rule.</p>
+  <figure>
+    <div class="legend" aria-hidden="true"><span><i class="sw bg-a"></i>Failed episodes</span><span><i class="sw bg-b"></i>Successful episodes</span></div>
+    <div id="guards-chart"></div>
+    <figcaption><span><b>Figure 8.</b> Share of episodes in which an enforced guard would refuse a write the tool accepted, τ²-bench's published trajectories for the four 2025 models.</span></figcaption>
+  </figure>
+  <p>In airline the enforced rules would refuse an accepted write in 141 of 369 failed episodes (38%) and 5 of 431 successful ones. All five are cancellations that τ²-bench's own task notes forbid (tasks 9 and 37: "Agent does not cancel reservation NQNU5R since it is in the past"). The cancellation-eligibility rule alone fires in 116 failed episodes. The airline API does not check eligibility, and its policy says so. In retail the guards separate nothing: 1 of 500 failed and 28 of 1,324 successful episodes, each a break of the written policy that passed the database check (exchanging an item for itself, writing before checking an order's status, one user never authenticated). Retail's tools already enforce most of their own policy.</p>
+  <p>The live airline pilot sharpened a rule. The basic-economy rule first read a reservation's current cabin, so upgrading the cabin and then changing the flights, as the agent did on task 31, passed it. It now reads the cabin the reservation was booked in. On the published trajectories the stricter rule fires exactly where the old one did, so it costs no false alarm there.</p>
+  <p>The audit also demoted a rule. Detecting an explicit "yes" with a word list misses about as often in successful episodes as in failed ones (3.2% and 3.9% of accepted writes in retail, 6.9% and 6.5% in airline), so both confirmation rules are logged and never enforced. Judging a confirmation is a natural System-One question, not a keyword match.</p>
+  <details><summary>Show the per-rule audit</summary><div class="table-wrap"><table id="guards-table"></table></div></details>
+</section>
+
+<!-- ==================================================================== -->
+<section id="discussion">
+  <h2><span class="num">6</span>Discussion</h2>
+  <p><strong>What is new.</strong> Stated narrowly: branch points decided by calibrated, typed answers weighed against a learned habit; a safety argument that comes from what a flow may do (read) rather than how sure it is; argument bindings trusted per call; and guards whose enforcement is decided by an audit. A skeptical reader could call it AutoTool plus TraceCompiler plus a calibrated router. That is roughly right, and each of those lacks something another supplies.</p>
+  <p><strong>Why read-only matters.</strong> The zero-shot result (§5.3) looked like a dead end: a well-calibrated decider at 72% cannot carry writes. The same decider, weighed and restricted to reads, saves most of the ceiling, because the cost of being wrong fell from a wrong action to a few hundred tokens. The general lesson is to design the action space so that the fast path's errors are cheap, then let it act on weaker evidence.</p>
+  <p><strong>Who benefits.</strong> Savings follow the agent's calling style more than its accuracy. Sequential callers gain the most, and the heaviest parallel callers little in airline. A deployment should measure its own agent's runs before expecting a number, which stretto's Phase 0 does from logs alone.</p>
+  <p><strong>Limitations.</strong> The live pilots are ten tasks per domain, one episode per arm, and the simulated customer is the same model as the agent. The reward omits τ²-bench's natural-language assertions. Agreement is measured against agents that fail 21–50% of tasks. Provenance is a text-matching heuristic, and the guards were compiled by an LLM and reviewed only through the audit. The offline results use mid-2025 models, and GPT-4.1 simulated the customer where the leaderboard used GPT-5.2, so the targets differ from the baselines in more than the agent.</p>
+</section>
+
+<!-- ==================================================================== -->
+<section id="next">
+  <h2><span class="num">7</span>What comes next</h2>
+  <ul>
+    <li><strong>A paired run large enough to bound pass^1</strong>, with the detour cost measured live, on more agent models, starting with the sequential callers the projection favors.</li>
+    <li><strong>Flows that end in writes</strong>, named by the LLM as macro-tools: <code>plan_*</code> reads and proposes, and <code>commit_*</code> executes in one call the writes the LLM specified after the customer's yes, each checked by the guards.</li>
+    <li><strong>Flows as fugue programs.</strong> A flow's decisions are a probabilistic program, so replaying recorded sessions through fugue's handlers scores them (audit), and logged propensities allow counterfactual evaluation of a changed flow before it runs<a class="cite" href="#rf6">[F6]</a>.</li>
+    <li><strong>Predicate refinement</strong>: propose System-One predicates where the arbiter is least sure, and keep one when it raises the held-out likelihood of the traces, in the style of counterexample-guided refinement<a class="cite" href="#rf2">[F2]</a>.</li>
+  </ul>
+</section>
+
+<!-- ==================================================================== -->
+<section id="repro">
+  <h2><span class="num">8</span>Reproducing the results</h2>
+  <p>Phase 0 needs no keys and runs in about 20 seconds on a laptop:</p>
+  <pre><code>git clone --depth 1 https://github.com/sierra-research/tau2-bench ../tau2-bench
+cargo run --release -p stretto-report -- phase0 --tau2 ../tau2-bench --out reports/phase0.md
+cargo run --release -p stretto-report -- guards --tau2 ../tau2-bench</code></pre>
+  <p>Every Jev answer behind §5.3–5.5 is published in the repository and replays without a key (<code>stretto import-answers</code>, then <code>--oracle replay</code>). All the System-One questions behind this paper cost under $6, and the live pilot's harness is in <a href="https://github.com/alexnodeland/stretto/tree/main/pilot"><code>pilot/</code></a>. Per-phase results, with every number above, are in <a href="https://github.com/alexnodeland/stretto/tree/main/docs/results"><code>docs/results/</code></a>, and the design and its amendments are fugue's <a href="https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md">RFC-001</a>.</p>
+</section>
+
+<!-- ==================================================================== -->
+<section id="refs">
+  <h2><span class="num"></span>References</h2>
+  <ol class="refs">
+    <li id="r1">R. Koohestani. AgentGuard: Runtime Verification of AI Agents. ASE 2025 AgenticSE workshop. <a href="https://arxiv.org/abs/2509.23864">arXiv:2509.23864</a></li>
+    <li id="r2">R. Koohestani et al. TriCEGAR: A Trace-Driven Abstraction Mechanism for Agentic AI. Preprint, 2026. <a href="https://arxiv.org/abs/2601.22997">arXiv:2601.22997</a></li>
+    <li id="r3">H. Wang, C. M. Poskitt, J. Wei, J. Sun. ProbGuard: Proactive Runtime Monitoring for LLM Agent Safety via Probabilistic Prediction. ASE 2026. <a href="https://arxiv.org/abs/2508.00500">arXiv:2508.00500</a></li>
+    <li id="r4">P. T. Tran-Truong, X.-B. Le. Measuring the Unmeasurable: Markov Chain Reliability for LLM Agents. Preprint, 2026. <a href="https://arxiv.org/abs/2604.24579">arXiv:2604.24579</a></li>
+    <li id="r5">Z. Chen, M. Kang, B. Li. ShieldAgent: Shielding Agents via Verifiable Safety Policy Reasoning. ICML 2025. <a href="https://arxiv.org/abs/2503.22738">arXiv:2503.22738</a>. H. Wang et al. AgentSpec. ICSE 2026. <a href="https://arxiv.org/abs/2503.18666">arXiv:2503.18666</a></li>
+    <li id="r6">F. Fournier, L. Limonad, Y. David. Agentic AI Process Observability: Discovering Behavioral Variability. PMAI 2025. <a href="https://arxiv.org/abs/2505.20127">arXiv:2505.20127</a></li>
+    <li id="r7">L. Lin et al. Mining Workflow Graphs for Black-Box Boundary Testing of Conversational LLM Agents. Preprint, 2026. <a href="https://arxiv.org/abs/2607.06873">arXiv:2607.06873</a></li>
+    <li id="r8">S. Cho et al. Automata from Agent Traces: Failure and Next-Step Prediction. Preprint, 2026. <a href="https://arxiv.org/abs/2608.23670">arXiv:2608.23670</a></li>
+    <li id="r9">I. D. Lopez-Miguel et al. ATLAS: Discovering Agent Strategies through LLM-Guided Abstraction and Automata Learning. MODELS 2026. <a href="https://arxiv.org/abs/2608.14352">arXiv:2608.14352</a></li>
+    <li id="r10">X. Huang et al. PrefixGuard: From LLM-Agent Traces to Online Failure-Warning Monitors. Preprint, 2026. <a href="https://arxiv.org/abs/2605.06455">arXiv:2605.06455</a></li>
+    <li id="r11">M. Tappler et al. Automata Learning meets Shielding. ISoLA 2022. <a href="https://arxiv.org/abs/2212.01838">arXiv:2212.01838</a></li>
+    <li id="r12">X. Liu et al. ToolNet: Connecting Large Language Models with Massive Tools via Tool Graph. Preprint, 2024. <a href="https://arxiv.org/abs/2403.00839">arXiv:2403.00839</a></li>
+    <li id="r13">J. Jia, Q. Li. AutoTool: Efficient Tool Selection for Large Language Model Agents. AAAI 2026. <a href="https://arxiv.org/abs/2511.14650">arXiv:2511.14650</a></li>
+    <li id="r14">Y. Sui et al. Parallelizing Tool Execution and LLM Generation for Low-Latency Agent Serving (Act While Thinking). Preprint, 2026. <a href="https://arxiv.org/abs/2603.18897">arXiv:2603.18897</a></li>
+    <li id="r15">N. Ye et al. Speculative Actions: A Lossless Framework for Faster AI Agents. ICLR 2026. <a href="https://arxiv.org/abs/2510.04371">arXiv:2510.04371</a></li>
+    <li id="r16">Z. Liu, S. Kundu, P. A. Beerel. Speculative Macro Commit for Faster Tool-Using Agents. MLSP 2026. <a href="https://arxiv.org/abs/2609.03236">arXiv:2609.03236</a></li>
+    <li id="r17">A. Yagubyan. How Consistent Are LLM Agents? Measuring Behavioral Reproducibility in Multi-Step Tool-Calling Pipelines. Preprint, 2026. <a href="https://arxiv.org/abs/2605.28840">arXiv:2605.28840</a></li>
+    <li id="r18">Y. Ruan et al. Identifying the Risks of LM Agents with an LM-Emulated Sandbox (ToolEmu). ICLR 2024. <a href="https://arxiv.org/abs/2309.15817">arXiv:2309.15817</a></li>
+    <li id="r19">Z. Guo et al. StableToolBench (<a href="https://arxiv.org/abs/2403.07714">arXiv:2403.07714</a>) and MirrorAPI (<a href="https://arxiv.org/abs/2503.20527">arXiv:2503.20527</a>); Z. Ren et al. GTM (<a href="https://arxiv.org/abs/2512.04535">arXiv:2512.04535</a>).</li>
+    <li id="r20">H. Chae et al. Web Agents with World Models. ICLR 2025. <a href="https://arxiv.org/abs/2410.13232">arXiv:2410.13232</a></li>
+    <li id="r21">G. Ganapavarapu, D. Patel. MCP-Cosmos: World Model-Augmented Agents for Complex Task Execution in MCP Environments. Preprint, 2026. <a href="https://arxiv.org/abs/2605.09131">arXiv:2605.09131</a></li>
+    <li id="r22">Z. Wang et al. Agent World Model. ICML 2026. <a href="https://arxiv.org/abs/2602.10090">arXiv:2602.10090</a></li>
+    <li id="r23">R. V. Hemadri et al. R2V Agent: Teaching SLMs When to Ask for Help (<a href="https://arxiv.org/abs/2605.16604">arXiv:2605.16604</a>); D. Piatrashyn et al. ReDAct (<a href="https://arxiv.org/abs/2604.07036">arXiv:2604.07036</a>). Preprints, 2026.</li>
+    <li id="r24">S. El Yadouni, G. Li. TraceCompiler: Skill-Guided Mining and Compilation of LLM Agent Traces into Mostly Deterministic Workflows. Preprint, 2026. <a href="https://arxiv.org/abs/2608.02680">arXiv:2608.02680</a></li>
+    <li id="r25">Z. Z. Wang et al. Agent Workflow Memory. ICML 2025 (<a href="https://arxiv.org/abs/2409.07429">arXiv:2409.07429</a>). Q. Zhang et al. Agentic Plan Caching. NeurIPS 2025 (<a href="https://arxiv.org/abs/2506.14852">arXiv:2506.14852</a>).</li>
+    <li id="r26">V. Barrès, H. Dong, S. Ray, X. Si, K. Narasimhan. τ²-Bench: Evaluating Conversational Agents in a Dual-Control Environment. 2025. <a href="https://arxiv.org/abs/2506.07982">arXiv:2506.07982</a></li>
+  </ol>
+  <ol class="refs" style="list-style: none; padding-left: 0;">
+    <li id="rf2">[F2] E. Clarke et al. Counterexample-Guided Abstraction Refinement. CAV 2000.</li>
+    <li id="rf3">[F3] A. P. Dawid, A. M. Skene. Maximum Likelihood Estimation of Observer Error-Rates Using the EM Algorithm. JRSS C, 1979.</li>
+    <li id="rf6">[F6] M. Dudík, J. Langford, L. Li. Doubly Robust Policy Evaluation and Learning. ICML 2011.</li>
+    <li>TypeSafe AI. Introducing System One Models &amp; Jev. <a href="https://typesafe.ai/blog/introducing-system-one-models-and-jev">typesafe.ai</a>; API documentation at <a href="https://docs.typesafe.ai/llms.txt">docs.typesafe.ai</a>.</li>
+  </ol>
+</section>
+
+<footer>
+  <p>Written with Claude Code, which built and ran the experiments with the author. Corrections are welcome as issues on <a href="https://github.com/alexnodeland/stretto/issues">the repository</a>.</p>
+  <p>Stretto is MIT licensed. τ²-bench data and tools are Sierra's, under their MIT license.</p>
+</footer>
+
+</article>
+<div id="tip" role="tooltip" hidden></div>
+
+<script>
+// ---------------------------------------------------------------------------
+// Data. Every number here is in docs/results/ or the RFC's amendments.
+// ---------------------------------------------------------------------------
+
+// Figure 1: retail task 51, one live episode per arm. Voices: c customer,
+// a agent tool call, s agent reply, w agent write, f flow lookup (rides in
+// the response to the agent call before it). "|" is a bar line.
+const SCORE = [
+  { label: "Without the flow", turns: 10, events: [
+    ["c", "return a camera"], ["s"], "|",
+    ["c", "name, zip"], ["a", "find"], ["a", "user"], ["a", "order"], ["a", "order"], ["a", "order"], ["a", "order"], ["s"], "|",
+    ["c", "which order?"], ["w", "return"], ["s"], "|",
+    ["c", "thanks"]
+  ] },
+  { label: "With the flow", turns: 5, events: [
+    ["c", "return a camera"], ["s"], "|",
+    ["c", "name, zip"], ["a", "find", [["f", "user"], ["f", "order"]]], ["s"], "|",
+    ["c", "which order?"], ["w", "return"], ["s"], "|",
+    ["c", "thanks"]
+  ] }
+];
+
+// Figure 3: macro-tool headroom by model, and pooled.
+const HEADROOM = {
+  models: ["Claude 3.7 Sonnet", "GPT-4.1", "GPT-4.1 mini", "o4-mini"],
+  retail: [0.3514, 0.2053, 0.1311, 0.2481], airline: [0.4052, 0.1730, 0.1056, 0.2823],
+  pooled: { retail: 0.238, airline: 0.251 }
+};
+
+// Figure 4: [picks, mean probability, agreement] per bin.
+const REL = {
+  retail: [[11, 0.259, 0.0], [66, 0.356, 0.197], [204, 0.453, 0.387], [578, 0.547, 0.514], [599, 0.645, 0.601], [727, 0.749, 0.622], [995, 0.847, 0.769], [1516, 0.964, 0.928]],
+  airline: [[2, 0.29, 0.5], [62, 0.36, 0.242], [138, 0.454, 0.37], [307, 0.543, 0.495], [298, 0.646, 0.537], [293, 0.748, 0.679], [454, 0.848, 0.806], [865, 0.958, 0.918]]
+};
+
+// Figure 5: [threshold, episodes with a detour, turns saved].
+const RO = {
+  retail: { perfect: 0.2097, combined: [[0.9, 0.0359, 0.0443], [0.7, 0.2656, 0.1076], [0.5, 0.5422, 0.1594]], first: [[0.4, 0.6297, 0.1682], [0.3, 0.6734, 0.1738], [0.2, 0.7469, 0.1793]] },
+  airline: { perfect: 0.1772, combined: [[0.9, 0.0531, 0.0587], [0.7, 0.1906, 0.0896], [0.5, 0.425, 0.1144]], first: [[0.4, 0.5031, 0.121], [0.3, 0.5719, 0.1276], [0.2, 0.6906, 0.134]] }
+};
+
+// Figure 6: [name, short, parallel share retail, airline,
+//   retail [ceiling, lookup first, detour episodes, combined p≥0.5], airline [...]].
+const TARGETS = [
+  ["Qwen3.5-397B", "Qwen3.5", 0.0, 0.0, [0.4074, 0.3407, 0.369, 0.2969], [0.4072, 0.2783, 0.738, 0.2254]],
+  ["Qwen3-Max", "Qwen3-Max", 0.0, 0.0, [0.3414, 0.2844, 0.438, 0.2417], [0.3318, 0.2632, 0.75, 0.1992]],
+  ["Gemini 3 Flash", "Gemini 3 Flash", 0.083, 0.174, [0.368, 0.2837, 0.344, 0.2413], [0.3947, 0.163, 0.875, 0.1079]],
+  ["Gemini 3 Pro", "Gemini 3 Pro", 0.105, 0.204, [0.3397, 0.2712, 0.362, 0.2307], [0.2764, 0.1412, 0.75, 0.1056]],
+  ["Claude Sonnet 4.5", "Sonnet 4.5", 0.111, 0.04, [0.2927, 0.2384, 0.469, 0.211], [0.3077, 0.1934, 0.7, 0.1517]],
+  ["GPT-5.2, reasoning off", "GPT-5.2 off", 0.146, 0.32, [0.297, 0.2284, 0.381, 0.181], [0.1467, 0.0399, 0.713, 0.0242]],
+  ["GPT-5.2, reasoning high", "GPT-5.2", 0.192, 0.371, [0.2565, 0.1852, 0.469, 0.1386], [0.1699, 0.0432, 0.675, 0.0279]],
+  ["GLM-5", "GLM-5", 0.273, 0.448, [0.2818, 0.1944, 0.362, 0.1467], [0.1492, 0.0444, 0.787, 0.027]],
+  ["Claude Opus 4.5", "Opus 4.5", 0.282, 0.409, [0.2728, 0.1952, 0.35, 0.1467], [0.1189, 0.0489, 0.713, 0.0277]]
+];
+
+// Figure 7: [task, turns without, turns with, flow lookups, input tokens
+// without, with, passed without, with, lookups the agent repeated].
+const PILOT = {
+  retail: [["17", 6, 7, 0, 30604, 36027, 1, 1, 0], ["18", 11, 9, 2, 73304, 58737, 1, 1, 0], ["27", 14, 8, 5, 102663, 64423, 0, 0, 0], ["36", 16, 11, 4, 125565, 84453, 1, 1, 0], ["51", 10, 5, 2, 57658, 26123, 1, 1, 0], ["60", 6, 5, 1, 34600, 29410, 1, 1, 0], ["64", 11, 9, 3, 66349, 59949, 0, 0, 1], ["68", 9, 8, 4, 50599, 45978, 1, 1, 0], ["77", 8, 6, 2, 43346, 33694, 1, 1, 0], ["101", 19, 16, 3, 139238, 132734, 1, 1, 2]],
+  airline: [["6", 13, 7, 1, 104973, 42231, 0, 1, 0], ["8", 8, 7, 5, 55742, 48374, 1, 1, 0], ["16", 8, 8, 2, 56954, 56592, 1, 1, 0], ["18", 28, 23, 4, 304056, 256215, 0, 1, 0], ["24", 22, 18, 1, 161999, 138374, 1, 1, 0], ["25", 9, 8, 1, 62638, 55681, 1, 1, 0], ["26", 9, 6, 2, 55785, 36303, 1, 1, 0], ["30", 8, 8, 1, 47244, 50082, 1, 1, 0], ["31", 7, 8, 3, 39408, 68479, 1, 0, 0], ["37", 15, 12, 4, 107781, 97036, 1, 1, 0]]
+};
+
+// Figure 8 and the audit table: [rule, enforced, accepted in successful
+// episodes [pass, fail, unknown], accepted in failed, refused by the tool,
+// episodes failed [successful, failed]].
+const GUARDS = {
+  retail: { episodes: [1324, 500], refused: [28, 1], rules: [
+    ["retail.authenticated", true, [1912, 2, 0], [726, 0, 0], [280, 0, 0], [1, 0]],
+    ["retail.cancel_reason", true, [309, 0, 0], [124, 0, 0], [1, 0, 0], [0, 0]],
+    ["retail.confirmed", false, [1853, 61, 0], [698, 28, 0], [269, 11, 0], [39, 20]],
+    ["retail.delivered", true, [860, 0, 0], [296, 0, 0], [96, 84, 2], [0, 0]],
+    ["retail.items_in_order", true, [1239, 0, 0], [474, 0, 0], [258, 14, 2], [0, 0]],
+    ["retail.once", true, [750, 0, 0], [313, 0, 0], [198, 7, 0], [0, 0]],
+    ["retail.own_order", true, [1799, 0, 5], [673, 0, 0], [275, 0, 5], [0, 0]],
+    ["retail.own_payment", true, [1195, 0, 60], [462, 0, 12], [253, 15, 8], [0, 0]],
+    ["retail.pending", true, [941, 0, 3], [377, 0, 0], [88, 7, 3], [0, 0]],
+    ["retail.refund_method", true, [489, 0, 0], [161, 0, 0], [21, 46, 2], [0, 0]],
+    ["retail.same_product", true, [695, 25, 30], [305, 1, 7], [95, 71, 39], [25, 1]],
+    ["retail.status_checked", true, [1801, 3, 0], [673, 0, 0], [275, 5, 0], [2, 0]]
+  ] },
+  airline: { episodes: [431, 369], refused: [5, 141], rules: [
+    ["airline.basic_economy_flights", true, [158, 0, 0], [128, 23, 0], [45, 14, 0], [0, 23]],
+    ["airline.booking_limits", true, [39, 0, 0], [67, 3, 0], [35, 4, 0], [0, 3]],
+    ["airline.cancel_allowed", true, [39, 5, 0], [102, 144, 16], [0, 0, 0], [5, 116]],
+    ["airline.compensation", true, [24, 0, 0], [25, 0, 1], [0, 0, 1], [0, 0]],
+    ["airline.confirmed", false, [282, 21, 0], [506, 35, 0], [104, 9, 0], [9, 19]],
+    ["airline.keep_bags", true, [33, 0, 0], [49, 0, 0], [13, 1, 0], [0, 0]],
+    ["airline.not_flown", true, [158, 0, 0], [151, 0, 0], [45, 14, 0], [0, 0]],
+    ["airline.own_payment", true, [204, 0, 26], [224, 0, 46], [90, 3, 19], [0, 0]],
+    ["airline.own_reservation", true, [223, 0, 41], [373, 0, 98], [59, 0, 15], [0, 0]],
+    ["airline.same_passenger_count", true, [29, 0, 0], [9, 0, 0], [0, 1, 0], [0, 0]]
+  ] }
+};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+const NS = "http://www.w3.org/2000/svg";
+function svgEl(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function text(parent, x, y, str, cls, anchor) {
+  const t = svgEl("text", { x, y, class: cls, "text-anchor": anchor || "start" }, parent);
+  t.textContent = str;
+  return t;
+}
+const pct = (x) => Math.round(x * 100) + "%";
+const pct1 = (x) => (x * 100).toFixed(1) + "%";
+const cap = (s) => s[0].toUpperCase() + s.slice(1);
+function barPath(x0, x1, y, h) {
+  const r = Math.min(4, (x1 - x0) / 2, h / 2);
+  if (x1 - x0 <= 0) return "";
+  return `M${x0},${y} H${x1 - r} Q${x1},${y} ${x1},${y + r} V${y + h - r} Q${x1},${y + h} ${x1 - r},${y + h} H${x0} Z`;
+}
+
+const tip = document.getElementById("tip");
+function place(evt) {
+  let x, y;
+  if (evt.type === "focus") { const r = evt.target.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top; }
+  else { x = evt.clientX; y = evt.clientY; }
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  let left = x + 14, top = y - th - 10;
+  if (left + tw > window.innerWidth - 8) left = x - tw - 14;
+  if (top < 8) top = y + 18;
+  tip.style.left = Math.max(8, left) + "px";
+  tip.style.top = top + "px";
+}
+function show(evt, rows) {
+  tip.replaceChildren();
+  for (const r of rows) {
+    const row = document.createElement("div");
+    row.className = "tip-row" + (r.key ? "" : " nokey");
+    if (r.key) { const k = document.createElement("span"); k.className = "tip-key"; k.style.background = `var(${r.key})`; row.appendChild(k); }
+    const v = document.createElement("strong"); v.textContent = r.value;
+    const l = document.createElement("span"); l.textContent = r.label;
+    row.append(v, l);
+    tip.appendChild(row);
+  }
+  tip.hidden = false;
+  place(evt);
+}
+function hide() { tip.hidden = true; }
+function bind(node, rows, group, mark) {
+  node.setAttribute("tabindex", "0");
+  node.setAttribute("aria-label", rows.map((r) => `${r.label}: ${r.value}`).join(", "));
+  const on = (e) => { show(e, rows); if (group) { group.classList.add("dim"); mark.classList.add("on"); } };
+  const off = () => { hide(); if (group) { group.classList.remove("dim"); mark.classList.remove("on"); } };
+  node.addEventListener("pointermove", on);
+  node.addEventListener("pointerleave", off);
+  node.addEventListener("focus", on);
+  node.addEventListener("blur", off);
+}
+function fillTable(table, head, rows) {
+  table.replaceChildren();
+  const thead = document.createElement("thead");
+  const tr = document.createElement("tr");
+  for (const h of head) { const th = document.createElement("th"); th.textContent = h; tr.appendChild(th); }
+  thead.appendChild(tr);
+  const tbody = document.createElement("tbody");
+  for (const r of rows) {
+    const row = document.createElement("tr");
+    r.forEach((c, i) => { const cell = document.createElement(i === 0 ? "th" : "td"); cell.textContent = c; if (i === 0) cell.scope = "row"; row.appendChild(cell); });
+    tbody.appendChild(row);
+  }
+  table.append(thead, tbody);
+}
+function responsive(host, draw) {
+  const render = () => {
+    host.replaceChildren();
+    const W = Math.max(280, Math.round(host.clientWidth));
+    const svg = svgEl("svg", { width: W, role: "img" }, host);
+    const H = draw(svg, W, W < 520);
+    svg.setAttribute("height", H);
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  };
+  render();
+  let last = host.clientWidth;
+  new ResizeObserver(() => { if (Math.abs(host.clientWidth - last) >= 1) { last = host.clientWidth; render(); } }).observe(host);
+}
+
+// ---------------------------------------------------------------------------
+// Figure 1: the score
+// ---------------------------------------------------------------------------
+(function score() {
+  const host = document.getElementById("score-chart");
+  const draw = () => {
+    host.replaceChildren();
+    // Narrower than this, the score scrolls sideways in its own container.
+    const W = Math.max(700, Math.round(host.parentElement.clientWidth));
+    const svg = svgEl("svg", { width: W, role: "img" }, host);
+    svg.setAttribute("aria-label", "Task 51 as a three-voice score. Without the flow the agent takes 10 LLM turns: a reply, six lookups, a reply, a write and a reply. With the flow it takes 5: the flow's two lookups ride in the response to the agent's first tool call.");
+    svg.style.minWidth = W + "px";
+    const labelW = 78, gapV = 46, sysGap = 30;
+    const voice = { c: 0, a: 1, s: 1, w: 1, f: 2 };
+    const names = ["Customer", "Agent", "Flow"];
+    const cols = Math.max(...SCORE.map((sys) => sys.events.filter((e) => e !== "|").length));
+    const colW = (W - labelW - 16) / cols;
+    const rx = Math.min(7, colW * 0.28), ry = rx * 0.72;
+    const note = (x, y, cls) => svgEl("ellipse", { cx: x, cy: y, rx, ry, transform: `rotate(-20 ${x} ${y})`, class: cls }, svg);
+    let y0 = 20;
+    for (const sys of SCORE) {
+      text(svg, labelW, y0, `${sys.label}: ${sys.turns} LLM turns`, "system-label", "start");
+      const line = (v) => y0 + 34 + v * gapV;
+      const width = sys.events.filter((e) => e !== "|").length * colW;
+      for (let v = 0; v < 3; v++) {
+        svgEl("line", { x1: labelW, x2: labelW + width + 4, y1: line(v), y2: line(v), class: "staff" }, svg);
+        text(svg, labelW - 10, line(v) + 4, names[v], "voice-label", "end");
+      }
+      const bar = (x, w) => svgEl("line", { x1: x, x2: x, y1: line(0), y2: line(2), class: "barline", "stroke-width": w || 1.2 }, svg);
+      bar(labelW);
+      let col = 0, turn = 0;
+      for (const ev of sys.events) {
+        if (ev === "|") { bar(labelW + col * colW); continue; }
+        const [kind, label, riders] = ev;
+        const cx = labelW + (col + 0.5) * colW;
+        const y = line(voice[kind]);
+        note(cx, y, { c: "n-customer", a: "n-agent", s: "n-say", w: "n-write" }[kind]);
+        if (kind === "c") {
+          text(svg, cx, y - ry - 7, label, "note-label halo", "middle");
+        } else {
+          turn += 1;
+          text(svg, cx, y - ry - 6, String(turn), "turn-num halo", "middle");
+          if (label) text(svg, cx, y + ry + 13, label, "note-label halo", "middle");
+        }
+        (riders || []).forEach(([, rl], k) => {
+          const fx = cx + (k - (riders.length - 1) / 2) * Math.min(colW * 0.95, 40);
+          const fy = line(2);
+          svgEl("line", { x1: cx, x2: fx, y1: y + ry + 18, y2: fy - ry - 3, class: "stem" }, svg);
+          note(fx, fy, "n-flow");
+          text(svg, fx, fy + ry + 13, rl, "note-label halo", "middle");
+        });
+        col += 1;
+      }
+      const end = labelW + col * colW;
+      bar(end);
+      bar(end + 4, 2.6);
+      y0 = line(2) + 30 + sysGap;
+    }
+    const H = y0 - sysGap;
+    svg.setAttribute("height", H);
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  };
+  draw();
+  let last = host.parentElement.clientWidth;
+  new ResizeObserver(() => {
+    const w = host.parentElement.clientWidth;
+    if (Math.abs(w - last) >= 1) { last = w; draw(); }
+  }).observe(host.parentElement);
+})();
+
+// ---------------------------------------------------------------------------
+// Figure 3: headroom
+// ---------------------------------------------------------------------------
+responsive(document.getElementById("headroom-chart"), (svg, W, narrow) => {
+  svg.setAttribute("aria-label", "Macro-tool headroom by agent model, retail and airline");
+  const m = { t: 6, r: 44, b: 28, l: narrow ? 100 : 128 };
+  const bh = 11, gap = 3, rowGap = 14;
+  const rows = [...HEADROOM.models, "Pooled"];
+  const H = m.t + rows.length * (2 * bh + gap + rowGap) - rowGap + m.b;
+  const xmax = 0.45, x = (v) => m.l + (W - m.l - m.r) * (v / xmax);
+  for (let k = 0; k <= 4; k++) {
+    const t = k / 10;
+    svgEl("line", { x1: x(t), x2: x(t), y1: m.t - 2, y2: H - m.b + 4, class: t === 0 ? "axis" : "grid" }, svg);
+    text(svg, x(t), H - m.b + 18, pct(t), "tick", t === 0 ? "start" : "middle");
+  }
+  const group = svgEl("g", {}, svg);
+  rows.forEach((name, i) => {
+    const ry = m.t + i * (2 * bh + gap + rowGap);
+    text(svg, m.l - 10, ry + bh + 5, name, i === rows.length - 1 ? "dlabel" : "cat", "end");
+    [["retail", "s-retail", "--retail"], ["airline", "s-airline", "--airline"]].forEach(([dom, cls, key], j) => {
+      const v = i < 4 ? HEADROOM[dom][i] : HEADROOM.pooled[dom];
+      const yy = ry + j * (bh + gap);
+      const mark = svgEl("path", { d: barPath(x(0), x(v), yy, bh), class: `mark ${cls}` }, group);
+      text(svg, x(v) + 6, yy + bh - 1.5, pct1(v), "tick", "start");
+      const hit = svgEl("rect", { x: x(0), y: yy - 1, width: Math.max(8, x(v) - x(0)), height: bh + 2, class: "hit" }, svg);
+      bind(hit, [{ value: pct1(v), label: `of LLM turns inside tool runs · ${cap(dom)}, ${name}`, key }], group, mark);
+    });
+  });
+  return H;
+});
+fillTable(document.getElementById("headroom-table"), ["Agent model", "Retail", "Airline"],
+  [...HEADROOM.models.map((n, i) => [n, pct1(HEADROOM.retail[i]), pct1(HEADROOM.airline[i])]), ["Pooled", pct1(HEADROOM.pooled.retail), pct1(HEADROOM.pooled.airline)]]);
+
+// ---------------------------------------------------------------------------
+// Figure 4: reliability
+// ---------------------------------------------------------------------------
+responsive(document.getElementById("rel-chart"), (svg, W, narrow) => {
+  svg.setAttribute("aria-label", "Reliability of Jev's zero-shot next-step picks: agreement against stated probability, retail and airline");
+  const size = Math.min(W, 460);
+  const m = { t: 10, r: 14, b: 40, l: 46 };
+  const H = size;
+  const x0 = (W - size) / 2;
+  const x = (v) => x0 + m.l + (size - m.l - m.r) * v;
+  const y = (v) => m.t + (H - m.t - m.b) * (1 - v);
+  for (let k = 0; k <= 5; k++) {
+    const t = k / 5;
+    svgEl("line", { x1: x(0), x2: x(1), y1: y(t), y2: y(t), class: t === 0 ? "axis" : "grid" }, svg);
+    text(svg, x(0) - 8, y(t) + 4, pct(t), "tick", "end");
+    svgEl("line", { x1: x(t), x2: x(t), y1: y(0), y2: y(1), class: t === 0 ? "axis" : "grid" }, svg);
+    text(svg, x(t), y(0) + 18, t.toFixed(1), "tick", "middle");
+  }
+  text(svg, (x(0) + x(1)) / 2, H - 4, "Jev's probability for its pick", "tick", "middle");
+  svgEl("line", { x1: x(0), y1: y(0), x2: x(1), y2: y(1), class: "diag" }, svg);
+  const group = svgEl("g", {}, svg);
+  [["retail", "--retail"], ["airline", "--airline"]].forEach(([dom, key]) => {
+    const pts = REL[dom].filter(([n]) => n >= 20);
+    svgEl("path", { d: pts.map(([, p, a], i) => `${i ? "L" : "M"}${x(p)},${y(a)}`).join(" "), class: `line-${dom}` }, group);
+    for (const [n, p, a] of pts) {
+      const mark = svgEl("circle", { cx: x(p), cy: y(a), r: n >= 500 ? 5 : 4, class: `mark dot-${dom}` }, group);
+      const hit = svgEl("circle", { cx: x(p), cy: y(a), r: 11, class: "hit" }, svg);
+      bind(hit, [{ value: pct(a), label: `agreed · ${cap(dom)}, picks near p = ${p.toFixed(2)}`, key }, { value: n.toLocaleString(), label: "picks in this bin" }], group, mark);
+    }
+  });
+  return H;
+});
+fillTable(document.getElementById("rel-table"), ["Domain", "Mean probability", "Agreement", "Picks"],
+  ["retail", "airline"].flatMap((dom) => REL[dom].map(([n, p, a]) => [cap(dom), p.toFixed(2), pct(a), n.toLocaleString()])));
+
+// ---------------------------------------------------------------------------
+// Figure 5: read-only trade-off
+// ---------------------------------------------------------------------------
+function readOnly(dom) {
+  responsive(document.getElementById(`ro-${dom}`), (svg, W) => {
+    svg.setAttribute("aria-label", `${cap(dom)}: LLM turns saved against episodes with a detour, read-only flows`);
+    const m = { t: 12, r: 12, b: 40, l: 44 };
+    const H = 270;
+    const x = (v) => m.l + (W - m.l - m.r) * (v / 0.8);
+    const y = (v) => m.t + (H - m.t - m.b) * (1 - v / 0.25);
+    for (let k = 0; k <= 5; k++) {
+      const t = k * 0.05;
+      svgEl("line", { x1: x(0), x2: x(0.8), y1: y(t), y2: y(t), class: t === 0 ? "axis" : "grid" }, svg);
+      text(svg, x(0) - 8, y(t) + 4, pct(t), "tick", "end");
+    }
+    for (let k = 0; k <= 4; k++) {
+      const t = k * 0.2;
+      text(svg, x(t), y(0) + 18, pct(t), "tick", t === 0 ? "start" : "middle");
+    }
+    text(svg, (x(0) + x(0.8)) / 2, H - 4, "Episodes with a detour", "tick", "middle");
+    svgEl("line", { x1: x(0), x2: x(0.8), y1: y(0.2), y2: y(0.2), class: "gate-line" }, svg);
+    const group = svgEl("g", {}, svg);
+    const f = RO[dom];
+    [["combined", "Combined answer", "--rule-a", "a"], ["first", "Lookup first", "--rule-b", "b"]].forEach(([k, label, key, cls]) => {
+      const pts = f[k];
+      svgEl("path", { d: pts.map(([, r, sv], i) => `${i ? "L" : "M"}${x(r)},${y(sv)}`).join(" "), class: `line-${cls}` }, group);
+      for (const [t, r, sv] of pts) {
+        const mark = svgEl("circle", { cx: x(r), cy: y(sv), r: 4.5, class: `mark dot-${cls}` }, group);
+        const hit = svgEl("circle", { cx: x(r), cy: y(sv), r: 11, class: "hit" }, svg);
+        bind(hit, [{ value: pct1(sv), label: `turns saved · ${label}, p ≥ ${t}`, key }, { value: pct1(r), label: "of episodes with a detour" }], group, mark);
+      }
+    });
+    const pm = svgEl("circle", { cx: x(0), cy: y(f.perfect), r: 5, class: "mark dot-ink" }, group);
+    const ph = svgEl("circle", { cx: x(0), cy: y(f.perfect), r: 11, class: "hit" }, svg);
+    bind(ph, [{ value: pct1(f.perfect), label: "turns saved with a perfect System-One model" }], group, pm);
+    const [, lr, ls] = f.first[1];
+    text(svg, x(lr), y(ls) + 20, "p ≥ 0.3", "dlabel halo", "middle");
+    return H;
+  });
+}
+readOnly("retail");
+readOnly("airline");
+fillTable(document.getElementById("ro-table"), ["Domain", "Rule", "Threshold", "Turns saved", "Episodes with a detour"],
+  ["retail", "airline"].flatMap((dom) => [
+    [cap(dom), "Perfect System-One", "–", pct1(RO[dom].perfect), "0.0%"],
+    ...RO[dom].combined.map(([t, r, sv]) => [cap(dom), "Combined answer", `p ≥ ${t}`, pct1(sv), pct1(r)]),
+    ...RO[dom].first.map(([t, r, sv]) => [cap(dom), "Lookup first", `p ≥ ${t}`, pct1(sv), pct1(r)])
+  ]));
+
+// ---------------------------------------------------------------------------
+// Figure 6: the nine leaderboard models
+// ---------------------------------------------------------------------------
+responsive(document.getElementById("targets-chart"), (svg, W, narrow) => {
+  svg.setAttribute("aria-label", "LLM turns saved by read-only flows per leaderboard model, retail and airline, with each model's ceiling and the 20% target");
+  const m = { t: 8, r: 16, b: 28, l: narrow ? 92 : 150 };
+  const bh = 10, gap = 2, rowGap = 12;
+  const H = m.t + TARGETS.length * (2 * bh + gap + rowGap) - rowGap + m.b;
+  const xmax = 0.45, x = (v) => m.l + (W - m.l - m.r) * (v / xmax);
+  for (let k = 0; k <= 4; k++) {
+    const t = k / 10;
+    svgEl("line", { x1: x(t), x2: x(t), y1: m.t - 4, y2: H - m.b + 4, class: t === 0 ? "axis" : "grid" }, svg);
+    text(svg, x(t), H - m.b + 18, pct(t), "tick", t === 0 ? "start" : "middle");
+  }
+  const group = svgEl("g", {}, svg);
+  TARGETS.forEach(([name, short, parR, parA, retail, airline], i) => {
+    const ry = m.t + i * (2 * bh + gap + rowGap);
+    text(svg, m.l - 10, ry + bh + 4.5, narrow ? short : name, "cat", "end");
+    [["Retail", "s-retail", "--retail", retail, parR], ["Airline", "s-airline", "--airline", airline, parA]].forEach(([label, cls, key, [ceil, first, det, comb], par], j) => {
+      const yy = ry + j * (bh + gap);
+      const mark = svgEl("path", { d: barPath(x(0), x(first), yy, bh), class: `mark ${cls}` }, group);
+      svgEl("line", { x1: x(ceil), x2: x(ceil), y1: yy - 1, y2: yy + bh + 1, class: "ceil-halo" }, svg);
+      svgEl("line", { x1: x(ceil), x2: x(ceil), y1: yy - 1, y2: yy + bh + 1, class: "ceil" }, svg);
+      const hit = svgEl("rect", { x: x(0), y: yy - 1, width: W - m.r - x(0), height: bh + 2, class: "hit" }, svg);
+      bind(hit, [
+        { value: pct1(first), label: `LLM turns saved, lookup first · ${label}, ${name}`, key },
+        { value: pct(det), label: "of episodes with a detour" },
+        { value: pct1(ceil), label: "ceiling with a perfect System-One model" },
+        { value: pct(par), label: "of tool turns made parallel calls" }
+      ], group, mark);
+    });
+  });
+  svgEl("line", { x1: x(0.2), x2: x(0.2), y1: m.t - 6, y2: H - m.b + 4, class: "gate-line" }, svg);
+  return H;
+});
+fillTable(document.getElementById("targets-table"), ["Agent model", "Domain", "Parallel tool turns", "Lookup first, p ≥ 0.3", "Episodes with a detour", "Read-only ceiling"],
+  ["retail", "airline"].flatMap((dom, j) => TARGETS.map((t) => {
+    const [ceil, first, det] = t[4 + j];
+    return [t[0], cap(dom), pct(t[2 + j]), pct1(first), pct(det), pct1(ceil)];
+  })));
+
+// ---------------------------------------------------------------------------
+// Figure 7: live pilots
+// ---------------------------------------------------------------------------
+function pilotChart(dom) {
+  const rows = PILOT[dom];
+  responsive(document.getElementById(`pilot-${dom}`), (svg, W, narrow) => {
+    svg.setAttribute("aria-label", `LLM turns per task without and with the flow, live ${dom} pilot`);
+    const m = { t: 6, r: narrow ? 70 : 96, b: 38, l: 64 };
+    const rowH = 24;
+    const H = m.t + rows.length * rowH + m.b;
+    // One scale for both domains, so the panels compare.
+    const all = [...PILOT.retail, ...(PILOT.airline || [])];
+    const xmax = Math.max(20, ...all.map((p) => Math.max(p[1], p[2]) + 2));
+    const x = (v) => m.l + (W - m.l - m.r) * (v / xmax);
+    for (let t = 0; t <= xmax; t += 5) {
+      svgEl("line", { x1: x(t), x2: x(t), y1: m.t, y2: H - m.b + 4, class: t === 0 ? "axis" : "grid" }, svg);
+      text(svg, x(t), H - m.b + 18, String(t), "tick", "middle");
+    }
+    text(svg, (x(0) + x(xmax)) / 2, H - 4, "LLM turns", "tick", "middle");
+    const group = svgEl("g", {}, svg);
+    rows.forEach(([task, b, f, lookups, tb, tf, pb, pf, rep], i) => {
+      const yy = m.t + i * rowH + rowH / 2;
+      text(svg, m.l - 10, yy + 4.5, `Task ${task}`, "cat", "end");
+      svgEl("line", { x1: x(b), x2: x(f), y1: yy, y2: yy, class: "link mark" }, group);
+      svgEl("circle", { cx: x(b), cy: yy, r: 5, class: "mark dot-hollow" }, group);
+      const mark = svgEl("circle", { cx: x(f), cy: yy, r: 5, class: `mark dot-${dom}` }, group);
+      const hit = svgEl("rect", { x: x(0), y: yy - rowH / 2, width: W - m.r - x(0), height: rowH, class: "hit" }, svg);
+      bind(hit, [
+        { value: `${b} → ${f}`, label: `LLM turns without → with the flow, task ${task}`, key: `--${dom}` },
+        { value: String(lookups), label: lookups === 1 ? "lookup made by the flow" : "lookups made by the flow" },
+        { value: String(rep), label: "of them repeated by the agent" },
+        { value: `${(tb / 1000).toFixed(1)}k → ${(tf / 1000).toFixed(1)}k`, label: "agent input tokens" },
+        { value: `${pb ? "passed" : "failed"} → ${pf ? "passed" : "failed"}`, label: "database check" }
+      ], group, mark);
+      if (lookups > 0) text(svg, W - m.r + 10, yy + 4.5, narrow ? `${lookups} lookup${lookups === 1 ? "" : "s"}` : `${lookups} flow lookup${lookups === 1 ? "" : "s"}`, "subcat", "start");
+    });
+    return H;
+  });
+}
+pilotChart("retail");
+function pilotTable() {
+  const doms = ["retail", "airline"].filter((d) => PILOT[d]);
+  fillTable(document.getElementById("pilot-table"), ["Task", "Domain", "Turns without", "Turns with", "Flow lookups", "Repeated by the agent", "Input tokens without", "Input tokens with", "Database check without", "Database check with"],
+    doms.flatMap((dom) => PILOT[dom].map(([t, b, f, l, tb, tf, pb, pf, rep]) => [t, cap(dom), b, f, l, rep, tb.toLocaleString(), tf.toLocaleString(), pb ? "passed" : "failed", pf ? "passed" : "failed"])));
+}
+pilotTable();
+if (PILOT.airline) {
+  document.getElementById("pilot-airline-wrap").hidden = false;
+  document.getElementById("airline-legend").hidden = false;
+  pilotChart("airline");
+}
+
+// ---------------------------------------------------------------------------
+// Figure 8: guards
+// ---------------------------------------------------------------------------
+responsive(document.getElementById("guards-chart"), (svg, W, narrow) => {
+  svg.setAttribute("aria-label", "Share of episodes in which an enforced guard would refuse an accepted write: failed and successful episodes, retail and airline");
+  const m = { t: 6, r: narrow ? 120 : 190, b: 28, l: 64 };
+  const bh = 14, gap = 4, rowGap = 18;
+  const doms = ["airline", "retail"];
+  const H = m.t + doms.length * (2 * bh + gap + rowGap) - rowGap + m.b;
+  const xmax = 0.5, x = (v) => m.l + (W - m.l - m.r) * (v / xmax);
+  for (let k = 0; k <= 5; k++) {
+    const t = k / 10;
+    svgEl("line", { x1: x(t), x2: x(t), y1: m.t - 2, y2: H - m.b + 4, class: t === 0 ? "axis" : "grid" }, svg);
+    if (!narrow || k % 2 === 0) text(svg, x(t), H - m.b + 18, pct(t), "tick", t === 0 ? "start" : "middle");
+  }
+  const group = svgEl("g", {}, svg);
+  doms.forEach((dom, i) => {
+    const g = GUARDS[dom];
+    const ry = m.t + i * (2 * bh + gap + rowGap);
+    text(svg, m.l - 10, ry + bh + 6, cap(dom), "cat", "end");
+    [["failed", 1, "--rule-a", "a"], ["successful", 0, "--rule-b", "b"]].forEach(([label, side, key, cls], j) => {
+      const v = g.refused[side] / g.episodes[side];
+      const yy = ry + j * (bh + gap);
+      const mark = svgEl("path", { d: barPath(x(0), x(v), yy, bh), class: `mark ${cls === "a" ? "dot-a" : "dot-b"}`, "stroke-width": 0 }, group);
+      text(svg, x(v) + 6, yy + bh - 3, `${pct1(v)} (${g.refused[side]} of ${g.episodes[side].toLocaleString()} ${label})`, "tick", "start");
+      const hit = svgEl("rect", { x: x(0), y: yy - 1, width: W - m.r - x(0), height: bh + 2, class: "hit" }, svg);
+      bind(hit, [{ value: `${g.refused[side]} of ${g.episodes[side].toLocaleString()}`, label: `${label} episodes with a refused accepted write · ${cap(dom)}`, key }], group, mark);
+    });
+  });
+  return H;
+});
+fillTable(document.getElementById("guards-table"), ["Rule", "Enforced", "Accepted, successful: pass / fail / unknown", "Accepted, failed: pass / fail / unknown", "Refused by the tool: pass / fail / unknown", "Episodes failed: successful / failed"],
+  ["airline", "retail"].flatMap((dom) => GUARDS[dom].rules.map(([rule, enf, s, f, r, e]) => [rule, enf ? "yes" : "logged", s.join(" / "), f.join(" / "), r.join(" / "), e.join(" / ")])));
+</script>
+</body>
+</html>
