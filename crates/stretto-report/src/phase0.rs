@@ -12,7 +12,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use stretto_model::alpha::{alpha_posterior, AlphaPosterior};
-use stretto_model::bursts::{runs, summarize, RunSummary};
+use stretto_model::bursts::{lookups_in_runs, runs, summarize, LookupsInRuns, RunSummary};
 use stretto_model::features::{
     discover, select, step_outputs, FeatureMap, Selected, StepOutput, TrainEpisode, FOLDS,
 };
@@ -419,6 +419,8 @@ pub struct ModelReport {
     pub coverage: Vec<CoveragePoint>,
     /// Tool runs over all episodes.
     pub runs: RunSummary,
+    /// Lookups inside those runs, by where their arguments came from.
+    pub lookups_in_runs: LookupsInRuns,
     /// Write calls.
     pub writes: usize,
     /// Writes whose preceding user message contains "yes" (strict proxy).
@@ -437,6 +439,8 @@ pub struct PooledReport {
     pub coverage: Vec<CoveragePoint>,
     /// Tool runs over all episodes.
     pub runs: RunSummary,
+    /// Lookups inside those runs, by where their arguments came from.
+    pub lookups_in_runs: LookupsInRuns,
     /// Predictability and coverage split by where decisions are made.
     pub positions: Vec<PositionStats>,
 }
@@ -821,6 +825,9 @@ fn domain(
             by_order: by_order(&pooled_train, &pooled_test),
             coverage: coverage(&pooled_train, &pooled_test),
             runs: summarize(all_episodes.iter().copied()),
+            lookups_in_runs: lookups_in_runs(all_episodes.iter().copied(), |t| {
+                manifest.kind(t) == Some(ToolKind::Read)
+            }),
             positions: by_position(
                 &pooled_habit,
                 &pooled_test,
@@ -1725,6 +1732,30 @@ fn combine(
     (out, weights, folds, fitted_on)
 }
 
+/// The habit's prediction `predicted` as a read-only flow would act on it,
+/// over the `options` a site offers (its lookups and [`RESPOND`]): all mass
+/// on steps the flow cannot take (replies, writes, lookups not offered) goes
+/// to handing back. `None` if handing back is not an option.
+pub(crate) fn habit_prior(
+    options: &[String],
+    predicted: &[f64],
+    vocab: &Vocab,
+) -> Option<Vec<f64>> {
+    let respond = options.iter().position(|o| o == RESPOND)?;
+    let mut prior: Vec<f64> = options
+        .iter()
+        .map(|o| {
+            if o == RESPOND {
+                0.0
+            } else {
+                predicted[vocab.id(&Action::Tool(o.clone())) as usize]
+            }
+        })
+        .collect();
+    prior[respond] = (1.0 - prior.iter().sum::<f64>()).max(0.0);
+    Some(prior)
+}
+
 /// The arbiter's view of one v2 next-step decision (see [`arbitrate`]): the
 /// options the System-One model was offered (their order is the case's) and
 /// each option's features, from its answers (`one`, `two`, the predicates'
@@ -1751,20 +1782,7 @@ pub(crate) fn case_of(
     };
     let options: Vec<String> = one.probs.keys().cloned().collect();
     let respond = options.iter().position(|o| o == RESPOND)?;
-    // The habit's prediction as a read-only flow would act on it: all mass
-    // on steps it cannot take (replies, writes, lookups not offered) goes to
-    // handing back.
-    let mut prior: Vec<f64> = options
-        .iter()
-        .map(|o| {
-            if o == RESPOND {
-                0.0
-            } else {
-                predicted[vocab.id(&Action::Tool(o.clone())) as usize]
-            }
-        })
-        .collect();
-    prior[respond] = (1.0 - prior.iter().sum::<f64>()).max(0.0);
+    let prior = habit_prior(&options, predicted, vocab)?;
     let features = options
         .iter()
         .enumerate()
@@ -1891,6 +1909,7 @@ fn model_report(
         by_order,
         coverage,
         runs: summarize(eps),
+        lookups_in_runs: lookups_in_runs(eps, |t| manifest.kind(t) == Some(ToolKind::Read)),
         writes: checks.len(),
         writes_after_yes: checks.iter().filter(|c| c.yes).count(),
         writes_after_assent: checks.iter().filter(|c| c.assent).count(),

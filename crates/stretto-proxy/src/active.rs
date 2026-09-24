@@ -38,7 +38,7 @@ use std::process::ChildStdin;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
 use std::time::{Duration, Instant};
 use stretto_oracle::Oracle;
-use stretto_report::flow::{Flow, Proposal};
+use stretto_report::flow::{Decider, Flow, Proposal};
 use stretto_report::guards::Guards;
 use stretto_trace::mcp::{self, LogEntry, LogHeader, McpLog, Peer};
 use stretto_trace::{Episode, ToolCall, ToolKind};
@@ -65,6 +65,9 @@ pub struct FlowConfig {
     /// Take a lookup when the tool's probability times its arguments'
     /// agreement is at least this.
     pub threshold: f64,
+    /// Where the tool's probability comes from; the habit alone never asks
+    /// `oracle`.
+    pub decider: Decider,
     /// Lookups appended to one response, at most.
     pub per_call: usize,
     /// Lookups per session, at most.
@@ -462,13 +465,17 @@ impl<'a, W: Write> Engine<'a, W> {
                 self.read_context();
                 let episode = self.episode();
                 let asked = Instant::now();
-                let next = match fc.flow.next(&episode, fc.oracle.as_ref(), fc.threshold) {
-                    Ok(next) => next,
-                    Err(e) => {
-                        eprintln!("stretto-proxy: the flow failed, handing back: {e:#}");
-                        return self.finish(job);
-                    }
-                };
+                let next =
+                    match fc
+                        .flow
+                        .next_with(&episode, fc.oracle.as_ref(), fc.threshold, fc.decider)
+                    {
+                        Ok(next) => next,
+                        Err(e) => {
+                            eprintln!("stretto-proxy: the flow failed, handing back: {e:#}");
+                            return self.finish(job);
+                        }
+                    };
                 self.questions += usize::from(next.key.is_some());
                 if let Some(f) = self.flow_log.as_mut() {
                     let mut entry = serde_json::to_value(&next).unwrap_or(Value::Null);

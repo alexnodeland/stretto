@@ -3,7 +3,7 @@ use clap::{Parser, ValueEnum};
 use std::ffi::OsString;
 use std::path::PathBuf;
 use stretto_proxy::{expand_home, run, run_active, Active, Config, FlowConfig, FAILURE_EXIT_CODE};
-use stretto_report::flow::Flow;
+use stretto_report::flow::{Decider, Flow};
 use stretto_report::guards::Guards;
 use stretto_report::shadow::{OracleKind, ShadowConfig};
 
@@ -46,6 +46,12 @@ struct Cli {
     /// agreement is at least this.
     #[arg(long, default_value_t = 0.3)]
     flow_threshold: f64,
+    /// Where the tool's probability comes from: `arbiter` (the habit, the
+    /// System-One model's answers and the predicates, combined) or `habit`
+    /// (the habit alone, which never asks a System-One model and needs no
+    /// key).
+    #[arg(long, value_enum, default_value_t = DeciderArg::Arbiter)]
+    flow_decider: DeciderArg,
     /// Lookups appended to one result, at most.
     #[arg(long, default_value_t = 8)]
     flow_per_call: usize,
@@ -85,6 +91,12 @@ enum OracleArg {
     Mock,
 }
 
+#[derive(Clone, Copy, ValueEnum)]
+enum DeciderArg {
+    Arbiter,
+    Habit,
+}
+
 fn main() {
     let cli = Cli::parse();
     let result = active(&cli).and_then(|active| {
@@ -115,10 +127,15 @@ fn active(cli: &Cli) -> Result<Active> {
         Some(path) => {
             let path = expand_home(path.clone());
             let flow = Flow::load(&path).with_context(|| format!("loading {}", path.display()))?;
-            let mut sc = ShadowConfig::new(match cli.oracle {
-                OracleArg::Jev => OracleKind::Jev,
-                OracleArg::Replay => OracleKind::Replay,
-                OracleArg::Mock => OracleKind::Mock,
+            let decider = match cli.flow_decider {
+                DeciderArg::Arbiter => Decider::Arbiter,
+                DeciderArg::Habit => Decider::Habit,
+            };
+            // The habit alone asks no one, so it needs no key.
+            let mut sc = ShadowConfig::new(match (decider, cli.oracle) {
+                (Decider::Habit, _) | (_, OracleArg::Mock) => OracleKind::Mock,
+                (_, OracleArg::Jev) => OracleKind::Jev,
+                (_, OracleArg::Replay) => OracleKind::Replay,
             });
             sc.cache_dir = expand_home(cli.oracle_cache.clone());
             eprintln!(
@@ -130,6 +147,7 @@ fn active(cli: &Cli) -> Result<Active> {
                 flow,
                 oracle: sc.build()?,
                 threshold: cli.flow_threshold,
+                decider,
                 per_call: cli.flow_per_call,
                 per_session: cli.flow_per_session,
                 max_questions: cli.flow_questions,

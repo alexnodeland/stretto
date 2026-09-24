@@ -11,7 +11,10 @@ the live flow's own argument bindings); a flow lookup the agent never made
 is a detour.
 
 With `--flow-oracle mock` this checks the plumbing for free; with `jev` it
-asks the real questions (one per flow step).
+asks the real questions (one per flow step), and with `replay` it reads them
+from the cache only. `--flow-decider habit` replays the habit alone, which
+never asks the System-One model (arm C: at a high `--flow-threshold` it goes
+on only where training shows no branch).
 
     python check_flow.py runs/pilot/baseline/task-90 --oracle-cache CACHE
     python check_flow.py --results glm-5_retail.json --oracle-cache CACHE \\
@@ -144,8 +147,12 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=Path("runs/check"))
     parser.add_argument("--tau2", type=Path, default=run_episode.TAU2)
     parser.add_argument("--oracle-cache", type=Path, required=True)
-    parser.add_argument("--flow-oracle", default="mock", choices=["jev", "mock"])
+    parser.add_argument("--flow-oracle", default="mock", choices=["jev", "replay", "mock"])
     parser.add_argument("--flow-threshold", type=float, default=0.3)
+    parser.add_argument(
+        "--flow-decider", default="arbiter", choices=["arbiter", "habit"],
+        help="`habit`: the habit alone, never asking the System-One model (arm C)",
+    )
     parser.add_argument("--flow", type=Path, help="a compiled flow (`stretto compile`), else compiled here")
     args = parser.parse_args()
     episodes = recorded_episodes(args)
@@ -161,6 +168,7 @@ def main() -> None:
             flow_oracle=args.flow_oracle,
             oracle_cache=args.oracle_cache,
             flow_threshold=args.flow_threshold,
+            flow_decider=args.flow_decider,
             flow_max_questions=50 * len(episodes),
             flow=args.flow,
         ),
@@ -179,7 +187,14 @@ def main() -> None:
     total["episodes"] = len(rows)
     total["turns_saved_share"] = round(total["turns_saved"] / max(total["turns"], 1), 4)
     total["episodes_with_detour"] = sum(1 for r in rows if r["detours"])
-    (out / "check.json").write_text(json.dumps({"total": total, "episodes": rows}, indent=1))
+    flow = {
+        "decider": args.flow_decider,
+        "threshold": args.flow_threshold,
+        "oracle": args.flow_oracle,
+    }
+    (out / "check.json").write_text(
+        json.dumps({"flow": flow, "total": total, "episodes": rows}, indent=1)
+    )
     print("CHECK", json.dumps(total))
 
 

@@ -3,6 +3,7 @@
 use crate::phase0::{DomainReport, FeaturedReport, Report, Settings, VariantStats};
 use crate::shadow::{Agreement, QuestionSet};
 use std::fmt::Write as _;
+use stretto_model::bursts::LookupsInRuns;
 use stretto_model::features::FOLDS;
 use stretto_model::projection::{GateKind, Projection, Scenario};
 use stretto_model::provenance::Source;
@@ -96,6 +97,12 @@ pub fn markdown(report: &Report) -> String {
          - **Macro-tool headroom** is Σ(n − 1) over runs of n consecutive tool-calling LLM \
          turns, as a share of all LLM turns: an upper bound on the turns `plan_*` macro-tools \
          could remove.\n\
+         - **Lookups inside runs** are LLM turns that only look something up and follow another \
+         tool call with no message in between. When every argument value appeared in an earlier \
+         tool output (or is a literal or too short to trace), a read-only flow behind the tools \
+         can bind it (arm D0). When some value only the user said, or the agent produced (a \
+         date, an airport), a flow cannot, and a named macro-tool could take the turn only if \
+         the LLM passed the value: that share bounds what naming a flow adds.\n\
          - **Argument provenance** looks each argument value up, verbatim and lower-cased, in \
          what the user had said and in earlier tool outputs. *Generated* values appear in \
          neither, so the agent had to produce them. *Short* values (< 3 characters) are not \
@@ -204,6 +211,33 @@ fn domain(s: &mut String, d: &DomainReport, report: &Report) {
         s,
         "| **all** | | | | | | | **{}** | |\n",
         pct(d.pooled.runs.removable_share())
+    );
+
+    let _ = writeln!(s, "### Lookups inside runs\n");
+    let _ = writeln!(
+        s,
+        "Shares of all LLM turns. A read-only flow behind the tools can take the first kind; \
+         only a macro-tool the LLM names, and passes the value to, could take the second.\n"
+    );
+    let _ = writeln!(
+        s,
+        "| Agent model | Arguments from earlier outputs | Arguments from the conversation |"
+    );
+    let _ = writeln!(s, "|---|---|---|");
+    let row = |name: String, l: &LookupsInRuns| {
+        format!(
+            "| {name} | {} | {} |",
+            pct1(l.share(l.from_outputs)),
+            pct1(l.share(l.from_conversation))
+        )
+    };
+    for m in &d.models {
+        let _ = writeln!(s, "{}", row(label(&m.model, m.target), &m.lookups_in_runs));
+    }
+    let _ = writeln!(
+        s,
+        "{}\n",
+        row("**all**".to_string(), &d.pooled.lookups_in_runs)
     );
 
     let _ = writeln!(s, "### Next-action predictability (held-out)\n");

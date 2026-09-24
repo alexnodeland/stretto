@@ -8,7 +8,7 @@ A stdio [MCP](https://modelcontextprotocol.io) proxy that records what an agent 
 
 ```text
 stretto-proxy [--record <DIR>] [--domain <NAME>] [--agent-model <MODEL>]
-              [--flow <FILE> [--oracle jev|replay|mock] [--oracle-cache <DIR>] ...]
+              [--flow <FILE> [--oracle jev|replay|mock] [--oracle-cache <DIR>] [--flow-decider arbiter|habit] ...]
               [--guards] [--commit] [--context <FILE>] -- <SERVER_COMMAND>...
 ```
 
@@ -70,6 +70,7 @@ With any of `--flow`, `--guards`, `--commit` or `--context`, the proxy reads wha
   A flow only calls tools it reads as lookups and that the server, once it has listed its tools, does not mark `readOnlyHint: false`. One flow runs at a time; a response that arrives meanwhile is forwarded as it is.
   - `--oracle` says who answers the flow's questions: `jev` (the default; needs `TYPESAFE_API_KEY`), `replay` (the cache only) or `mock`. Answers are cached in `--oracle-cache` (default `~/.stretto/oracle-cache`), keyed by the request's hash.
   - `--flow-threshold` (0.3) is the probability the lookup must reach: the tool's, times how often its arguments' binding matched the agent in training.
+  - `--flow-decider` says where the tool's probability comes from: `arbiter` (the default: the habit, the System-One model's answers and the predicates, combined) or `habit` (the habit alone). The habit alone asks no one, so it needs no key and adds no latency. Replayed on GLM-5's and Claude 3.7 Sonnet's recorded test episodes, it saved as many turns as the arbiter, with more detours, mostly in airline ([results](../../docs/results/arms-2026-09-24.md)).
   - `--flow-per-call` (8), `--flow-per-session` (40) and `--flow-questions` (300) cap lookups per result, lookups per session and questions per session.
   - Each decision is appended to `--flow-log`, by default `<session>.flow.jsonl` next to the session log.
   - `--task-id` picks the flow's fold; by default it is the session.

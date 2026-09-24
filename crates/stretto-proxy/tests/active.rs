@@ -154,7 +154,16 @@ struct Host {
 
 impl Host {
     fn start(args: &[&str]) -> Host {
-        let mut child = Command::new(PROXY)
+        Host::start_without(args, &[])
+    }
+
+    /// Start the proxy with `unset` removed from its environment.
+    fn start_without(args: &[&str], unset: &[&str]) -> Host {
+        let mut command = Command::new(PROXY);
+        for var in unset {
+            command.env_remove(var);
+        }
+        let mut child = command
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -550,6 +559,42 @@ fn sessions_recorded_through_the_proxy_teach_the_flow_it_serves() {
         "--world",
         "retail",
     ]);
+    open_session(&mut host);
+    let found = host.call(
+        3,
+        "find_user_id_by_email",
+        json!({"email": "c123@example.com"}),
+    );
+    let parts = texts(&found);
+    assert_eq!(parts.len(), 2, "{parts:?}");
+    assert!(
+        parts[1].contains("get_user_details {\"user_id\":\"user_123\"}"),
+        "{}",
+        parts[1]
+    );
+    assert_eq!(host.finish(), 0);
+
+    // The habit alone serves the same lookup, and asks no one: it needs no
+    // key, even with the Jev oracle named.
+    let mut host = Host::start_without(
+        &[
+            "--domain",
+            "retail",
+            "--flow",
+            path.to_str().unwrap(),
+            "--oracle",
+            "jev",
+            "--flow-decider",
+            "habit",
+            "--context",
+            context.to_str().unwrap(),
+            "--",
+            DEMO,
+            "--world",
+            "retail",
+        ],
+        &["TYPESAFE_API_KEY"],
+    );
     open_session(&mut host);
     let found = host.call(
         3,

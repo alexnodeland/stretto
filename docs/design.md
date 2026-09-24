@@ -20,7 +20,9 @@ The full rationale, prior work and risks are in fugue's [RFC-001](https://github
 | Models | Transfer first: flows compiled from published frontier-model trajectories, run by GLM (Z.ai) and MiniMax. American frontier models later |
 | Phase 0 data | τ²-bench's published trajectories |
 | Win conditions | Fewer LLM calls, tokens and dollars; higher pass^k; Jev agreeing with the frontier model at branch points, and well calibrated; fewer policy violations |
-| First live form (2026-09-24) | Transparent continuation: after each of the agent's own calls, a goal-free read-only flow makes the lookups it is sure enough of and returns them in the same tool response. No new tools and no prompt change. Named macro-tools come next |
+| First live form (2026-09-24) | Transparent continuation: after each of the agent's own calls, a goal-free read-only flow makes the lookups it is sure enough of and returns them in the same tool response. No new tools and no prompt change. |
+| Named macro-tools (2026-09-24) | Not built. Naming could add at most 0–1.9% of LLM turns in retail and 0.9–7.9% in airline over D0: only lookups that need a value from the conversation ([arms](results/arms-2026-09-24.md)) |
+| Deciding without Jev (2026-09-24) | Allowed: `--flow-decider habit`. Replayed, the habit alone saves as many turns as the arbiter; the arbiter makes fewer detours in airline ([arms](results/arms-2026-09-24.md)) |
 
 ## The principle for macro-tools
 
@@ -33,16 +35,19 @@ The full rationale, prior work and risks are in fugue's [RFC-001](https://github
   - Jev, for judgments about content.
 - A decision nothing inside the flow can settle pauses the flow and hands a token back to the LLM.
 
+Measured before building (2026-09-24): a flow behind the tools already binds every lookup argument that came from an earlier output. A name would add only the lookups that need a value from the conversation: at most 0–1.9% of LLM turns in retail and 0.9–7.9% in airline. So named macro-tools are not built ([arms](results/arms-2026-09-24.md)).
+
 ## Experimental arms (τ²-bench, held-out tasks, k trials each)
 
 | Arm | Agent sees | Branches resolved by |
 |---|---|---|
 | A | Raw tools | The LLM (baseline) |
 | B | Raw tools, with rule checks on writes | The LLM |
-| C | Raw tools + macro-tools | The LLM, via a pause at every branch |
+| C | Raw tools + macro-tools | The LLM, via a pause at every branch. Replayed as a flow behind the tools: 0–1.7% of turns saved |
 | D | Raw tools + macro-tools | Habit, then Jev, then LLM, by arbitration |
 | E | As D, plus rule checks on raw writes | As D |
 | D0 (pilot) | Raw tools; each response may carry a flow's extra lookups | Habit and Jev by arbitration, lookup first; the LLM for everything else |
+| D0, habit alone | As D0 | The habit alone, lookup first; never asks Jev |
 
 ## Live flows (2026-09-24)
 
@@ -88,7 +93,8 @@ stretto-proxy session logs ─┼─► stretto-trace (Episode) ─► stretto-m
 | The conversation for flows and guards | Built | `stretto-proxy --context` |
 | Record, learn, serve from any MCP server | Built, tested end to end | `crates/stretto-proxy/tests/active.rs` |
 | A flow as a fugue program: score and simulate | Built | `stretto audit`; `audit.rs` |
-| `plan_*` / `resume_*` macro-tools the LLM names (arms C and D) | Not built | — |
+| `plan_*` / `resume_*` macro-tools the LLM names (arms C and D) | Not built, by decision: naming could add at most 0–1.9% of turns in retail and 0.9–7.9% in airline | Phase 0's *Lookups inside runs* |
+| Arm C and the habit alone, as flows behind the tools | Built; replayed against D0 on GLM-5's test episodes ([arms](results/arms-2026-09-24.md)) | `--flow-decider habit` in `stretto-proxy`, `serve`, `flow-serve` and `pilot/check_flow.py` |
 | Counterfactual evaluation from logged propensities | Not built; the proxy logs every decision's probabilities | — |
 | Predicate refinement (§3.4) | Not built; three hand-proposed predicates | `data/predicates-v2.json` |
 | Streamable HTTP transport | Not supported; stdio only | — |

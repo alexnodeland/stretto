@@ -10,9 +10,10 @@
 //!
 //! The flow asks the questions Phase 0b asked offline and takes the
 //! arbiter's most likely lookup when its probability clears a threshold
-//! (the "lookup first" rule). An episode is judged by the arbiter of its
-//! task's fold, which never saw the task, and the habit, trained on the
-//! train split, never saw a test task.
+//! (the "lookup first" rule). With [`Decider::Habit`] it asks nothing and
+//! acts on the habit's prediction alone. An episode is judged by the
+//! arbiter of its task's fold, which never saw the task, and the habit,
+//! trained on the train split, never saw a test task.
 //!
 //! Offline, a lookup whose arguments were all seen earlier in the episode
 //! counted as one a flow could make. Live, the flow has to pick them:
@@ -22,7 +23,7 @@
 //! episode has not looked up yet, preferring one the customer mentioned.
 
 use crate::arbitrate::Fitted;
-use crate::phase0::{case_of, task_group};
+use crate::phase0::{case_of, habit_prior, task_group};
 use crate::shadow::{self, Asked, Decision, Kind, Predicate, Sites, RESPOND};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -31,7 +32,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use stretto_model::features::{step_outputs, FeatureMap, FOLDS};
 use stretto_model::world::Predictor;
 use stretto_model::{steps, EncodedEpisode, GroupedModel, Vocab};
-use stretto_oracle::{request_key, Oracle};
+use stretto_oracle::{request_key, Oracle, Question};
 use stretto_trace::{Episode, Event, ToolCall, ToolKind, ToolManifest};
 
 /// A share of a lookup argument's training values a source must account for
@@ -71,6 +72,20 @@ pub struct Flow {
     pub(crate) bindings: Bindings,
     /// The System-One model id to request.
     pub(crate) model: String,
+}
+
+/// Where a flow's probability for each option comes from.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Decider {
+    /// The arbiter: the habit, the System-One model's answers and the
+    /// predicates, combined (arm D0).
+    #[default]
+    Arbiter,
+    /// The habit alone, which never asks the System-One model: a flow
+    /// compiled from traces and nothing else. At a high threshold it goes on
+    /// only where training shows no branch, and hands every branch back, as
+    /// TraceCompiler does (arm C).
+    Habit,
 }
 
 /// What the flow does next.
@@ -175,6 +190,18 @@ impl Flow {
     /// the agent's) is at least `threshold`, else hand back (also if
     /// `oracle`, asked one request, fails).
     pub fn next(&self, episode: &Episode, oracle: &dyn Oracle, threshold: f64) -> Result<Next> {
+        self.next_with(episode, oracle, threshold, Decider::Arbiter)
+    }
+
+    /// [`Flow::next`], with the tool's probability from `decider`. The habit
+    /// alone never asks `oracle`.
+    pub fn next_with(
+        &self,
+        episode: &Episode,
+        oracle: &dyn Oracle,
+        threshold: f64,
+        decider: Decider,
+    ) -> Result<Next> {
         let mut next = Next {
             proposal: Proposal::HandBack {
                 reason: String::new(),
@@ -205,13 +232,28 @@ impl Flow {
         let Some(request) = live.request else {
             return hand_back(next, "no lookups followed here in training".to_string());
         };
+        let st = steps(episode);
+        let features = self.map.features(&step_outputs(episode));
+        let encoded =
+            EncodedEpisode::encode_with_features(&st, Some(&features), &self.vocab, false)
+                .with_group(self.group);
+        let predicted = self.habit.predict_at(&encoded, st.len());
+        if decider == Decider::Habit {
+            let Some(Question::Choice { criteria, .. }) = request.questions.get("next") else {
+                return hand_back(next, "the site offers no options".to_string());
+            };
+            let options: Vec<String> = criteria.keys().cloned().collect();
+            let Some(prior) = habit_prior(&options, &predicted, &self.vocab) else {
+                return hand_back(next, "handing back was not an option".to_string());
+            };
+            return self.look_up(next, episode, &options, &prior, threshold);
+        }
         let key = request_key(&request);
         next.key = Some(key.clone());
         let response = match oracle.ask(&request) {
             Ok(r) => r,
             Err(e) => return hand_back(next, format!("the System-One model failed: {e:#}")),
         };
-        let st = steps(episode);
         let decision = Decision {
             episode: 0,
             step: st.len(),
@@ -237,11 +279,6 @@ impl Flow {
         };
         next.oracle = one.probs.clone();
         next.predicates = shadow::predicate_answers(&decision, &asked);
-        let features = self.map.features(&step_outputs(episode));
-        let encoded =
-            EncodedEpisode::encode_with_features(&st, Some(&features), &self.vocab, false)
-                .with_group(self.group);
-        let predicted = self.habit.predict_at(&encoded, st.len());
         let group = task_group(&episode.task_id);
         let Some((case, options)) = case_of(
             &one,
@@ -257,16 +294,29 @@ impl Flow {
             return hand_back(next, "handing back was not an option".to_string());
         };
         let judged = self.folds[(group % FOLDS) as usize].judge(&case);
-        next.probs = options
-            .iter()
-            .cloned()
-            .zip(judged.probs.iter().copied())
-            .collect();
-        // Lookup first: the most likely lookup (the first of equals, as
-        // offline), if likely enough.
+        self.look_up(next, episode, &options, &judged.probs, threshold)
+    }
+
+    /// Lookup first: take the most likely lookup among `options` (the first
+    /// of equals, as offline) if its probability in `probs`, times the
+    /// chance that its bound arguments are the agent's, is at least
+    /// `threshold`; else hand back.
+    fn look_up(
+        &self,
+        mut next: Next,
+        episode: &Episode,
+        options: &[String],
+        probs: &[f64],
+        threshold: f64,
+    ) -> Result<Next> {
+        let hand_back = |mut next: Next, reason: String| {
+            next.proposal = Proposal::HandBack { reason };
+            Ok(next)
+        };
+        next.probs = options.iter().cloned().zip(probs.iter().copied()).collect();
         let best = options
             .iter()
-            .zip(&judged.probs)
+            .zip(probs)
             .filter(|(o, _)| o.as_str() != RESPOND)
             .fold(None::<(&String, f64)>, |best, (o, &p)| match best {
                 Some((_, q)) if q >= p => best,
@@ -900,6 +950,53 @@ mod tests {
         assert_eq!(serde_json::to_string(&back).unwrap(), json);
         let newer = json.replacen("\"stretto_flow\":1", "\"stretto_flow\":99", 1);
         assert!(Flow::from_json(&newer).is_err());
+    }
+
+    /// An oracle that fails if asked.
+    struct Unasked;
+
+    impl Oracle for Unasked {
+        fn ask(&self, _: &stretto_oracle::Request) -> Result<stretto_oracle::Response> {
+            anyhow::bail!("asked")
+        }
+    }
+
+    #[test]
+    fn the_habit_alone_never_asks() {
+        let flow = toy_flow();
+        let live = episode(vec![
+            Event::User {
+                text: "I want to cancel something".to_string(),
+            },
+            call("a", "get_user_details", json!({"user_id": "bob_2"})),
+            result("a", "get_user_details", user(&["#W7", "#W8"])),
+        ]);
+        let next = flow
+            .next_with(&live, &Unasked, 0.3, Decider::Habit)
+            .unwrap();
+        assert!(next.key.is_none() && next.oracle.is_empty());
+        assert!((next.probs.values().sum::<f64>() - 1.0).abs() < 1e-9);
+        // In training an order lookup always followed the user's details.
+        assert_eq!(
+            next.proposal,
+            Proposal::Lookup {
+                tool: "get_order_details".to_string(),
+                arguments: json!({"order_id": "#W7"}),
+            }
+        );
+        // It acts on the tool's probability times its arguments' agreement.
+        let p = next.prob.unwrap() * next.binding.unwrap();
+        let strict = flow
+            .next_with(&live, &Unasked, p + 0.01, Decider::Habit)
+            .unwrap();
+        assert!(matches!(strict.proposal, Proposal::HandBack { .. }));
+        // The arbiter asks, and hands back when the answer fails.
+        let arbiter = flow.next(&live, &Unasked, 0.3).unwrap();
+        assert!(arbiter.key.is_some());
+        assert!(matches!(
+            arbiter.proposal,
+            Proposal::HandBack { ref reason } if reason.contains("System-One model failed")
+        ));
     }
 
     #[test]

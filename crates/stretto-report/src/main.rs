@@ -5,6 +5,7 @@ use std::io::{BufRead, Write};
 use std::path::PathBuf;
 use std::time::Instant;
 use stretto_oracle::{Answer, MockOracle, NoulCriteria, Oracle, Question, ReplayCache, Request};
+use stretto_report::flow::Decider;
 use stretto_report::shadow::{OracleKind, QuestionSet, ShadowConfig};
 use stretto_report::{phase0, render};
 
@@ -46,10 +47,16 @@ enum Command {
         /// stderr names it).
         #[arg(long, default_value = "127.0.0.1:0")]
         listen: String,
-        /// Take the most likely lookup when the arbiter gives it at least
-        /// this probability.
+        /// Take the most likely lookup when its probability, times the
+        /// chance that its arguments are the agent's, is at least this.
         #[arg(long, default_value_t = 0.3)]
         threshold: f64,
+        /// Where each option's probability comes from: `arbiter` (the
+        /// habit, the System-One model and the predicates, combined: arm D0)
+        /// or `habit` (the habit alone, never asking the System-One model:
+        /// a flow compiled from traces only, arm C at a high threshold).
+        #[arg(long, value_enum, default_value_t = DeciderArg::Arbiter)]
+        decider: DeciderArg,
         /// Stop asking the System-One model after this many live questions.
         #[arg(long, default_value_t = 300)]
         max_questions: usize,
@@ -120,10 +127,16 @@ enum Command {
         /// stderr names it).
         #[arg(long, default_value = "127.0.0.1:0")]
         listen: String,
-        /// Take the most likely lookup when its probability is at least
-        /// this.
+        /// Take the most likely lookup when its probability, times the
+        /// chance that its arguments are the agent's, is at least this.
         #[arg(long, default_value_t = 0.3)]
         threshold: f64,
+        /// Where each option's probability comes from: `arbiter` (the
+        /// habit, the System-One model and the predicates, combined: arm D0)
+        /// or `habit` (the habit alone, never asking the System-One model:
+        /// a flow compiled from traces only, arm C at a high threshold).
+        #[arg(long, value_enum, default_value_t = DeciderArg::Arbiter)]
+        decider: DeciderArg,
         /// Stop asking the System-One model after this many live questions.
         #[arg(long, default_value_t = 300)]
         max_questions: usize,
@@ -319,6 +332,21 @@ enum QuestionArg {
     V2,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum DeciderArg {
+    Arbiter,
+    Habit,
+}
+
+impl From<DeciderArg> for Decider {
+    fn from(d: DeciderArg) -> Self {
+        match d {
+            DeciderArg::Arbiter => Decider::Arbiter,
+            DeciderArg::Habit => Decider::Habit,
+        }
+    }
+}
+
 fn main() -> Result<()> {
     match Cli::parse().command {
         Command::Phase0 { data, out, json } => {
@@ -341,6 +369,7 @@ fn main() -> Result<()> {
             data,
             listen,
             threshold,
+            decider,
             max_questions,
             log,
         } => {
@@ -349,7 +378,18 @@ fn main() -> Result<()> {
                 anyhow::bail!("flow-serve serves one domain: pass --domain once");
             };
             let config = phase0_config(data)?;
-            flow_serve(&config, domain, &listen, threshold, max_questions, log)
+            let flow = compile(&config, domain)?;
+            let oracle = config
+                .shadow
+                .as_ref()
+                .expect("compile checked it")
+                .build()?;
+            let rule = Rule {
+                threshold,
+                decider: decider.into(),
+                max_questions,
+            };
+            serve(&flow, oracle.as_ref(), &listen, rule, log)
         }
         Command::Compile { data, out } => {
             let domains = data.domains.clone();
@@ -432,6 +472,7 @@ fn main() -> Result<()> {
             oracle_cache,
             listen,
             threshold,
+            decider,
             max_questions,
             log,
         } => {
@@ -439,14 +480,12 @@ fn main() -> Result<()> {
             let mut sc = ShadowConfig::new(oracle_kind(oracle));
             sc.cache_dir = oracle_cache;
             let oracle = sc.build()?;
-            serve(
-                &flow,
-                oracle.as_ref(),
-                &listen,
+            let rule = Rule {
                 threshold,
+                decider: decider.into(),
                 max_questions,
-                log,
-            )
+            };
+            serve(&flow, oracle.as_ref(), &listen, rule, log)
         }
         Command::Guards {
             tau2,
@@ -666,30 +705,6 @@ struct FlowQuery {
     agent_model: String,
 }
 
-fn flow_serve(
-    config: &phase0::Config,
-    domain: &str,
-    listen: &str,
-    threshold: f64,
-    max_questions: usize,
-    log: Option<PathBuf>,
-) -> Result<()> {
-    let flow = compile(config, domain)?;
-    let oracle = config
-        .shadow
-        .as_ref()
-        .expect("compile checked it")
-        .build()?;
-    serve(
-        &flow,
-        oracle.as_ref(),
-        listen,
-        threshold,
-        max_questions,
-        log,
-    )
-}
-
 /// Compile `domain`'s live flow from cached answers alone (fill the cache
 /// with `phase0 --oracle jev --questions v2 --no-intent` first).
 fn compile(config: &phase0::Config, domain: &str) -> Result<stretto_report::flow::Flow> {
@@ -723,15 +738,30 @@ fn compile(config: &phase0::Config, domain: &str) -> Result<stretto_report::flow
     Ok(flow)
 }
 
+/// How a served flow acts on its probabilities.
+struct Rule {
+    /// Take the most likely lookup when its probability, times the chance
+    /// that its arguments are the agent's, is at least this.
+    threshold: f64,
+    /// Where the probabilities come from.
+    decider: Decider,
+    /// Stop asking the System-One model after this many live questions.
+    max_questions: usize,
+}
+
 /// Answer one flow query per connection on `listen`, asking `oracle`.
 fn serve(
     flow: &stretto_report::flow::Flow,
     oracle: &(dyn Oracle + Sync),
     listen: &str,
-    threshold: f64,
-    max_questions: usize,
+    rule: Rule,
     log: Option<PathBuf>,
 ) -> Result<()> {
+    let Rule {
+        threshold,
+        decider,
+        max_questions,
+    } = rule;
     let listener =
         std::net::TcpListener::bind(listen).with_context(|| format!("listening on {listen}"))?;
     // The harness waits for this line.
@@ -771,7 +801,7 @@ fn serve(
                     flow.domain(),
                     &query.agent_model,
                 )
-                .and_then(|episode| flow.next(&episode, oracle, threshold));
+                .and_then(|episode| flow.next_with(&episode, oracle, threshold, decider));
                 match answer {
                     Ok(next) => {
                         asked += next.key.is_some() as usize;
