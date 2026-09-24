@@ -49,7 +49,7 @@ Answers are cached in `.oracle-cache/`, so each distinct question is paid for on
 - `--oracle-dump` writes every question for audit.
 - `--oracle-log` writes every decision with the agent's step and the picks.
 
-The published answers replay without a key: see [the v2 bundle](docs/results/phase0b-v2-2026-09-23-answers.md).
+The published answers replay without a key: see [the v2 bundle](docs/results/phase0b-v2-2026-09-23-answers.md) and [the goal-free supplement](docs/results/phase0b-v2-goal-free-2026-09-24-summary.md#answers).
 
 First results, with their interpretation, are in [docs/results/phase0-2026-09-23.md](docs/results/phase0-2026-09-23.md). The headlines for airline and retail:
 
@@ -81,7 +81,7 @@ First results, with their interpretation, are in [docs/results/phase0-2026-09-23
   - Retail: 80.5% combined agreement, and 17.3% of turns saved with lookup first at p ≥ 0.3.
   - Airline: 78.4% and 12.6%.
   - GLM-5 still clears 20% in retail (20.3%).
-  - See [the goal-free report](docs/results/phase0b-v2-goal-free-2026-09-24-report.md).
+  - See [the goal-free summary](docs/results/phase0b-v2-goal-free-2026-09-24-summary.md).
 - **Live pilot (in progress).** [`pilot/`](pilot/README.md) runs τ²-bench retail episodes live. GLM-5.3 is the agent, in Claude Code on Z.ai's coding endpoint, and its tools are served over MCP behind `stretto-proxy`. The flows arm adds a read-only flow behind the tools: `stretto flow-serve` compiles it goal free from cached answers, then answers each step with a lookup and its bound arguments, or hands back. A baseline smoke episode passed. Before any flows episode, the flow is checked on GLM-5's recorded episodes without an LLM ([`check_flow.py`](pilot/check_flow.py)).
 
 ## Crates
