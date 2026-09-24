@@ -76,7 +76,7 @@ Answers are cached in `.oracle-cache/`, so each distinct question is paid for on
 - `--oracle-dump` writes every question for audit.
 - `--oracle-log` writes every decision with the agent's step and the picks.
 
-The published answers replay without a key: see [the v2 bundle](docs/results/phase0b-v2-2026-09-23-answers.md) and [the goal-free supplement](docs/results/phase0b-v2-goal-free-2026-09-24-summary.md#answers).
+The published answers replay without a key: see [the v1 bundle](docs/results/phase0b-2026-09-23-answers.md) (re-asked, so it reproduces a re-run), [the v2 bundle](docs/results/phase0b-v2-2026-09-23-answers.md) and [the goal-free supplement](docs/results/phase0b-v2-goal-free-2026-09-24-summary.md#answers).
 
 First results, with their interpretation, are in [docs/results/phase0-2026-09-23.md](docs/results/phase0-2026-09-23.md). The headlines for airline and retail:
 
