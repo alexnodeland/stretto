@@ -19,6 +19,7 @@
 //! times the site's coverage (how often the agent's step was among the
 //! options there), clears the threshold.
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Pseudo-decisions that pull a site's rates toward the overall ones.
@@ -57,7 +58,7 @@ pub struct Arbitrated {
 }
 
 /// An arbiter fitted on some cases, ready to judge others.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Fitted {
     /// The weights, the reliability weight last.
     pub weights: Vec<f64>,
@@ -135,8 +136,9 @@ pub fn cross_fit_folds(cases: &[Case], folds: u64) -> (Vec<Arbitrated>, Vec<f64>
 }
 
 /// Jev's agreement and the options' coverage, per site and overall.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct Rates {
+    #[serde(with = "stretto_model::pairs")]
     sites: HashMap<String, (f64, f64, f64)>,
     agree: f64,
     cover: f64,

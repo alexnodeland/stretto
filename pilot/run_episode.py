@@ -55,21 +55,26 @@ def now() -> str:
 
 
 def start_flow(args, episode: Path) -> tuple[subprocess.Popen, str]:
-    """Compile and serve the flow; once it listens, return it and its
-    address."""
-    command = [
-        str(STRETTO), "flow-serve",
-        "--tau2", str(args.tau2),
-        "--domain", args.domain,
+    """Serve the flow (from `--flow FILE`, or compiled on the spot); once it
+    listens, return it and its address."""
+    serving = [
         "--oracle", args.flow_oracle,
-        "--questions", "v2",
-        "--predicates", str(HERE.parent / "data" / "predicates-v2.json"),
         "--oracle-cache", str(args.oracle_cache),
-        "--oracle-budget", "0.5",
         "--threshold", str(args.flow_threshold),
         "--max-questions", str(getattr(args, "flow_max_questions", 300)),
         "--log", str(episode / "flow.jsonl"),
     ]
+    if getattr(args, "flow", None):
+        command = [str(STRETTO), "serve", "--flow", str(args.flow)] + serving
+    else:
+        command = [
+            str(STRETTO), "flow-serve",
+            "--tau2", str(args.tau2),
+            "--domain", args.domain,
+            "--questions", "v2",
+            "--predicates", str(HERE.parent / "data" / "predicates-v2.json"),
+            "--oracle-budget", "0.5",
+        ] + serving
     serve = subprocess.Popen(
         command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True
     )
@@ -108,6 +113,7 @@ def main() -> None:
         help="who answers live flow questions (mock: plumbing checks only)",
     )
     parser.add_argument("--flow-threshold", type=float, default=0.3)
+    parser.add_argument("--flow", type=Path, help="a compiled flow (`stretto compile`), else compiled here")
     args = parser.parse_args()
     if args.arm == "flows" and not args.oracle_cache:
         parser.error("the flows arm needs --oracle-cache")

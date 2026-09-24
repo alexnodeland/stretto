@@ -13,7 +13,7 @@
 //! through to the level below, so predictions degrade gracefully with sparsity.
 
 use crate::abstraction::{Step, Vocab};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// A step encoded for use as context:
@@ -102,19 +102,25 @@ pub trait Predictor {
     fn evidence_at(&self, ep: &EncodedEpisode, t: usize) -> f64;
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 struct Counts {
+    #[serde(with = "crate::pairs")]
     by_action: HashMap<u32, f64>,
     total: f64,
 }
 
+/// The counts behind one context length.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(transparent)]
+struct Level(#[serde(with = "crate::pairs")] HashMap<Vec<Symbol>, Counts>);
+
 /// The back-off model.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BackoffModel {
     order: usize,
     alpha: f64,
     vocab_size: usize,
-    levels: Vec<HashMap<Vec<Symbol>, Counts>>,
+    levels: Vec<Level>,
 }
 
 impl BackoffModel {
@@ -126,7 +132,7 @@ impl BackoffModel {
             order,
             alpha,
             vocab_size,
-            levels: vec![HashMap::new(); order + 1],
+            levels: vec![Level::default(); order + 1],
         }
     }
 
@@ -162,7 +168,10 @@ impl BackoffModel {
     /// Record that `action` followed `history`.
     pub fn observe(&mut self, history: &[Symbol], action: u32) {
         for j in 0..=self.order {
-            let c = self.levels[j].entry(Self::context(history, j)).or_default();
+            let c = self.levels[j]
+                .0
+                .entry(Self::context(history, j))
+                .or_default();
             *c.by_action.entry(action).or_insert(0.0) += 1.0;
             c.total += 1.0;
         }
@@ -172,7 +181,7 @@ impl BackoffModel {
     pub fn predict(&self, history: &[Symbol]) -> Vec<f64> {
         let mut p = vec![1.0 / self.vocab_size as f64; self.vocab_size];
         for j in 0..=self.order {
-            if let Some(c) = self.levels[j].get(&Self::context(history, j)) {
+            if let Some(c) = self.levels[j].0.get(&Self::context(history, j)) {
                 let denom = c.total + self.alpha;
                 for (a, pa) in p.iter_mut().enumerate() {
                     let n = c.by_action.get(&(a as u32)).copied().unwrap_or(0.0);
@@ -187,7 +196,7 @@ impl BackoffModel {
     pub fn prob(&self, history: &[Symbol], action: u32) -> f64 {
         let mut p = 1.0 / self.vocab_size as f64;
         for j in 0..=self.order {
-            if let Some(c) = self.levels[j].get(&Self::context(history, j)) {
+            if let Some(c) = self.levels[j].0.get(&Self::context(history, j)) {
                 let n = c.by_action.get(&action).copied().unwrap_or(0.0);
                 p = (n + self.alpha * p) / (c.total + self.alpha);
             }
@@ -199,6 +208,7 @@ impl BackoffModel {
     /// `history`: the evidence a top-level prediction rests on.
     pub fn evidence(&self, history: &[Symbol]) -> f64 {
         self.levels[self.order]
+            .0
             .get(&Self::context(history, self.order))
             .map(|c| c.total)
             .unwrap_or(0.0)
@@ -229,10 +239,11 @@ impl Predictor for BackoffModel {
 /// context. This is the right structure for "the LLM named the intent": the
 /// intent sharpens predictions where the data support it and costs nothing
 /// where they do not.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GroupedModel {
     base: BackoffModel,
     beta: f64,
+    #[serde(with = "crate::pairs")]
     top: HashMap<(u32, Vec<Symbol>), Counts>,
 }
 

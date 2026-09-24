@@ -17,13 +17,13 @@
 
 use crate::abstraction::{Step, Vocab};
 use crate::world::{log_likelihood, BackoffModel, EncodedEpisode};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use stretto_trace::{Episode, Event};
 
 /// A field of a tool's JSON output.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Field {
     /// A scalar at a path (`status`, `address.state`).
     Scalar(String),
@@ -195,9 +195,10 @@ pub fn discover(episodes: &[&[StepOutput]], max_values: usize) -> Vec<Candidate>
 pub const MAX_IDS: u32 = 64;
 
 /// Maps each tool output to a feature id from a chosen set of fields.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct FeatureMap {
     fields: BTreeMap<String, Vec<Field>>,
+    #[serde(with = "crate::pairs")]
     ids: HashMap<(String, Vec<String>), u32>,
 }
 

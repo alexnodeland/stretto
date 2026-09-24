@@ -201,8 +201,8 @@ fn header(config: &Config) -> LogHeader {
 /// the sender never blocks on a full pipe.
 fn pump(mut input: impl BufRead, mut output: impl Write, from: Peer, tap: Option<&Tap>) {
     let (sender, receiver) = match from {
-        Peer::Client => ("client", "server"),
         Peer::Server => ("server", "client"),
+        _ => ("client", "server"),
     };
     let mut line = Vec::new();
     let mut forwarding = true;

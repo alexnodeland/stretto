@@ -530,6 +530,90 @@ pub fn compile_flow(
     flow.context("a live flow needs the v2 questions")
 }
 
+/// Compile a live flow from `episodes` of one domain rather than from
+/// τ²-bench results: for example sessions recorded by `stretto-proxy` (see
+/// [`stretto_trace::mcp`]). The pipeline is [`compile_flow`]'s, with each
+/// episode its own task and a split by episode id standing in for
+/// τ²-bench's: 70% train the habit, the sites and the bindings (the
+/// successful ones, reward 1), and `oracle` is asked at every decision of
+/// the other 30%, where the arbiter is fitted. An episode's task id is kept
+/// when it has one, so episodes of one task share a side of the split.
+pub fn compile_flow_from_episodes(
+    config: &Config,
+    episodes: &[Episode],
+    manifest: &ToolManifest,
+    oracle: &(dyn Oracle + Sync),
+) -> Result<Flow> {
+    let mut config = config.clone();
+    config.intent = false;
+    config.flow = true;
+    config.features = true;
+    let episodes: Vec<Episode> = episodes
+        .iter()
+        .cloned()
+        .map(|mut e| {
+            if e.task_id.is_empty() {
+                e.task_id = e.id.clone();
+            }
+            e
+        })
+        .collect();
+    let mut split = Split {
+        train: Vec::new(),
+        test: Vec::new(),
+    };
+    for ep in &episodes {
+        let side = if task_group(&ep.task_id) % 10 < 7 {
+            &mut split.train
+        } else {
+            &mut split.test
+        };
+        if !side.contains(&ep.task_id) {
+            side.push(ep.task_id.clone());
+        }
+    }
+    if split.train.is_empty() || split.test.is_empty() {
+        bail!(
+            "{} episodes are too few to split into training and held-out tasks",
+            episodes.len()
+        );
+    }
+    let all_steps: Vec<Vec<Step>> = episodes.iter().map(steps).collect();
+    let vocab = Vocab::build(
+        all_steps.iter().flatten(),
+        manifest.tools.keys().map(String::as_str),
+    );
+    let (train, _) = encode_split(&episodes, &split, &vocab);
+    let successful: Vec<EncodedEpisode> = train.into_iter().filter(|e| e.success).collect();
+    if successful.is_empty() {
+        bail!("no successful training episodes to learn a habit from (set rewards to 1)");
+    }
+    let alpha_used = if config.alpha_samples > 0 {
+        alpha_posterior(
+            Arc::new(successful),
+            config.order,
+            vocab.len(),
+            config.alpha_samples,
+            config.seed,
+        )
+        .median
+    } else {
+        config.fixed_alpha
+    };
+    let refs: Vec<&Episode> = episodes.iter().collect();
+    let (_, flow) = featured(
+        &config,
+        &refs,
+        &[],
+        &split,
+        &vocab,
+        manifest,
+        alpha_used,
+        Some(oracle),
+    )?;
+    flow.context("a live flow needs the v2 questions")
+}
+
 /// Results files for `domain` under the checkout's published baselines.
 pub fn result_files(tau2_dir: &Path, domain: &str) -> Result<Vec<PathBuf>> {
     let dir = tau2_dir.join("data/tau2/results/final");
@@ -1040,7 +1124,24 @@ fn featured(
             let Some(&group) = intent_ids.get("") else {
                 bail!("a live flow is goal free: compile it without intents");
             };
+            let mut sources: Vec<String> = prepared
+                .iter()
+                .filter(|p| !p.target)
+                .map(|p| p.model.clone())
+                .collect();
+            sources.sort();
+            sources.dedup();
             Some(Flow {
+                stretto_flow: crate::flow::FLOW_VERSION,
+                provenance: crate::flow::Provenance {
+                    stretto: env!("CARGO_PKG_VERSION").to_string(),
+                    sources,
+                    habit_episodes: habit_set.len(),
+                    arbiter_cases: run.cases,
+                    compiled_unix_ms: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map_or(0, |d| d.as_millis() as u64),
+                },
                 vocab: vocab.clone(),
                 manifest: manifest.clone(),
                 map: map.clone(),
@@ -1282,6 +1383,8 @@ struct ShadowRun {
     sites: Sites,
     /// v2: the arbiter fitted for each fold (empty for v1).
     folds: Vec<Fitted>,
+    /// v2: the held-out decisions the arbiter was fitted on.
+    cases: usize,
 }
 
 /// Probabilities at which a read-only flow takes its most likely lookup.
@@ -1344,8 +1447,8 @@ fn shadow_run(
         .iter()
         .map(|d| shadow::predicate_answers(d, &asked))
         .collect();
-    let (combined, weights, folds) = if v2 {
-        let (c, w, f) = combine(
+    let (combined, weights, folds, cases) = if v2 {
+        let (c, w, f, n) = combine(
             &decisions,
             &scored,
             &split,
@@ -1359,9 +1462,9 @@ fn shadow_run(
             habit,
             vocab,
         );
-        (Some(c), w, f)
+        (Some(c), w, f, n)
     } else {
-        (None, Vec::new(), Vec::new())
+        (None, Vec::new(), Vec::new(), 0)
     };
     // The most likely lookup, wherever there is one.
     let lookup_first: Option<Vec<Option<Scored>>> = combined.as_ref().map(|c| {
@@ -1538,12 +1641,13 @@ fn shadow_run(
         lookup_first: lookup_first_answers,
         sites,
         folds,
+        cases,
     })
 }
 
-/// The combined answers, the arbiter's mean weights (named), and the
-/// arbiter of each fold.
-type Combined = (Vec<Option<Scored>>, Vec<(String, f64)>, Vec<Fitted>);
+/// The combined answers, the arbiter's mean weights (named), the arbiter of
+/// each fold, and the number of cases it was fitted on.
+type Combined = (Vec<Option<Scored>>, Vec<(String, f64)>, Vec<Fitted>, usize);
 
 /// v2: combine each asked next-step answer with the habit (see
 /// [`arbitrate`]); argument answers and decisions settled without asking
@@ -1617,7 +1721,8 @@ fn combine(
         let probs: BTreeMap<String, f64> = options.iter().cloned().zip(a.probs).collect();
         out[i] = Some(Scored::of(probs, options[a.top].clone(), &d.actual));
     }
-    (out, weights, folds)
+    let fitted_on = cases.iter().filter(|c| c.fit).count();
+    (out, weights, folds, fitted_on)
 }
 
 /// The arbiter's view of one v2 next-step decision (see [`arbitrate`]): the

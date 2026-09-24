@@ -5,12 +5,12 @@
 //! the user. A tool call's outcome is whether it errored; a reply's outcome is
 //! whether the user answered before the episode ended.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use stretto_trace::{Episode, Event};
 
 /// An abstract agent action.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Action {
     /// A message to the user with no tool call.
     Respond,
@@ -28,7 +28,7 @@ impl std::fmt::Display for Action {
 }
 
 /// What followed an action.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Outcome {
     /// The tool call succeeded.
     Ok,
@@ -137,10 +137,30 @@ pub fn step_turns(ep: &Episode) -> Vec<usize> {
 
 /// Dense ids for actions. `Respond` is always id 0; the last id is reserved
 /// for actions never seen when the vocabulary was built.
-#[derive(Clone, Debug)]
+///
+/// It serializes as its list of actions; the index is rebuilt on load.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(from = "Vec<Action>", into = "Vec<Action>")]
 pub struct Vocab {
     actions: Vec<Action>,
     index: HashMap<Action, u32>,
+}
+
+impl From<Vec<Action>> for Vocab {
+    fn from(actions: Vec<Action>) -> Self {
+        let index = actions
+            .iter()
+            .enumerate()
+            .map(|(i, a)| (a.clone(), i as u32))
+            .collect();
+        Self { actions, index }
+    }
+}
+
+impl From<Vocab> for Vec<Action> {
+    fn from(v: Vocab) -> Self {
+        v.actions
+    }
 }
 
 impl Vocab {
@@ -162,12 +182,7 @@ impl Vocab {
         names.dedup();
         let mut actions = vec![Action::Respond];
         actions.extend(names.into_iter().map(Action::Tool));
-        let index = actions
-            .iter()
-            .enumerate()
-            .map(|(i, a)| (a.clone(), i as u32))
-            .collect();
-        Self { actions, index }
+        Self::from(actions)
     }
 
     /// Number of ids, including the unseen-action id.

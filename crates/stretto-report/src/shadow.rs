@@ -406,11 +406,38 @@ pub fn decisions(
 /// tool that succeeded (or failed), every read-only tool the agent called
 /// next in training. Optionally also what each lookup is for (see
 /// [`Sites::learn_feeds`]).
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Sites {
     reads: BTreeSet<String>,
+    #[serde(with = "stretto_model::pairs")]
     next: BTreeMap<(String, bool), BTreeMap<String, usize>>,
+    #[serde(with = "feeds_pairs")]
     feeds: BTreeMap<String, BTreeMap<(String, String), usize>>,
+}
+
+/// [`Sites`]' feeds, with each lookup's `(write, argument)` counts as pairs.
+mod feeds_pairs {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use std::collections::BTreeMap;
+
+    type Use = (String, String);
+    type Feeds = BTreeMap<String, BTreeMap<Use, usize>>;
+
+    pub fn serialize<S: Serializer>(feeds: &Feeds, s: S) -> Result<S::Ok, S::Error> {
+        let flat: BTreeMap<&String, Vec<(&Use, &usize)>> = feeds
+            .iter()
+            .map(|(tool, uses)| (tool, uses.iter().collect()))
+            .collect();
+        flat.serialize(s)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Feeds, D::Error> {
+        let flat: BTreeMap<String, Vec<(Use, usize)>> = Deserialize::deserialize(d)?;
+        Ok(flat
+            .into_iter()
+            .map(|(tool, uses)| (tool, uses.into_iter().collect()))
+            .collect())
+    }
 }
 
 impl Sites {

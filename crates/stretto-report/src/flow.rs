@@ -25,7 +25,7 @@ use crate::arbitrate::Fitted;
 use crate::phase0::{case_of, task_group};
 use crate::shadow::{self, Asked, Decision, Kind, Predicate, Sites, RESPOND};
 use anyhow::Result;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use stretto_model::features::{step_outputs, FeatureMap, FOLDS};
@@ -44,9 +44,17 @@ const REQUIRED_SHARE: f64 = 0.9;
 /// customer said.
 const MIN_MENTION: usize = 4;
 
-/// A compiled live flow for one domain.
-#[derive(Clone, Debug)]
+/// The flow file format this build reads and writes.
+pub const FLOW_VERSION: u32 = 1;
+
+/// A compiled live flow for one domain. It serializes as the flow IR (see
+/// [`Flow::save`]).
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Flow {
+    /// The format version; see [`FLOW_VERSION`].
+    pub(crate) stretto_flow: u32,
+    /// Where the flow came from.
+    pub(crate) provenance: Provenance,
     pub(crate) vocab: Vocab,
     pub(crate) manifest: ToolManifest,
     pub(crate) map: FeatureMap,
@@ -111,6 +119,48 @@ impl Flow {
     /// The domain the flow was compiled for.
     pub fn domain(&self) -> &str {
         &self.manifest.domain
+    }
+
+    /// Where the flow came from.
+    pub fn provenance(&self) -> &Provenance {
+        &self.provenance
+    }
+
+    /// The tools the flow knows, with their kinds.
+    pub fn manifest(&self) -> &ToolManifest {
+        &self.manifest
+    }
+
+    /// Write the flow IR to `path` as JSON.
+    pub fn save(&self, path: &std::path::Path) -> Result<()> {
+        let file = std::fs::File::create(path)
+            .map_err(|e| anyhow::anyhow!("creating {}: {e}", path.display()))?;
+        serde_json::to_writer(std::io::BufWriter::new(file), self)?;
+        Ok(())
+    }
+
+    /// Read a flow IR written by [`Flow::save`].
+    pub fn load(path: &std::path::Path) -> Result<Self> {
+        let text = std::fs::read_to_string(path)
+            .map_err(|e| anyhow::anyhow!("reading {}: {e}", path.display()))?;
+        Self::from_json(&text)
+    }
+
+    /// Parse a flow IR.
+    pub fn from_json(text: &str) -> Result<Self> {
+        #[derive(Deserialize)]
+        struct Version {
+            stretto_flow: u32,
+        }
+        let v: Version =
+            serde_json::from_str(text).map_err(|e| anyhow::anyhow!("not a stretto flow: {e}"))?;
+        if v.stretto_flow != FLOW_VERSION {
+            anyhow::bail!(
+                "flow format {} is not supported (this build reads {FLOW_VERSION})",
+                v.stretto_flow
+            );
+        }
+        Ok(serde_json::from_str(text)?)
     }
 
     /// How often each lookup's binding agreed with the agent in training
@@ -251,13 +301,29 @@ impl Flow {
     }
 }
 
+/// What a flow was compiled from.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Provenance {
+    /// The stretto version that compiled it.
+    pub stretto: String,
+    /// The training sources, by label.
+    pub sources: Vec<String>,
+    /// Successful training episodes the habit learned from.
+    pub habit_episodes: usize,
+    /// Held-out decisions the arbiter was fitted on.
+    pub arbiter_cases: usize,
+    /// When it was compiled, in milliseconds since the Unix epoch.
+    pub compiled_unix_ms: u64,
+}
+
 /// Where each lookup's arguments came from in training, and how often
 /// binding them that way picked the agent's own values.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Bindings {
     /// Per lookup: calls seen, and how many of them passed each argument.
     args: BTreeMap<String, (usize, BTreeMap<String, usize>)>,
     /// Per lookup and argument: see [`Traced`].
+    #[serde(with = "stretto_model::pairs")]
     sources: BTreeMap<(String, String), Traced>,
     /// Per lookup: how often the binding picked the agent's own arguments at
     /// the agent's calls in training, `(agreed, calls)`, when its pick was
@@ -265,9 +331,16 @@ pub struct Bindings {
     agreed: BTreeMap<String, [(usize, usize); 2]>,
 }
 
-/// String values one lookup argument took, and how many of them were found
-/// in an earlier output of each `(tool, path)`.
-type Traced = (usize, BTreeMap<(String, String), usize>);
+/// Where one lookup argument's values came from in training.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+struct Traced {
+    /// String values the argument took.
+    values: usize,
+    /// How many of them were found in an earlier output of each
+    /// `(tool, path)`.
+    #[serde(with = "stretto_model::pairs")]
+    found: BTreeMap<(String, String), usize>,
+}
 
 impl Bindings {
     /// Learn from training episodes: each string argument of each lookup is
@@ -307,14 +380,14 @@ impl Bindings {
                                 };
                                 let entry =
                                     b.sources.entry((c.name.clone(), arg.clone())).or_default();
-                                entry.0 += 1;
+                                entry.values += 1;
                                 let found = outputs.iter().rev().find_map(|(tool, out)| {
                                     let mut paths = Vec::new();
                                     find(out, value, "$", &mut paths);
                                     paths.into_iter().next().map(|p| (tool.to_string(), p))
                                 });
                                 if let Some(source) = found {
-                                    *entry.1.entry(source).or_insert(0) += 1;
+                                    *entry.found.entry(source).or_insert(0) += 1;
                                 }
                             }
                         }
@@ -441,7 +514,11 @@ impl Bindings {
         let mut bound = serde_json::Map::new();
         let mut all_mentioned = true;
         for arg in required {
-            let Some((values, sources)) = self.sources.get(&(tool.to_string(), arg.clone())) else {
+            let Some(Traced {
+                values,
+                found: sources,
+            }) = self.sources.get(&(tool.to_string(), arg.clone()))
+            else {
                 return Err(format!("`{arg}` never took a string in training"));
             };
             let rules: Vec<&(String, String)> = sources
@@ -722,6 +799,107 @@ mod tests {
         let (args, chance) = b.bind("get_product_details", &live("hello")).unwrap();
         assert_eq!(args, json!({"product_id": "p1"}));
         assert!((chance - 1.0 / 6.0).abs() < 1e-9, "{chance}");
+    }
+
+    /// A small but complete flow: a habit, sites and bindings learned from
+    /// three training episodes, and arbiters fitted on synthetic cases laid
+    /// out as [`case_of`] lays them out.
+    pub(crate) fn toy_flow() -> Flow {
+        use crate::arbitrate::{fit_folds, Case};
+        use stretto_model::{GroupedModel, Vocab};
+        let manifest = manifest();
+        let training: Vec<Episode> = (0..3)
+            .map(|_| {
+                episode(vec![
+                    Event::User {
+                        text: "help with my orders".to_string(),
+                    },
+                    call("a", "get_user_details", json!({"user_id": "ann_1"})),
+                    result("a", "get_user_details", user(&["#W1", "#W2"])),
+                    call("b", "get_order_details", json!({"order_id": "#W1"})),
+                    result("b", "get_order_details", json!({"order_id": "#W1"})),
+                    call("c", "get_order_details", json!({"order_id": "#W2"})),
+                    result("c", "get_order_details", json!({"order_id": "#W2"})),
+                ])
+            })
+            .collect();
+        let steps: Vec<Vec<stretto_model::Step>> = training.iter().map(steps).collect();
+        let vocab = Vocab::build(
+            steps.iter().flatten(),
+            manifest.tools.keys().map(String::as_str),
+        );
+        let map = FeatureMap::default();
+        let encoded: Vec<EncodedEpisode> = training
+            .iter()
+            .zip(&steps)
+            .map(|(ep, st)| {
+                let f = map.features(&step_outputs(ep));
+                EncodedEpisode::encode_with_features(st, Some(&f), &vocab, true).with_group(1)
+            })
+            .collect();
+        let cases: Vec<Case> = (0..60u64)
+            .map(|g| Case {
+                group: g,
+                site: "get_user_details".to_string(),
+                features: vec![
+                    vec![0.2f64.ln(), 0.3f64.ln(), 0.3f64.ln(), 1.0],
+                    vec![0.8f64.ln(), 0.7f64.ln(), 0.7f64.ln(), 0.0],
+                ],
+                pick: 1,
+                actual: Some(if g % 4 == 0 { 0 } else { 1 }),
+                fit: true,
+            })
+            .collect();
+        Flow {
+            stretto_flow: FLOW_VERSION,
+            provenance: Provenance::default(),
+            habit: GroupedModel::fit(2, 1.0, 1.0, vocab.len(), &encoded),
+            sites: Sites::learn(steps.iter().map(Vec::as_slice), &manifest),
+            bindings: Bindings::learn(&training, &manifest),
+            folds: fit_folds(&cases, FOLDS),
+            vocab,
+            map,
+            group: 1,
+            predicates: Vec::new(),
+            weighed: Vec::new(),
+            model: "jev-test".to_string(),
+            manifest,
+        }
+    }
+
+    #[test]
+    fn a_flow_survives_its_ir() {
+        let flow = toy_flow();
+        let json = serde_json::to_string(&flow).unwrap();
+        let back = Flow::from_json(&json).unwrap();
+        let live = episode(vec![
+            Event::User {
+                text: "I want to cancel something".to_string(),
+            },
+            call("a", "get_user_details", json!({"user_id": "bob_2"})),
+            result("a", "get_user_details", user(&["#W7", "#W8"])),
+        ]);
+        let oracle = stretto_oracle::MockOracle {
+            confidence: 0.6,
+            noul: 0.5,
+        };
+        let a = flow.next(&live, &oracle, 0.3).unwrap();
+        let b = back.next(&live, &oracle, 0.3).unwrap();
+        assert_eq!(
+            serde_json::to_value(&a).unwrap(),
+            serde_json::to_value(&b).unwrap()
+        );
+        assert_eq!(
+            a.proposal,
+            Proposal::Lookup {
+                tool: "get_order_details".to_string(),
+                arguments: json!({"order_id": "#W7"}),
+            }
+        );
+        // Saving is stable, and the format is checked on load.
+        assert_eq!(serde_json::to_string(&back).unwrap(), json);
+        let newer = json.replacen("\"stretto_flow\":1", "\"stretto_flow\":99", 1);
+        assert!(Flow::from_json(&newer).is_err());
     }
 
     #[test]

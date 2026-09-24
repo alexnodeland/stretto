@@ -16,12 +16,22 @@
 //! [`episode`] turns a log into an [`Episode`], and [`manifest`] reads the
 //! tools the server listed.
 //!
+//! Version 2 adds two senders besides `client` and `server`:
+//!
+//! - `proxy`: a request the proxy sent the server on its own, such as a
+//!   flow's lookup. The server's response is logged as usual.
+//! - `context`: a message of the conversation, `{"role": "user" | "assistant",
+//!   "content": text}`, which the host handed the proxy (MCP itself never
+//!   carries the conversation). It is logged just before the next tool call
+//!   after the proxy saw it.
+//!
 //! The proxy sees only MCP traffic, so an episode from a log is a partial
 //! view:
 //!
-//! - **No conversation.** The user's messages and the LLM's replies never
-//!   reach an MCP server, so there are no [`Event::User`] events, and
-//!   assistant turns have tool calls but no text.
+//! - **No conversation, unless the host provides it.** The user's messages
+//!   and the LLM's replies never reach an MCP server. Without `context`
+//!   entries there are no [`Event::User`] events, and assistant turns have
+//!   tool calls but no text.
 //! - **Inferred turns.** A tool call sent while an earlier call of the
 //!   current turn still awaits its response joins that turn (parallel
 //!   calls); any other call starts a new turn. A host that runs one LLM
@@ -38,8 +48,9 @@ use serde_json::{json, Value};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 
-/// The log format version this module reads and `stretto-proxy` writes.
-pub const LOG_VERSION: u32 = 1;
+/// The log format version `stretto-proxy` writes. This module also reads
+/// version 1, which had no `proxy` or `context` entries.
+pub const LOG_VERSION: u32 = 2;
 
 /// The first line of a log.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -68,6 +79,10 @@ pub enum Peer {
     Client,
     /// The MCP server.
     Server,
+    /// The proxy itself, sending the server a request of its own (version 2).
+    Proxy,
+    /// The host, handing the proxy a message of the conversation (version 2).
+    Context,
 }
 
 /// One forwarded line.
@@ -134,8 +149,8 @@ pub fn parse_log(text: &str) -> Result<McpLog> {
     let header: LogHeader = serde_json::from_str(first)
         .with_context(|| format!("line {n}: not a stretto MCP log header"))?;
     ensure!(
-        header.stretto_mcp_log == LOG_VERSION,
-        "unsupported log version {} (this build reads version {LOG_VERSION})",
+        (1..=LOG_VERSION).contains(&header.stretto_mcp_log),
+        "unsupported log version {} (this build reads versions 1 to {LOG_VERSION})",
         header.stretto_mcp_log
     );
 
@@ -193,6 +208,8 @@ pub fn manifest(log: &McpLog, domain: &str) -> ToolManifest {
                     }
                 }
             }
+            // The proxy lists no tools of its own, and the conversation has none.
+            Peer::Proxy | Peer::Context => {}
         }
     }
     ToolManifest {
@@ -261,7 +278,23 @@ pub fn episode(log: &McpLog) -> Episode {
 
     for (from, m) in log.messages() {
         match from {
-            Peer::Client => match method(m) {
+            Peer::Context => {
+                let text = m
+                    .get("content")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string();
+                match m.get("role").and_then(Value::as_str) {
+                    Some("user") => events.push(Event::User { text }),
+                    Some("assistant") if !text.is_empty() => events.push(Event::Assistant {
+                        text: Some(text),
+                        calls: Vec::new(),
+                        usage: None,
+                    }),
+                    _ => {}
+                }
+            }
+            Peer::Client | Peer::Proxy => match method(m) {
                 Some("initialize") if client_name.is_none() => {
                     client_name = m
                         .pointer("/params/clientInfo/name")
@@ -539,8 +572,8 @@ mod tests {
     fn rejects_what_is_not_a_log() {
         assert!(parse_log("").is_err());
         assert!(parse_log("{\"jsonrpc\":\"2.0\",\"id\":1}\n").is_err());
-        let v2 = HEADER.replace("\"stretto_mcp_log\":1", "\"stretto_mcp_log\":2");
-        assert!(format!("{:#}", parse_log(&v2).unwrap_err()).contains("version 2"));
+        let v3 = HEADER.replace("\"stretto_mcp_log\":1", "\"stretto_mcp_log\":3");
+        assert!(format!("{:#}", parse_log(&v3).unwrap_err()).contains("version 3"));
         let bad =
             format!("{HEADER}\nnot an entry\n{{\"t_ms\":1,\"from\":\"client\",\"raw\":\"x\"}}\n");
         assert!(format!("{:#}", parse_log(&bad).unwrap_err()).contains("line 2"));
@@ -613,6 +646,57 @@ mod tests {
         assert_eq!(doc.args.len(), 1);
         assert_eq!(doc.args["order_id"], "The order id.");
         assert!(!m.docs.contains_key("get_order"));
+    }
+
+    #[test]
+    fn version_2_adds_the_conversation_and_the_proxys_own_calls() {
+        let mut log = log_of(&[
+            (
+                Peer::Context,
+                json!({"role": "user", "content": "Cancel #W1 please"}),
+            ),
+            call(json!(1), "get_user"),
+            reply(json!(1), "user"),
+            (
+                Peer::Proxy,
+                json!({"jsonrpc": "2.0", "id": "stretto-flow-1", "method": "tools/call",
+                       "params": {"name": "get_order", "arguments": {"order_id": "#W1"}}}),
+            ),
+            reply(json!("stretto-flow-1"), "order"),
+            (
+                Peer::Context,
+                json!({"role": "assistant", "content": "It is pending."}),
+            ),
+        ]);
+        log.header.stretto_mcp_log = 2;
+        let ep = episode(&log);
+        assert_eq!(
+            outline(&ep),
+            [
+                "user",
+                "turn(get_user)",
+                "result:1",
+                "turn(get_order)",
+                "result:stretto-flow-1",
+                "turn()"
+            ]
+        );
+        assert!(
+            matches!(&ep.events[5], Event::Assistant { text: Some(t), .. } if t == "It is pending.")
+        );
+        // Neither kind of entry lists tools.
+        assert!(manifest(&log, "retail").tools.is_empty());
+        // Version 2 logs parse; later versions do not.
+        let text = format!(
+            "{}\n",
+            HEADER.replace("\"stretto_mcp_log\":1", "\"stretto_mcp_log\":2")
+        );
+        assert!(parse_log(&text).is_ok());
+        let text = format!(
+            "{}\n",
+            HEADER.replace("\"stretto_mcp_log\":1", "\"stretto_mcp_log\":3")
+        );
+        assert!(parse_log(&text).is_err());
     }
 
     #[test]

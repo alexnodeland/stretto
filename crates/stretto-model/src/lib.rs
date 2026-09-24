@@ -13,11 +13,14 @@
 //! - [`policy`] reads policy compliance (confirmation before writes) off a trace.
 //! - [`projection`] replays held-out episodes through macro-tool flows and
 //!   counts the LLM turns they would save.
+//! - [`pairs`] serializes maps with non-string keys, so compiled models can
+//!   be written to JSON.
 
 pub mod abstraction;
 pub mod alpha;
 pub mod bursts;
 pub mod features;
+pub mod pairs;
 pub mod policy;
 pub mod projection;
 pub mod provenance;

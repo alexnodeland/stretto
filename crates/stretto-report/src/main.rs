@@ -57,6 +57,80 @@ enum Command {
         #[arg(long)]
         log: Option<PathBuf>,
     },
+    /// Compile a live read-only flow and write its IR (JSON) to a file: the
+    /// same data and questions as `phase0 --questions v2`, goal free, from
+    /// cached System-One answers only. `serve` and `stretto-proxy --flow`
+    /// load the file.
+    Compile {
+        #[command(flatten)]
+        data: Phase0Args,
+        /// Where to write the flow.
+        #[arg(long)]
+        out: PathBuf,
+    },
+    /// Learn a live flow from sessions recorded by `stretto-proxy` (JSONL
+    /// logs in a directory) and write its IR, as `compile` does from
+    /// τ²-bench results. The tools come from the sessions' `tools/list`
+    /// responses (their `readOnlyHint` annotations), or from `--manifest`.
+    Learn {
+        /// Directory of session logs (`*.jsonl`).
+        #[arg(long)]
+        sessions: PathBuf,
+        /// The domain to name the flow for.
+        #[arg(long)]
+        domain: String,
+        /// A tool manifest (JSON, as stretto-trace writes it) instead of the
+        /// sessions' own `tools/list`.
+        #[arg(long)]
+        manifest: Option<PathBuf>,
+        /// Rewards by session id (JSON object). Sessions without one count as
+        /// successful.
+        #[arg(long)]
+        rewards: Option<PathBuf>,
+        /// Who answers the held-out questions the arbiter is fitted on.
+        #[arg(long, value_enum, default_value_t = OracleArg::Jev)]
+        oracle: OracleArg,
+        /// Replay cache for oracle answers.
+        #[arg(long, default_value = ".oracle-cache")]
+        oracle_cache: PathBuf,
+        /// Refuse to start if uncached questions could cost more than this
+        /// many dollars.
+        #[arg(long, default_value_t = 1.0)]
+        oracle_budget: f64,
+        /// Yes/no predicates to ask and weigh (see `data/predicates-v2.json`).
+        #[arg(long)]
+        predicates: Option<PathBuf>,
+        /// Where to write the flow.
+        #[arg(long)]
+        out: PathBuf,
+    },
+    /// Serve a compiled flow (from `compile`), as `flow-serve` does.
+    Serve {
+        /// The flow IR to load.
+        #[arg(long)]
+        flow: PathBuf,
+        /// Who answers live questions: `jev` (needs TYPESAFE_API_KEY),
+        /// `replay` (the cache only) or `mock`.
+        #[arg(long, value_enum, default_value_t = OracleArg::Jev)]
+        oracle: OracleArg,
+        /// Replay cache for oracle answers.
+        #[arg(long, default_value = ".oracle-cache")]
+        oracle_cache: PathBuf,
+        /// Address to listen on (port 0: any free port; the ready line on
+        /// stderr names it).
+        #[arg(long, default_value = "127.0.0.1:0")]
+        listen: String,
+        /// Take the most likely lookup when its probability is at least
+        /// this.
+        #[arg(long, default_value_t = 0.3)]
+        threshold: f64,
+        /// Stop asking the System-One model after this many live questions.
+        #[arg(long, default_value_t = 300)]
+        max_questions: usize,
+        /// Append every query's answer here (JSON lines).
+        #[arg(long)]
+        log: Option<PathBuf>,
+    },
     /// Check that Jev is reachable with TYPESAFE_API_KEY: ask one small
     /// question (uncached) and print the answer, model version and latency.
     JevCheck,
@@ -220,6 +294,125 @@ fn main() -> Result<()> {
             let config = phase0_config(data)?;
             flow_serve(&config, domain, &listen, threshold, max_questions, log)
         }
+        Command::Compile { data, out } => {
+            let domains = data.domains.clone();
+            let [domain] = domains.as_slice() else {
+                anyhow::bail!("compile builds one domain's flow: pass --domain once");
+            };
+            let config = phase0_config(data)?;
+            let flow = compile(&config, domain)?;
+            if let Some(parent) = out.parent().filter(|p| !p.as_os_str().is_empty()) {
+                std::fs::create_dir_all(parent)?;
+            }
+            flow.save(&out)?;
+            eprintln!(
+                "stretto: wrote the {} flow to {} ({} KB)",
+                flow.domain(),
+                out.display(),
+                std::fs::metadata(&out)?.len() / 1024
+            );
+            Ok(())
+        }
+        Command::Learn {
+            sessions,
+            domain,
+            manifest,
+            rewards,
+            oracle,
+            oracle_cache,
+            oracle_budget,
+            predicates,
+            out,
+        } => {
+            let rewards: BTreeMap<String, f64> = match rewards {
+                Some(path) => serde_json::from_str(
+                    &std::fs::read_to_string(&path)
+                        .with_context(|| format!("reading {}", path.display()))?,
+                )?,
+                None => BTreeMap::new(),
+            };
+            let mut logs = Vec::new();
+            for entry in std::fs::read_dir(&sessions)
+                .with_context(|| format!("listing {}", sessions.display()))?
+            {
+                let path = entry?.path();
+                if path.extension().is_some_and(|e| e == "jsonl")
+                    && !path.to_string_lossy().ends_with(".flow.jsonl")
+                {
+                    logs.push(stretto_trace::mcp::read_log(&path)?);
+                }
+            }
+            logs.sort_by(|a, b| a.header.session.cmp(&b.header.session));
+            let manifest = match manifest {
+                Some(path) => serde_json::from_str(&std::fs::read_to_string(&path)?)?,
+                None => {
+                    let mut m = stretto_trace::ToolManifest {
+                        domain: domain.clone(),
+                        ..Default::default()
+                    };
+                    for log in &logs {
+                        let listed = stretto_trace::mcp::manifest(log, &domain);
+                        m.tools.extend(listed.tools);
+                        m.docs.extend(listed.docs);
+                    }
+                    m
+                }
+            };
+            let episodes: Vec<stretto_trace::Episode> = logs
+                .iter()
+                .map(|log| {
+                    let mut ep = stretto_trace::mcp::episode(log);
+                    ep.domain = domain.clone();
+                    ep.reward = rewards.get(&ep.id).copied().unwrap_or(1.0);
+                    ep
+                })
+                .collect();
+            let mut config = phase0::Config::new(PathBuf::new());
+            config.domains = vec![domain.clone()];
+            let mut sc = ShadowConfig::new(oracle_kind(oracle));
+            sc.cache_dir = oracle_cache;
+            sc.budget = oracle_budget;
+            sc.questions = QuestionSet::V2;
+            if let Some(path) = predicates {
+                sc.predicates =
+                    serde_json::from_str::<PredicateFile>(&std::fs::read_to_string(&path)?)?
+                        .predicates;
+            }
+            let oracle = sc.build()?;
+            config.shadow = Some(sc);
+            let flow =
+                phase0::compile_flow_from_episodes(&config, &episodes, &manifest, oracle.as_ref())?;
+            flow.save(&out)?;
+            eprintln!(
+                "stretto: learned the {domain} flow from {} sessions ({} tools) and wrote {}",
+                episodes.len(),
+                manifest.tools.len(),
+                out.display()
+            );
+            Ok(())
+        }
+        Command::Serve {
+            flow,
+            oracle,
+            oracle_cache,
+            listen,
+            threshold,
+            max_questions,
+            log,
+        } => {
+            let flow = stretto_report::flow::Flow::load(&flow)?;
+            let mut sc = ShadowConfig::new(oracle_kind(oracle));
+            sc.cache_dir = oracle_cache;
+            let oracle = sc.build()?;
+            serve(
+                &flow,
+                oracle.as_ref(),
+                &listen,
+                threshold,
+                max_questions,
+                log,
+            )
+        }
         Command::JevCheck => jev_check(),
         Command::ExportAnswers { oracle_cache } => {
             let cache: ReplayCache<MockOracle> = ReplayCache::new(oracle_cache, None);
@@ -302,11 +495,7 @@ fn phase0_config(data: Phase0Args) -> Result<phase0::Config> {
         None => Vec::new(),
     };
     config.shadow = oracle.map(|kind| {
-        let mut sc = ShadowConfig::new(match kind {
-            OracleArg::Jev => OracleKind::Jev,
-            OracleArg::Replay => OracleKind::Replay,
-            OracleArg::Mock => OracleKind::Mock,
-        });
+        let mut sc = ShadowConfig::new(oracle_kind(kind));
         sc.cache_dir = oracle_cache;
         sc.hints = dataflow_hints;
         sc.predicates = predicates.clone();
@@ -328,6 +517,14 @@ fn phase0_config(data: Phase0Args) -> Result<phase0::Config> {
     Ok(config)
 }
 
+fn oracle_kind(kind: OracleArg) -> OracleKind {
+    match kind {
+        OracleArg::Jev => OracleKind::Jev,
+        OracleArg::Replay => OracleKind::Replay,
+        OracleArg::Mock => OracleKind::Mock,
+    }
+}
+
 /// A query to `flow-serve`.
 #[derive(serde::Deserialize)]
 struct FlowQuery {
@@ -345,16 +542,32 @@ fn flow_serve(
     max_questions: usize,
     log: Option<PathBuf>,
 ) -> Result<()> {
+    let flow = compile(config, domain)?;
+    let oracle = config
+        .shadow
+        .as_ref()
+        .expect("compile checked it")
+        .build()?;
+    serve(
+        &flow,
+        oracle.as_ref(),
+        listen,
+        threshold,
+        max_questions,
+        log,
+    )
+}
+
+/// Compile `domain`'s live flow from cached answers alone (fill the cache
+/// with `phase0 --oracle jev --questions v2 --no-intent` first).
+fn compile(config: &phase0::Config, domain: &str) -> Result<stretto_report::flow::Flow> {
     let sc = config
         .shadow
         .as_ref()
-        .context("flow-serve needs --oracle (jev, or replay to test)")?;
+        .context("compiling a flow needs --oracle (jev, or replay)")?;
     if sc.questions != QuestionSet::V2 {
-        anyhow::bail!("flow-serve asks the v2 questions: pass --questions v2");
+        anyhow::bail!("flows ask the v2 questions: pass --questions v2");
     }
-    // The flow is compiled from cached answers alone (fill the cache with
-    // `phase0 --oracle jev --questions v2 --no-intent` first); only live
-    // questions go to the oracle.
     let mut offline = config.clone();
     if let Some(sc) = offline.shadow.as_mut() {
         sc.oracle = OracleKind::Replay;
@@ -364,7 +577,6 @@ fn flow_serve(
     let cached = offline.shadow.as_ref().expect("checked above").build()?;
     let start = Instant::now();
     let flow = phase0::compile_flow(&offline, domain, cached.as_ref())?;
-    let oracle = sc.build()?;
     eprintln!(
         "stretto: compiled the {} flow in {:.1} s",
         flow.domain(),
@@ -376,6 +588,18 @@ fn flow_serve(
             not.0, not.1, named.0, named.1
         );
     }
+    Ok(flow)
+}
+
+/// Answer one flow query per connection on `listen`, asking `oracle`.
+fn serve(
+    flow: &stretto_report::flow::Flow,
+    oracle: &(dyn Oracle + Sync),
+    listen: &str,
+    threshold: f64,
+    max_questions: usize,
+    log: Option<PathBuf>,
+) -> Result<()> {
     let listener =
         std::net::TcpListener::bind(listen).with_context(|| format!("listening on {listen}"))?;
     // The harness waits for this line.
@@ -415,7 +639,7 @@ fn flow_serve(
                     flow.domain(),
                     &query.agent_model,
                 )
-                .and_then(|episode| flow.next(&episode, oracle.as_ref(), threshold));
+                .and_then(|episode| flow.next(&episode, oracle, threshold));
                 match answer {
                     Ok(next) => {
                         asked += next.key.is_some() as usize;

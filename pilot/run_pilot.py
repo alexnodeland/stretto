@@ -148,6 +148,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=Path("runs/pilot"))
     parser.add_argument("--tau2", type=Path, default=HERE.parent.parent / "sierra-research" / "tau2-bench")
     parser.add_argument("--oracle-cache", type=Path, required=True)
+    parser.add_argument("--flow", type=Path, help="a compiled flow (`stretto compile`), else compiled per episode")
     parser.add_argument("--summarize-only", action="store_true")
     args = parser.parse_args()
     out = args.out.resolve()
@@ -163,7 +164,7 @@ def main() -> None:
                     sys.executable, str(HERE / "run_episode.py"),
                     "--domain", args.domain, "--task-id", t, "--out", str(out), "--arm", arm,
                     "--tau2", str(args.tau2), "--oracle-cache", str(args.oracle_cache),
-                ]
+                ] + (["--flow", str(args.flow)] if args.flow else [])
                 done = subprocess.run(command, capture_output=True, text=True, check=False)
                 (out / f"{arm}-task-{t}.log").write_text(done.stdout + done.stderr)
                 result = [l for l in done.stdout.splitlines() if l.startswith("RESULT")]

@@ -146,6 +146,7 @@ def main() -> None:
     parser.add_argument("--oracle-cache", type=Path, required=True)
     parser.add_argument("--flow-oracle", default="mock", choices=["jev", "mock"])
     parser.add_argument("--flow-threshold", type=float, default=0.3)
+    parser.add_argument("--flow", type=Path, help="a compiled flow (`stretto compile`), else compiled here")
     args = parser.parse_args()
     episodes = recorded_episodes(args)
     if not episodes:
@@ -161,6 +162,7 @@ def main() -> None:
             oracle_cache=args.oracle_cache,
             flow_threshold=args.flow_threshold,
             flow_max_questions=50 * len(episodes),
+            flow=args.flow,
         ),
         out,
     )
