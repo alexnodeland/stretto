@@ -74,8 +74,8 @@ First results, with their interpretation, are in [docs/results/phase0-2026-09-23
   - Combining its answers with the habit and three state predicates lifts agreement to 80.5% (retail) and 78.9% (airline). Dataflow hints add nothing.
   - Because detours are harmless offline, flows can act on weaker picks and take the likeliest lookup. They then save 15–17% of LLM turns in retail and 10–13% in airline, pooled over the 2025 baselines. Detours then show up in half to two thirds of episodes.
   - Across nine current models:
-    - Qwen3.5 and Qwen3-Max clear 20% offline in both domains (Qwen3.5: 29.7% and 22.5%).
-    - Gemini 3, Claude Sonnet 4.5 and GPT-5.2 (reasoning off) clear it in retail.
+    - Qwen3.5 clears 20% offline in both domains (29.7% and 22.5%). Qwen3-Max does too, but in airline only with lookup first.
+    - Gemini 3 and Claude Sonnet 4.5 clear it in retail, and so does GPT-5.2 with reasoning off, with lookup first.
     - GLM-5 clears it in retail only with predicates (20.5%). The heavy parallel callers stay under 7% in airline.
 
 ## Crates
