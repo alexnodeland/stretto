@@ -2,7 +2,7 @@
 
 No code was changed for this run. The full generated report is in [phase0b-2026-09-23-report.md](phase0b-2026-09-23-report.md), and aggregate metrics are in [phase0b-2026-09-23-aggregates.json](phase0b-2026-09-23-aggregates.json). Both were produced by commit fb10755 (latest `main` merged in, which adds the two-key rule), replaying the cached Jev answers from the live run.
 
-The live run's answers were not kept. [The v1 answer bundle](phase0b-2026-09-23-answers.md) asks the same questions again, and replays without a key to a [re-run of this report](phase0b-2026-09-23-reasked-report.md). The headline figures move by at most 0.3 points, and every gate verdict stays the same.
+[The v1 answer bundle](phase0b-2026-09-23-answers.md) holds the live run's answers, and replays this report exactly without a key. The same questions asked again gave the same pick 97% of the time, and a [re-run of this report](phase0b-2026-09-23-reasked-report.md) whose headline figures move by at most 0.3 points, with every gate verdict the same.
 
 - Jev model: jev-1.13.0 (answered every question)
 - Questions: retail 5812 distinct (5932 decisions) and airline 3134 distinct (3211 decisions), all answered, 0 failed
