@@ -74,6 +74,13 @@ In the flows arm, the agent's first call found the user. The flow then looked up
 - GLM-5.3 in Claude Code calls tools one at a time (parallel calls in 3.8% of tool turns), unlike GLM-5 in τ²-bench's harness (45%). So airline saved far more than the offline projection for GLM-5 (under 5%).
 - 334 Z.ai credits, 11% less in the flows arm.
 
+**Guards pilot, airline.** The guards arm (`run_episode.py --arm guards`) runs the tools behind `stretto-proxy --guards`, which refuses a write an enforced policy rule fails. It ran on the four airline test tasks where the guard audit finds the 2025 agents' refused writes concentrated (35, 45, 32, 48), plus four harm checks against the airline pilot's baselines. See [the summary](../docs/results/pilot-guards-2026-09-24.md):
+
+- GLM-5.3 passed all four main tasks in both arms, and the guards refused nothing. It never tried the cancellations the policy forbids.
+- With the guards on, 7 of the 8 episodes passed; the failure (task 31) was the agent's cost error from the airline pilot, with nothing refused.
+- The proxy checked 9 writes live and passed them all, among them task 32's upgrade-then-change, which a rule briefly changed that morning would have refused.
+- 223 Z.ai credits.
+
 ## Check the flow without an LLM
 
 [`check_flow.py`](check_flow.py) replays recorded episodes' tool calls through `tau2_mcp.py` with the flow behind it. It takes an episode from this harness, or τ²-bench results, by default one trial of each test-split task. A recorded call the flow has already made is skipped. A recorded turn whose calls were all skipped is a turn the flow saves, if the agent otherwise behaved the same. A flow lookup the agent never made is a detour. This is the offline projection's measure, but with the live flow's own argument bindings and questions, and no GLM calls.
