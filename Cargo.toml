@@ -22,4 +22,5 @@ serde_json = { version = "1", features = ["float_roundtrip"] }
 sha2 = "0.10"
 stretto-model = { path = "crates/stretto-model" }
 stretto-oracle = { path = "crates/stretto-oracle" }
+stretto-report = { path = "crates/stretto-report" }
 stretto-trace = { path = "crates/stretto-trace" }

@@ -96,8 +96,8 @@ First results, with their interpretation, are in [docs/results/phase0-2026-09-23
 | `stretto-trace` | Canonical episode schema; τ²-bench results ingest; MCP proxy log ingest; tool manifests with docs |
 | `stretto-model` | Action abstraction; hierarchical Dirichlet back-off world model; concentration posterior via fugue; argument provenance; tool runs; policy checks |
 | `stretto-oracle` | `Oracle` trait; Jev HTTP client (`POST /v1/systemone`); on-disk replay cache; mock |
-| `stretto-report` | The `stretto` CLI, the Phase 0 report, Phase 0b (System-One questions at held-out decisions), and live read-only flows (`stretto flow-serve`) |
-| `stretto-proxy` | A stdio MCP proxy that forwards every line unchanged and records sessions for `stretto-trace` ([README](crates/stretto-proxy/README.md)) |
+| `stretto-report` | The `stretto` CLI: the Phase 0 report; Phase 0b (System-One questions at held-out decisions); the arbiter; flows (`compile` a flow IR from τ²-bench results, `learn` one from recorded sessions, `serve` it); policy guards and their audit (`guards`) |
+| `stretto-proxy` | A stdio MCP proxy for any MCP server. It records sessions for `stretto-trace`, and in active mode runs a flow behind the agent's calls, refuses writes the guards fail, adds a `stretto_commit` tool, and logs the conversation a host hands it ([README](crates/stretto-proxy/README.md)) |
 
 ## Roadmap
 
@@ -105,8 +105,8 @@ First results, with their interpretation, are in [docs/results/phase0-2026-09-23
 |---|---|---|
 | 0a | Predictability, headroom and provenance on published trajectories | Nothing (done) |
 | 0b | Replayed shadow mode: ask Jev at every decision a flow would hand it (next step, closed-set arguments), score agreement and calibration, and re-run the projection with its answers. First run done (v1 questions); next: narrower questions, Bayesian arbitration, matching descriptions to records | `TYPESAFE_API_KEY` (set) |
-| 1 | Rust MCP proxy that records traffic (recording done: `stretto-proxy`); rule checks compiled from policy and tested against traces | — |
-| 2 | Flow compiler; `plan_*` / `resume_*` / `commit_*` macro-tools; arbitration runtime; live τ²-bench arms on GLM and MiniMax. Started: live read-only flows (`flow-serve`) and the retail pilot harness ([`pilot/`](pilot/README.md)) | GLM (Z.ai coding plan, set); MiniMax |
+| 1 | Rust MCP proxy that records traffic; rule checks compiled from policy and tested against traces. Done: `stretto-proxy`, `stretto guards` | — |
+| 2 | Flow compiler; arbitration runtime; macro-tools; live τ²-bench arms. Done: the flow IR (`compile`, `learn`, `serve`); read-only flows live in the proxy (arm D0) and in the pilot harness, with paired pilots in retail and airline on GLM-5.3; guards and `stretto_commit` in the proxy. Next: `plan_*` macro-tools named by the LLM, a paired run large enough to bound pass^1, more agent models | GLM (Z.ai coding plan, set); MiniMax |
 | 3 | Predicate refinement, per-decision counterfactual evaluation, flow search with fugue-evo, then American frontier models | — |
 
 ## Development

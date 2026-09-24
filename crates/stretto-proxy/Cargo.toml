@@ -1,6 +1,6 @@
 [package]
 name = "stretto-proxy"
-description = "A stdio MCP proxy that forwards traffic unchanged and records it as stretto episodes."
+description = "A stdio MCP proxy that records sessions as stretto episodes, and can serve flows, guards and a commit tool."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -22,4 +22,6 @@ anyhow.workspace = true
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+stretto-oracle.workspace = true
+stretto-report.workspace = true
 stretto-trace.workspace = true

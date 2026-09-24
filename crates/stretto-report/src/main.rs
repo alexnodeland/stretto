@@ -354,32 +354,10 @@ fn main() -> Result<()> {
                 )?,
                 None => BTreeMap::new(),
             };
-            let mut logs = Vec::new();
-            for entry in std::fs::read_dir(&sessions)
-                .with_context(|| format!("listing {}", sessions.display()))?
-            {
-                let path = entry?.path();
-                if path.extension().is_some_and(|e| e == "jsonl")
-                    && !path.to_string_lossy().ends_with(".flow.jsonl")
-                {
-                    logs.push(stretto_trace::mcp::read_log(&path)?);
-                }
-            }
-            logs.sort_by(|a, b| a.header.session.cmp(&b.header.session));
+            let logs = stretto_trace::mcp::read_sessions(&sessions)?;
             let manifest = match manifest {
                 Some(path) => serde_json::from_str(&std::fs::read_to_string(&path)?)?,
-                None => {
-                    let mut m = stretto_trace::ToolManifest {
-                        domain: domain.clone(),
-                        ..Default::default()
-                    };
-                    for log in &logs {
-                        let listed = stretto_trace::mcp::manifest(log, &domain);
-                        m.tools.extend(listed.tools);
-                        m.docs.extend(listed.docs);
-                    }
-                    m
-                }
+                None => stretto_trace::mcp::manifest_of(&logs, &domain),
             };
             let episodes: Vec<stretto_trace::Episode> = logs
                 .iter()

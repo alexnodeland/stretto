@@ -1069,6 +1069,8 @@ dependencies = [
  "clap",
  "serde",
  "serde_json",
+ "stretto-oracle",
+ "stretto-report",
  "stretto-trace",
 ]
 

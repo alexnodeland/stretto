@@ -1,13 +1,15 @@
 # stretto-proxy
 
-A stdio [MCP](https://modelcontextprotocol.io) proxy that records what an agent does with a server's tools.
+A stdio [MCP](https://modelcontextprotocol.io) proxy that records what an agent does with a server's tools, and can act on it: run a stretto flow behind the agent's calls, check its writes against policy guards, and add a commit tool.
 
 `stretto-proxy` starts the real MCP server as a child process and sits between it and the MCP host (a desktop app, an IDE, an agent framework). It forwards every line in both directions byte for byte and, with `--record`, also writes each line to a session log. `stretto_trace::mcp` turns logs into stretto's canonical `Episode`, so recorded sessions feed the same models as τ²-bench trajectories.
 
 ## Usage
 
 ```text
-stretto-proxy [--record <DIR>] [--domain <NAME>] [--agent-model <MODEL>] -- <SERVER_COMMAND>...
+stretto-proxy [--record <DIR>] [--domain <NAME>] [--agent-model <MODEL>]
+              [--flow <FILE> [--oracle jev|replay|mock] [--oracle-cache <DIR>] ...]
+              [--guards] [--commit] [--context <FILE>] -- <SERVER_COMMAND>...
 ```
 
 Install it with `cargo install --path crates/stretto-proxy`, which also installs `stretto-mcp-demo`. In the host's configuration, replace the server's command with `stretto-proxy` and put the original command after `--`:
@@ -50,12 +52,39 @@ cat /tmp/stretto-logs/*.jsonl
 
 To try it in a host, configure `stretto-proxy` as above with `stretto-mcp-demo` after `--`.
 
+`stretto-mcp-demo --world retail` serves a tiny shop instead, with four of τ²-bench retail's tool names and canned data (`cN@example.com` is `user_N`, whose orders `#WNa` and `#WNb` are pending), for trying active mode.
+
+## Active mode
+
+With any of `--flow`, `--guards`, `--commit` or `--context`, the proxy reads what crosses it, on one thread, and acts on it. Everything it does not act on is still forwarded byte for byte.
+
+- **`--flow FILE`** runs a flow after each of the agent's calls (RFC-001's arm D0). The file is a flow IR from `stretto compile` (τ²-bench results) or `stretto learn` (sessions this proxy recorded). When the server answers one of the agent's `tools/call`s, the proxy holds the response and asks the flow what comes next. While the flow proposes lookups, the proxy makes them itself, as requests with ids `stretto-<n>`. When the flow hands back, the agent gets its own result with one more text item, in the pilot's format:
+
+  ```text
+  --- Also looked up automatically (current results; no need to repeat these calls) ---
+
+  get_user_details {"user_id":"user_7"}:
+  {"user_id":"user_7","orders":["#W7a","#W7b"],…}
+  ```
+
+  A flow only calls tools it reads as lookups and that the server, once it has listed its tools, does not mark `readOnlyHint: false`. One flow runs at a time; a response that arrives meanwhile is forwarded as it is.
+  - `--oracle` says who answers the flow's questions: `jev` (the default; needs `TYPESAFE_API_KEY`), `replay` (the cache only) or `mock`. Answers are cached in `--oracle-cache` (default `~/.stretto/oracle-cache`), keyed by the request's hash.
+  - `--flow-threshold` (0.3) is the probability the lookup must reach: the tool's, times how often its arguments' binding matched the agent in training.
+  - `--flow-per-call` (8), `--flow-per-session` (40) and `--flow-questions` (300) cap lookups per result, lookups per session and questions per session.
+  - Each decision is appended to `--flow-log`, by default `<session>.flow.jsonl` next to the session log.
+  - `--task-id` picks the flow's fold; by default it is the session.
+- **`--guards`** checks each of the agent's calls against the policy guards of `--domain` (`retail` or `airline`) before the server sees it. A call an enforced rule refuses never reaches the server. The agent gets an error result instead: `Refused by the policy check, so cancel_pending_order was not run and nothing changed: 'found it cheaper' is not an accepted reason (policy check retail.cancel_reason).` A rule that lacks the facts to decide does not refuse. `stretto guards` tests the rules against recorded trajectories.
+- **`--commit`** adds `stretto_commit` to the tools the server lists. It takes `{"calls": [{"name", "arguments"}, …]}` and makes the calls in order, each checked by the guards first. It stops at the first call that is refused or fails, and returns every call's result and the ones it did not run. It is meant for the writes the user has confirmed, in one LLM turn.
+- **`--context FILE`** gives the proxy the conversation, which MCP never carries. The host appends one JSON line per message, `{"role": "user" | "assistant", "content": text}`. Before each tool call and each decision, the proxy logs the new lines as `context` entries, so flows see what the customer said and guards can read their confirmation.
+
+The proxy's own messages (its requests to the server, and its answers to the agent: refusals, commit results, results with a flow's lookups) are logged as `proxy` entries. `stretto_trace::mcp::episode` counts the first response to each call as its result, so a flow's lookups appear as calls of their own, with ids starting `stretto-`.
+
 ## Log format
 
 A log is JSONL. The first line is a header:
 
 ```json
-{"stretto_mcp_log":1,"session":"20260923T212000.123Z-4242","started_unix_ms":1790198400123,"server_command":["npx","-y","some-mcp-server"],"domain":"orders","agent_model":null}
+{"stretto_mcp_log":2,"session":"20260923T212000.123Z-4242","started_unix_ms":1790198400123,"server_command":["npx","-y","some-mcp-server"],"domain":"orders","agent_model":null}
 ```
 
 `session` is the UTC start time and the proxy's process id, and names the file. Every other line is one line from the wire:
@@ -67,7 +96,7 @@ A log is JSONL. The first line is a header:
 ```
 
 - `t_ms`: when the proxy read the line, in milliseconds after it started. Times never decrease down the log.
-- `from`: `client` (the host) or `server`.
+- `from`: `client` (the host) or `server`; in active mode also `proxy` (a message the proxy sent on its own) and `context` (a message of the conversation from `--context`).
 - `message`: the line exactly as it was sent, when it is one JSON value: a JSON-RPC message, or an array of them (a batch).
 - `raw`: the line as text, when it is not valid JSON (invalid UTF-8 is replaced by U+FFFD).
 
@@ -89,7 +118,7 @@ Each `tools/call` becomes a `ToolCall`, and each response to one becomes a `Tool
 
 ## What the proxy cannot see
 
-- **The conversation.** User messages and the LLM's replies never reach an MCP server. Episodes from logs have no user events, and assistant turns have no text.
+- **The conversation.** User messages and the LLM's replies never reach an MCP server. Without `--context`, episodes from logs have no user events, and assistant turns have no text.
 - **LLM turns.** They are inferred from timing. A call sent while an earlier call of the current turn still awaits its response joins that turn (parallel calls); any other call starts a new turn. A host that runs one turn's calls one at a time shows one turn per call. A call that is never answered, nor cancelled, keeps its turn open, so later calls join it.
 - **Outcomes, tokens and cost.** Whether the task succeeded is unknown: `reward` is 0.0 until you set it, and usage is empty.
 - **The model.** Unless you pass `--agent-model`, episodes name the host application from `initialize` (`clientInfo.name`), not the LLM.

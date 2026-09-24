@@ -17,8 +17,15 @@
 //!
 //! The proxy's own messages go to stderr, prefixed `stretto-proxy:`; stdout
 //! carries only the protocol.
+//!
+//! [`run_active`] also acts on what crosses it ([`active`]): it runs a flow
+//! behind the agent's calls, checks the agent's calls against policy guards,
+//! and adds a commit tool.
 
+pub mod active;
 mod record;
+
+pub use active::{Active, FlowConfig, APPENDIX, COMMIT_TOOL};
 
 use anyhow::{Context, Result};
 use record::{Recorder, Tap};
@@ -26,6 +33,7 @@ use std::ffi::OsString;
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus, Stdio};
+use std::sync::mpsc;
 use std::thread;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use stretto_trace::mcp::{LogHeader, Peer, LOG_VERSION};
@@ -81,7 +89,35 @@ pub fn run(config: &Config) -> Result<i32> {
 /// `host_in` is read on a thread of its own. If the server exits first, that
 /// thread stays blocked until `host_in` ends, which for a process's stdin is
 /// when the process exits.
-pub fn run_with<R, W>(config: &Config, host_in: R, mut host_out: W) -> Result<i32>
+pub fn run_with<R, W>(config: &Config, host_in: R, host_out: W) -> Result<i32>
+where
+    R: Read + Send + 'static,
+    W: Write,
+{
+    serve(config, None, host_in, host_out)
+}
+
+/// [`run`], acting on the traffic as `active` says (see [`active`]).
+pub fn run_active(config: &Config, active: &Active) -> Result<i32> {
+    run_active_with(config, active, io::stdin(), io::stdout().lock())
+}
+
+/// [`run_active`], with the host's side of the connection given as
+/// `host_in` and `host_out`.
+pub fn run_active_with<R, W>(
+    config: &Config,
+    active: &Active,
+    host_in: R,
+    host_out: W,
+) -> Result<i32>
+where
+    R: Read + Send + 'static,
+    W: Write,
+{
+    serve(config, Some(active), host_in, host_out)
+}
+
+fn serve<R, W>(config: &Config, active: Option<&Active>, host_in: R, mut host_out: W) -> Result<i32>
 where
     R: Read + Send + 'static,
     W: Write,
@@ -91,9 +127,10 @@ where
         .split_first()
         .context("no server command given")?;
     let started = Instant::now();
+    let header = header(config);
     let recorder = match &config.record {
         Some(dir) => {
-            let recorder = Recorder::start(dir, &header(config), started)?;
+            let recorder = Recorder::start(dir, &header, started)?;
             eprintln!("stretto-proxy: recording to {}", recorder.path().display());
             Some(recorder)
         }
@@ -125,6 +162,57 @@ where
         .stdout
         .take()
         .context("the server's stdout is not piped")?;
+
+    if let Some(active) = active {
+        // The flow's decisions go next to the session log, unless the
+        // caller says otherwise.
+        let flow_log = active.flow.as_ref().and_then(|f| {
+            f.log.clone().or_else(|| {
+                recorder
+                    .as_ref()
+                    .map(|r| r.path().with_extension("flow.jsonl"))
+            })
+        });
+        let (tx, rx) = mpsc::channel();
+        let from_host = tx.clone();
+        thread::Builder::new()
+            .name("stretto-proxy client".into())
+            .spawn(move || {
+                active::read_lines(
+                    host_in,
+                    from_host,
+                    active::Input::Client,
+                    active::Input::ClientEnd,
+                )
+            })
+            .context("starting the client thread")?;
+        thread::Builder::new()
+            .name("stretto-proxy server".into())
+            .spawn(move || {
+                active::read_lines(
+                    from_server,
+                    tx,
+                    active::Input::Server,
+                    active::Input::ServerEnd,
+                )
+            })
+            .context("starting the server thread")?;
+        let tap = recorder.as_ref().map(Recorder::tap);
+        active::Engine::new(
+            active,
+            header,
+            tap,
+            started,
+            (to_server, &mut host_out),
+            flow_log,
+        )
+        .run(rx);
+        let status = server.wait().context("waiting for the server");
+        if let Some(recorder) = recorder {
+            recorder.finish();
+        }
+        return Ok(exit_code(status?));
+    }
 
     // Host to server. This thread may still be blocked reading the host when
     // the server exits first; it ends with the process.

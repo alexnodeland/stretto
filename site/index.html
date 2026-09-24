@@ -373,6 +373,7 @@
           <li>forwards every line and records the session (JSONL, v2)</li>
           <li>after a lookup, runs the flow and appends its lookups</li>
           <li>before a write, checks the guards</li>
+          <li>adds <code>stretto_commit</code>: confirmed writes in one call</li>
         </ul>
       </div>
       <div class="arrow" aria-hidden="true">⇄</div>
@@ -381,7 +382,7 @@
     <div class="arch-below">
       <div class="box"><b>Flow IR</b><small>Versioned JSON: habit, sites, fitted arbiter folds, bindings, provenance. <code>stretto compile</code> builds it from τ²-bench results; <code>stretto learn</code> from recorded sessions. Decisions ask Jev (cached by request hash).</small></div>
     </div>
-    <figcaption><span><b>Figure 2.</b> The live path. The pilot of §5.6 ran the same flow through a harness around τ²-bench's MCP tool server (<code>pilot/</code>), which also records every flow decision.</span></figcaption>
+    <figcaption><span><b>Figure 2.</b> The live path. The pilots of §5.6 ran the same flow from a harness around τ²-bench's MCP tool server (<code>pilot/</code>), which predates the proxy's active mode and behaves the same way. The proxy's tests record forty sessions, learn a flow from them, and serve it to a new one.</span></figcaption>
   </figure>
   <div class="table-wrap">
     <table class="status">
@@ -392,7 +393,7 @@
         <tr><td><code>stretto-model</code></td><td class="ok">built</td><td class="wrap">Action abstraction; hierarchical Dirichlet back-off habit; α posterior by MH in fugue; code features; argument provenance; tool runs.</td></tr>
         <tr><td><code>stretto-oracle</code></td><td class="ok">built</td><td class="wrap"><code>Oracle</code> trait; Jev client; on-disk replay cache keyed by request hash; mock.</td></tr>
         <tr><td><code>stretto-report</code></td><td class="ok">built</td><td class="wrap">The <code>stretto</code> CLI: Phase 0 reports; System-One questions; arbiter; flows (<code>compile</code>, <code>learn</code>, <code>serve</code>); guards and their audit.</td></tr>
-        <tr><td><code>stretto-proxy</code></td><td class="wip" id="proxy-state">recording</td><td class="wrap" id="proxy-what">A stdio MCP proxy that forwards every line unchanged and records sessions. Serving flows and guards in the proxy itself is in progress; the pilot serves them from its harness.</td></tr>
+        <tr><td><code>stretto-proxy</code></td><td class="ok" id="proxy-state">built</td><td class="wrap" id="proxy-what">A stdio MCP proxy for any MCP server. It records sessions; in active mode it runs a flow behind the agent's calls, refuses writes the guards fail, adds <code>stretto_commit</code>, and logs the conversation a host hands it.</td></tr>
       </tbody>
     </table>
   </div>

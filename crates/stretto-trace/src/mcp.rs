@@ -18,8 +18,12 @@
 //!
 //! Version 2 adds two senders besides `client` and `server`:
 //!
-//! - `proxy`: a request the proxy sent the server on its own, such as a
-//!   flow's lookup. The server's response is logged as usual.
+//! - `proxy`: a message the proxy sent on its own. A request to the server,
+//!   such as a flow's lookup, whose response the server's entry carries; or
+//!   a response to the client, such as a refused write or a commit's
+//!   result, which is then the call's result. When a call has two responses
+//!   (the server's, then the proxy's copy with a flow's lookups appended),
+//!   the first is its result.
 //! - `context`: a message of the conversation, `{"role": "user" | "assistant",
 //!   "content": text}`, which the host handed the proxy (MCP itself never
 //!   carries the conversation). It is logged just before the next tool call
@@ -129,6 +133,35 @@ pub fn read_log(path: &Path) -> Result<McpLog> {
     let text =
         std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
     parse_log(&text).with_context(|| format!("parsing {}", path.display()))
+}
+
+/// Every session log in `dir` (`*.jsonl`, but not the proxy's flow logs,
+/// `*.flow.jsonl`), in session order.
+pub fn read_sessions(dir: &Path) -> Result<Vec<McpLog>> {
+    let mut logs = Vec::new();
+    for entry in std::fs::read_dir(dir).with_context(|| format!("listing {}", dir.display()))? {
+        let path = entry?.path();
+        let name = path.to_string_lossy();
+        if name.ends_with(".jsonl") && !name.ends_with(".flow.jsonl") {
+            logs.push(read_log(&path)?);
+        }
+    }
+    logs.sort_by(|a, b| a.header.session.cmp(&b.header.session));
+    Ok(logs)
+}
+
+/// The tools every log's server listed, as one manifest for `domain`.
+pub fn manifest_of(logs: &[McpLog], domain: &str) -> ToolManifest {
+    let mut all = ToolManifest {
+        domain: domain.to_string(),
+        ..Default::default()
+    };
+    for log in logs {
+        let listed = manifest(log, domain);
+        all.tools.extend(listed.tools);
+        all.docs.extend(listed.docs);
+    }
+    all
 }
 
 /// Parse the text of a log.
@@ -294,7 +327,7 @@ pub fn episode(log: &McpLog) -> Episode {
                     _ => {}
                 }
             }
-            Peer::Client | Peer::Proxy => match method(m) {
+            Peer::Client | Peer::Proxy if method(m).is_some() => match method(m) {
                 Some("initialize") if client_name.is_none() => {
                     client_name = m
                         .pointer("/params/clientInfo/name")
@@ -349,7 +382,9 @@ pub fn episode(log: &McpLog) -> Episode {
                 }
                 _ => {}
             },
-            Peer::Server => {
+            // The client's responses answer the server's own requests.
+            Peer::Client => {}
+            Peer::Server | Peer::Proxy => {
                 let Some(id) = response_id(m) else { continue };
                 let Some(call) = pending.remove(&id_key(id)) else {
                     continue;
@@ -697,6 +732,50 @@ mod tests {
             HEADER.replace("\"stretto_mcp_log\":1", "\"stretto_mcp_log\":3")
         );
         assert!(parse_log(&text).is_err());
+    }
+
+    #[test]
+    fn the_proxys_own_answers_count_and_a_calls_first_response_wins() {
+        let log = log_of(&[
+            call(json!(1), "get_user"),
+            reply(json!(1), "user"),
+            // The proxy's copy, with a flow's lookups appended: not a second
+            // result.
+            (
+                Peer::Proxy,
+                json!({"jsonrpc": "2.0", "id": 1, "result": {"content": [
+                    {"type": "text", "text": "user"},
+                    {"type": "text", "text": "--- Also looked up automatically ---"}
+                ], "isError": false}}),
+            ),
+            call(json!(2), "cancel_order"),
+            // Refused by a guard: the proxy answers, and the server never
+            // sees the call.
+            (
+                Peer::Proxy,
+                json!({"jsonrpc": "2.0", "id": 2, "result": {"content": [
+                    {"type": "text", "text": "Refused"}
+                ], "isError": true}}),
+            ),
+        ]);
+        let ep = episode(&log);
+        assert_eq!(
+            outline(&ep),
+            [
+                "turn(get_user)",
+                "result:1",
+                "turn(cancel_order)",
+                "result:2"
+            ]
+        );
+        assert!(matches!(
+            &ep.events[1],
+            Event::ToolResult { content, .. } if content == "user"
+        ));
+        assert!(matches!(
+            &ep.events[3],
+            Event::ToolResult { error: true, content, .. } if content == "Refused"
+        ));
     }
 
     #[test]
