@@ -125,9 +125,6 @@ struct Facts {
     orders: HashMap<String, Value>,
     products: HashMap<String, Value>,
     reservations: HashMap<String, Value>,
-    /// Each reservation's cabin when the episode first showed it, before
-    /// any change the agent made.
-    first_cabin: HashMap<String, String>,
     /// Flight statuses by (flight number, date).
     flights: HashMap<(String, String), String>,
     /// Successful writes so far, by tool, with their arguments.
@@ -191,9 +188,6 @@ impl Facts {
                         f.orders.insert(id, parsed.clone());
                     }
                     if let Some(id) = text(&parsed, "reservation_id") {
-                        if let Some(cabin) = text(&parsed, "cabin") {
-                            f.first_cabin.entry(id.clone()).or_insert(cabin);
-                        }
                         f.reservations.insert(id, parsed.clone());
                     }
                     if let Some((tool, a)) = args.get(call_id.as_str()) {
@@ -656,19 +650,17 @@ fn airline() -> Vec<Rule> {
         },
         Rule {
             id: "airline.basic_economy_flights",
-            policy: "Basic economy flights cannot be changed, even after an upgrade of the cabin.",
+            policy: "Basic economy flights cannot be changed; the cabin can, and an upgraded reservation's flights then can too.",
             tools: &["update_reservation_flights"],
             enforce: true,
             check: |f, c| {
-                let Some(id) = arg(c, "reservation_id") else {
-                    return Verdict::Unknown("no reservation id".to_string());
-                };
-                let Some(r) = f.reservations.get(id) else {
+                let Some(r) = arg(c, "reservation_id").and_then(|id| f.reservations.get(id)) else {
                     return Verdict::Unknown("the reservation was not looked up".to_string());
                 };
-                // The cabin it was booked in: upgrading first does not open
-                // a way around the rule.
-                if f.first_cabin.get(id).map(String::as_str) != Some("basic_economy") {
+                // The reservation as it stands: τ²-bench's own task 32
+                // upgrades a basic-economy reservation, then changes its
+                // flights.
+                if r.get("cabin").and_then(Value::as_str) != Some("basic_economy") {
                     return Verdict::Pass;
                 }
                 let key = |fl: &Value| {
@@ -685,7 +677,7 @@ fn airline() -> Vec<Rule> {
                     Verdict::Pass
                 } else {
                     Verdict::Fail(
-                        "the reservation was booked in basic economy, whose flights cannot change"
+                        "the reservation is basic economy, whose flights cannot change (its cabin can)"
                             .to_string(),
                     )
                 }
@@ -1336,7 +1328,7 @@ mod tests {
     }
 
     #[test]
-    fn upgrading_a_basic_economy_cabin_does_not_free_its_flights() {
+    fn upgrading_a_basic_economy_cabin_frees_its_flights() {
         let g = Guards::for_domain("airline").unwrap();
         let reservation = |cabin: &str| {
             json!({"reservation_id": "R1", "user_id": "u1", "cabin": cabin,
@@ -1381,9 +1373,16 @@ mod tests {
         events.push(Event::User {
             text: "Yes, now change the flight.".to_string(),
         });
-        // Now economy, but booked in basic economy: its flights stay put.
+        // Now economy, its flights can change, as τ²-bench's task 32
+        // expects of this very path.
+        assert_eq!(
+            g.refusal(&episode(events.clone()), &update("4", "economy", "HAT2")),
+            None
+        );
+        // Without the upgrade they cannot.
+        events.truncate(5);
         let why = g
-            .refusal(&episode(events), &update("4", "economy", "HAT2"))
+            .refusal(&episode(events), &update("4", "basic_economy", "HAT2"))
             .unwrap();
         assert!(why.contains("airline.basic_economy_flights"), "{why}");
     }
