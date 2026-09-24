@@ -527,13 +527,13 @@
   <p>Two parts of the original design were left untested. One is arm C: a flow that hands every branch back to the LLM, as TraceCompiler does. The other is naming, where the LLM calls <code>plan_*</code> macro-tools itself instead of a flow running behind its own calls. Both were measured without an LLM. Recorded episodes were replayed through τ²-bench's tools with a flow behind them, as in §5.6. A recorded turn whose calls the flow had already made counts as a turn saved; a flow lookup the agent never made is a detour.</p>
   <div class="table-wrap">
     <table>
-      <caption><b>Table 5.</b> Flows replayed on GLM-5's published test episodes, all four trials: 160 in retail (1,384 LLM turns) and 80 in airline (630). Every flow was compiled from the 2025 baselines' training tasks, goal free. Each takes the likeliest lookup when its probability, times the chance that its arguments are the agent's, clears the threshold. "Agent's own" is the share of the flow's lookups that the agent also made.</caption>
-      <thead><tr><th>Flow</th><th>Retail: turns saved</th><th>Retail: agent's own</th><th>Airline: turns saved</th><th>Airline: agent's own</th></tr></thead>
+      <caption><b>Table 5.</b> Flows replayed on GLM-5's published test episodes, all four trials: 160 in retail (1,384 LLM turns) and 80 in airline (630). Every flow was compiled from the 2025 baselines' training tasks, goal free. Each takes the likeliest lookup when its probability, times the chance that its arguments are the agent's, clears the threshold. The arbiter weighs the habit, Jev's answers and the predicates. <em>Saved</em> is the share of LLM turns saved, and <em>own</em> the share of the flow's lookups that the agent also made.</caption>
+      <thead><tr><th>Flow</th><th>Retail, saved</th><th>Retail, own</th><th>Airline, saved</th><th>Airline, own</th></tr></thead>
       <tbody>
-        <tr><td>D0: arbiter (habit, Jev, predicates), 0.3</td><td>21.2%</td><td>91%</td><td>6.5%</td><td>88%</td></tr>
+        <tr><td>D0: arbiter, 0.3</td><td>21.2%</td><td>91%</td><td>6.5%</td><td>88%</td></tr>
         <tr><td>Habit alone, 0.3</td><td>22.5%</td><td>91%</td><td>8.7%</td><td>80%</td></tr>
-        <tr><td>Arm C: habit alone, 0.9</td><td>1.7%</td><td>100%</td><td>0</td><td>–</td></tr>
-        <tr><td>Strict arm C: habit alone, 0.99</td><td>0</td><td>–</td><td>0</td><td>–</td></tr>
+        <tr><td>Arm C: habit, 0.9</td><td>1.7%</td><td>100%</td><td>0</td><td>–</td></tr>
+        <tr><td>Strict arm C: habit, 0.99</td><td>0</td><td>–</td><td>0</td><td>–</td></tr>
       </tbody>
     </table>
   </div>
