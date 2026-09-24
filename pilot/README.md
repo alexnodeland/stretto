@@ -48,7 +48,7 @@ The episode directory (`runs/pilot/baseline/task-90/`) holds everything:
 | Acts on the tool's probability (p ≥ 0.3) | 77 of 347 (22.2%) | 151 of 193 (78%) | 12 of 40 |
 | Acts on the tool's probability times the binding's agreement (p ≥ 0.3) | 77 of 347 (22.2%) | 151 of 169 (89%) | 8 of 40 |
 
-For comparison, the offline projection for GLM-5 (goal free, lookup first at p ≥ 0.3) is 20.3% over all four trials. The first flow's detours were mostly product walks: it looked up every product in an order, where agents look up only the products the customer asks about. The second flow multiplies by how often its argument binding picked the agent's own values in training. That is 92% for unmentioned orders and 60% for unmentioned products. With it, every dropped lookup was a detour. Most of the live flow's questions were cache hits: where it follows the agent's path, it asks byte-identical questions to the offline run.
+Over all four recorded trials (160 episodes, 1,384 LLM turns), the second flow saves 294 turns (21.2%), and 91% of its lookups are the agent's own; 27 episodes have a detour. The offline projection for the same episodes (goal free, lookup first at p ≥ 0.3) saves 281 turns (20.3%), with a detour in 45 episodes. The first flow's detours were mostly product walks: it looked up every product in an order, where agents look up only the products the customer asks about. The second flow multiplies by how often its argument binding picked the agent's own values in training. That is 92% for unmentioned orders and 60% for unmentioned products. With it, every dropped lookup was a detour. Most of the live flow's questions were cache hits: where it follows the agent's path, it asks byte-identical questions to the offline run.
 
 **Smoke runs, GLM-5.3.** One episode per arm on task 90, a cancellation. Both passed the database check:
 
@@ -58,6 +58,13 @@ For comparison, the offline projection for GLM-5 (goal free, lookup first at p �
 | Flows | **8** | 3 | 4 | **55.4k** (46.0k) | 8 + 6 | 105 s |
 
 In the flows arm, the agent's first call found the user. The flow then looked up the user's details and all three orders in the same response, and handed back at the product step (p = 0.10). The agent used those results without repeating any of them. It looked up the camera itself, and the conversation went as in the baseline. This is one episode, so it shows that the mechanism works live, not how much it saves.
+
+**Paired pilot, GLM-5.3.** Ten retail test tasks, drawn at random with `run_pilot.py` (seed 7), ran once in each arm. See [the summary](../docs/results/pilot-2026-09-24.md):
+
+- 110 LLM turns without the flow and 84 with it, 23.6% fewer: 2.6 per episode (95% interval 1.0 to 4.2), with fewer turns in 9 of 10 pairs.
+- Agent input tokens fell 21%. The flow made 26 lookups, and the agent repeated 3 of them.
+- 8 of 10 passed the database check in each arm. The two failures were the same agent error in both.
+- 236.5 Z.ai credits at the off-peak rate, 16% less in the flows arm.
 
 ## Check the flow without an LLM
 
