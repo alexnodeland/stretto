@@ -111,53 +111,59 @@ By agent model, with the habit acting only in validated contexts and a perfect S
 
 ### Phase 0b: the System-One model in shadow mode
 
-Questions v2 (RFC-001 §3.5), for read-only flows. At every held-out decision right after a tool returns, the System-One model was asked which lookup the agent makes next, with the options limited to the lookups the agent made after the same tool in training, or whether it hands back (to write to the customer, or to make a change, which only the LLM does). The same request also asks the stop decision on its own (*split*: "does it make another lookup now?", then which one). The state is a slice: the customer's messages, the agent's last message, the latest four results in full and older lookups one line each. *Combined* answers weigh the System-One answers against the habit's prediction and the model's record at that site on other tasks, fitted by cross-validation over tasks (RFC-001 §3.6). Numeric arguments are not asked about. Oracle: `replay` (answering model: jev-1.13.0). 5852 decisions, 5497 distinct questions, 5497 answered, 0 failed; 13372684 input tokens ($0.56 at $0.042/MTok). 230 next-step decisions came at sites where the agent never looked anything up in training, so the flow hands back without asking; the options held the agent's step in 99.1% of the source models' next-step decisions.
+Questions v2 (RFC-001 §3.5), for read-only flows. At every held-out decision right after a tool returns, the System-One model was asked which lookup the agent makes next, with the options limited to the lookups the agent made after the same tool in training, or whether it hands back (to write to the customer, or to make a change, which only the LLM does). The same request also asks the stop decision on its own (*split*: "does it make another lookup now?", then which one). The state is a slice: the customer's messages, the agent's last message, the latest four results in full and older lookups one line each. *Combined* answers weigh the System-One answers against the habit's prediction and the model's record at that site on other tasks, fitted by cross-validation over tasks (RFC-001 §3.6). Numeric arguments are not asked about. Oracle: `replay` (answering model: jev-1.13.0). 5852 decisions, 5497 distinct questions, 5497 answered, 0 failed; 16934794 input tokens ($0.71 at $0.042/MTok). 230 next-step decisions came at sites where the agent never looked anything up in training, so the flow hands back without asking; the options held the agent's step in 99.1% of the source models' next-step decisions.
 
 Next step, as a read-only flow takes it (a lookup, or hand back):
 
 | Agent model | Decisions | One question | Split | Combined | Stop vs. go on | ECE | Combined p ≥ 0.9: share / agreed | Combined p ≥ 0.99: share / agreed |
 |---|---|---|---|---|---|---|---|---|
-| claude-3-7-sonnet | 1211 | 78.9% | 73.7% | 82.1% | 79.9% | 0.058 | 24.4% / 96.6% | 5.9% / 95.8% |
-| gpt-4.1 | 1173 | 76.5% | 71.7% | 79.8% | 78.3% | 0.066 | 25.8% / 97.4% | 6.1% / 100.0% |
-| gpt-4.1-mini | 1252 | 71.5% | 73.6% | 73.3% | 73.0% | 0.106 | 28.7% / 97.2% | 5.5% / 100.0% |
-| o4-mini | 1060 | 78.3% | 76.4% | 76.6% | 79.2% | 0.063 | 27.9% / 94.9% | 7.7% / 100.0% |
-| glm-5 *(target)* | 1153 | 77.9% | 68.8% | 81.7% | 80.5% | 0.038 | 24.9% / 97.9% | 5.4% / 100.0% |
-| **all source models** | 4696 | 76.2% | 73.8% | 77.9% | 77.5% | 0.067 | 26.7% / 96.6% | 6.2% / 99.0% |
+| claude-3-7-sonnet | 1211 | 79.4% | 75.1% | 84.4% | 82.4% | 0.040 | 37.1% / 95.3% | 8.6% / 97.1% |
+| gpt-4.1 | 1173 | 75.7% | 71.0% | 83.8% | 78.3% | 0.068 | 39.3% / 96.7% | 10.5% / 100.0% |
+| gpt-4.1-mini | 1252 | 70.0% | 73.5% | 76.8% | 71.6% | 0.112 | 40.3% / 96.6% | 10.3% / 100.0% |
+| o4-mini | 1060 | 78.1% | 75.3% | 76.6% | 79.2% | 0.069 | 41.4% / 94.8% | 13.2% / 99.3% |
+| glm-5 *(target)* | 1153 | 75.4% | 67.9% | 85.7% | 81.8% | 0.052 | 37.6% / 97.7% | 7.1% / 100.0% |
+| **all source models** | 4696 | 75.7% | 73.7% | 80.5% | 77.8% | 0.066 | 39.5% / 95.9% | 10.6% / 99.2% |
 
-The arbiter's weights, averaged over folds: habit 0.38, one question 0.15, split 0.54, handing back -0.41, the model's record at the site 0.26.
+The arbiter's weights, averaged over folds: habit 0.27, one question 0.22, split 0.25, handing back 0.38, predicate list_pending 1.12, predicate needs_options 0.21, predicate must_ask 0.23, the model's record at the site 0.37.
+
+Predicates asked with every next-step question:
+
+- `list_pending`: Is the agent working through a list of records one lookup at a time (orders, items, products, reservations, flights or dates), with some it has not looked up yet?
+- `needs_options`: Does the customer's request need options the agent has not looked up yet, such as another version of an item, other products, or flights on a date or route not yet searched?
+- `must_ask`: Does the agent need something only the customer can give before any further lookup would help, such as identification, a choice between options, or a confirmation?
 
 Projection with the System-One model, pooled over the source models, for read-only flows: the habit acts in validated contexts, a System-One pick is trusted at or above the threshold (*two keys*: only when it is also the habit's top option; *combined*: the arbiter's probability), and anything else pauses. A write always goes back to the LLM. Nothing a read-only flow does changes the environment, so its wrong picks are *detours*, extra lookups that cost a pause, not risks. Handing back costs a turn and a detour does not, so *lookup first* takes the likeliest lookup whenever it clears the (lower) threshold. Each detour is charged a typical lookup's output (251 tokens) in every later prompt, so the dollars saved include the detours' cost.
 
 | Pick trusted at | Turns saved | $ saved | Pauses/ep | System-One decisions/ep | Handed back early (/100 ep) | Detours (/100 ep) | Episodes with a detour | Writes handed back/ep |
 |---|---|---|---|---|---|---|---|---|
-| p ≥ 0.5 | **14.0%** | 16.2% | 1.54 | 6.85 | 96.1 | 67.0 | 53.9% | 0.34 |
-| p ≥ 0.7 | **10.6%** | 12.4% | 2.08 | 5.45 | 59.4 | 39.1 | 34.8% | 0.34 |
-| p ≥ 0.9 | **3.5%** | 3.4% | 3.26 | 3.12 | 21.7 | 8.1 | 8.0% | 0.34 |
-| p ≥ 0.95 | **1.7%** | 1.5% | 3.59 | 2.23 | 10.5 | 1.9 | 1.9% | 0.34 |
-| p ≥ 0.99 | **0.5%** | 0.3% | 3.81 | 1.13 | 2.7 | 0.3 | 0.3% | 0.34 |
-| two keys, p ≥ 0.5 | **11.3%** | 12.4% | 1.98 | 4.92 | 39.8 | 49.8 | 44.4% | 0.34 |
-| two keys, p ≥ 0.7 | **8.8%** | 9.8% | 2.41 | 4.04 | 24.8 | 31.7 | 29.5% | 0.34 |
-| two keys, p ≥ 0.9 | **2.8%** | 2.9% | 3.38 | 2.41 | 8.3 | 6.9 | 6.9% | 0.34 |
-| two keys, p ≥ 0.95 | **1.4%** | 1.2% | 3.64 | 1.84 | 4.4 | 1.7 | 1.7% | 0.34 |
-| two keys, p ≥ 0.99 | **0.5%** | 0.3% | 3.81 | 1.01 | 1.9 | 0.3 | 0.3% | 0.34 |
-| combined, p ≥ 0.5 | **15.0%** | 18.1% | 1.37 | 6.74 | 73.8 | 73.0 | 56.9% | 0.34 |
-| combined, p ≥ 0.7 | **11.6%** | 14.1% | 1.87 | 4.95 | 34.2 | 40.2 | 35.2% | 0.34 |
-| combined, p ≥ 0.9 | **2.5%** | 2.3% | 3.41 | 1.88 | 4.5 | 2.2 | 2.2% | 0.34 |
-| combined, p ≥ 0.95 | **0.6%** | 0.5% | 3.79 | 1.02 | 1.1 | 0.5 | 0.5% | 0.34 |
-| combined, p ≥ 0.99 | **0.1%** | 0.0% | 3.87 | 0.44 | 0.5 | 0.0 | 0.0% | 0.34 |
-| lookup first, p ≥ 0.2 | **18.1%** | 22.1% | 0.87 | 4.86 | 0.0 | 152.7 | 78.8% | 0.34 |
-| lookup first, p ≥ 0.3 | **17.2%** | 20.8% | 1.02 | 4.32 | 0.0 | 113.6 | 69.4% | 0.34 |
-| lookup first, p ≥ 0.4 | **16.2%** | 19.3% | 1.20 | 3.88 | 0.0 | 88.0 | 62.2% | 0.34 |
+| p ≥ 0.5 | **14.2%** | 16.7% | 1.53 | 6.81 | 90.5 | 72.8 | 55.0% | 0.34 |
+| p ≥ 0.7 | **10.9%** | 12.3% | 2.07 | 5.34 | 49.5 | 46.9 | 40.6% | 0.34 |
+| p ≥ 0.9 | **4.7%** | 4.6% | 3.11 | 3.22 | 18.1 | 12.5 | 12.0% | 0.34 |
+| p ≥ 0.95 | **2.1%** | 1.8% | 3.55 | 2.23 | 9.4 | 5.3 | 5.3% | 0.34 |
+| p ≥ 0.99 | **0.4%** | 0.4% | 3.82 | 1.11 | 1.2 | 0.3 | 0.3% | 0.34 |
+| two keys, p ≥ 0.5 | **11.0%** | 12.0% | 2.05 | 4.81 | 38.0 | 49.7 | 44.2% | 0.34 |
+| two keys, p ≥ 0.7 | **8.9%** | 9.6% | 2.42 | 4.01 | 20.2 | 37.5 | 35.2% | 0.34 |
+| two keys, p ≥ 0.9 | **3.7%** | 3.6% | 3.28 | 2.51 | 7.0 | 10.9 | 10.9% | 0.34 |
+| two keys, p ≥ 0.95 | **1.8%** | 1.7% | 3.60 | 1.87 | 4.1 | 4.8 | 4.8% | 0.34 |
+| two keys, p ≥ 0.99 | **0.4%** | 0.4% | 3.83 | 1.00 | 0.9 | 0.3 | 0.3% | 0.34 |
+| combined, p ≥ 0.5 | **15.9%** | 19.4% | 1.20 | 6.71 | 54.1 | 73.0 | 54.2% | 0.34 |
+| combined, p ≥ 0.7 | **10.8%** | 13.8% | 1.91 | 4.92 | 31.9 | 32.2 | 26.6% | 0.34 |
+| combined, p ≥ 0.9 | **4.4%** | 6.4% | 2.87 | 2.78 | 8.3 | 3.6 | 3.6% | 0.34 |
+| combined, p ≥ 0.95 | **3.5%** | 5.1% | 3.07 | 1.95 | 2.0 | 1.7 | 1.7% | 0.34 |
+| combined, p ≥ 0.99 | **0.7%** | 0.5% | 3.71 | 0.76 | 0.5 | 0.2 | 0.2% | 0.34 |
+| lookup first, p ≥ 0.2 | **17.9%** | 21.8% | 0.85 | 4.68 | 0.0 | 135.6 | 74.7% | 0.34 |
+| lookup first, p ≥ 0.3 | **17.4%** | 20.8% | 0.96 | 4.31 | 0.0 | 110.3 | 67.3% | 0.34 |
+| lookup first, p ≥ 0.4 | **16.8%** | 20.3% | 1.07 | 4.02 | 0.0 | 91.1 | 63.0% | 0.34 |
 
 The gate, per agent model: at least 20% fewer LLM turns, with at most 1% of episodes holding a risky decision (a conservative stand-in for losing at most one point of pass^1). Read-only flows take no risky decisions, so offline the gate is the turns saved; each cell is turns saved · episodes with a detour. Whether detours cost pass^1 is for a live run to show.
 
 | Agent model | Perfect System-One (read-only) | p ≥ 0.5 | p ≥ 0.7 | p ≥ 0.9 | combined, p ≥ 0.5 | combined, p ≥ 0.7 | combined, p ≥ 0.9 | lookup first, p ≥ 0.3 | Gate |
 |---|---|---|---|---|---|---|---|---|---|
-| claude-3-7-sonnet | 31.3% | 20.2% · 18.8% | 15.6% · 12.5% | 4.1% · 1.9% | 22.4% · 21.9% | 17.2% · 11.9% | 2.5% · 0.0% | 25.8% · 50.6% | **passes offline** (p ≥ 0.5; detours in 19% of episodes) |
-| gpt-4.1 | 19.0% | 12.7% · 55.0% | 8.7% · 35.0% | 3.2% · 6.2% | 14.0% · 57.5% | 9.3% · 34.4% | 2.4% · 0.6% | 15.5% · 67.5% | fails: below 20% even with a perfect System-One model |
-| gpt-4.1-mini | 12.0% | 6.8% · 76.2% | 5.1% · 37.5% | 1.8% · 12.5% | 6.9% · 75.0% | 5.7% · 42.5% | 1.7% · 1.2% | 9.3% · 80.6% | fails: below 20% even with a perfect System-One model |
-| o4-mini | 20.5% | 15.5% · 65.6% | 12.4% · 54.4% | 4.6% · 11.2% | 16.0% · 73.1% | 13.1% · 51.9% | 3.3% · 6.9% | 17.3% · 78.8% | fails |
-| glm-5 *(target)* | 28.2% | 11.6% · 11.9% | 6.5% · 1.2% | 2.6% · 0.0% | 14.7% · 12.5% | 7.9% · 4.4% | 2.5% · 0.0% | 19.4% · 36.2% | fails |
+| claude-3-7-sonnet | 31.3% | 20.8% · 22.5% | 15.7% · 14.4% | 5.7% · 3.1% | 23.8% · 28.7% | 16.5% · 8.8% | 6.7% · 0.0% | 25.5% · 46.2% | **passes offline** (p ≥ 0.5; detours in 22% of episodes) |
+| gpt-4.1 | 19.0% | 12.4% · 52.5% | 9.8% · 36.9% | 4.9% · 5.0% | 14.1% · 46.2% | 8.3% · 21.2% | 2.0% · 0.6% | 15.9% · 56.9% | fails: below 20% even with a perfect System-One model |
+| gpt-4.1-mini | 12.0% | 7.0% · 76.2% | 5.2% · 56.2% | 2.5% · 19.4% | 8.4% · 69.4% | 5.3% · 30.6% | 0.9% · 4.4% | 9.4% · 83.8% | fails: below 20% even with a perfect System-One model |
+| o4-mini | 20.5% | 15.8% · 68.8% | 12.4% · 55.0% | 5.4% · 20.6% | 16.5% · 72.5% | 12.1% · 45.6% | 7.6% · 9.4% | 17.7% · 82.5% | fails |
+| glm-5 *(target)* | 28.2% | 11.1% · 30.0% | 7.9% · 13.8% | 3.2% · 1.2% | 16.9% · 18.1% | 8.1% · 5.6% | 1.4% · 0.0% | 20.5% · 32.5% | **passes offline** (lookup first, p ≥ 0.3; detours in 32% of episodes) |
 
 ### Transfer: top-1 when the habit comes from another model (k = 2)
 
@@ -335,20 +341,26 @@ By agent model, with the habit acting only in validated contexts and a perfect S
 
 ### Phase 0b: the System-One model in shadow mode
 
-Questions v2 (RFC-001 §3.5), for read-only flows. At every held-out decision right after a tool returns, the System-One model was asked which lookup the agent makes next, with the options limited to the lookups the agent made after the same tool in training, or whether it hands back (to write to the customer, or to make a change, which only the LLM does). The same request also asks the stop decision on its own (*split*: "does it make another lookup now?", then which one). The state is a slice: the customer's messages, the agent's last message, the latest four results in full and older lookups one line each. *Combined* answers weigh the System-One answers against the habit's prediction and the model's record at that site on other tasks, fitted by cross-validation over tasks (RFC-001 §3.6). Numeric arguments are not asked about. Oracle: `replay` (answering model: jev-1.13.0). 3099 decisions, 2612 distinct questions, 2612 answered, 0 failed; 5727117 input tokens ($0.24 at $0.042/MTok). 466 next-step decisions came at sites where the agent never looked anything up in training, so the flow hands back without asking; the options held the agent's step in 99.1% of the source models' next-step decisions.
+Questions v2 (RFC-001 §3.5), for read-only flows. At every held-out decision right after a tool returns, the System-One model was asked which lookup the agent makes next, with the options limited to the lookups the agent made after the same tool in training, or whether it hands back (to write to the customer, or to make a change, which only the LLM does). The same request also asks the stop decision on its own (*split*: "does it make another lookup now?", then which one). The state is a slice: the customer's messages, the agent's last message, the latest four results in full and older lookups one line each. *Combined* answers weigh the System-One answers against the habit's prediction and the model's record at that site on other tasks, fitted by cross-validation over tasks (RFC-001 §3.6). Numeric arguments are not asked about. Oracle: `replay` (answering model: jev-1.13.0). 3099 decisions, 2612 distinct questions, 2612 answered, 0 failed; 7413888 input tokens ($0.31 at $0.042/MTok). 466 next-step decisions came at sites where the agent never looked anything up in training, so the flow hands back without asking; the options held the agent's step in 99.1% of the source models' next-step decisions.
 
 Next step, as a read-only flow takes it (a lookup, or hand back):
 
 | Agent model | Decisions | One question | Split | Combined | Stop vs. go on | ECE | Combined p ≥ 0.9: share / agreed | Combined p ≥ 0.99: share / agreed |
 |---|---|---|---|---|---|---|---|---|
-| claude-3-7-sonnet | 672 | 70.5% | 66.7% | 72.8% | 76.6% | 0.100 | 32.9% / 95.5% | 14.3% / 92.7% |
-| gpt-4.1 | 643 | 73.9% | 70.0% | 75.4% | 77.3% | 0.046 | 33.1% / 100.0% | 12.1% / 100.0% |
-| gpt-4.1-mini | 680 | 67.4% | 66.3% | 71.0% | 71.3% | 0.130 | 39.0% / 94.0% | 16.8% / 99.1% |
-| o4-mini | 424 | 81.1% | 82.3% | 80.4% | 82.8% | 0.071 | 45.0% / 95.3% | 24.8% / 99.0% |
-| glm-5 *(target)* | 645 | 63.3% | 60.6% | 69.5% | 67.9% | 0.171 | 27.1% / 97.7% | 14.6% / 97.9% |
-| **all source models** | 2419 | 72.4% | 70.2% | 74.3% | 76.4% | 0.084 | 36.8% / 96.1% | 16.2% / 97.7% |
+| claude-3-7-sonnet | 672 | 71.3% | 68.2% | 74.0% | 77.1% | 0.094 | 40.6% / 92.3% | 19.2% / 92.2% |
+| gpt-4.1 | 643 | 73.9% | 70.5% | 82.6% | 77.0% | 0.051 | 40.4% / 100.0% | 21.9% / 100.0% |
+| gpt-4.1-mini | 680 | 70.3% | 68.7% | 80.1% | 74.1% | 0.090 | 41.5% / 97.5% | 27.9% / 98.9% |
+| o4-mini | 424 | 80.7% | 82.8% | 79.0% | 81.8% | 0.062 | 52.1% / 94.6% | 35.1% / 96.0% |
+| glm-5 *(target)* | 645 | 63.3% | 61.4% | 75.8% | 68.7% | 0.157 | 35.5% / 98.3% | 20.8% / 98.5% |
+| **all source models** | 2419 | 73.3% | 71.5% | 78.9% | 77.1% | 0.067 | 42.8% / 96.1% | 25.2% / 97.0% |
 
-The arbiter's weights, averaged over folds: habit 0.39, one question 0.24, split 0.25, handing back -0.90, the model's record at the site 0.69.
+The arbiter's weights, averaged over folds: habit 0.33, one question 0.12, split 0.37, handing back 0.12, predicate list_pending 1.15, predicate needs_options -0.01, predicate must_ask 0.85, the model's record at the site 0.70.
+
+Predicates asked with every next-step question:
+
+- `list_pending`: Is the agent working through a list of records one lookup at a time (orders, items, products, reservations, flights or dates), with some it has not looked up yet?
+- `needs_options`: Does the customer's request need options the agent has not looked up yet, such as another version of an item, other products, or flights on a date or route not yet searched?
+- `must_ask`: Does the agent need something only the customer can give before any further lookup would help, such as identification, a choice between options, or a confirmation?
 
 Closed-set arguments:
 
@@ -373,34 +385,34 @@ Projection with the System-One model, pooled over the source models, for read-on
 
 | Pick trusted at | Turns saved | $ saved | Pauses/ep | System-One decisions/ep | Handed back early (/100 ep) | Detours (/100 ep) | Episodes with a detour | Writes handed back/ep |
 |---|---|---|---|---|---|---|---|---|
-| p ≥ 0.5 | **10.0%** | 14.5% | 2.63 | 6.16 | 96.9 | 65.0 | 46.6% | 0.68 |
-| p ≥ 0.7 | **8.1%** | 11.2% | 3.04 | 4.69 | 57.8 | 30.9 | 25.6% | 0.68 |
-| p ≥ 0.9 | **4.6%** | 5.6% | 3.69 | 2.87 | 17.8 | 7.8 | 7.2% | 0.68 |
-| p ≥ 0.95 | **3.4%** | 4.3% | 3.93 | 2.27 | 10.0 | 2.8 | 2.8% | 0.68 |
-| p ≥ 0.99 | **0.7%** | 1.1% | 4.42 | 1.32 | 5.0 | 0.3 | 0.3% | 0.68 |
-| two keys, p ≥ 0.5 | **5.4%** | 7.5% | 3.51 | 3.27 | 36.9 | 16.9 | 15.9% | 0.68 |
-| two keys, p ≥ 0.7 | **4.2%** | 5.5% | 3.69 | 2.65 | 15.6 | 9.1 | 8.8% | 0.68 |
-| two keys, p ≥ 0.9 | **2.8%** | 3.7% | 3.99 | 2.04 | 7.8 | 2.2 | 2.2% | 0.68 |
-| two keys, p ≥ 0.95 | **2.0%** | 2.8% | 4.17 | 1.73 | 6.6 | 0.9 | 0.9% | 0.68 |
-| two keys, p ≥ 0.99 | **0.3%** | 0.5% | 4.50 | 1.11 | 3.4 | 0.3 | 0.3% | 0.68 |
-| combined, p ≥ 0.5 | **10.4%** | 15.0% | 2.58 | 5.64 | 58.8 | 70.9 | 49.4% | 0.68 |
-| combined, p ≥ 0.7 | **8.1%** | 10.7% | 3.08 | 3.66 | 20.6 | 31.9 | 28.7% | 0.68 |
-| combined, p ≥ 0.9 | **4.9%** | 6.1% | 3.59 | 2.23 | 4.7 | 5.9 | 5.9% | 0.68 |
-| combined, p ≥ 0.95 | **1.2%** | 1.5% | 4.29 | 1.28 | 2.8 | 0.0 | 0.0% | 0.68 |
-| combined, p ≥ 0.99 | **0.1%** | 0.0% | 4.59 | 0.76 | 2.8 | 0.0 | 0.0% | 0.68 |
-| lookup first, p ≥ 0.2 | **13.7%** | 21.1% | 1.69 | 5.68 | 2.5 | 175.9 | 81.6% | 0.68 |
-| lookup first, p ≥ 0.3 | **12.6%** | 18.7% | 1.96 | 4.97 | 2.5 | 133.1 | 70.3% | 0.68 |
-| lookup first, p ≥ 0.4 | **11.7%** | 17.3% | 2.28 | 4.28 | 2.5 | 97.8 | 59.7% | 0.68 |
+| p ≥ 0.5 | **10.3%** | 15.5% | 2.53 | 6.08 | 86.9 | 64.4 | 46.2% | 0.68 |
+| p ≥ 0.7 | **8.0%** | 11.1% | 3.03 | 4.51 | 45.6 | 33.8 | 29.4% | 0.68 |
+| p ≥ 0.9 | **4.5%** | 5.7% | 3.68 | 2.80 | 15.0 | 9.4 | 9.4% | 0.68 |
+| p ≥ 0.95 | **3.4%** | 4.2% | 3.91 | 2.22 | 7.8 | 5.6 | 5.6% | 0.68 |
+| p ≥ 0.99 | **0.7%** | 1.0% | 4.40 | 1.29 | 4.1 | 0.9 | 0.9% | 0.68 |
+| two keys, p ≥ 0.5 | **5.3%** | 7.3% | 3.52 | 3.15 | 30.3 | 16.9 | 16.2% | 0.68 |
+| two keys, p ≥ 0.7 | **4.2%** | 5.5% | 3.70 | 2.62 | 12.8 | 11.6 | 11.2% | 0.68 |
+| two keys, p ≥ 0.9 | **2.8%** | 3.8% | 3.98 | 2.02 | 6.6 | 2.8 | 2.8% | 0.68 |
+| two keys, p ≥ 0.95 | **2.0%** | 2.8% | 4.15 | 1.70 | 5.0 | 1.9 | 1.9% | 0.68 |
+| two keys, p ≥ 0.99 | **0.2%** | 0.5% | 4.48 | 1.12 | 3.4 | 0.3 | 0.3% | 0.68 |
+| combined, p ≥ 0.5 | **11.4%** | 17.0% | 2.13 | 6.16 | 58.1 | 64.4 | 42.5% | 0.68 |
+| combined, p ≥ 0.7 | **9.0%** | 13.0% | 2.72 | 4.44 | 25.6 | 26.6 | 19.1% | 0.68 |
+| combined, p ≥ 0.9 | **5.9%** | 8.5% | 3.31 | 2.69 | 5.0 | 7.2 | 5.3% | 0.68 |
+| combined, p ≥ 0.95 | **4.3%** | 5.6% | 3.58 | 2.08 | 3.1 | 4.7 | 4.1% | 0.68 |
+| combined, p ≥ 0.99 | **2.4%** | 2.6% | 3.93 | 1.44 | 2.8 | 2.5 | 2.2% | 0.68 |
+| lookup first, p ≥ 0.2 | **13.4%** | 20.0% | 1.60 | 5.31 | 2.5 | 130.3 | 69.1% | 0.68 |
+| lookup first, p ≥ 0.3 | **12.8%** | 19.1% | 1.74 | 4.86 | 2.5 | 101.2 | 57.2% | 0.68 |
+| lookup first, p ≥ 0.4 | **12.1%** | 18.2% | 1.93 | 4.46 | 2.5 | 80.6 | 50.3% | 0.68 |
 
 The gate, per agent model: at least 20% fewer LLM turns, with at most 1% of episodes holding a risky decision (a conservative stand-in for losing at most one point of pass^1). Read-only flows take no risky decisions, so offline the gate is the turns saved; each cell is turns saved · episodes with a detour. Whether detours cost pass^1 is for a live run to show.
 
 | Agent model | Perfect System-One (read-only) | p ≥ 0.5 | p ≥ 0.7 | p ≥ 0.9 | combined, p ≥ 0.5 | combined, p ≥ 0.7 | combined, p ≥ 0.9 | lookup first, p ≥ 0.3 | Gate |
 |---|---|---|---|---|---|---|---|---|---|
-| claude-3-7-sonnet | 32.6% | 15.7% · 35.0% | 11.2% · 20.0% | 5.4% · 3.8% | 16.6% · 36.2% | 11.9% · 10.0% | 6.8% · 1.2% | 21.8% · 73.8% | **passes offline** (lookup first, p ≥ 0.3; detours in 74% of episodes) |
-| gpt-4.1 | 8.9% | 5.0% · 52.5% | 4.6% · 17.5% | 3.2% · 1.2% | 5.5% · 60.0% | 5.3% · 32.5% | 3.3% · 0.0% | 6.4% · 73.8% | fails: below 20% even with a perfect System-One model |
-| gpt-4.1-mini | 5.3% | 2.1% · 62.5% | 2.0% · 38.8% | 1.7% · 13.8% | 2.6% · 63.7% | 2.4% · 47.5% | 1.7% · 13.8% | 2.7% · 77.5% | fails: below 20% even with a perfect System-One model |
-| o4-mini | 20.7% | 16.1% · 36.2% | 14.3% · 26.2% | 8.2% · 10.0% | 16.1% · 37.5% | 12.1% · 25.0% | 7.6% · 8.8% | 17.6% · 56.2% | fails |
-| glm-5 *(target)* | 14.9% | 2.1% · 48.8% | 1.6% · 30.0% | 0.8% · 15.0% | 2.7% · 36.2% | 1.7% · 10.0% | 0.6% · 3.8% | 4.4% · 78.8% | fails: below 20% even with a perfect System-One model |
+| claude-3-7-sonnet | 32.6% | 16.8% · 35.0% | 11.1% · 20.0% | 5.6% · 10.0% | 18.7% · 23.8% | 13.2% · 8.8% | 8.5% · 5.0% | 21.9% · 46.2% | **passes offline** (lookup first, p ≥ 0.3; detours in 46% of episodes) |
+| gpt-4.1 | 8.9% | 4.7% · 52.5% | 4.5% · 23.8% | 3.2% · 3.8% | 6.1% · 43.8% | 5.0% · 13.8% | 3.4% · 0.0% | 6.6% · 57.5% | fails: below 20% even with a perfect System-One model |
+| gpt-4.1-mini | 5.3% | 2.2% · 60.0% | 2.0% · 48.8% | 1.5% · 12.5% | 2.6% · 58.8% | 2.1% · 30.0% | 0.7% · 7.5% | 2.7% · 72.5% | fails: below 20% even with a perfect System-One model |
+| o4-mini | 20.7% | 16.1% · 37.5% | 14.0% · 25.0% | 7.9% · 11.2% | 17.1% · 43.8% | 14.9% · 23.8% | 10.5% · 8.8% | 18.0% · 52.5% | fails |
+| glm-5 *(target)* | 14.9% | 2.2% · 52.5% | 1.6% · 30.0% | 1.0% · 18.8% | 4.3% · 36.2% | 1.9% · 13.8% | 0.6% · 5.0% | 6.5% · 61.3% | fails: below 20% even with a perfect System-One model |
 
 ### Transfer: top-1 when the habit comes from another model (k = 2)
 

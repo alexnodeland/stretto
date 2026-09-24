@@ -1,18 +1,19 @@
 # Phase 0b answer bundle, 2026-09-23 (v2)
 
-[phase0b-v2-2026-09-23-answers.jsonl.gz](phase0b-v2-2026-09-23-answers.jsonl.gz) holds 9,303 answers from TypeSafe's Jev (jev-1.13.0), one JSON object per line: `{"key", "response"}`.
+[phase0b-v2-2026-09-23-answers.jsonl.gz](phase0b-v2-2026-09-23-answers.jsonl.gz) holds 32,116 answers from TypeSafe's Jev (jev-1.13.0), one JSON object per line: `{"key", "response"}`.
 
 - **Key:** the SHA-256 of the exact request.
 - **Response:** Jev's picks, probabilities and token usage.
 - **Excluded:** no request text, benchmark data or credentials.
 
-It covers three sets of questions:
+It answers every question of these runs, so all of them replay without a key:
 
-- **v2:** the Phase 0b v2 questions (`--questions v2`), 8,109 distinct;
-- **v2 hints pilot:** the v2 questions with dataflow hints (`--questions v2 --dataflow-hints --oracle-limit 300`);
-- **v1 pilot:** the v1 questions (`--questions v1 --oracle-limit 300`).
+- `--questions v2` with GLM-5 as the target;
+- `--questions v2` with all nine leaderboard models as targets;
+- `--questions v2 --dataflow-hints --predicates data/predicates-v2.json` with GLM-5 as the target;
+- the 300-per-domain pilots: `--questions v1 --oracle-limit 300` and `--questions v2 --dataflow-hints --oracle-limit 300`.
 
-The two pilots have 300 per domain each. A few hinted questions are identical to unhinted ones.
+Some requests are shared between runs, so the counts do not add up.
 
 ## Replay without a key
 
