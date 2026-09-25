@@ -6,7 +6,7 @@ The second paired live run of stretto's read-only flow (RFC-001's arm D0), set u
 - **Tools:** τ²-bench's, over MCP, behind `stretto-proxy`.
 - **Customer:** GLM-5.3, from τ²-bench's user-simulator prompt.
 - **Flow:** compiled goal-free from the 2025 baselines' airline episodes. It takes the likeliest lookup when the tool's probability times the binding's agreement is at least 0.3.
-- **Reward:** τ²-bench's database check. The natural-language assertions need an LLM judge and were left out.
+- **Reward:** τ²-bench's database check. The natural-language assertions need an LLM judge and were left out. *Rescored (2026-09-25):* τ²-bench's own airline reward is the database check times the communication check, and it needs no judge. Scored that way, every episode keeps its reward. Task 18 is the only airline test task with a figure the agent must tell the customer, and the agent told it in both arms (`pilot/rescore.py --scoring basis` on [the published episodes](episodes-2026-09-24.md)).
 
 | Task | Turns without | Turns with | Flow lookups | Repeated by the agent | Input tokens without | Input tokens with | Credits without | Credits with | Without | With |
 |---|---|---|---|---|---|---|---|---|---|---|

@@ -4,7 +4,7 @@ Does refusing policy-breaking writes raise the pass rate? The guards arm (RFC-00
 
 - **Agent and customer:** GLM-5.3 in Claude Code, as in the flows pilots.
 - **Tasks:** the guards can only matter where agents make the writes they refuse. So instead of a random sample, the pilot takes the four airline test tasks where the guard audit of τ²-bench's published trajectories (`guards-2026-09-24.md`) finds most failed episodes with a write an enforced rule refuses: 35, 45, 32 and 48. It adds four more as a harm check: 24, 26, 31 and 37, whose baselines passed in the airline flows pilot and are reused here.
-- **Reward:** τ²-bench's database check.
+- **Reward:** τ²-bench's database check. *Rescored (2026-09-25):* with airline's full reward basis (the database check times the communication check), every episode keeps its reward.
 
 | Task | What the customer wants | Published failed episodes a guard refuses | Baseline (LLM turns) | Guards (LLM turns) | Writes the guards checked | Refused |
 |---|---|---|---|---|---|---|
