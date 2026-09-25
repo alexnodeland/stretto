@@ -46,7 +46,8 @@ The [working paper](https://alexnodeland.github.io/stretto/) puts them together,
 | [What `stretto_commit` could save](commit-bound-2026-09-25.md) | Bundling consecutive confirmed writes into one call saves at most 0.2–3.5% of LLM turns, too little for a ten-task live pilot to see |
 | [Shadow mode and per-site promotion](promotion-2026-09-25.md) ([rows](promotion-2026-09-25.json)) | Promoted on half the test tasks and replayed on the other half, D0 kept 277 of its 294 retail turns saved and all 41 in airline, with detours down from 58 to 28 and from 26 to 11. The habit alone gains little: its detours are at sites that pass the bar |
 | [Answers: promotion](answers-2026-09-25-promotion.md) | The answer bundle for the page above |
+| [Paired run on every test task](paired-2026-09-25.md) ([rows](paired-2026-09-25.json), [episodes](paired-2026-09-25-episodes.tar.gz)) | GLM-5.3 on all 40 retail and 20 airline test tasks (airline twice), 80 pairs. With the flow it took 25.5% fewer LLM turns (95% interval 20.5% to 30.4%). 70 pairs passed with the flow and 71 without it: −1.25 points (−7.5 to +6.25), too wide to rule out a loss of a few points. 242 of the flow's 259 lookups were the agent's own |
 
 ## Recorded episodes
 
-[Every live episode behind the pilot pages](episodes-2026-09-24.md), 76 in all, is published as one archive per pilot: the conversations, τ²-bench's simulation files, the proxy's session logs and the flows' decisions. `pilot/rescore.py` reproduces every recorded reward from them.
+[Every live episode behind the pilot pages](episodes-2026-09-24.md), 76 in all, is published as one archive per pilot: the conversations, τ²-bench's simulation files, the proxy's session logs and the flows' decisions. The paired run's 160 episodes are in [one more archive](paired-2026-09-25-episodes.tar.gz), laid out the same way ([the page](paired-2026-09-25.md#the-episodes)). `pilot/rescore.py` reproduces every recorded reward from them.

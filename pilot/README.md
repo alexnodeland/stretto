@@ -78,6 +78,12 @@ In the flows arm, the agent's first call found the user. The flow then looked up
 - GLM-5.3 in Claude Code calls tools one at a time (parallel calls in 3.8% of tool turns), unlike GLM-5 in τ²-bench's harness (45%). So airline saved far more than the offline projection for GLM-5 (under 5%).
 - 334 Z.ai credits, 11% less in the flows arm.
 
+**Paired run, every test task.** [`run_paired.py`](run_paired.py) ran every retail test task once and every airline test task twice, in both arms, reusing the two pilots' pairs. That is 80 pairs, and it stayed under a credit budget it checked before each episode. [`analyze_paired.py`](analyze_paired.py) reports on it. See [the summary](../docs/results/paired-2026-09-25.md):
+
+- 1,019 LLM turns without the flow and 759 with it, 25.5% fewer (95% interval 20.5% to 30.4%). Agent input tokens fell 21.0%.
+- 71 of 80 pairs passed the database check without the flow and 70 with it: −1.25 points (−7.5 to +6.25). That cannot rule out a loss of a few points.
+- 242 of the flow's 259 lookups were calls the agent made without the flow too. The 17 detours carried under 3% of the input tokens the flow saved.
+
 **Guards pilot, airline.** The guards arm (`run_episode.py --arm guards`) runs the tools behind `stretto-proxy --guards`, which refuses a write an enforced policy rule fails. It ran on the four airline test tasks where the guard audit finds the 2025 agents' refused writes concentrated (35, 45, 32, 48), plus four harm checks against the airline pilot's baselines. See [the summary](../docs/results/pilot-guards-2026-09-24.md):
 
 - GLM-5.3 passed all four main tasks in both arms, and the guards refused nothing. It never tried the cancellations the policy forbids.

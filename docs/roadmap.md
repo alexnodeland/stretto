@@ -3,7 +3,8 @@
 Every piece of the first design is built: the flow compiler, the MCP proxy, the policy guards, the audit, the confirmation judge and the shipped arbiters ([implementation status](design.md#implementation-status-2026-09-24)). The evidence so far:
 
 - offline replays on τ²-bench's published trajectories;
-- live pilots of ten paired tasks per domain, with GLM-5.3 in Claude Code as the agent.
+- live pilots of ten paired tasks per domain, with GLM-5.3 in Claude Code as the agent;
+- a paired run on every retail and airline test task: 80 pairs, with 25.5% fewer LLM turns and the pass rate within −7.5 to +6.25 points ([results](results/paired-2026-09-25.md)).
 
 What is left is tracked in GitHub issues, all of them sub-issues of [#1](https://github.com/alexnodeland/stretto/issues/1). This page groups them and says why each matters. The changes RFC-001 §3.9 asks of fugue itself are tracked in fugue's [#61](https://github.com/alexnodeland/fugue/issues/61).
 
@@ -13,7 +14,7 @@ Each of these spends the Z.ai coding-plan key, so each needs an approved credit 
 
 | Issue | What | Why | Cost |
 |---|---|---|---|
-| [#2](https://github.com/alexnodeland/stretto/issues/2) | A paired run on every test task | "The same pass rate" rests on ten pairs per domain, too few to rule out a one-point loss | About 950 credits for retail, 1,350 for airline |
+| [#2](https://github.com/alexnodeland/stretto/issues/2) | A paired run on every test task | Done: 80 pairs. The flow saved 25.5% of LLM turns (95% interval 20.5% to 30.4%), and the pass rate moved −1.25 points (−7.5 to +6.25) ([results](results/paired-2026-09-25.md)). A one-point bound would take about 4,300 pairs | 1,897 credits |
 | [#3](https://github.com/alexnodeland/stretto/issues/3) | The cold start live: the habit alone against the habit with a shipped arbiter | Offline, both beat an arbiter fitted on the first sessions; live, only that arbiter flow ran, on three tasks | About 240 credits for retail; airline adds 420 |
 | [#4](https://github.com/alexnodeland/stretto/issues/4) | A simulated customer that is not the agent's own model | In every pilot, GLM-5.3 played both parts | A key for the customer's model |
 | [#5](https://github.com/alexnodeland/stretto/issues/5) | More agent models live | Every live result is one model; offline, savings follow calling style | A key and a budget per model |
@@ -95,7 +96,7 @@ All six are built. A live flow now runs as a fugue program: the flow IR holds it
    - telecom (#10);
    - the cold start's other agents and draws (#9);
    - independent labels (#11).
-4. **Live runs, as budgets are approved.** The paired run (#2) comes first, since every other live claim leans on pass^1. Next come the confirmation judge enforced (#6) and the cold start live (#3).
+4. **Live runs, as budgets are approved.** The paired run (#2) is done. It puts the pass-rate change between −7.5 and +6.25 points, not within one. Next come the confirmation judge enforced (#6) and the cold start live (#3).
 5. **Phase 3 features** as the evidence calls for them:
    - counterfactual evaluation (#15);
    - predicate refinement (#16);

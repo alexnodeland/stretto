@@ -1,0 +1,4960 @@
+{
+ "run": "stretto #2: every τ²-bench retail and airline test task, paired, GLM-5.3 in Claude Code; see paired-2026-09-25.md",
+ "domains": {
+  "retail": {
+   "summary": {
+    "domain": "retail",
+    "trials": 1,
+    "pairs": 40,
+    "tasks": 40,
+    "pass_baseline": 37,
+    "pass_flows": 34,
+    "pass_difference": [
+     -0.075,
+     -0.175,
+     0.0
+    ],
+    "discordant": {
+     "flows_only": 0,
+     "baseline_only": 3
+    },
+    "mcnemar_p": 0.25,
+    "turns": {
+     "baseline": 484,
+     "flows": 337
+    },
+    "turn_difference_per_episode": [
+     -3.675,
+     -4.35,
+     -2.975
+    ],
+    "turns_saved_share": [
+     0.3037,
+     0.2554,
+     0.3497
+    ],
+    "input_tokens": {
+     "baseline": 3260564,
+     "flows": 2451716
+    },
+    "input_tokens_saved_share": [
+     0.2481,
+     0.1852,
+     0.3071
+    ],
+    "credits": {
+     "baseline": 565.2,
+     "flows": 473.1
+    },
+    "agent_calls": {
+     "baseline": 311,
+     "flows": 162
+    },
+    "pairs_fewer_turns": 37,
+    "pairs_more_turns": 1,
+    "flow_lookups": 145,
+    "repeats": 4,
+    "episodes_with_lookups": 39
+   },
+   "pairs": [
+    {
+     "task": "5",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": false,
+     "turns_a": 13,
+     "turns_b": 9,
+     "tok_a": 91575,
+     "tok_b": 63478,
+     "cr_a": 16.12,
+     "cr_b": 13.29,
+     "calls_a": 8,
+     "calls_b": 4,
+     "lookups": 3,
+     "repeats": 0
+    },
+    {
+     "task": "9",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 14,
+     "turns_b": 9,
+     "tok_a": 97890,
+     "tok_b": 69025,
+     "cr_a": 15.13,
+     "cr_b": 12.38,
+     "calls_a": 9,
+     "calls_b": 3,
+     "lookups": 5,
+     "repeats": 0
+    },
+    {
+     "task": "12",
+     "trial": 0,
+     "pass_a": false,
+     "pass_b": false,
+     "turns_a": 9,
+     "turns_b": 8,
+     "tok_a": 52651,
+     "tok_b": 53746,
+     "cr_a": 13.47,
+     "cr_b": 13.96,
+     "calls_a": 5,
+     "calls_b": 2,
+     "lookups": 3,
+     "repeats": 0
+    },
+    {
+     "task": "17",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 6,
+     "turns_b": 7,
+     "tok_a": 30604,
+     "tok_b": 36027,
+     "cr_a": 6.13,
+     "cr_b": 5.79,
+     "calls_a": 3,
+     "calls_b": 3,
+     "lookups": 0,
+     "repeats": 0
+    },
+    {
+     "task": "18",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 11,
+     "turns_b": 9,
+     "tok_a": 73304,
+     "tok_b": 58737,
+     "cr_a": 12.51,
+     "cr_b": 10.34,
+     "calls_a": 6,
+     "calls_b": 4,
+     "lookups": 2,
+     "repeats": 0
+    },
+    {
+     "task": "26",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 11,
+     "turns_b": 6,
+     "tok_a": 67225,
+     "tok_b": 38953,
+     "cr_a": 11.22,
+     "cr_b": 8.08,
+     "calls_a": 7,
+     "calls_b": 2,
+     "lookups": 5,
+     "repeats": 0
+    },
+    {
+     "task": "27",
+     "trial": 0,
+     "pass_a": false,
+     "pass_b": false,
+     "turns_a": 14,
+     "turns_b": 8,
+     "tok_a": 102663,
+     "tok_b": 64423,
+     "cr_a": 17.56,
+     "cr_b": 12.59,
+     "calls_a": 10,
+     "calls_b": 5,
+     "lookups": 5,
+     "repeats": 0
+    },
+    {
+     "task": "32",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 21,
+     "turns_b": 16,
+     "tok_a": 149417,
+     "tok_b": 127667,
+     "cr_a": 23.25,
+     "cr_b": 23.14,
+     "calls_a": 10,
+     "calls_b": 5,
+     "lookups": 5,
+     "repeats": 0
+    },
+    {
+     "task": "33",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 11,
+     "turns_b": 6,
+     "tok_a": 70144,
+     "tok_b": 34789,
+     "cr_a": 14.74,
+     "cr_b": 9.4,
+     "calls_a": 6,
+     "calls_b": 2,
+     "lookups": 2,
+     "repeats": 0
+    },
+    {
+     "task": "36",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 16,
+     "turns_b": 11,
+     "tok_a": 125565,
+     "tok_b": 84453,
+     "cr_a": 21.73,
+     "cr_b": 16.06,
+     "calls_a": 11,
+     "calls_b": 6,
+     "lookups": 4,
+     "repeats": 0
+    },
+    {
+     "task": "38",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": false,
+     "turns_a": 16,
+     "turns_b": 10,
+     "tok_a": 132314,
+     "tok_b": 91898,
+     "cr_a": 20.7,
+     "cr_b": 16.14,
+     "calls_a": 11,
+     "calls_b": 4,
+     "lookups": 6,
+     "repeats": 0
+    },
+    {
+     "task": "39",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 10,
+     "turns_b": 7,
+     "tok_a": 60395,
+     "tok_b": 43332,
+     "cr_a": 11.38,
+     "cr_b": 8.82,
+     "calls_a": 6,
+     "calls_b": 4,
+     "lookups": 3,
+     "repeats": 0
+    },
+    {
+     "task": "40",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 9,
+     "turns_b": 6,
+     "tok_a": 49231,
+     "tok_b": 32199,
+     "cr_a": 8.55,
+     "cr_b": 6.15,
+     "calls_a": 5,
+     "calls_b": 2,
+     "lookups": 2,
+     "repeats": 0
+    },
+    {
+     "task": "42",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 16,
+     "turns_b": 14,
+     "tok_a": 112552,
+     "tok_b": 103665,
+     "cr_a": 16.51,
+     "cr_b": 16.04,
+     "calls_a": 9,
+     "calls_b": 7,
+     "lookups": 2,
+     "repeats": 0
+    },
+    {
+     "task": "45",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 11,
+     "turns_b": 7,
+     "tok_a": 68475,
+     "tok_b": 47975,
+     "cr_a": 11.63,
+     "cr_b": 9.75,
+     "calls_a": 7,
+     "calls_b": 3,
+     "lookups": 4,
+     "repeats": 0
+    },
+    {
+     "task": "49",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 13,
+     "turns_b": 7,
+     "tok_a": 87458,
+     "tok_b": 47950,
+     "cr_a": 15.59,
+     "cr_b": 8.49,
+     "calls_a": 9,
+     "calls_b": 3,
+     "lookups": 6,
+     "repeats": 0
+    },
+    {
+     "task": "51",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 10,
+     "turns_b": 5,
+     "tok_a": 57658,
+     "tok_b": 26123,
+     "cr_a": 8.49,
+     "cr_b": 5.27,
+     "calls_a": 7,
+     "calls_b": 2,
+     "lookups": 2,
+     "repeats": 0
+    },
+    {
+     "task": "53",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 10,
+     "turns_b": 5,
+     "tok_a": 58850,
+     "tok_b": 31200,
+     "cr_a": 9.06,
+     "cr_b": 7.18,
+     "calls_a": 7,
+     "calls_b": 2,
+     "lookups": 5,
+     "repeats": 0
+    },
+    {
+     "task": "55",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 17,
+     "turns_b": 6,
+     "tok_a": 123251,
+     "tok_b": 45984,
+     "cr_a": 18.12,
+     "cr_b": 11.79,
+     "calls_a": 13,
+     "calls_b": 8,
+     "lookups": 6,
+     "repeats": 1
+    },
+    {
+     "task": "56",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 12,
+     "turns_b": 8,
+     "tok_a": 76500,
+     "tok_b": 54598,
+     "cr_a": 12.13,
+     "cr_b": 9.66,
+     "calls_a": 7,
+     "calls_b": 3,
+     "lookups": 4,
+     "repeats": 0
+    },
+    {
+     "task": "60",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 6,
+     "turns_b": 5,
+     "tok_a": 34600,
+     "tok_b": 29410,
+     "cr_a": 7.05,
+     "cr_b": 6.73,
+     "calls_a": 4,
+     "calls_b": 3,
+     "lookups": 1,
+     "repeats": 0
+    },
+    {
+     "task": "61",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 6,
+     "turns_b": 5,
+     "tok_a": 34461,
+     "tok_b": 29390,
+     "cr_a": 6.56,
+     "cr_b": 6.07,
+     "calls_a": 4,
+     "calls_b": 3,
+     "lookups": 1,
+     "repeats": 0
+    },
+    {
+     "task": "62",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 11,
+     "turns_b": 7,
+     "tok_a": 69251,
+     "tok_b": 46990,
+     "cr_a": 11.87,
+     "cr_b": 10.29,
+     "calls_a": 7,
+     "calls_b": 3,
+     "lookups": 3,
+     "repeats": 0
+    },
+    {
+     "task": "64",
+     "trial": 0,
+     "pass_a": false,
+     "pass_b": false,
+     "turns_a": 11,
+     "turns_b": 9,
+     "tok_a": 66349,
+     "tok_b": 59949,
+     "cr_a": 12.58,
+     "cr_b": 11.88,
+     "calls_a": 7,
+     "calls_b": 5,
+     "lookups": 3,
+     "repeats": 1
+    },
+    {
+     "task": "65",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 13,
+     "turns_b": 10,
+     "tok_a": 85501,
+     "tok_b": 82008,
+     "cr_a": 17.88,
+     "cr_b": 16.34,
+     "calls_a": 7,
+     "calls_b": 5,
+     "lookups": 4,
+     "repeats": 0
+    },
+    {
+     "task": "68",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 9,
+     "turns_b": 8,
+     "tok_a": 50599,
+     "tok_b": 45978,
+     "cr_a": 13.13,
+     "cr_b": 11.56,
+     "calls_a": 6,
+     "calls_b": 2,
+     "lookups": 4,
+     "repeats": 0
+    },
+    {
+     "task": "70",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 14,
+     "turns_b": 8,
+     "tok_a": 93796,
+     "tok_b": 58624,
+     "cr_a": 13.78,
+     "cr_b": 9.37,
+     "calls_a": 9,
+     "calls_b": 4,
+     "lookups": 5,
+     "repeats": 0
+    },
+    {
+     "task": "71",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 15,
+     "turns_b": 13,
+     "tok_a": 112979,
+     "tok_b": 106221,
+     "cr_a": 20.53,
+     "cr_b": 20.62,
+     "calls_a": 10,
+     "calls_b": 7,
+     "lookups": 3,
+     "repeats": 0
+    },
+    {
+     "task": "74",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 15,
+     "turns_b": 12,
+     "tok_a": 111873,
+     "tok_b": 109269,
+     "cr_a": 19.08,
+     "cr_b": 20.85,
+     "calls_a": 9,
+     "calls_b": 5,
+     "lookups": 4,
+     "repeats": 0
+    },
+    {
+     "task": "77",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 8,
+     "turns_b": 6,
+     "tok_a": 43346,
+     "tok_b": 33694,
+     "cr_a": 7.36,
+     "cr_b": 6.57,
+     "calls_a": 5,
+     "calls_b": 3,
+     "lookups": 2,
+     "repeats": 0
+    },
+    {
+     "task": "79",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": false,
+     "turns_a": 11,
+     "turns_b": 6,
+     "tok_a": 70261,
+     "tok_b": 38048,
+     "cr_a": 12.39,
+     "cr_b": 8.59,
+     "calls_a": 7,
+     "calls_b": 2,
+     "lookups": 3,
+     "repeats": 0
+    },
+    {
+     "task": "86",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 15,
+     "turns_b": 9,
+     "tok_a": 95659,
+     "tok_b": 65127,
+     "cr_a": 14.79,
+     "cr_b": 12.24,
+     "calls_a": 10,
+     "calls_b": 5,
+     "lookups": 5,
+     "repeats": 0
+    },
+    {
+     "task": "90",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 12,
+     "turns_b": 8,
+     "tok_a": 77728,
+     "tok_b": 56044,
+     "cr_a": 13.61,
+     "cr_b": 11.36,
+     "calls_a": 7,
+     "calls_b": 3,
+     "lookups": 4,
+     "repeats": 0
+    },
+    {
+     "task": "94",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 11,
+     "turns_b": 8,
+     "tok_a": 72206,
+     "tok_b": 58661,
+     "cr_a": 12.63,
+     "cr_b": 11.0,
+     "calls_a": 7,
+     "calls_b": 4,
+     "lookups": 4,
+     "repeats": 0
+    },
+    {
+     "task": "97",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 11,
+     "turns_b": 7,
+     "tok_a": 77008,
+     "tok_b": 50233,
+     "cr_a": 15.23,
+     "cr_b": 11.55,
+     "calls_a": 7,
+     "calls_b": 4,
+     "lookups": 3,
+     "repeats": 0
+    },
+    {
+     "task": "100",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 12,
+     "turns_b": 12,
+     "tok_a": 97854,
+     "tok_b": 99924,
+     "cr_a": 19.27,
+     "cr_b": 17.7,
+     "calls_a": 12,
+     "calls_b": 7,
+     "lookups": 5,
+     "repeats": 0
+    },
+    {
+     "task": "101",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 19,
+     "turns_b": 16,
+     "tok_a": 139238,
+     "tok_b": 132734,
+     "cr_a": 22.0,
+     "cr_b": 21.17,
+     "calls_a": 10,
+     "calls_b": 9,
+     "lookups": 3,
+     "repeats": 2
+    },
+    {
+     "task": "102",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 17,
+     "turns_b": 10,
+     "tok_a": 120508,
+     "tok_b": 70089,
+     "cr_a": 17.8,
+     "cr_b": 12.34,
+     "calls_a": 10,
+     "calls_b": 6,
+     "lookups": 3,
+     "repeats": 0
+    },
+    {
+     "task": "108",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 9,
+     "turns_b": 5,
+     "tok_a": 51221,
+     "tok_b": 29903,
+     "cr_a": 8.58,
+     "cr_b": 6.2,
+     "calls_a": 6,
+     "calls_b": 2,
+     "lookups": 4,
+     "repeats": 0
+    },
+    {
+     "task": "111",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 9,
+     "turns_b": 9,
+     "tok_a": 68404,
+     "tok_b": 93198,
+     "cr_a": 15.06,
+     "cr_b": 16.32,
+     "calls_a": 11,
+     "calls_b": 6,
+     "lookups": 7,
+     "repeats": 0
+    }
+   ],
+   "detours": {
+    "domain": "retail",
+    "lookups": 145,
+    "own": 140,
+    "detours": 5,
+    "repeated": 4,
+    "by_tool_own_detour": {
+     "get_user_details": [
+      37,
+      0
+     ],
+     "get_order_details": [
+      90,
+      0
+     ],
+     "get_product_details": [
+      13,
+      5
+     ]
+    },
+    "detour_tokens": 4389,
+    "detour_tokens_median": 936,
+    "detour_tokens_max": 1041,
+    "detour_carried": 23618,
+    "own_tokens": 49498,
+    "own_carried": 298575,
+    "pairs_with_detours": 3
+   },
+   "lookups": [
+    {
+     "task": "5",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "mei_kovacs_8020"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 144,
+     "turns_after": 7,
+     "carried": 1008
+    },
+    {
+     "task": "5",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W6390527"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 374,
+     "turns_after": 7,
+     "carried": 2618
+    },
+    {
+     "task": "5",
+     "trial": 0,
+     "tool": "get_product_details",
+     "arguments": {
+      "product_id": "8310926033"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 964,
+     "turns_after": 5,
+     "carried": 4820
+    },
+    {
+     "task": "9",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "mei_kovacs_8020"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 144,
+     "turns_after": 7,
+     "carried": 1008
+    },
+    {
+     "task": "9",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W6390527"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 374,
+     "turns_after": 7,
+     "carried": 2618
+    },
+    {
+     "task": "9",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W7800651"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 356,
+     "turns_after": 7,
+     "carried": 2492
+    },
+    {
+     "task": "9",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W8065207"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 456,
+     "turns_after": 7,
+     "carried": 3192
+    },
+    {
+     "task": "9",
+     "trial": 0,
+     "tool": "get_product_details",
+     "arguments": {
+      "product_id": "8310926033"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 964,
+     "turns_after": 5,
+     "carried": 4820
+    },
+    {
+     "task": "12",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "mia_garcia_4516"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 177,
+     "turns_after": 6,
+     "carried": 1062
+    },
+    {
+     "task": "12",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W5490111"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 449,
+     "turns_after": 6,
+     "carried": 2694
+    },
+    {
+     "task": "12",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W7387996"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 248,
+     "turns_after": 6,
+     "carried": 1488
+    },
+    {
+     "task": "18",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "mei_davis_8935"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 152,
+     "turns_after": 7,
+     "carried": 1064
+    },
+    {
+     "task": "18",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W2890441"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 452,
+     "turns_after": 7,
+     "carried": 3164
+    },
+    {
+     "task": "26",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "isabella_johansson_2152"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 152,
+     "turns_after": 4,
+     "carried": 608
+    },
+    {
+     "task": "26",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W3792453"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 249,
+     "turns_after": 4,
+     "carried": 996
+    },
+    {
+     "task": "26",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W7181492"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 524,
+     "turns_after": 4,
+     "carried": 2096
+    },
+    {
+     "task": "26",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W5565470"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 379,
+     "turns_after": 4,
+     "carried": 1516
+    },
+    {
+     "task": "26",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W2575533"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 483,
+     "turns_after": 4,
+     "carried": 1932
+    },
+    {
+     "task": "27",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "isabella_johansson_2152"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 152,
+     "turns_after": 6,
+     "carried": 912
+    },
+    {
+     "task": "27",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W3792453"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 249,
+     "turns_after": 6,
+     "carried": 1494
+    },
+    {
+     "task": "27",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W7181492"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 524,
+     "turns_after": 6,
+     "carried": 3144
+    },
+    {
+     "task": "27",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W5565470"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 379,
+     "turns_after": 6,
+     "carried": 2274
+    },
+    {
+     "task": "27",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W2575533"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 483,
+     "turns_after": 6,
+     "carried": 2898
+    },
+    {
+     "task": "32",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "olivia_lopez_3865"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 165,
+     "turns_after": 14,
+     "carried": 2310
+    },
+    {
+     "task": "32",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W9319364"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 252,
+     "turns_after": 14,
+     "carried": 3528
+    },
+    {
+     "task": "32",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W9373487"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 226,
+     "turns_after": 14,
+     "carried": 3164
+    },
+    {
+     "task": "32",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W2692684"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 247,
+     "turns_after": 14,
+     "carried": 3458
+    },
+    {
+     "task": "32",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W5481803"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 287,
+     "turns_after": 14,
+     "carried": 4018
+    },
+    {
+     "task": "33",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "noah_patel_6952"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 142,
+     "turns_after": 4,
+     "carried": 568
+    },
+    {
+     "task": "33",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W1845024"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 476,
+     "turns_after": 4,
+     "carried": 1904
+    },
+    {
+     "task": "36",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "daiki_sanchez_3253"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 149,
+     "turns_after": 8,
+     "carried": 1192
+    },
+    {
+     "task": "36",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W9348897"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 486,
+     "turns_after": 8,
+     "carried": 3888
+    },
+    {
+     "task": "36",
+     "trial": 0,
+     "tool": "get_product_details",
+     "arguments": {
+      "product_id": "6817146515"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 637,
+     "turns_after": 4,
+     "carried": 2548
+    },
+    {
+     "task": "36",
+     "trial": 0,
+     "tool": "get_product_details",
+     "arguments": {
+      "product_id": "9523456873"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 719,
+     "turns_after": 4,
+     "carried": 2876
+    },
+    {
+     "task": "38",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "daiki_sanchez_3253"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 149,
+     "turns_after": 8,
+     "carried": 1192
+    },
+    {
+     "task": "38",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W9348897"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 486,
+     "turns_after": 8,
+     "carried": 3888
+    },
+    {
+     "task": "38",
+     "trial": 0,
+     "tool": "get_product_details",
+     "arguments": {
+      "product_id": "9743693396"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 390,
+     "turns_after": 6,
+     "carried": 2340
+    },
+    {
+     "task": "38",
+     "trial": 0,
+     "tool": "get_product_details",
+     "arguments": {
+      "product_id": "6817146515"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 637,
+     "turns_after": 6,
+     "carried": 3822
+    },
+    {
+     "task": "38",
+     "trial": 0,
+     "tool": "get_product_details",
+     "arguments": {
+      "product_id": "9523456873"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 719,
+     "turns_after": 6,
+     "carried": 4314
+    },
+    {
+     "task": "38",
+     "trial": 0,
+     "tool": "get_product_details",
+     "arguments": {
+      "product_id": "2524789262"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 841,
+     "turns_after": 6,
+     "carried": 5046
+    },
+    {
+     "task": "39",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "fatima_taylor_3452"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 146,
+     "turns_after": 5,
+     "carried": 730
+    },
+    {
+     "task": "39",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W5285031"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 386,
+     "turns_after": 5,
+     "carried": 1930
+    },
+    {
+     "task": "39",
+     "trial": 0,
+     "tool": "get_product_details",
+     "arguments": {
+      "product_id": "9924732112"
+     },
+     "own": false,
+     "repeated": false,
+     "tokens": 679,
+     "turns_after": 2,
+     "carried": 1358
+    },
+    {
+     "task": "40",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "isabella_lopez_6490"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 245,
+     "turns_after": 4,
+     "carried": 980
+    },
+    {
+     "task": "40",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W4923227"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 225,
+     "turns_after": 4,
+     "carried": 900
+    },
+    {
+     "task": "42",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "mei_patel_7272"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 176,
+     "turns_after": 12,
+     "carried": 2112
+    },
+    {
+     "task": "42",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W9583042"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 413,
+     "turns_after": 12,
+     "carried": 4956
+    },
+    {
+     "task": "45",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "daiki_johnson_9523"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 142,
+     "turns_after": 5,
+     "carried": 710
+    },
+    {
+     "task": "45",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W1436802"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 230,
+     "turns_after": 5,
+     "carried": 1150
+    },
+    {
+     "task": "45",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W5282037"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 285,
+     "turns_after": 5,
+     "carried": 1425
+    },
+    {
+     "task": "45",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W9502127"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 540,
+     "turns_after": 5,
+     "carried": 2700
+    },
+    {
+     "task": "49",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "aarav_anderson_8794"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 163,
+     "turns_after": 5,
+     "carried": 815
+    },
+    {
+     "task": "49",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W4316152"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 322,
+     "turns_after": 5,
+     "carried": 1610
+    },
+    {
+     "task": "49",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W9311069"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 522,
+     "turns_after": 5,
+     "carried": 2610
+    },
+    {
+     "task": "49",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W9300146"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 223,
+     "turns_after": 5,
+     "carried": 1115
+    },
+    {
+     "task": "49",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W3220203"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 245,
+     "turns_after": 5,
+     "carried": 1225
+    },
+    {
+     "task": "49",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W3470184"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 525,
+     "turns_after": 5,
+     "carried": 2625
+    },
+    {
+     "task": "51",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "sofia_li_9219"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 229,
+     "turns_after": 3,
+     "carried": 687
+    },
+    {
+     "task": "51",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W4689314"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 249,
+     "turns_after": 3,
+     "carried": 747
+    },
+    {
+     "task": "53",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "sofia_li_9219"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 229,
+     "turns_after": 3,
+     "carried": 687
+    },
+    {
+     "task": "53",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W4689314"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 249,
+     "turns_after": 3,
+     "carried": 747
+    },
+    {
+     "task": "53",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W8855135"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 410,
+     "turns_after": 3,
+     "carried": 1230
+    },
+    {
+     "task": "53",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W3916020"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 313,
+     "turns_after": 3,
+     "carried": 939
+    },
+    {
+     "task": "53",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W5416052"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 514,
+     "turns_after": 3,
+     "carried": 1542
+    },
+    {
+     "task": "55",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "amelia_silva_7726"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 171,
+     "turns_after": 4,
+     "carried": 684
+    },
+    {
+     "task": "55",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W2586676"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 410,
+     "turns_after": 4,
+     "carried": 1640
+    },
+    {
+     "task": "55",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W5400801"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 421,
+     "turns_after": 4,
+     "carried": 1684
+    },
+    {
+     "task": "55",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W4597054"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 452,
+     "turns_after": 4,
+     "carried": 1808
+    },
+    {
+     "task": "55",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W4836353"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 299,
+     "turns_after": 4,
+     "carried": 1196
+    },
+    {
+     "task": "55",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W7342738"
+     },
+     "own": true,
+     "repeated": true,
+     "tokens": 419,
+     "turns_after": 3,
+     "carried": 1257
+    },
+    {
+     "task": "56",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "ivan_hernandez_6923"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 196,
+     "turns_after": 6,
+     "carried": 1176
+    },
+    {
+     "task": "56",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W5838674"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 538,
+     "turns_after": 6,
+     "carried": 3228
+    },
+    {
+     "task": "56",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W4284542"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 357,
+     "turns_after": 6,
+     "carried": 2142
+    },
+    {
+     "task": "56",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W2782744"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 407,
+     "turns_after": 6,
+     "carried": 2442
+    },
+    {
+     "task": "60",
+     "trial": 0,
+     "tool": "get_product_details",
+     "arguments": {
+      "product_id": "9924732112"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 679,
+     "turns_after": 3,
+     "carried": 2037
+    },
+    {
+     "task": "61",
+     "trial": 0,
+     "tool": "get_product_details",
+     "arguments": {
+      "product_id": "9924732112"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 679,
+     "turns_after": 3,
+     "carried": 2037
+    },
+    {
+     "task": "62",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "chen_johnson_4204"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 173,
+     "turns_after": 5,
+     "carried": 865
+    },
+    {
+     "task": "62",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W5797164"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 245,
+     "turns_after": 5,
+     "carried": 1225
+    },
+    {
+     "task": "62",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W5061109"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 418,
+     "turns_after": 5,
+     "carried": 2090
+    },
+    {
+     "task": "64",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "james_sanchez_3954"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 142,
+     "turns_after": 7,
+     "carried": 994
+    },
+    {
+     "task": "64",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W7464385"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 225,
+     "turns_after": 7,
+     "carried": 1575
+    },
+    {
+     "task": "64",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W1279004"
+     },
+     "own": true,
+     "repeated": true,
+     "tokens": 411,
+     "turns_after": 6,
+     "carried": 2466
+    },
+    {
+     "task": "65",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "james_kovacs_9247"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 166,
+     "turns_after": 8,
+     "carried": 1328
+    },
+    {
+     "task": "65",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W5362037"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 309,
+     "turns_after": 8,
+     "carried": 2472
+    },
+    {
+     "task": "65",
+     "trial": 0,
+     "tool": "get_product_details",
+     "arguments": {
+      "product_id": "8600330539"
+     },
+     "own": false,
+     "repeated": false,
+     "tokens": 938,
+     "turns_after": 6,
+     "carried": 5628
+    },
+    {
+     "task": "65",
+     "trial": 0,
+     "tool": "get_product_details",
+     "arguments": {
+      "product_id": "2747247837"
+     },
+     "own": false,
+     "repeated": false,
+     "tokens": 795,
+     "turns_after": 6,
+     "carried": 4770
+    },
+    {
+     "task": "68",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "noah_ito_3850"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 158,
+     "turns_after": 4,
+     "carried": 632
+    },
+    {
+     "task": "68",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W3445693"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 380,
+     "turns_after": 4,
+     "carried": 1520
+    },
+    {
+     "task": "68",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W4219264"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 338,
+     "turns_after": 4,
+     "carried": 1352
+    },
+    {
+     "task": "68",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W6729841"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 286,
+     "turns_after": 4,
+     "carried": 1144
+    },
+    {
+     "task": "70",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "sofia_hernandez_5364"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 170,
+     "turns_after": 6,
+     "carried": 1020
+    },
+    {
+     "task": "70",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W3561391"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 227,
+     "turns_after": 6,
+     "carried": 1362
+    },
+    {
+     "task": "70",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W6876713"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 526,
+     "turns_after": 6,
+     "carried": 3156
+    },
+    {
+     "task": "70",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W9609649"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 539,
+     "turns_after": 6,
+     "carried": 3234
+    },
+    {
+     "task": "70",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W3947049"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 247,
+     "turns_after": 6,
+     "carried": 1482
+    },
+    {
+     "task": "71",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "ivan_khan_7475"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 180,
+     "turns_after": 11,
+     "carried": 1980
+    },
+    {
+     "task": "71",
+     "trial": 0,
+     "tool": "get_product_details",
+     "arguments": {
+      "product_id": "2524789262"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 841,
+     "turns_after": 9,
+     "carried": 7569
+    },
+    {
+     "task": "71",
+     "trial": 0,
+     "tool": "get_product_details",
+     "arguments": {
+      "product_id": "6817146515"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 637,
+     "turns_after": 9,
+     "carried": 5733
+    },
+    {
+     "task": "74",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "lei_li_6575"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 216,
+     "turns_after": 10,
+     "carried": 2160
+    },
+    {
+     "task": "74",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W5166363"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 241,
+     "turns_after": 10,
+     "carried": 2410
+    },
+    {
+     "task": "74",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W6289770"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 522,
+     "turns_after": 9,
+     "carried": 4698
+    },
+    {
+     "task": "74",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W3189752"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 472,
+     "turns_after": 9,
+     "carried": 4248
+    },
+    {
+     "task": "77",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "ivan_johnson_6036"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 130,
+     "turns_after": 4,
+     "carried": 520
+    },
+    {
+     "task": "77",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W1671835"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 248,
+     "turns_after": 4,
+     "carried": 992
+    },
+    {
+     "task": "79",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "emma_kovacs_9839"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 159,
+     "turns_after": 4,
+     "carried": 636
+    },
+    {
+     "task": "79",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W8661412"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 350,
+     "turns_after": 4,
+     "carried": 1400
+    },
+    {
+     "task": "79",
+     "trial": 0,
+     "tool": "get_product_details",
+     "arguments": {
+      "product_id": "8310926033"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 964,
+     "turns_after": 4,
+     "carried": 3856
+    },
+    {
+     "task": "86",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "yusuf_hernandez_6785"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 158,
+     "turns_after": 7,
+     "carried": 1106
+    },
+    {
+     "task": "86",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W2166301"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 352,
+     "turns_after": 7,
+     "carried": 2464
+    },
+    {
+     "task": "86",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W2466703"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 344,
+     "turns_after": 7,
+     "carried": 2408
+    },
+    {
+     "task": "86",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W6832752"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 227,
+     "turns_after": 7,
+     "carried": 1589
+    },
+    {
+     "task": "86",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W7739115"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 247,
+     "turns_after": 7,
+     "carried": 1729
+    },
+    {
+     "task": "90",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "emma_kovacs_9839"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 159,
+     "turns_after": 6,
+     "carried": 954
+    },
+    {
+     "task": "90",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W8661412"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 350,
+     "turns_after": 6,
+     "carried": 2100
+    },
+    {
+     "task": "90",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W2273457"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 407,
+     "turns_after": 6,
+     "carried": 2442
+    },
+    {
+     "task": "90",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W9284598"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 470,
+     "turns_after": 6,
+     "carried": 2820
+    },
+    {
+     "task": "94",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "lei_wilson_4541"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 159,
+     "turns_after": 6,
+     "carried": 954
+    },
+    {
+     "task": "94",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W3826449"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 486,
+     "turns_after": 6,
+     "carried": 2916
+    },
+    {
+     "task": "94",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W2905754"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 544,
+     "turns_after": 6,
+     "carried": 3264
+    },
+    {
+     "task": "94",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W4073673"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 477,
+     "turns_after": 6,
+     "carried": 2862
+    },
+    {
+     "task": "97",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "yusuf_li_7255"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 137,
+     "turns_after": 5,
+     "carried": 685
+    },
+    {
+     "task": "97",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W6750959"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 291,
+     "turns_after": 5,
+     "carried": 1455
+    },
+    {
+     "task": "97",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W3407479"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 452,
+     "turns_after": 5,
+     "carried": 2260
+    },
+    {
+     "task": "100",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "liam_thomas_7882"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 192,
+     "turns_after": 10,
+     "carried": 1920
+    },
+    {
+     "task": "100",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W8488728"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 245,
+     "turns_after": 8,
+     "carried": 1960
+    },
+    {
+     "task": "100",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W6397299"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 521,
+     "turns_after": 8,
+     "carried": 4168
+    },
+    {
+     "task": "100",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W6231698"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 386,
+     "turns_after": 8,
+     "carried": 3088
+    },
+    {
+     "task": "100",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W3295833"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 346,
+     "turns_after": 8,
+     "carried": 2768
+    },
+    {
+     "task": "101",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "noah_ito_3850"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 158,
+     "turns_after": 14,
+     "carried": 2212
+    },
+    {
+     "task": "101",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W4219264"
+     },
+     "own": true,
+     "repeated": true,
+     "tokens": 338,
+     "turns_after": 12,
+     "carried": 4056
+    },
+    {
+     "task": "101",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W6729841"
+     },
+     "own": true,
+     "repeated": true,
+     "tokens": 286,
+     "turns_after": 12,
+     "carried": 3432
+    },
+    {
+     "task": "102",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "noah_ito_3850"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 158,
+     "turns_after": 8,
+     "carried": 1264
+    },
+    {
+     "task": "102",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W3445693"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 380,
+     "turns_after": 8,
+     "carried": 3040
+    },
+    {
+     "task": "102",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W4219264"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 338,
+     "turns_after": 8,
+     "carried": 2704
+    },
+    {
+     "task": "108",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "yusuf_gonzalez_8900"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 190,
+     "turns_after": 3,
+     "carried": 570
+    },
+    {
+     "task": "108",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W2806889"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 307,
+     "turns_after": 3,
+     "carried": 921
+    },
+    {
+     "task": "108",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W2230795"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 424,
+     "turns_after": 3,
+     "carried": 1272
+    },
+    {
+     "task": "108",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W1679211"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 458,
+     "turns_after": 3,
+     "carried": 1374
+    },
+    {
+     "task": "111",
+     "trial": 0,
+     "tool": "get_user_details",
+     "arguments": {
+      "user_id": "yara_silva_7567"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 159,
+     "turns_after": 7,
+     "carried": 1113
+    },
+    {
+     "task": "111",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W9810810"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 344,
+     "turns_after": 7,
+     "carried": 2408
+    },
+    {
+     "task": "111",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W9034102"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 415,
+     "turns_after": 7,
+     "carried": 2905
+    },
+    {
+     "task": "111",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W3964602"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 523,
+     "turns_after": 7,
+     "carried": 3661
+    },
+    {
+     "task": "111",
+     "trial": 0,
+     "tool": "get_order_details",
+     "arguments": {
+      "order_id": "#W3730488"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 305,
+     "turns_after": 7,
+     "carried": 2135
+    },
+    {
+     "task": "111",
+     "trial": 0,
+     "tool": "get_product_details",
+     "arguments": {
+      "product_id": "4354588079"
+     },
+     "own": false,
+     "repeated": false,
+     "tokens": 936,
+     "turns_after": 6,
+     "carried": 5616
+    },
+    {
+     "task": "111",
+     "trial": 0,
+     "tool": "get_product_details",
+     "arguments": {
+      "product_id": "7765186836"
+     },
+     "own": false,
+     "repeated": false,
+     "tokens": 1041,
+     "turns_after": 6,
+     "carried": 6246
+    }
+   ]
+  },
+  "airline": {
+   "summary": {
+    "domain": "airline",
+    "trials": 2,
+    "pairs": 40,
+    "tasks": 20,
+    "pass_baseline": 34,
+    "pass_flows": 36,
+    "pass_difference": [
+     0.05,
+     -0.05,
+     0.175
+    ],
+    "discordant": {
+     "flows_only": 4,
+     "baseline_only": 2
+    },
+    "mcnemar_p": 0.6875,
+    "turns": {
+     "baseline": 535,
+     "flows": 422
+    },
+    "turn_difference_per_episode": [
+     -2.825,
+     -4.7,
+     -1.45
+    ],
+    "turns_saved_share": [
+     0.2112,
+     0.1233,
+     0.2998
+    ],
+    "input_tokens": {
+     "baseline": 4174880,
+     "flows": 3422603
+    },
+    "input_tokens_saved_share": [
+     0.1802,
+     0.0755,
+     0.2842
+    ],
+    "credits": {
+     "baseline": 755.7,
+     "flows": 673.0
+    },
+    "agent_calls": {
+     "baseline": 335,
+     "flows": 233
+    },
+    "pairs_fewer_turns": 29,
+    "pairs_more_turns": 5,
+    "flow_lookups": 114,
+    "repeats": 2,
+    "episodes_with_lookups": 37,
+    "basis_pass": {
+     "baseline": 34,
+     "flows": 36
+    },
+    "basis_pass_difference": [
+     0.05,
+     -0.05,
+     0.175
+    ]
+   },
+   "pairs": [
+    {
+     "task": "2",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 21,
+     "turns_b": 16,
+     "tok_a": 151926,
+     "tok_b": 121237,
+     "cr_a": 32.8,
+     "cr_b": 24.47,
+     "calls_a": 11,
+     "calls_b": 9,
+     "lookups": 3,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "2",
+     "trial": 1,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 7,
+     "turns_b": 17,
+     "tok_a": 40147,
+     "tok_b": 118887,
+     "cr_a": 11.49,
+     "cr_b": 22.46,
+     "calls_a": 1,
+     "calls_b": 10,
+     "lookups": 1,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "6",
+     "trial": 0,
+     "pass_a": false,
+     "pass_b": true,
+     "turns_a": 13,
+     "turns_b": 7,
+     "tok_a": 104973,
+     "tok_b": 42231,
+     "cr_a": 27.85,
+     "cr_b": 12.58,
+     "calls_a": 4,
+     "calls_b": 1,
+     "lookups": 1,
+     "repeats": 0,
+     "basis_a": false,
+     "basis_b": true
+    },
+    {
+     "task": "6",
+     "trial": 1,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 8,
+     "turns_b": 9,
+     "tok_a": 49917,
+     "tok_b": 63712,
+     "cr_a": 16.44,
+     "cr_b": 23.46,
+     "calls_a": 2,
+     "calls_b": 1,
+     "lookups": 1,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "8",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 8,
+     "turns_b": 7,
+     "tok_a": 55742,
+     "tok_b": 48374,
+     "cr_a": 10.99,
+     "cr_b": 9.68,
+     "calls_a": 8,
+     "calls_b": 3,
+     "lookups": 5,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "8",
+     "trial": 1,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 13,
+     "turns_b": 6,
+     "tok_a": 88394,
+     "tok_b": 41403,
+     "cr_a": 14.1,
+     "cr_b": 8.83,
+     "calls_a": 8,
+     "calls_b": 3,
+     "lookups": 5,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "13",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 7,
+     "turns_b": 4,
+     "tok_a": 41345,
+     "tok_b": 21895,
+     "cr_a": 11.88,
+     "cr_b": 7.99,
+     "calls_a": 2,
+     "calls_b": 0,
+     "lookups": 0,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "13",
+     "trial": 1,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 3,
+     "turns_b": 4,
+     "tok_a": 15606,
+     "tok_b": 21935,
+     "cr_a": 5.26,
+     "cr_b": 7.41,
+     "calls_a": 0,
+     "calls_b": 0,
+     "lookups": 0,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "16",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 8,
+     "turns_b": 8,
+     "tok_a": 56954,
+     "tok_b": 56592,
+     "cr_a": 13.19,
+     "cr_b": 10.59,
+     "calls_a": 6,
+     "calls_b": 4,
+     "lookups": 2,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "16",
+     "trial": 1,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 10,
+     "turns_b": 9,
+     "tok_a": 67420,
+     "tok_b": 67012,
+     "cr_a": 11.86,
+     "cr_b": 13.04,
+     "calls_a": 6,
+     "calls_b": 4,
+     "lookups": 2,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "18",
+     "trial": 0,
+     "pass_a": false,
+     "pass_b": true,
+     "turns_a": 28,
+     "turns_b": 23,
+     "tok_a": 304056,
+     "tok_b": 256215,
+     "cr_a": 39.81,
+     "cr_b": 32.97,
+     "calls_a": 25,
+     "calls_b": 20,
+     "lookups": 4,
+     "repeats": 0,
+     "basis_a": false,
+     "basis_b": true
+    },
+    {
+     "task": "18",
+     "trial": 1,
+     "pass_a": true,
+     "pass_b": false,
+     "turns_a": 27,
+     "turns_b": 23,
+     "tok_a": 277813,
+     "tok_b": 290263,
+     "cr_a": 35.74,
+     "cr_b": 42.2,
+     "calls_a": 24,
+     "calls_b": 19,
+     "lookups": 6,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": false
+    },
+    {
+     "task": "19",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 9,
+     "turns_b": 6,
+     "tok_a": 53623,
+     "tok_b": 36874,
+     "cr_a": 8.69,
+     "cr_b": 7.3,
+     "calls_a": 5,
+     "calls_b": 2,
+     "lookups": 3,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "19",
+     "trial": 1,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 9,
+     "turns_b": 6,
+     "tok_a": 53385,
+     "tok_b": 36426,
+     "cr_a": 8.57,
+     "cr_b": 6.73,
+     "calls_a": 5,
+     "calls_b": 2,
+     "lookups": 3,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "22",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 15,
+     "turns_b": 10,
+     "tok_a": 115626,
+     "tok_b": 78557,
+     "cr_a": 17.9,
+     "cr_b": 12.6,
+     "calls_a": 10,
+     "calls_b": 6,
+     "lookups": 4,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "22",
+     "trial": 1,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 11,
+     "turns_b": 11,
+     "tok_a": 85735,
+     "tok_b": 91760,
+     "cr_a": 15.06,
+     "cr_b": 15.44,
+     "calls_a": 10,
+     "calls_b": 6,
+     "lookups": 4,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "24",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 22,
+     "turns_b": 18,
+     "tok_a": 161999,
+     "tok_b": 138374,
+     "cr_a": 23.93,
+     "cr_b": 23.81,
+     "calls_a": 16,
+     "calls_b": 12,
+     "lookups": 1,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "24",
+     "trial": 1,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 28,
+     "turns_b": 22,
+     "tok_a": 222957,
+     "tok_b": 181088,
+     "cr_a": 30.05,
+     "cr_b": 24.97,
+     "calls_a": 22,
+     "calls_b": 16,
+     "lookups": 2,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "25",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 9,
+     "turns_b": 8,
+     "tok_a": 62638,
+     "tok_b": 55681,
+     "cr_a": 11.54,
+     "cr_b": 11.05,
+     "calls_a": 4,
+     "calls_b": 3,
+     "lookups": 1,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "25",
+     "trial": 1,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 8,
+     "turns_b": 8,
+     "tok_a": 54959,
+     "tok_b": 51202,
+     "cr_a": 10.57,
+     "cr_b": 10.17,
+     "calls_a": 4,
+     "calls_b": 4,
+     "lookups": 1,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "26",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 9,
+     "turns_b": 6,
+     "tok_a": 55785,
+     "tok_b": 36303,
+     "cr_a": 15.39,
+     "cr_b": 10.76,
+     "calls_a": 3,
+     "calls_b": 1,
+     "lookups": 2,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "26",
+     "trial": 1,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 9,
+     "turns_b": 7,
+     "tok_a": 52230,
+     "tok_b": 42853,
+     "cr_a": 10.63,
+     "cr_b": 11.57,
+     "calls_a": 3,
+     "calls_b": 1,
+     "lookups": 2,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "29",
+     "trial": 0,
+     "pass_a": false,
+     "pass_b": true,
+     "turns_a": 11,
+     "turns_b": 11,
+     "tok_a": 84527,
+     "tok_b": 84157,
+     "cr_a": 17.22,
+     "cr_b": 18.37,
+     "calls_a": 7,
+     "calls_b": 5,
+     "lookups": 1,
+     "repeats": 0,
+     "basis_a": false,
+     "basis_b": true
+    },
+    {
+     "task": "29",
+     "trial": 1,
+     "pass_a": false,
+     "pass_b": true,
+     "turns_a": 10,
+     "turns_b": 9,
+     "tok_a": 72998,
+     "tok_b": 66987,
+     "cr_a": 16.64,
+     "cr_b": 15.89,
+     "calls_a": 6,
+     "calls_b": 5,
+     "lookups": 1,
+     "repeats": 0,
+     "basis_a": false,
+     "basis_b": true
+    },
+    {
+     "task": "30",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 8,
+     "turns_b": 8,
+     "tok_a": 47244,
+     "tok_b": 50082,
+     "cr_a": 8.38,
+     "cr_b": 11.77,
+     "calls_a": 4,
+     "calls_b": 3,
+     "lookups": 1,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "30",
+     "trial": 1,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 7,
+     "turns_b": 8,
+     "tok_a": 41116,
+     "tok_b": 48157,
+     "cr_a": 8.0,
+     "cr_b": 9.38,
+     "calls_a": 3,
+     "calls_b": 3,
+     "lookups": 1,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "31",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": false,
+     "turns_a": 7,
+     "turns_b": 8,
+     "tok_a": 39408,
+     "tok_b": 68479,
+     "cr_a": 7.29,
+     "cr_b": 16.44,
+     "calls_a": 4,
+     "calls_b": 6,
+     "lookups": 3,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": false
+    },
+    {
+     "task": "31",
+     "trial": 1,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 7,
+     "turns_b": 4,
+     "tok_a": 39703,
+     "tok_b": 22451,
+     "cr_a": 7.61,
+     "cr_b": 5.4,
+     "calls_a": 4,
+     "calls_b": 1,
+     "lookups": 3,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "32",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 15,
+     "turns_b": 14,
+     "tok_a": 130341,
+     "tok_b": 124910,
+     "cr_a": 21.79,
+     "cr_b": 27.06,
+     "calls_a": 9,
+     "calls_b": 6,
+     "lookups": 4,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "32",
+     "trial": 1,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 17,
+     "turns_b": 9,
+     "tok_a": 144626,
+     "tok_b": 80447,
+     "cr_a": 27.9,
+     "cr_b": 19.13,
+     "calls_a": 10,
+     "calls_b": 6,
+     "lookups": 4,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "35",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 19,
+     "turns_b": 15,
+     "tok_a": 149398,
+     "tok_b": 130225,
+     "cr_a": 26.34,
+     "cr_b": 26.22,
+     "calls_a": 8,
+     "calls_b": 4,
+     "lookups": 4,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "35",
+     "trial": 1,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 17,
+     "turns_b": 14,
+     "tok_a": 134691,
+     "tok_b": 117865,
+     "cr_a": 28.35,
+     "cr_b": 22.67,
+     "calls_a": 8,
+     "calls_b": 5,
+     "lookups": 3,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "37",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 15,
+     "turns_b": 12,
+     "tok_a": 107781,
+     "tok_b": 97036,
+     "cr_a": 18.04,
+     "cr_b": 17.95,
+     "calls_a": 10,
+     "calls_b": 7,
+     "lookups": 4,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "37",
+     "trial": 1,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 15,
+     "turns_b": 11,
+     "tok_a": 108799,
+     "tok_b": 86127,
+     "cr_a": 18.86,
+     "cr_b": 15.29,
+     "calls_a": 11,
+     "calls_b": 8,
+     "lookups": 3,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "44",
+     "trial": 0,
+     "pass_a": false,
+     "pass_b": false,
+     "turns_a": 32,
+     "turns_b": 13,
+     "tok_a": 327177,
+     "tok_b": 143968,
+     "cr_a": 48.81,
+     "cr_b": 29.3,
+     "calls_a": 27,
+     "calls_b": 22,
+     "lookups": 10,
+     "repeats": 2,
+     "basis_a": false,
+     "basis_b": false
+    },
+    {
+     "task": "44",
+     "trial": 1,
+     "pass_a": false,
+     "pass_b": false,
+     "turns_a": 33,
+     "turns_b": 19,
+     "tok_a": 305958,
+     "tok_b": 190717,
+     "cr_a": 53.62,
+     "cr_b": 34.9,
+     "calls_a": 27,
+     "calls_b": 14,
+     "lookups": 10,
+     "repeats": 0,
+     "basis_a": false,
+     "basis_b": false
+    },
+    {
+     "task": "45",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 8,
+     "turns_b": 7,
+     "tok_a": 48908,
+     "tok_b": 42125,
+     "cr_a": 14.13,
+     "cr_b": 9.65,
+     "calls_a": 2,
+     "calls_b": 3,
+     "lookups": 1,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "45",
+     "trial": 1,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 9,
+     "turns_b": 6,
+     "tok_a": 56239,
+     "tok_b": 36723,
+     "cr_a": 12.38,
+     "cr_b": 10.47,
+     "calls_a": 4,
+     "calls_b": 1,
+     "lookups": 1,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "48",
+     "trial": 0,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 15,
+     "turns_b": 11,
+     "tok_a": 114803,
+     "tok_b": 82939,
+     "cr_a": 22.76,
+     "cr_b": 18.84,
+     "calls_a": 10,
+     "calls_b": 5,
+     "lookups": 7,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    },
+    {
+     "task": "48",
+     "trial": 1,
+     "pass_a": true,
+     "pass_b": true,
+     "turns_a": 8,
+     "turns_b": 8,
+     "tok_a": 47933,
+     "tok_b": 50334,
+     "cr_a": 13.83,
+     "cr_b": 14.21,
+     "calls_a": 2,
+     "calls_b": 2,
+     "lookups": 0,
+     "repeats": 0,
+     "basis_a": true,
+     "basis_b": true
+    }
+   ],
+   "detours": {
+    "domain": "airline",
+    "lookups": 114,
+    "own": 102,
+    "detours": 12,
+    "repeated": 2,
+    "by_tool_own_detour": {
+     "get_reservation_details": [
+      96,
+      4
+     ],
+     "get_flight_status": [
+      6,
+      8
+     ]
+    },
+    "detour_tokens": 1233,
+    "detour_tokens_median": 2.0,
+    "detour_tokens_max": 346,
+    "detour_carried": 19219,
+    "own_tokens": 25533,
+    "own_carried": 233868,
+    "pairs_with_detours": 6
+   },
+   "lookups": [
+    {
+     "task": "2",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "4OG6T3"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 316,
+     "turns_after": 12,
+     "carried": 3792
+    },
+    {
+     "task": "2",
+     "trial": 0,
+     "tool": "get_flight_status",
+     "arguments": {
+      "date": "2024-05-11",
+      "flight_number": "HAT006"
+     },
+     "own": false,
+     "repeated": false,
+     "tokens": 2,
+     "turns_after": 9,
+     "carried": 18
+    },
+    {
+     "task": "2",
+     "trial": 0,
+     "tool": "get_flight_status",
+     "arguments": {
+      "date": "2024-05-17",
+      "flight_number": "HAT018"
+     },
+     "own": false,
+     "repeated": false,
+     "tokens": 1,
+     "turns_after": 9,
+     "carried": 9
+    },
+    {
+     "task": "6",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "PEP4E0"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 241,
+     "turns_after": 5,
+     "carried": 1205
+    },
+    {
+     "task": "8",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "NM1VX1"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 243,
+     "turns_after": 5,
+     "carried": 1215
+    },
+    {
+     "task": "8",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "KC18K6"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 242,
+     "turns_after": 5,
+     "carried": 1210
+    },
+    {
+     "task": "8",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "S61CZX"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 320,
+     "turns_after": 5,
+     "carried": 1600
+    },
+    {
+     "task": "8",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "H8Q05L"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 204,
+     "turns_after": 5,
+     "carried": 1020
+    },
+    {
+     "task": "8",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "WUNA5K"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 239,
+     "turns_after": 5,
+     "carried": 1195
+    },
+    {
+     "task": "16",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "M05KNL"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 241,
+     "turns_after": 6,
+     "carried": 1446
+    },
+    {
+     "task": "16",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "UHDAHF"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 321,
+     "turns_after": 6,
+     "carried": 1926
+    },
+    {
+     "task": "18",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "JG7FMM"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 268,
+     "turns_after": 21,
+     "carried": 5628
+    },
+    {
+     "task": "18",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "LQ940Q"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 318,
+     "turns_after": 21,
+     "carried": 6678
+    },
+    {
+     "task": "18",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "2FBBAH"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 314,
+     "turns_after": 21,
+     "carried": 6594
+    },
+    {
+     "task": "18",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "X7BYG1"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 267,
+     "turns_after": 21,
+     "carried": 5607
+    },
+    {
+     "task": "19",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "Z7GOZK"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 243,
+     "turns_after": 4,
+     "carried": 972
+    },
+    {
+     "task": "19",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "K67C4W"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 255,
+     "turns_after": 4,
+     "carried": 1020
+    },
+    {
+     "task": "19",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "THY2DG"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 237,
+     "turns_after": 4,
+     "carried": 948
+    },
+    {
+     "task": "22",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "UM3OG5"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 303,
+     "turns_after": 8,
+     "carried": 2424
+    },
+    {
+     "task": "22",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "5RJ7UH"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 268,
+     "turns_after": 8,
+     "carried": 2144
+    },
+    {
+     "task": "22",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "FQ8APE"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 240,
+     "turns_after": 8,
+     "carried": 1920
+    },
+    {
+     "task": "22",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "QKRY03"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 267,
+     "turns_after": 8,
+     "carried": 2136
+    },
+    {
+     "task": "24",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "H9ZU1C"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 293,
+     "turns_after": 16,
+     "carried": 4688
+    },
+    {
+     "task": "25",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "G72NSF"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 265,
+     "turns_after": 6,
+     "carried": 1590
+    },
+    {
+     "task": "26",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "3FRNFB"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 267,
+     "turns_after": 4,
+     "carried": 1068
+    },
+    {
+     "task": "26",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "Q4L9HS"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 241,
+     "turns_after": 4,
+     "carried": 964
+    },
+    {
+     "task": "29",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "VA5SGQ"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 317,
+     "turns_after": 9,
+     "carried": 2853
+    },
+    {
+     "task": "30",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "1N99U6"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 302,
+     "turns_after": 6,
+     "carried": 1812
+    },
+    {
+     "task": "31",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "DF89BM"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 276,
+     "turns_after": 6,
+     "carried": 1656
+    },
+    {
+     "task": "31",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "COVE6R"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 199,
+     "turns_after": 6,
+     "carried": 1194
+    },
+    {
+     "task": "31",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "IIHXDG"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 254,
+     "turns_after": 6,
+     "carried": 1524
+    },
+    {
+     "task": "32",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "OWZ4XL"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 296,
+     "turns_after": 12,
+     "carried": 3552
+    },
+    {
+     "task": "32",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "F3IQK1"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 256,
+     "turns_after": 12,
+     "carried": 3072
+    },
+    {
+     "task": "32",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "8WMF4C"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 265,
+     "turns_after": 12,
+     "carried": 3180
+    },
+    {
+     "task": "32",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "L2H5FP"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 295,
+     "turns_after": 12,
+     "carried": 3540
+    },
+    {
+     "task": "35",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "M20IZO"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 267,
+     "turns_after": 13,
+     "carried": 3471
+    },
+    {
+     "task": "35",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "N6F783"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 242,
+     "turns_after": 13,
+     "carried": 3146
+    },
+    {
+     "task": "35",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "IFOYYZ"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 241,
+     "turns_after": 13,
+     "carried": 3133
+    },
+    {
+     "task": "35",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "NQNU5R"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 270,
+     "turns_after": 13,
+     "carried": 3510
+    },
+    {
+     "task": "37",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "M20IZO"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 267,
+     "turns_after": 10,
+     "carried": 2670
+    },
+    {
+     "task": "37",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "N6F783"
+     },
+     "own": false,
+     "repeated": false,
+     "tokens": 242,
+     "turns_after": 10,
+     "carried": 2420
+    },
+    {
+     "task": "37",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "IFOYYZ"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 241,
+     "turns_after": 10,
+     "carried": 2410
+    },
+    {
+     "task": "37",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "NQNU5R"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 270,
+     "turns_after": 10,
+     "carried": 2700
+    },
+    {
+     "task": "44",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "NM1VX1"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 243,
+     "turns_after": 11,
+     "carried": 2673
+    },
+    {
+     "task": "44",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "KC18K6"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 242,
+     "turns_after": 11,
+     "carried": 2662
+    },
+    {
+     "task": "44",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "S61CZX"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 320,
+     "turns_after": 11,
+     "carried": 3520
+    },
+    {
+     "task": "44",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "H8Q05L"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 204,
+     "turns_after": 11,
+     "carried": 2244
+    },
+    {
+     "task": "44",
+     "trial": 0,
+     "tool": "get_flight_status",
+     "arguments": {
+      "date": "2024-05-10",
+      "flight_number": "HAT271"
+     },
+     "own": false,
+     "repeated": false,
+     "tokens": 2,
+     "turns_after": 8,
+     "carried": 16
+    },
+    {
+     "task": "44",
+     "trial": 0,
+     "tool": "get_flight_status",
+     "arguments": {
+      "date": "2024-05-11",
+      "flight_number": "HAT197"
+     },
+     "own": false,
+     "repeated": false,
+     "tokens": 2,
+     "turns_after": 8,
+     "carried": 16
+    },
+    {
+     "task": "44",
+     "trial": 0,
+     "tool": "get_flight_status",
+     "arguments": {
+      "date": "2024-05-24",
+      "flight_number": "HAT268"
+     },
+     "own": true,
+     "repeated": true,
+     "tokens": 1,
+     "turns_after": 8,
+     "carried": 8
+    },
+    {
+     "task": "44",
+     "trial": 0,
+     "tool": "get_flight_status",
+     "arguments": {
+      "date": "2024-05-23",
+      "flight_number": "HAT228"
+     },
+     "own": true,
+     "repeated": true,
+     "tokens": 1,
+     "turns_after": 8,
+     "carried": 8
+    },
+    {
+     "task": "44",
+     "trial": 0,
+     "tool": "get_flight_status",
+     "arguments": {
+      "date": "2024-05-21",
+      "flight_number": "HAT043"
+     },
+     "own": false,
+     "repeated": false,
+     "tokens": 1,
+     "turns_after": 8,
+     "carried": 8
+    },
+    {
+     "task": "44",
+     "trial": 0,
+     "tool": "get_flight_status",
+     "arguments": {
+      "date": "2024-05-27",
+      "flight_number": "HAT157"
+     },
+     "own": false,
+     "repeated": false,
+     "tokens": 1,
+     "turns_after": 8,
+     "carried": 8
+    },
+    {
+     "task": "45",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "PEP4E0"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 241,
+     "turns_after": 5,
+     "carried": 1205
+    },
+    {
+     "task": "48",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "3RK2T9"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 268,
+     "turns_after": 9,
+     "carried": 2412
+    },
+    {
+     "task": "48",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "BE2L57"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 270,
+     "turns_after": 4,
+     "carried": 1080
+    },
+    {
+     "task": "48",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "CXBB4L"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 240,
+     "turns_after": 4,
+     "carried": 960
+    },
+    {
+     "task": "48",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "TAMSDK"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 372,
+     "turns_after": 4,
+     "carried": 1488
+    },
+    {
+     "task": "48",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "VAOW1B"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 318,
+     "turns_after": 4,
+     "carried": 1272
+    },
+    {
+     "task": "48",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "Q4MCUF"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 344,
+     "turns_after": 4,
+     "carried": 1376
+    },
+    {
+     "task": "48",
+     "trial": 0,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "JMO1MG"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 224,
+     "turns_after": 4,
+     "carried": 896
+    },
+    {
+     "task": "2",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "4OG6T3"
+     },
+     "own": false,
+     "repeated": false,
+     "tokens": 316,
+     "turns_after": 13,
+     "carried": 4108
+    },
+    {
+     "task": "6",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "PEP4E0"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 241,
+     "turns_after": 7,
+     "carried": 1687
+    },
+    {
+     "task": "8",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "NM1VX1"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 243,
+     "turns_after": 4,
+     "carried": 972
+    },
+    {
+     "task": "8",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "KC18K6"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 242,
+     "turns_after": 4,
+     "carried": 968
+    },
+    {
+     "task": "8",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "S61CZX"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 320,
+     "turns_after": 4,
+     "carried": 1280
+    },
+    {
+     "task": "8",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "H8Q05L"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 204,
+     "turns_after": 4,
+     "carried": 816
+    },
+    {
+     "task": "8",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "WUNA5K"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 239,
+     "turns_after": 4,
+     "carried": 956
+    },
+    {
+     "task": "16",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "M05KNL"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 241,
+     "turns_after": 7,
+     "carried": 1687
+    },
+    {
+     "task": "16",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "UHDAHF"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 321,
+     "turns_after": 7,
+     "carried": 2247
+    },
+    {
+     "task": "18",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "JG7FMM"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 268,
+     "turns_after": 21,
+     "carried": 5628
+    },
+    {
+     "task": "18",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "LQ940Q"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 318,
+     "turns_after": 21,
+     "carried": 6678
+    },
+    {
+     "task": "18",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "2FBBAH"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 314,
+     "turns_after": 21,
+     "carried": 6594
+    },
+    {
+     "task": "18",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "X7BYG1"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 267,
+     "turns_after": 21,
+     "carried": 5607
+    },
+    {
+     "task": "18",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "EQ1G6C"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 236,
+     "turns_after": 21,
+     "carried": 4956
+    },
+    {
+     "task": "18",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "BOH180"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 262,
+     "turns_after": 21,
+     "carried": 5502
+    },
+    {
+     "task": "19",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "Z7GOZK"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 243,
+     "turns_after": 4,
+     "carried": 972
+    },
+    {
+     "task": "19",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "K67C4W"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 255,
+     "turns_after": 4,
+     "carried": 1020
+    },
+    {
+     "task": "19",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "THY2DG"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 237,
+     "turns_after": 4,
+     "carried": 948
+    },
+    {
+     "task": "22",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "UM3OG5"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 303,
+     "turns_after": 9,
+     "carried": 2727
+    },
+    {
+     "task": "22",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "5RJ7UH"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 268,
+     "turns_after": 9,
+     "carried": 2412
+    },
+    {
+     "task": "22",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "FQ8APE"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 240,
+     "turns_after": 9,
+     "carried": 2160
+    },
+    {
+     "task": "22",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "QKRY03"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 267,
+     "turns_after": 9,
+     "carried": 2403
+    },
+    {
+     "task": "24",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "C4GP7M"
+     },
+     "own": false,
+     "repeated": false,
+     "tokens": 318,
+     "turns_after": 20,
+     "carried": 6360
+    },
+    {
+     "task": "24",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "XL2C75"
+     },
+     "own": false,
+     "repeated": false,
+     "tokens": 346,
+     "turns_after": 18,
+     "carried": 6228
+    },
+    {
+     "task": "25",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "G72NSF"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 265,
+     "turns_after": 6,
+     "carried": 1590
+    },
+    {
+     "task": "26",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "3FRNFB"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 267,
+     "turns_after": 5,
+     "carried": 1335
+    },
+    {
+     "task": "26",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "Q4L9HS"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 241,
+     "turns_after": 5,
+     "carried": 1205
+    },
+    {
+     "task": "29",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "VA5SGQ"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 317,
+     "turns_after": 7,
+     "carried": 2219
+    },
+    {
+     "task": "30",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "1N99U6"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 302,
+     "turns_after": 6,
+     "carried": 1812
+    },
+    {
+     "task": "31",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "DF89BM"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 276,
+     "turns_after": 2,
+     "carried": 552
+    },
+    {
+     "task": "31",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "COVE6R"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 199,
+     "turns_after": 2,
+     "carried": 398
+    },
+    {
+     "task": "31",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "IIHXDG"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 254,
+     "turns_after": 2,
+     "carried": 508
+    },
+    {
+     "task": "32",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "OWZ4XL"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 296,
+     "turns_after": 7,
+     "carried": 2072
+    },
+    {
+     "task": "32",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "F3IQK1"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 256,
+     "turns_after": 7,
+     "carried": 1792
+    },
+    {
+     "task": "32",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "8WMF4C"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 265,
+     "turns_after": 7,
+     "carried": 1855
+    },
+    {
+     "task": "32",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "L2H5FP"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 295,
+     "turns_after": 7,
+     "carried": 2065
+    },
+    {
+     "task": "35",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "M20IZO"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 267,
+     "turns_after": 12,
+     "carried": 3204
+    },
+    {
+     "task": "35",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "IFOYYZ"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 241,
+     "turns_after": 11,
+     "carried": 2651
+    },
+    {
+     "task": "35",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "NQNU5R"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 270,
+     "turns_after": 11,
+     "carried": 2970
+    },
+    {
+     "task": "37",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "M20IZO"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 267,
+     "turns_after": 9,
+     "carried": 2403
+    },
+    {
+     "task": "37",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "IFOYYZ"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 241,
+     "turns_after": 9,
+     "carried": 2169
+    },
+    {
+     "task": "37",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "NQNU5R"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 270,
+     "turns_after": 9,
+     "carried": 2430
+    },
+    {
+     "task": "44",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "NM1VX1"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 243,
+     "turns_after": 17,
+     "carried": 4131
+    },
+    {
+     "task": "44",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "KC18K6"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 242,
+     "turns_after": 17,
+     "carried": 4114
+    },
+    {
+     "task": "44",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "S61CZX"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 320,
+     "turns_after": 17,
+     "carried": 5440
+    },
+    {
+     "task": "44",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "H8Q05L"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 204,
+     "turns_after": 17,
+     "carried": 3468
+    },
+    {
+     "task": "44",
+     "trial": 1,
+     "tool": "get_flight_status",
+     "arguments": {
+      "date": "2024-05-10",
+      "flight_number": "HAT271"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 2,
+     "turns_after": 14,
+     "carried": 28
+    },
+    {
+     "task": "44",
+     "trial": 1,
+     "tool": "get_flight_status",
+     "arguments": {
+      "date": "2024-05-11",
+      "flight_number": "HAT197"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 2,
+     "turns_after": 14,
+     "carried": 28
+    },
+    {
+     "task": "44",
+     "trial": 1,
+     "tool": "get_flight_status",
+     "arguments": {
+      "date": "2024-05-24",
+      "flight_number": "HAT268"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 1,
+     "turns_after": 14,
+     "carried": 14
+    },
+    {
+     "task": "44",
+     "trial": 1,
+     "tool": "get_flight_status",
+     "arguments": {
+      "date": "2024-05-23",
+      "flight_number": "HAT228"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 1,
+     "turns_after": 14,
+     "carried": 14
+    },
+    {
+     "task": "44",
+     "trial": 1,
+     "tool": "get_flight_status",
+     "arguments": {
+      "date": "2024-05-21",
+      "flight_number": "HAT043"
+     },
+     "own": false,
+     "repeated": false,
+     "tokens": 1,
+     "turns_after": 14,
+     "carried": 14
+    },
+    {
+     "task": "44",
+     "trial": 1,
+     "tool": "get_flight_status",
+     "arguments": {
+      "date": "2024-05-27",
+      "flight_number": "HAT157"
+     },
+     "own": false,
+     "repeated": false,
+     "tokens": 1,
+     "turns_after": 14,
+     "carried": 14
+    },
+    {
+     "task": "45",
+     "trial": 1,
+     "tool": "get_reservation_details",
+     "arguments": {
+      "reservation_id": "PEP4E0"
+     },
+     "own": true,
+     "repeated": false,
+     "tokens": 241,
+     "turns_after": 4,
+     "carried": 964
+    }
+   ]
+  }
+ },
+ "pooled": {
+  "pairs": 80,
+  "pass_baseline": 71,
+  "pass_flows": 70,
+  "discordant": {
+   "flows_only": 4,
+   "baseline_only": 5
+  },
+  "mcnemar_p": 1.0,
+  "turns": {
+   "baseline": 1019,
+   "flows": 759
+  },
+  "input_tokens": {
+   "baseline": 7435444,
+   "flows": 5874319
+  },
+  "pass_difference": [
+   -0.0125,
+   -0.075,
+   0.0625
+  ],
+  "turns_saved_share": [
+   0.2552,
+   0.2053,
+   0.3044
+  ],
+  "input_tokens_saved_share": [
+   0.21,
+   0.1473,
+   0.2742
+  ]
+ }
+}

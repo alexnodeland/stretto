@@ -1,6 +1,6 @@
 # RFC-001: Habit compiler — compiling agent behavior into System-One flows
 
-- **Status:** Accepted (2026-09-23, [fugue#51](https://github.com/alexnodeland/fugue/pull/51)). Amended the same day with what Phase 0 found (§3.12, [fugue#52](https://github.com/alexnodeland/fugue/pull/52)) and with Phase 0b v2's read-only flows and arbitration (§3.13, [fugue#53](https://github.com/alexnodeland/fugue/pull/53)), and on 2026-09-24 with the first live form and pilot (§3.14, [fugue#54](https://github.com/alexnodeland/fugue/pull/54)), with the built implementation, the airline pilot, policy guards and the flow audit (§3.15, [fugue#55](https://github.com/alexnodeland/fugue/pull/55)), with the arms measured before building macro-tools (§3.16, [fugue#56](https://github.com/alexnodeland/fugue/pull/56)), with the habit alone live, fewer traces and Jev as a confirmation judge (§3.17, [fugue#58](https://github.com/alexnodeland/fugue/pull/58)), with a cold start from an agent's own sessions, options from the manifest, a second confirmation question and matching descriptions to records (§3.18, [fugue#59](https://github.com/alexnodeland/fugue/pull/59)), and with an arbiter shipped with the compiler (§3.19, [fugue#60](https://github.com/alexnodeland/fugue/pull/60)). The design was iterated with @alexnodeland on 2026-09-23; the decisions are in §3.11. On 2026-09-25 it moved from fugue's decision log to stretto ([fugue#68](https://github.com/alexnodeland/fugue/pull/68)), where it is amended from now on. [Fugue's copy](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md) keeps fugue's side of it: the mapping onto fugue (§3.2), what fugue decided about its own scope and the six changes to `fugue-ppl` (§3.9), and the spike (Appendix A).
+- **Status:** Accepted (2026-09-23, [fugue#51](https://github.com/alexnodeland/fugue/pull/51)). Amended the same day with what Phase 0 found (§3.12, [fugue#52](https://github.com/alexnodeland/fugue/pull/52)) and with Phase 0b v2's read-only flows and arbitration (§3.13, [fugue#53](https://github.com/alexnodeland/fugue/pull/53)), and on 2026-09-24 with the first live form and pilot (§3.14, [fugue#54](https://github.com/alexnodeland/fugue/pull/54)), with the built implementation, the airline pilot, policy guards and the flow audit (§3.15, [fugue#55](https://github.com/alexnodeland/fugue/pull/55)), with the arms measured before building macro-tools (§3.16, [fugue#56](https://github.com/alexnodeland/fugue/pull/56)), with the habit alone live, fewer traces and Jev as a confirmation judge (§3.17, [fugue#58](https://github.com/alexnodeland/fugue/pull/58)), with a cold start from an agent's own sessions, options from the manifest, a second confirmation question and matching descriptions to records (§3.18, [fugue#59](https://github.com/alexnodeland/fugue/pull/59)), and with an arbiter shipped with the compiler (§3.19, [fugue#60](https://github.com/alexnodeland/fugue/pull/60)). On 2026-09-25 it was amended here with the paired run on every test task (§3.20). The design was iterated with @alexnodeland on 2026-09-23; the decisions are in §3.11. On 2026-09-25 it moved from fugue's decision log to stretto ([fugue#68](https://github.com/alexnodeland/fugue/pull/68)), where it is amended from now on. [Fugue's copy](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md) keeps fugue's side of it: the mapping onto fugue (§3.2), what fugue decided about its own scope and the six changes to `fugue-ppl` (§3.9), and the spike (Appendix A).
 - **Authors:** @alexnodeland (drafted with Claude Code)
 - **Created:** 2026-09-23
 - **Updated:** 2026-09-25
@@ -26,6 +26,7 @@
     - [`docs/results/confirm-second-2026-09-24.md`](../results/confirm-second-2026-09-24.md) (a second confirmation question);
     - [`docs/results/matching-2026-09-24.md`](../results/matching-2026-09-24.md) (matching descriptions to records);
     - [`docs/results/arbiter-transfer-2026-09-24.md`](../results/arbiter-transfer-2026-09-24.md) (shipped arbiters across domains);
+    - [`docs/results/paired-2026-09-25.md`](../results/paired-2026-09-25.md) (the paired run on every test task);
     - the working paper, [alexnodeland.github.io/stretto](https://alexnodeland.github.io/stretto/);
   - TypeSafe AI's Jev (released 2026-09-15).
 
@@ -949,6 +950,35 @@ What this changes:
   - an arbiter fitted on both domains, tested on a third (τ²-bench's telecom);
   - the other items of §3.18's list.
 
+### 3.20 Amendment 9: the paired run on every test task (2026-09-25)
+
+The pilots' ten pairs per domain could not bound a loss of pass^1, the second half of the Phase 2 gate (§3.10). This run takes every test task, paired: τ²-bench retail's 40 test tasks once and airline's 20 twice, 80 pairs, with the pilots' 20 reused. GLM-5.3 is the agent, in Claude Code, and it plays the customer. The flow is the pilots' D0. The run cost 1,897 Z.ai credits.
+
+- **Details:** stretto's [paired run](../results/paired-2026-09-25.md), its [episodes](../results/paired-2026-09-25-episodes.tar.gz), and the [working paper](https://alexnodeland.github.io/stretto/)'s §5.6.
+
+| | Retail, 40 pairs | Airline, 40 pairs | Both, 80 pairs |
+|---|---|---|---|
+| LLM turns saved | 30.4% (25.5% to 35.0%) | 21.1% (12.3% to 30.0%) | 25.5% (20.5% to 30.4%) |
+| Input tokens saved | 24.8% (18.5% to 30.7%) | 18.0% (7.5% to 28.4%) | 21.0% (14.7% to 27.4%) |
+| Passed, without the flow and with it | 37 and 34 | 34 and 36 | 71 and 70 |
+| Pass-rate difference, in points | −7.5 (−17.5 to 0.0) | +5.0 (−5.0 to +17.5) | −1.25 (−7.5 to +6.25) |
+
+- **The turns half of the gate is met,** live and on held-out tasks: the pooled interval's lower end is 20.5%.
+- **The pass^1 half is not shown.**
+  - The interval allows a loss of 7.5 points.
+  - Nine pairs disagree. In eight, the failing step was the agent's or the simulated customer's, and no lookup touched it. One, retail task 79, plausibly came from the flow, whose reads went deep on one order where the agent alone read wide.
+  - At this rate of disagreement, bounding one point would take about 4,300 pairs.
+- **Detours cost little live.** 242 of the flow's 259 lookups were calls the agent also made without the flow. The other 17 carried under 3% of the input tokens the flow saved.
+
+What this changes:
+
+- **The gate (§3.10)** is met on turns. On pass^1, the change is bounded to a few points, not to one. A one-point bound would take about 4,300 pairs, so it waits on a larger budget or cheaper episodes.
+- **The paper's live claim** "at the same pass rate" becomes this interval.
+- **Next:**
+  - the cold start live (§3.18), the habit alone against the habit with a shipped arbiter;
+  - the confirmation judge enforced;
+  - more agent models, and a simulated customer that is not the agent's own model.
+
 ---
 
 ## 4. Drawbacks
@@ -1010,6 +1040,7 @@ What this changes:
    - With read-only flows the question narrows: does a detour (an extra lookup before handing back) ever cost pass^1? (§3.13)
    - First live evidence (§3.14): 8 of 10 episodes passed the database check without the flow and 8 of 10 with it. That is too few to bound a one-point loss.
    - Airline (§3.15): 8 of 10 without the flow and 9 of 10 with it, and no failure came from a flow decision. Twenty pairs are still too few.
+   - Every test task (§3.20): 71 of 80 pairs passed without the flow and 70 with it, −1.25 points (95% interval −7.5 to +6.25). In one of the nine pairs that disagree, the flow's reads plausibly led the agent astray. The 17 detours in 259 lookups cost no pass that the page can trace. A one-point bound would take about 4,300 pairs.
 7. ~~**Can System-One questions reach roughly 99% agreement on the decisions flows need?**~~ Answered for now (§3.13):
    - No. The best combination reaches 79–81%, and at least 0.99 sure only on 11–25% of decisions.
    - Read-only flows don't need it: acting on weaker picks costs detours, not risk.
@@ -1074,6 +1105,9 @@ What this changes:
   - Amended again on 2026-09-24 (§3.19), shipping an arbiter with the compiler:
     - `data/arbiters/` holds a retail and an airline arbiter fitted on four agents' published decisions, and `learn --arbiter-from` serves one with a deployment's own habit;
     - each did in the other domain what that domain's own arbiter did, within about a point of turns saved.
+  - Amended on 2026-09-25 (§3.20), after the paired run on every test task:
+    - over 80 pairs, the flow saved 25.5% of LLM turns (95% interval 20.5% to 30.4%), which meets the gate's turns half;
+    - the pass rate moved −1.25 points (−7.5 to +6.25), so a loss of up to 7.5 points is not ruled out. A one-point bound would take about 4,300 pairs.
 
 ---
 

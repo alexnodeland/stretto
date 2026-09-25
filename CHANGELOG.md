@@ -42,6 +42,10 @@ Everything so far: the first design of [RFC-001](docs/rfc/001-habit-compiler.md)
 - `stretto redact` writes a pseudonymized copy of recorded sessions: a value fewer than `--keep-shared` sessions contain becomes a salted hash, the same wherever it appears, and `--hash-field` hashes named fields however many sessions share them. A flow learned from the copy matches one learned from the originals, on synthetic sessions, 40 real ones and 5 with their conversation ([privacy](docs/privacy.md)).
 - `stretto learn --sessions` and `redact` skip the confirmation logs the proxy writes beside the sessions; they failed on them before.
 
+### Live runs
+
+- `pilot/run_paired.py` runs every test task of a domain in both arms, reusing a pilot's pairs, under a Z.ai credit budget that it checks against a ledger before each episode. `pilot/analyze_paired.py` reports on the result: paired pass rates with a bootstrap interval and McNemar's test, turns and tokens saved, detours and their token cost, and a pooled estimate across domains ([the paired run](docs/results/paired-2026-09-25.md)).
+
 ### Documentation
 
 - [The walkthrough](docs/walkthrough.md) runs the whole loop on the official MCP filesystem server, and CI runs it.
