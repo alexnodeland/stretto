@@ -43,6 +43,7 @@ The [working paper](https://alexnodeland.github.io/stretto/) puts them together,
 | [Answers: prompt injection](answers-2026-09-25-injection.md) | The answer bundle for the page above |
 | [Telecom](telecom-2026-09-25.md) ([report](telecom-2026-09-25-report.md), [rows](telecom-2026-09-25.json)) | Telecom compresses like retail and airline, but Jev agrees with the agents less (67.9%). Neither shipped arbiter, nor one fitted on both domains, carries to it: they made 43–50% of the agent's lookups, against 66% for the habit alone and 75% for telecom's own |
 | [Answers: telecom](answers-2026-09-25-telecom.md) | The answer bundle for the page above |
+| [What `stretto_commit` could save](commit-bound-2026-09-25.md) | Bundling consecutive confirmed writes into one call saves at most 0.2–3.5% of LLM turns, too little for a ten-task live pilot to see |
 
 ## Recorded episodes
 
