@@ -1453,8 +1453,6 @@ fn compile(config: &phase0::Config, domain: &str) -> Result<stretto_report::flow
     let mut offline = config.clone();
     if let Some(sc) = offline.shadow.as_mut() {
         sc.oracle = OracleKind::Replay;
-        sc.log = None;
-        sc.dump = None;
     }
     let cached = offline.shadow.as_ref().expect("checked above").build()?;
     let start = Instant::now();
