@@ -1,6 +1,6 @@
 # RFC-001: Habit compiler — compiling agent behavior into System-One flows
 
-- **Status:** Accepted (2026-09-23, [fugue#51](https://github.com/alexnodeland/fugue/pull/51)). Amended the same day with what Phase 0 found (§3.12, [fugue#52](https://github.com/alexnodeland/fugue/pull/52)) and with Phase 0b v2's read-only flows and arbitration (§3.13, [fugue#53](https://github.com/alexnodeland/fugue/pull/53)), and on 2026-09-24 with the first live form and pilot (§3.14, [fugue#54](https://github.com/alexnodeland/fugue/pull/54)), with the built implementation, the airline pilot, policy guards and the flow audit (§3.15, [fugue#55](https://github.com/alexnodeland/fugue/pull/55)), with the arms measured before building macro-tools (§3.16, [fugue#56](https://github.com/alexnodeland/fugue/pull/56)), with the habit alone live, fewer traces and Jev as a confirmation judge (§3.17, [fugue#58](https://github.com/alexnodeland/fugue/pull/58)), with a cold start from an agent's own sessions, options from the manifest, a second confirmation question and matching descriptions to records (§3.18, [fugue#59](https://github.com/alexnodeland/fugue/pull/59)), and with an arbiter shipped with the compiler (§3.19, [fugue#60](https://github.com/alexnodeland/fugue/pull/60)). On 2026-09-25 it was amended here with the paired run on every test task (§3.20), the cold start live (§3.21), and counterfactual evaluation, the confirmation judge enforced, the cold start in airline and Claude models (§3.22), and with one round of predicate refinement (§3.23). The design was iterated with @alexnodeland on 2026-09-23; the decisions are in §3.11. On 2026-09-25 it moved from fugue's decision log to stretto ([fugue#68](https://github.com/alexnodeland/fugue/pull/68)), where it is amended from now on. [Fugue's copy](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md) keeps fugue's side of it: the mapping onto fugue (§3.2), what fugue decided about its own scope and the six changes to `fugue-ppl` (§3.9), and the spike (Appendix A).
+- **Status:** Accepted (2026-09-23, [fugue#51](https://github.com/alexnodeland/fugue/pull/51)). Amended the same day with what Phase 0 found (§3.12, [fugue#52](https://github.com/alexnodeland/fugue/pull/52)) and with Phase 0b v2's read-only flows and arbitration (§3.13, [fugue#53](https://github.com/alexnodeland/fugue/pull/53)), and on 2026-09-24 with the first live form and pilot (§3.14, [fugue#54](https://github.com/alexnodeland/fugue/pull/54)), with the built implementation, the airline pilot, policy guards and the flow audit (§3.15, [fugue#55](https://github.com/alexnodeland/fugue/pull/55)), with the arms measured before building macro-tools (§3.16, [fugue#56](https://github.com/alexnodeland/fugue/pull/56)), with the habit alone live, fewer traces and Jev as a confirmation judge (§3.17, [fugue#58](https://github.com/alexnodeland/fugue/pull/58)), with a cold start from an agent's own sessions, options from the manifest, a second confirmation question and matching descriptions to records (§3.18, [fugue#59](https://github.com/alexnodeland/fugue/pull/59)), and with an arbiter shipped with the compiler (§3.19, [fugue#60](https://github.com/alexnodeland/fugue/pull/60)). On 2026-09-25 it was amended here with the paired run on every test task (§3.20), the cold start live (§3.21), and counterfactual evaluation, the confirmation judge enforced, the cold start in airline and Claude models (§3.22), with one round of predicate refinement (§3.23), and with one round of flow search in each domain (§3.24). The design was iterated with @alexnodeland on 2026-09-23; the decisions are in §3.11. On 2026-09-25 it moved from fugue's decision log to stretto ([fugue#68](https://github.com/alexnodeland/fugue/pull/68)), where it is amended from now on. [Fugue's copy](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md) keeps fugue's side of it: the mapping onto fugue (§3.2), what fugue decided about its own scope and the six changes to `fugue-ppl` (§3.9), and the spike (Appendix A).
 - **Authors:** @alexnodeland (drafted with Claude Code)
 - **Created:** 2026-09-23
 - **Updated:** 2026-09-25
@@ -392,6 +392,8 @@ stretto depends on fugue by git revision until fugue's next release.
 | 2. Compile and run | Flow IR, plan/commit macro-tools, arbitration runtime, the experiment arms in §3.11 | Held-out projections show ≥ 20% fewer LLM turns at ≤ 1 point of pass^1 lost |
 | 3. Learn | Predicate refinement, per-site counterfactual evaluation, flow search with fugue-evo, big-to-small transfer | Phase 2 results on airline and retail |
 
+*Amended (§3.24):* flow search is built, and it replays every setting rather than estimating it. Searched on training tasks, it found flows that made far fewer detours than the hand-set one on held-out tasks in both domains, for 7 more turns saved in airline and one fewer in retail, each by changing the threshold at one or two sites.
+
 Replayed shadow mode is equivalent to live shadow mode, because Jev's answer depends only on the state we send it. It lets Phase 0 run on recorded trajectories before the proxy exists.
 
 For each decision context, the Phase 0 report gives:
@@ -436,7 +438,7 @@ These decisions were made during the 2026-09-23 design iteration.
 | Win conditions | All four: fewer LLM calls, tokens and dollars; higher pass^k; Jev agreeing with the frontier model at branches, and well calibrated; fewer policy violations |
 | Code | New public repo, [stretto](https://github.com/alexnodeland/stretto) (MIT); fugue changes go upstream as their own PRs |
 | Phase 2 gate | ≥ 20% fewer LLM turns at ≤ 1 point of pass^1 lost, on held-out tasks, *judged per agent model and domain* (amended: the savings depend on how the agent calls tools, §3.12; *and harness*, §3.15). Tokens and dollars are projected alongside turns, because a flow also keeps intermediate tool outputs out of the LLM's context. *Amended again:* read-only flows take no risky decisions, so offline the gate is turns saved. Detours are counted and charged in tokens, and the live pilot must show they cost no pass^1 (§3.13) |
-| Arbitration | The habit acts only in contexts where its held-out agreement is at least 99%, validated per context rather than by one global threshold. Jev decides everywhere else. *Amended:* validation needs at least 20 decisions from at least 10 distinct tasks; what survives is hand-backs only, so the rule is revisited with the Phase 0b data (§3.12). *Amended again:* Jev's answers are no longer taken at their word. A conditional logit combines them with the habit's prior, Jev's record at the site and state predicates, fitted by cross-validation over tasks (§3.13). *And again:* for read-only flows, optional. The habit alone saves as many turns, and the arbiter makes fewer detours (§3.16). *And again:* optional only with enough traces. With few, the arbiter carries the savings (§3.17). *And again:* not with a deployment's own few sessions, where the habit alone did better until about twenty (§3.18) |
+| Arbitration | The habit acts only in contexts where its held-out agreement is at least 99%, validated per context rather than by one global threshold. Jev decides everywhere else. *Amended:* validation needs at least 20 decisions from at least 10 distinct tasks; what survives is hand-backs only, so the rule is revisited with the Phase 0b data (§3.12). *Amended again:* Jev's answers are no longer taken at their word. A conditional logit combines them with the habit's prior, Jev's record at the site and state predicates, fitted by cross-validation over tasks (§3.13). *And again:* for read-only flows, optional. The habit alone saves as many turns, and the arbiter makes fewer detours (§3.16). *And again:* optional only with enough traces. With few, the arbiter carries the savings (§3.17). *And again:* not with a deployment's own few sessions, where the habit alone did better until about twenty (§3.18). *And again:* per site after all: no one global threshold matched, on held-out tasks, a threshold for each site searched on training tasks (§3.24) |
 | Keys | The TypeSafe key is in the environment (Phase 0b ran on 2026-09-23); GLM and MiniMax keys come with Phase 2. Offline work uses mock and replay oracles |
 
 **Experimental arms.** Each arm runs on held-out tasks, with k trials per task:
@@ -1095,6 +1097,39 @@ What this changes:
 - **§3.4, step 4,** keeps a predicate on held-out likelihood. Held out by task is not enough when the proposer has read those tasks. The likelihood should be an agent's, or a set of tasks, the proposer never saw. `refine` scores a transfer target for that.
 - **The three hand-written predicates stay** (`data/predicates-v2.json`).
 - **Next:** flow search (§3.10, Phase 3). A second refinement round is worth running only with the proposer shown one set of agents and the candidates kept on another.
+
+### 3.24 Amendment 13: flow search, one round in each domain (2026-09-25)
+
+§3.10's Phase 3 plans a search over flows with fugue-evo. It is built, and it ran once in airline and once in retail.
+
+- **Details:** stretto's [flow search](../results/search-2026-09-25.md), and the [working paper](https://alexnodeland.github.io/stretto/)'s §5.21.
+- **What was built.**
+  - A flow can carry its own threshold at each site (`thresholds`, flow format 2). Above 1, it never acts at the site. `flow-show` and `flow-diff` show them.
+  - `stretto search` runs NSGA-II from fugue-evo over each site's threshold and the flow's decider, the arbiter or the habit alone. It scores every setting by replaying recorded episodes, on two objectives: LLM turns saved and detours.
+  - `--rescore` replays the hand-set settings and the front on other episodes.
+- **The round.** The search replayed GLM-5's episodes on τ²-bench's training tasks, with D0's flows. The front was then replayed on GLM-5's test-task episodes, which the search never saw, and set against each decider at one threshold everywhere.
+
+| GLM-5's test episodes | Airline: turns saved | Detours | Retail: turns saved | Detours |
+|---|---|---|---|---|
+| D0: every site at 0.3 | 41 (6.5%) | 26 | 294 (21.2%) | 58 |
+| The arbiter at 0.4 everywhere | 35 (5.6%) | 15 | 272 (19.7%) | 38 |
+| Picked on the training episodes: the fewest detours at D0's turns saved or more | 44 (7.0%) | 8 | 294 (21.2%) | 49 |
+| The front's best on these episodes | 48 (7.6%) | 6 | 293 (21.2%) | 30 |
+
+- **Each gain came from one or two sites,** which `flow-diff` shows a reviewer. In airline the threshold rose to 0.60 after a flight status and fell to 0.10 after a reservation read. In retail it rose to 0.90 after a product read. Promotion (§3.7) had held back the two sites whose thresholds rose. Lowering a threshold is what promotion cannot do.
+- **What did not carry:** the airline front's end with the fewest detours, where the arbiter at 0.5 everywhere did better, and the habit alone, which gained little.
+- **A search should let its replays ask.** This one read Jev's answers from a cache, and a decision the cache could not answer handed back. On the training episodes, retail's best handed back 65 decisions that way, and seemed to trade 28 turns for its fewer detours. On the test episodes, with Jev answering, it gave up one. Only 234 distinct questions went unanswered in retail, and 44 in airline.
+- **Another seed found the same two sites** in airline, with 0.15 after a reservation read in place of 0.10: 44 test turns saved with 11 detours.
+- **Retail's best was not what the training front showed.** On the training episodes it looked like a trade of 28 turns, since 65 of its decisions went unanswered (below).
+- **On two other agents' test episodes** (Claude Sonnet 4.5 and Qwen3.5), airline's best again saved more turns than D0 with fewer detours. Retail's gave up 15 and 33 turns for 17 and 24 fewer detours, since those agents made use of the lookups after a product read that it drops.
+
+What this changes:
+
+- **§3.10, Phase 3:** flow search is built. A replay of a setting takes seconds, so every setting is replayed rather than estimated (§3.22).
+- **§3.11's arbitration:** the design wanted each context validated, not one global threshold. For read-only flows, a threshold per site does that, searched on training tasks and confirmed on held-out ones.
+- **A search runs on the sessions of the agent the flow will serve.** Part of what it finds is that agent's habit, as with predicate refinement (§3.23).
+- **A searched flow is served like any change to a flow:** reviewed with `flow-diff`, replayed on held-out episodes, then run paired live. None has run live yet.
+- **Next:** the searched flows live against D0 ([#34](https://github.com/alexnodeland/stretto/issues/34)), and flows serving a smaller agent (Phase 3's big-to-small transfer).
 
 ---
 

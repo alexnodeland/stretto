@@ -22,6 +22,7 @@ Each of these spends the Z.ai coding-plan key, or Claude tokens where a Claude m
 | [#6](https://github.com/alexnodeland/stretto/issues/6) | The confirmation judge enforced | Done: enforced on 20 episodes, it refused none of 40 writes; logged on 20 more, it would have stopped 2 real lapses for 2 false alarms, and passes did not move. The recommended setting enforces the first question and logs the second ([results](results/judge-live-2026-09-25.md)) | 782 credits |
 | [#7](https://github.com/alexnodeland/stretto/issues/7) | `stretto_commit` live | Done offline: it could save at most 0.2–3.5% of LLM turns, too little for a ten-task pilot to see, so no live run for now ([results](results/commit-bound-2026-09-25.md)) | Free |
 | [#8](https://github.com/alexnodeland/stretto/issues/8) | Flows and guards from frontier traces, serving a smaller agent | Guards bit in 38% of failed airline episodes on published runs, and never with GLM-5.3 | Priced by a smoke episode first |
+| [#34](https://github.com/alexnodeland/stretto/issues/34) | The searched flows live, paired against D0 | Replayed on held-out tasks, the flow search found flows with far fewer detours than D0 ([results](results/search-2026-09-25.md)). A replay assumes the agent acts the same with the flow's results in hand | About 240 credits for ten retail pairs and 340 for ten airline pairs |
 
 ## Evidence from offline runs
 
@@ -50,7 +51,7 @@ These cost Jev dollars, CPU time or people's time, and no LLM runs.
 | [#22](https://github.com/alexnodeland/stretto/issues/22) | Learn from several servers' logs of one session | One proxy wraps one server |
 | [#23](https://github.com/alexnodeland/stretto/issues/23) | Learn from OpenTelemetry GenAI spans | RFC-001 §3.9's `stretto-trace` |
 | [#24](https://github.com/alexnodeland/stretto/issues/24) | Privacy for recorded sessions | Done: [an inventory](privacy.md), `stretto redact` and `stretto-proxy --retain-days`. Leaving fields out of the questions' state is still open |
-| [#25](https://github.com/alexnodeland/stretto/issues/25) | Flow search with fugue-evo | RFC-001's Phase 3 |
+| [#25](https://github.com/alexnodeland/stretto/issues/25) | Flow search with fugue-evo | Done: `stretto search` and per-site thresholds in the flow IR. Replayed on held-out tasks, its front held flows with far fewer detours than D0 in both domains, for 7 more turns saved in airline and one fewer in retail, each by changing one or two sites' thresholds ([results](results/search-2026-09-25.md)). They have not run live |
 
 ## Fixes and tooling
 
@@ -97,8 +98,8 @@ All six are built. A live flow now runs as a fugue program: the flow IR holds it
    - telecom (#10);
    - the cold start's other agents and draws (#9);
    - independent labels (#11).
-4. **Live runs, as budgets are approved.** The paired run (#2), the cold start live in both domains (#3), Claude models as the agent and the customer (#4, #5) and the confirmation judge enforced (#6) are done. The paired run puts the pass-rate change between −7.5 and +6.25 points, not within one. Next come flows and guards serving a smaller agent (#8).
+4. **Live runs, as budgets are approved.** The paired run (#2), the cold start live in both domains (#3), Claude models as the agent and the customer (#4, #5) and the confirmation judge enforced (#6) are done. The paired run puts the pass-rate change between −7.5 and +6.25 points, not within one. Next come the searched flows live (#34) and flows and guards serving a smaller agent (#8).
 5. **Phase 3 features** as the evidence calls for them:
    - counterfactual evaluation (#15), done;
    - predicate refinement (#16), done;
-   - flow search (#25).
+   - flow search (#25), done.
