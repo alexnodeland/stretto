@@ -44,7 +44,7 @@ These cost Jev dollars, CPU time or people's time, and no LLM runs.
 | [#18](https://github.com/alexnodeland/stretto/issues/18) | Drift alarms | RFC-001 §3.3 and §4: change-point alarms and forgetting |
 | [#19](https://github.com/alexnodeland/stretto/issues/19) | Shadow mode and per-site promotion | Done: `stretto-proxy --flow-shadow` and `stretto promote`; replayed, promotion halved D0's detours for 6% of its retail savings ([results](results/promotion-2026-09-25.md)) |
 | [#20](https://github.com/alexnodeland/stretto/issues/20) | `stretto flow show` and `flow diff` | Done: `stretto flow-show` and `stretto flow-diff` ([reviewing flows](review.md)) |
-| [#21](https://github.com/alexnodeland/stretto/issues/21) | Streamable HTTP for the proxy | The proxy speaks stdio only |
+| [#21](https://github.com/alexnodeland/stretto/issues/21) | Streamable HTTP for the proxy | Done: `stretto-proxy --upstream URL` |
 | [#22](https://github.com/alexnodeland/stretto/issues/22) | Learn from several servers' logs of one session | One proxy wraps one server |
 | [#23](https://github.com/alexnodeland/stretto/issues/23) | Learn from OpenTelemetry GenAI spans | RFC-001 §3.9's `stretto-trace` |
 | [#24](https://github.com/alexnodeland/stretto/issues/24) | Privacy for recorded sessions | RFC-001 question 5 |

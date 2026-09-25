@@ -19,7 +19,7 @@ Pre-alpha, with every piece of the first design built ([implementation status](d
 
 ## Use it with your agent
 
-`stretto-proxy` wraps any stdio MCP server. Record your agent's sessions through it, learn a flow from them, serve the flow behind the agent's calls, and audit it on new sessions:
+`stretto-proxy` wraps any MCP server, run as a command or reached over Streamable HTTP (`--upstream`). Record your agent's sessions through it, learn a flow from them, serve the flow behind the agent's calls, and audit it on new sessions:
 
 ```bash
 cargo install --path crates/stretto-proxy && cargo install --path crates/stretto-report
@@ -148,7 +148,7 @@ The published answers replay without a key: see [the v1 bundle](docs/results/pha
 | `stretto-model` | Action abstraction; hierarchical Dirichlet back-off world model; concentration posterior via fugue; argument provenance; tool runs; policy checks |
 | `stretto-oracle` | `Oracle` trait; Jev HTTP client (`POST /v1/systemone`); on-disk replay cache; mock |
 | `stretto-report` | The `stretto` CLI: the Phase 0 report; Phase 0b (System-One questions at held-out decisions); the arbiter; flows (`compile` a flow IR from τ²-bench results, `learn` one from recorded sessions, `serve` it, `export-arbiter` to ship an arbiter); policy guards and their audit (`guards`); the flow audit, with fugue (`audit`); the confirmation judge (`confirm`); matching descriptions to records (`match`) |
-| `stretto-proxy` | A stdio MCP proxy for any MCP server. It records sessions for `stretto-trace`, and in active mode runs a flow behind the agent's calls, refuses writes the guards fail, adds a `stretto_commit` tool, and logs the conversation a host hands it ([README](crates/stretto-proxy/README.md)) |
+| `stretto-proxy` | An MCP proxy for any MCP server, stdio or Streamable HTTP, that the host runs as a stdio server. It records sessions for `stretto-trace`, and in active mode runs a flow behind the agent's calls, refuses writes the guards fail, adds a `stretto_commit` tool, and logs the conversation a host hands it ([README](crates/stretto-proxy/README.md)) |
 
 ## Roadmap
 

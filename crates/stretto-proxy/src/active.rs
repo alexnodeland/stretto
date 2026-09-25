@@ -39,7 +39,6 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
-use std::process::ChildStdin;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
 use std::time::{Duration, Instant};
 use stretto_oracle::{request_key, Oracle};
@@ -222,7 +221,7 @@ pub(crate) struct Engine<'a, W: Write> {
     log: McpLog,
     tap: Option<Tap>,
     started: Instant,
-    to_server: Option<ChildStdin>,
+    to_server: Option<Box<dyn Write>>,
     to_host: W,
     host_ok: bool,
     /// The agent's calls awaiting the server, by id.
@@ -249,7 +248,7 @@ impl<'a, W: Write> Engine<'a, W> {
         header: LogHeader,
         tap: Option<Tap>,
         started: Instant,
-        (to_server, to_host): (ChildStdin, W),
+        (to_server, to_host): (Box<dyn Write>, W),
         (flow_log, confirm_log): (Option<PathBuf>, Option<PathBuf>),
     ) -> Self {
         let open = |path: &PathBuf, what: &str| {

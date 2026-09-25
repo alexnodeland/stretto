@@ -27,6 +27,15 @@
 //! other requests with "method not found", ignores notifications, and exits
 //! when its input ends. It accepts whichever protocol version the client
 //! asks for, since the little it implements is common to every revision.
+//!
+//! With `--http ADDR` (such as `127.0.0.1:0`) it serves the same tools over
+//! Streamable HTTP instead, at `/mcp`, and prints its URL on stdout. It is
+//! strict, to test clients: every message after `initialize` must carry the
+//! session id it assigned and the protocol version it agreed. A tool call is
+//! answered on an event stream, a log message first; everything else as one
+//! JSON body. A GET stream sends one log message of the server's own and
+//! stays open until the session is deleted. With `--require-auth VALUE`,
+//! a request without `Authorization: VALUE` is refused (401).
 
 use serde_json::{json, Value};
 use std::io::{self, BufRead, Write};
@@ -46,19 +55,26 @@ enum World {
 
 fn main() -> io::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let world = match args
-        .iter()
-        .map(String::as_str)
-        .collect::<Vec<_>>()
-        .as_slice()
-    {
-        [] | ["--world", "echo"] => World::Echo,
-        ["--world", "retail"] => World::Retail,
-        _ => {
-            eprintln!("usage: stretto-mcp-demo [--world echo|retail]");
-            std::process::exit(2);
+    let (mut world, mut http, mut auth) = (Some(World::Echo), None, None);
+    let mut rest = args.iter().map(String::as_str);
+    while let Some(arg) = rest.next() {
+        match (arg, rest.next()) {
+            ("--world", Some("echo")) => world = Some(World::Echo),
+            ("--world", Some("retail")) => world = Some(World::Retail),
+            ("--http", Some(addr)) => http = Some(addr.to_string()),
+            ("--require-auth", Some(value)) => auth = Some(value.to_string()),
+            _ => world = None,
         }
+    }
+    let Some(world) = world else {
+        eprintln!(
+            "usage: stretto-mcp-demo [--world echo|retail] [--http ADDR [--require-auth VALUE]]"
+        );
+        std::process::exit(2);
     };
+    if let Some(addr) = http {
+        return http::serve(&addr, world, auth);
+    }
     let mut input = io::stdin().lock();
     let mut output = io::stdout().lock();
     let mut line = Vec::new();
@@ -164,6 +180,220 @@ fn call_tool(id: Value, params: &Value) -> Value {
 /// A JSON-RPC error response.
 fn error(id: Value, code: i64, message: &str) -> Value {
     json!({"jsonrpc": "2.0", "id": id, "error": {"code": code, "message": message}})
+}
+
+/// Streamable HTTP: the same answers, over MCP's HTTP transport.
+mod http {
+    use super::{respond, World, DEFAULT_PROTOCOL_VERSION};
+    use serde_json::{json, Value};
+    use std::collections::HashMap;
+    use std::io::{self, BufRead, BufReader, Read, Write};
+    use std::net::{TcpListener, TcpStream};
+    use std::sync::{Arc, Mutex};
+    use std::time::{Duration, Instant};
+
+    /// Live sessions, by id, with the protocol version agreed.
+    #[derive(Default)]
+    struct Sessions {
+        next: u64,
+        live: HashMap<String, String>,
+    }
+
+    struct Request {
+        method: String,
+        path: String,
+        headers: HashMap<String, String>,
+        body: Vec<u8>,
+    }
+
+    pub(super) fn serve(addr: &str, world: World, auth: Option<String>) -> io::Result<()> {
+        let listener = TcpListener::bind(addr)?;
+        println!("http://{}/mcp", listener.local_addr()?);
+        io::stdout().flush()?;
+        let sessions = Arc::new(Mutex::new(Sessions::default()));
+        for stream in listener.incoming() {
+            let Ok(stream) = stream else { continue };
+            let (sessions, auth) = (sessions.clone(), auth.clone());
+            std::thread::spawn(move || {
+                let _ = handle(stream, world, &sessions, auth.as_deref());
+            });
+        }
+        Ok(())
+    }
+
+    fn read_request(stream: &TcpStream) -> io::Result<Request> {
+        let mut reader = BufReader::new(stream);
+        let mut line = String::new();
+        reader.read_line(&mut line)?;
+        let mut parts = line.split_whitespace();
+        let (method, path) = (
+            parts.next().unwrap_or_default().to_string(),
+            parts.next().unwrap_or_default().to_string(),
+        );
+        let mut headers = HashMap::new();
+        loop {
+            let mut header = String::new();
+            if reader.read_line(&mut header)? == 0 || header.trim_end().is_empty() {
+                break;
+            }
+            if let Some((name, value)) = header.trim_end().split_once(':') {
+                headers.insert(name.trim().to_ascii_lowercase(), value.trim().to_string());
+            }
+        }
+        let length = headers
+            .get("content-length")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0);
+        let mut body = vec![0; length];
+        reader.read_exact(&mut body)?;
+        Ok(Request {
+            method,
+            path,
+            headers,
+            body,
+        })
+    }
+
+    fn reply(
+        mut stream: &TcpStream,
+        status: &str,
+        headers: &[(&str, &str)],
+        body: &[u8],
+    ) -> io::Result<()> {
+        write!(
+            stream,
+            "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n",
+            body.len()
+        )?;
+        for (name, value) in headers {
+            write!(stream, "{name}: {value}\r\n")?;
+        }
+        write!(stream, "\r\n")?;
+        stream.write_all(body)?;
+        stream.flush()
+    }
+
+    fn open_events(mut stream: &TcpStream) -> io::Result<()> {
+        write!(
+            stream,
+            "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n"
+        )?;
+        stream.flush()
+    }
+
+    fn event(mut stream: &TcpStream, message: &Value) -> io::Result<()> {
+        write!(stream, "event: message\ndata: {message}\n\n")?;
+        stream.flush()
+    }
+
+    fn log_message(text: &str) -> Value {
+        json!({"jsonrpc": "2.0", "method": "notifications/message",
+               "params": {"level": "info", "data": text}})
+    }
+
+    fn handle(
+        stream: TcpStream,
+        world: World,
+        sessions: &Mutex<Sessions>,
+        auth: Option<&str>,
+    ) -> io::Result<()> {
+        let request = read_request(&stream)?;
+        if request.path.split('?').next() != Some("/mcp") {
+            return reply(&stream, "404 Not Found", &[], b"");
+        }
+        if auth.is_some_and(|a| request.headers.get("authorization").map(String::as_str) != Some(a))
+        {
+            return reply(&stream, "401 Unauthorized", &[], b"");
+        }
+        let session = request.headers.get("mcp-session-id").cloned();
+        let agreed = |id: &Option<String>| {
+            id.as_ref()
+                .and_then(|id| sessions.lock().unwrap().live.get(id).cloned())
+        };
+        match request.method.as_str() {
+            "POST" => {
+                let text = String::from_utf8_lossy(&request.body).to_string();
+                let message: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
+                let method = message.get("method").and_then(Value::as_str);
+                if method == Some("initialize") {
+                    let Some(answer) = respond(&text, world) else {
+                        return reply(&stream, "400 Bad Request", &[], b"");
+                    };
+                    let version = answer["result"]["protocolVersion"]
+                        .as_str()
+                        .unwrap_or(DEFAULT_PROTOCOL_VERSION)
+                        .to_string();
+                    let id = {
+                        let mut s = sessions.lock().unwrap();
+                        s.next += 1;
+                        let id = format!("demo-session-{}", s.next);
+                        s.live.insert(id.clone(), version);
+                        id
+                    };
+                    return reply(
+                        &stream,
+                        "200 OK",
+                        &[
+                            ("Content-Type", "application/json"),
+                            ("Mcp-Session-Id", &id),
+                        ],
+                        answer.to_string().as_bytes(),
+                    );
+                }
+                // Everything later names a live session and its version.
+                let Some(version) = agreed(&session) else {
+                    let status = if session.is_some() {
+                        "404 Not Found"
+                    } else {
+                        "400 Bad Request"
+                    };
+                    return reply(&stream, status, &[], b"");
+                };
+                if request.headers.get("mcp-protocol-version") != Some(&version) {
+                    return reply(&stream, "400 Bad Request", &[], b"");
+                }
+                match respond(&text, world) {
+                    None => reply(&stream, "202 Accepted", &[], b""),
+                    Some(answer) if method == Some("tools/call") => {
+                        open_events(&stream)?;
+                        let name = message["params"]["name"].as_str().unwrap_or_default();
+                        event(&stream, &log_message(&format!("calling {name}")))?;
+                        event(&stream, &answer)
+                    }
+                    Some(answer) => reply(
+                        &stream,
+                        "200 OK",
+                        &[("Content-Type", "application/json")],
+                        answer.to_string().as_bytes(),
+                    ),
+                }
+            }
+            "GET" => {
+                if agreed(&session).is_none() {
+                    return reply(&stream, "404 Not Found", &[], b"");
+                }
+                open_events(&stream)?;
+                event(&stream, &log_message("hello from the server's own stream"))?;
+                let started = Instant::now();
+                while agreed(&session).is_some() && started.elapsed() < Duration::from_secs(60) {
+                    std::thread::sleep(Duration::from_millis(50));
+                }
+                Ok(())
+            }
+            "DELETE" => {
+                if let Some(id) = &session {
+                    sessions.lock().unwrap().live.remove(id);
+                }
+                reply(&stream, "200 OK", &[], b"")
+            }
+            _ => reply(
+                &stream,
+                "405 Method Not Allowed",
+                &[("Allow", "GET, POST, DELETE")],
+                b"",
+            ),
+        }
+    }
 }
 
 /// The retail world.

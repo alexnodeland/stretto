@@ -26,7 +26,7 @@ Everything so far: the first design of [RFC-001](docs/rfc/001-habit-compiler.md)
 
 ### `stretto-proxy`
 
-- A stdio MCP proxy that forwards byte for byte and records sessions (`stretto_mcp_log: 2`).
+- A stdio MCP proxy that forwards byte for byte and records sessions (`stretto_mcp_log: 2`). `--upstream URL` wraps a Streamable HTTP server instead of a command, with headers from the environment that are never logged.
 - Active mode: `--flow` runs a flow behind the agent's calls and appends its lookups to the result. `--guards` refuses writes a policy check fails. `--confirm-judge log|enforce` adds the confirmation judge. `--commit` adds a tool for confirmed writes in one call. `--context` reads the conversation the host writes.
 - `stretto-mcp-demo`, a tiny server for trying it.
 

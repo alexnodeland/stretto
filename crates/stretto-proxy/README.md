@@ -2,7 +2,7 @@
 
 A stdio [MCP](https://modelcontextprotocol.io) proxy that records what an agent does with a server's tools, and can act on it: run a stretto flow behind the agent's calls, check its writes against policy guards, and add a commit tool.
 
-`stretto-proxy` starts the real MCP server as a child process and sits between it and the MCP host (a desktop app, an IDE, an agent framework). It forwards every line in both directions byte for byte and, with `--record`, also writes each line to a session log. `stretto_trace::mcp` turns logs into stretto's canonical `Episode`, so recorded sessions feed the same models as τ²-bench trajectories.
+`stretto-proxy` starts the real MCP server as a child process, or connects to it over Streamable HTTP (`--upstream`), and sits between it and the MCP host (a desktop app, an IDE, an agent framework). The host always runs the proxy as a stdio server. It forwards every line in both directions byte for byte and, with `--record`, also writes each line to a session log. `stretto_trace::mcp` turns logs into stretto's canonical `Episode`, so recorded sessions feed the same models as τ²-bench trajectories.
 
 ## Usage
 
@@ -11,6 +11,7 @@ stretto-proxy [--record <DIR>] [--domain <NAME>] [--agent-model <MODEL>]
               [--flow <FILE> [--oracle jev|replay|mock] [--oracle-cache <DIR>] [--flow-decider arbiter|habit] ...]
               [--guards [--confirm-judge log|enforce [--confirm-second proposed] ...]]
               [--commit] [--context <FILE>] -- <SERVER_COMMAND>...
+stretto-proxy [the same options] --upstream <URL> [--upstream-header NAME=VAR]...
 ```
 
 Install it with `cargo install --path crates/stretto-proxy`, which also installs `stretto-mcp-demo`. In the host's configuration, replace the server's command with `stretto-proxy` and put the original command after `--`:
@@ -30,6 +31,20 @@ Install it with `cargo install --path crates/stretto-proxy`, which also installs
 - `--record DIR` writes one log per session to `DIR/<session>.jsonl`, creating `DIR` if needed. A leading `~` is expanded, because hosts start servers without a shell. Hosts start servers in a directory of their choosing, so use an absolute path (or `~`).
 - `--domain` and `--agent-model` are copied into the log header. The proxy cannot see which model drives the agent, so name it here if you know it.
 - Without `--record`, the proxy only forwards.
+
+**Streamable HTTP servers.** `--upstream https://example.com/mcp` proxies a server that speaks MCP's HTTP transport (revision 2025-06-18), in place of a command:
+
+```json
+"args": ["--record", "~/.stretto/logs", "--domain", "orders",
+         "--upstream", "https://example.com/mcp", "--upstream-header", "Authorization=ORDERS_AUTH"],
+"env": { "ORDERS_AUTH": "Bearer …" }
+```
+
+- Each message the host sends is POSTed to the endpoint. The server's answer comes back to the host as lines, whether it is one JSON body or an event stream: progress notifications, log messages, then the result. The session id the server assigns (`Mcp-Session-Id`) and the agreed protocol version (`MCP-Protocol-Version`) go with every later request.
+- After `notifications/initialized`, a GET stream carries the messages the server sends on its own; it is opened again if it drops. When the host closes the proxy's stdin, the proxy waits for the requests in flight and ends the session with a DELETE.
+- `--upstream-header NAME=VAR` sends header `NAME` with the value of environment variable `VAR`, such as a bearer token, on every request. Values are never logged. The log header records the URL without a user, a password, or the values of query parameters that look like credentials.
+- A request the server refuses, or cannot be reached for, is answered with a JSON-RPC error, so the host is not left waiting. The proxy exits with 0 once the session has ended.
+- Recording, flows, guards and `stretto_commit` work as they do with a command. CI runs the proxy in front of the reference server, `@modelcontextprotocol/server-everything` ([`scripts/http_check.py`](../../scripts/http_check.py)), and the tests run it in front of `stretto-mcp-demo --http`, which insists on the session id and version.
 
 The server inherits the proxy's environment and stderr. The proxy's stdout carries only the protocol. Its own messages go to stderr, prefixed `stretto-proxy:`; with `--record`, the first one says where the log is.
 
@@ -137,7 +152,8 @@ Each `tools/call` becomes a `ToolCall`, and each response to one becomes a `Tool
 
 ## Limits
 
-- Only the stdio transport; Streamable HTTP servers are not supported.
+- The host side is stdio only: the proxy does not serve Streamable HTTP to a host. The server side can be either.
+- Over HTTP, a session the server ends (a 404 on its id) is not started again: each request after it fails with a JSON-RPC error until the host restarts the proxy.
 - The proxy does not forward signals. If the host kills the proxy, the server's stdin closes, which is how MCP tells a stdio server to exit; a server that ignores that keeps running.
 
 ## Privacy

@@ -21,7 +21,8 @@ jobs:
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test --all-targets
 
-  # docs/walkthrough.md, run end to end on the official MCP filesystem server.
+  # docs/walkthrough.md, run end to end on the official MCP filesystem server,
+  # and the proxy in front of the reference Streamable HTTP server.
   walkthrough:
     runs-on: ubuntu-latest
     steps:
@@ -33,3 +34,4 @@ jobs:
           node-version: 22
       - run: cargo build -p stretto-report -p stretto-proxy
       - run: python3 scripts/walkthrough.py --bin target/debug
+      - run: python3 scripts/http_check.py --bin target/debug

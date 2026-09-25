@@ -501,7 +501,7 @@ Usage: stretto import-answers [OPTIONS]
 Forward a stdio MCP server's traffic, record it for stretto, and optionally run a flow, policy guards and a commit tool on it. Put this in an MCP host's configuration in place of the server's command, with the real command after `--`. stdout carries only the protocol; the proxy's own messages go to stderr. The exit status is the server's, or 125 if the proxy itself fails. Without --flow, --guards, --commit, --context or --confirm-judge, every line is forwarded byte for byte and nothing is parsed.
 
 ```text
-Usage: stretto-proxy [OPTIONS] -- <SERVER_COMMAND>...
+Usage: stretto-proxy [OPTIONS] [-- <SERVER_COMMAND>...]
 ```
 
 **Recording**
@@ -541,8 +541,13 @@ Usage: stretto-proxy [OPTIONS] -- <SERVER_COMMAND>...
 
 - `--context <FILE>`: Read the conversation from this file, which the host appends to as JSON lines: `{"role": "user" | "assistant", "content": text}`.
 
+**The server**
+
+- `--upstream <URL>`: A Streamable HTTP server to proxy for, such as `https://example.com/mcp`, in place of a server command. The host still runs the proxy as a stdio server.
+- `--upstream-header <NAME=VAR>` (repeatable): With --upstream: send header NAME with the value of environment variable VAR, such as `Authorization=GITHUB_AUTH` for a variable that holds `Bearer …`. Values are never logged.
+
 **Arguments**
 
-- `<SERVER_COMMAND>...` (required): The MCP server to run, and its arguments.
+- `<SERVER_COMMAND>...` (not with `--upstream`): The MCP server to run, and its arguments.
 
 <!-- end stretto-proxy -->

@@ -25,3 +25,4 @@ serde_json.workspace = true
 stretto-oracle.workspace = true
 stretto-report.workspace = true
 stretto-trace.workspace = true
+reqwest.workspace = true

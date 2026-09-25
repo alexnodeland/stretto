@@ -21,11 +21,16 @@
 //! [`run_active`] also acts on what crosses it ([`active`]): it runs a flow
 //! behind the agent's calls, checks the agent's calls against policy guards,
 //! and adds a commit tool.
+//!
+//! With [`Config::upstream`], the server is a Streamable HTTP endpoint
+//! instead of a child process ([`http`]); everything else is the same.
 
 pub mod active;
+pub mod http;
 mod record;
 
 pub use active::{Active, ConfirmConfig, FlowConfig, APPENDIX, COMMIT_TOOL};
+pub use http::Upstream;
 
 use anyhow::{Context, Result};
 use record::{Recorder, Tap};
@@ -48,6 +53,8 @@ pub const FAILURE_EXIT_CODE: i32 = 125;
 pub struct Config {
     /// The server's command line: the program, then its arguments.
     pub command: Vec<OsString>,
+    /// A Streamable HTTP server to proxy for instead of `command`.
+    pub upstream: Option<Upstream>,
     /// Directory for the session log, created if missing; `None` only
     /// forwards.
     pub record: Option<PathBuf>,
@@ -117,15 +124,70 @@ where
     serve(config, Some(active), host_in, host_out)
 }
 
+/// The server: a child process, or a Streamable HTTP session.
+enum Server {
+    Child(std::process::Child),
+    Http(thread::JoinHandle<()>),
+}
+
+impl Server {
+    /// Wait for it to end, and return the status to exit with.
+    fn wait(self) -> Result<i32> {
+        match self {
+            Server::Child(mut child) => {
+                Ok(exit_code(child.wait().context("waiting for the server")?))
+            }
+            Server::Http(done) => {
+                let _ = done.join();
+                Ok(0)
+            }
+        }
+    }
+}
+
+type Ends = (Box<dyn Write + Send>, Box<dyn Read + Send>, Server);
+
+/// Start the server: spawn the command, or connect to the upstream.
+fn start(config: &Config) -> Result<Ends> {
+    if let Some(upstream) = &config.upstream {
+        let c = http::connect(upstream.clone())?;
+        return Ok((
+            Box::new(c.to_server),
+            Box::new(c.from_server),
+            Server::Http(c.done),
+        ));
+    }
+    let (program, args) = config
+        .command
+        .split_first()
+        .context("no server command given")?;
+    let mut child = Command::new(program)
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .with_context(|| format!("starting {}", program.to_string_lossy()))?;
+    let to_server = child
+        .stdin
+        .take()
+        .context("the server's stdin is not piped")?;
+    let from_server = child
+        .stdout
+        .take()
+        .context("the server's stdout is not piped")?;
+    Ok((
+        Box::new(to_server),
+        Box::new(from_server),
+        Server::Child(child),
+    ))
+}
+
 fn serve<R, W>(config: &Config, active: Option<&Active>, host_in: R, mut host_out: W) -> Result<i32>
 where
     R: Read + Send + 'static,
     W: Write,
 {
-    let (program, args) = config
-        .command
-        .split_first()
-        .context("no server command given")?;
     let started = Instant::now();
     let header = header(config);
     let recorder = match &config.record {
@@ -137,15 +199,8 @@ where
         None => None,
     };
 
-    let spawned = Command::new(program)
-        .args(args)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
-        .spawn()
-        .with_context(|| format!("starting {}", program.to_string_lossy()));
-    let mut server = match spawned {
-        Ok(server) => server,
+    let (to_server, from_server, server) = match start(config) {
+        Ok(ends) => ends,
         Err(e) => {
             // Nothing was proxied, so there is no session to keep.
             if let Some(recorder) = recorder {
@@ -154,14 +209,6 @@ where
             return Err(e);
         }
     };
-    let to_server = server
-        .stdin
-        .take()
-        .context("the server's stdin is not piped")?;
-    let from_server = server
-        .stdout
-        .take()
-        .context("the server's stdout is not piped")?;
 
     if let Some(active) = active {
         // The flow's decisions go next to the session log, unless the
@@ -215,11 +262,11 @@ where
             (flow_log, confirm_log),
         )
         .run(rx);
-        let status = server.wait().context("waiting for the server");
+        let status = server.wait();
         if let Some(recorder) = recorder {
             recorder.finish();
         }
-        return Ok(exit_code(status?));
+        return status;
     }
 
     // Host to server. This thread may still be blocked reading the host when
@@ -247,11 +294,11 @@ where
         Peer::Server,
         tap.as_ref(),
     );
-    let status = server.wait().context("waiting for the server");
+    let status = server.wait();
     if let Some(recorder) = recorder {
         recorder.finish();
     }
-    Ok(exit_code(status?))
+    status
 }
 
 /// `path` with a leading `~` replaced by the home directory, as a shell would
@@ -283,7 +330,10 @@ fn header(config: &Config) -> LogHeader {
         stretto_mcp_log: LOG_VERSION,
         session: record::session_id(started_unix_ms, std::process::id()),
         started_unix_ms,
-        server_command: record::redact_command(&command),
+        server_command: match &config.upstream {
+            Some(upstream) => vec![http::redact_url(&upstream.url)],
+            None => record::redact_command(&command),
+        },
         domain: config.domain.clone(),
         agent_model: config.agent_model.clone(),
     }

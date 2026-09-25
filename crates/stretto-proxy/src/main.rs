@@ -3,7 +3,8 @@ use clap::{Parser, ValueEnum};
 use std::ffi::OsString;
 use std::path::PathBuf;
 use stretto_proxy::{
-    expand_home, run, run_active, Active, Config, ConfirmConfig, FlowConfig, FAILURE_EXIT_CODE,
+    expand_home, run, run_active, Active, Config, ConfirmConfig, FlowConfig, Upstream,
+    FAILURE_EXIT_CODE,
 };
 use stretto_report::confirm::Second;
 use stretto_report::flow::{Decider, Flow};
@@ -136,8 +137,28 @@ struct Cli {
     /// Task id, which picks the flow's fold (default: the session).
     #[arg(help_heading = "Flows", long, value_name = "ID")]
     task_id: Option<String>,
+    /// A Streamable HTTP server to proxy for, such as
+    /// `https://example.com/mcp`, in place of a server command. The host
+    /// still runs the proxy as a stdio server.
+    #[arg(help_heading = "The server", long, value_name = "URL")]
+    upstream: Option<String>,
+    /// With --upstream: send header NAME with the value of environment
+    /// variable VAR, such as `Authorization=GITHUB_AUTH` for a variable that
+    /// holds `Bearer …`. Values are never logged.
+    #[arg(
+        help_heading = "The server",
+        long = "upstream-header",
+        value_name = "NAME=VAR",
+        requires = "upstream"
+    )]
+    upstream_headers: Vec<String>,
     /// The MCP server to run, and its arguments.
-    #[arg(last = true, required = true, value_name = "SERVER_COMMAND")]
+    #[arg(
+        last = true,
+        required_unless_present = "upstream",
+        conflicts_with = "upstream",
+        value_name = "SERVER_COMMAND"
+    )]
     command: Vec<OsString>,
 }
 
@@ -171,6 +192,7 @@ fn main() {
     let result = active(&cli).and_then(|active| {
         let config = Config {
             command: cli.command.clone(),
+            upstream: upstream(&cli)?,
             record: cli.record.clone().map(expand_home),
             domain: cli.domain.clone(),
             agent_model: cli.agent_model.clone(),
@@ -188,6 +210,28 @@ fn main() {
             std::process::exit(FAILURE_EXIT_CODE);
         }
     }
+}
+
+/// The Streamable HTTP server to proxy for, with its headers' values read
+/// from the environment.
+fn upstream(cli: &Cli) -> Result<Option<Upstream>> {
+    let Some(url) = &cli.upstream else {
+        return Ok(None);
+    };
+    let mut headers = Vec::new();
+    for spec in &cli.upstream_headers {
+        let Some((name, var)) = spec.split_once('=') else {
+            bail!("--upstream-header takes NAME=VAR, the header and the environment variable holding its value");
+        };
+        let value = std::env::var(var).with_context(|| {
+            format!("the environment variable {var}, for the header {name}, is not set")
+        })?;
+        headers.push((name.to_string(), value));
+    }
+    Ok(Some(Upstream {
+        url: url.clone(),
+        headers,
+    }))
 }
 
 /// What the flags ask the proxy to do besides forwarding.

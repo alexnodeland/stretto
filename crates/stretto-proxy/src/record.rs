@@ -210,7 +210,7 @@ fn civil_date(days: u64) -> (u64, u64, u64) {
 }
 
 /// Stands in for a redacted value in the log header.
-const REDACTED: &str = "<redacted>";
+pub(crate) const REDACTED: &str = "<redacted>";
 
 /// `command` as the log header shows it, with values that look like
 /// credentials replaced by `<redacted>`.
@@ -242,7 +242,7 @@ pub(crate) fn redact_command(command: &[String]) -> Vec<String> {
 }
 
 /// Whether a flag or variable name suggests its value is a credential.
-fn names_secret(name: &str) -> bool {
+pub(crate) fn names_secret(name: &str) -> bool {
     let name = name.to_ascii_lowercase();
     [
         "key",

@@ -107,7 +107,7 @@ stretto-proxy session logs ─┼─► stretto-trace (Episode) ─► stretto-m
 | Options from the tool manifest | Built, measured on the sweep's one- and three-task samples: nothing gained in retail, and detours in airline, where a lookup no trace showed is bound by argument name and gets the wrong values ([results](results/manifest-options-2026-09-24.md)); off by default | `--manifest-options` on `phase0`, `compile` and `learn` |
 | Counterfactual evaluation from logged propensities | Not built ([#15](https://github.com/alexnodeland/stretto/issues/15)). The proxy logs every decision's probabilities, but flows act deterministically, so estimates need a little exploration first | — |
 | Predicate refinement (§3.4) | Not built ([#16](https://github.com/alexnodeland/stretto/issues/16)); three hand-proposed predicates | `data/predicates-v2.json` |
-| Streamable HTTP transport | Not supported; stdio only ([#21](https://github.com/alexnodeland/stretto/issues/21)) | — |
+| Streamable HTTP servers | Built: the proxy speaks MCP's HTTP transport to the server and stdio to the host; tested against the reference TypeScript server and a strict test server | `stretto-proxy --upstream`; `http.rs` |
 
 Everything else not built yet, and the experiments still to run, are grouped in the [roadmap](roadmap.md).
 
