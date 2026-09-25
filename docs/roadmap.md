@@ -31,7 +31,7 @@ These cost Jev dollars, CPU time or people's time, and no LLM runs.
 | [#10](https://github.com/alexnodeland/stretto/issues/10) | Telecom, and an arbiter fitted on retail and airline together | A third domain, and the next test of a shipped arbiter; telecom's customer acts on their own phone | A few dollars |
 | [#11](https://github.com/alexnodeland/stretto/issues/11) | Independent labels for the confirmation judge | Its labels come from one annotator, the model that ran the analysis | Annotators' time |
 | [#12](https://github.com/alexnodeland/stretto/issues/12) | Score the pilots as τ²-bench does | The pilots count the database check only; retail's natural-language assertions and airline's communication check are left out | Airline is free; retail needs a judge's key. Needs #29 |
-| [#13](https://github.com/alexnodeland/stretto/issues/13) | Prompt injection against flows and the confirmation judge | RFC-001 §3.8's argument has never been tested | Under $1 |
+| [#13](https://github.com/alexnodeland/stretto/issues/13) | Prompt injection against flows and the confirmation judge | Done: a flow stays inside its compiled lookups, but injected text steers the choice among them; one sentence in the questions and a higher bar absorb most of it ([results](results/injection-2026-09-25.md)) | $0.22 |
 
 ## Features from the design that are not built
 

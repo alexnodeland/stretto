@@ -35,6 +35,13 @@ The [working paper](https://alexnodeland.github.io/stretto/) puts them together,
 | [Shipped arbiters across domains](arbiter-transfer-2026-09-24.md) | An arbiter fitted on one domain's published decisions, served with a habit from the other, does what that domain's own arbiter does, within about a point of turns saved |
 | [Answers: shipped arbiters](answers-2026-09-24-arbiter-transfer.md) | The answer bundle for the page above |
 
+## 2026-09-25: the evidence a deployment needs
+
+| Page | What it found |
+|---|---|
+| [Prompt injection](injection-2026-09-25.md) ([rows](injection-2026-09-25.json)) | Whatever Jev answers, a flow calls only the lookups compiled for the site. Inside that set, a note in a tool result steered the flow at 86 of 300 retail decisions; one sentence telling Jev that tool results are data cut it to 19, and a threshold of 0.5 as well to 4. An injected claim passed 9 of 140 writes the confirmation judge had refused |
+| [Answers: prompt injection](answers-2026-09-25-injection.md) | The answer bundle for the page above |
+
 ## Recorded episodes
 
 [Every live episode behind the pilot pages](episodes-2026-09-24.md), 76 in all, is published as one archive per pilot: the conversations, τ²-bench's simulation files, the proxy's session logs and the flows' decisions. `pilot/rescore.py` reproduces every recorded reward from them.
