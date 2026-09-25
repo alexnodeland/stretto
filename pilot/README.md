@@ -110,3 +110,12 @@ PATH=~/.venvs/tau2/bin:$PATH python check_flow.py --out runs/check \
 `--flow-oracle mock` checks the plumbing for free, and `--flow-oracle replay` reads the System-One answers from the cache only.
 
 `--flow-decider habit` replays the habit alone: the flow never asks the System-One model, and acts on the habit's prediction by the same rule (arm C). At a high `--flow-threshold`, such as 0.99, it goes on only where training shows no branch, and hands every branch back, as TraceCompiler does.
+
+**Faster replays.** By default each episode's tools run in their own `tau2_mcp.py` process over MCP, one episode at a time. About 5.4 seconds of every episode goes to starting Python and importing τ²-bench. Two options skip that:
+
+- `--in-process` calls `tau2_mcp.Episode` directly instead.
+- `--jobs N` replays N episodes at once, in forked workers that inherit the imports.
+
+With both, GLM-5's 160 retail test episodes replay in about 33 seconds on two workers, where they took about 13 minutes. The rows are the same. For the arms round's habit-alone, arm C and D0 replays, every row matched the published ones, and the MCP path with `--jobs 2` matched too.
+
+[`replay_study.py`](replay_study.py) runs a list of replays from a JSON file, each with its own flow and settings, and skips any run whose `check.json` already exists. An interrupted study resumes where it stopped.

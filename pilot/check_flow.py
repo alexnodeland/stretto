@@ -19,12 +19,20 @@ on only where training shows no branch).
     python check_flow.py runs/pilot/baseline/task-90 --oracle-cache CACHE
     python check_flow.py --results glm-5_retail.json --oracle-cache CACHE \\
         --flow-oracle jev
+
+By default each episode's tools run in their own `tau2_mcp.py` process over
+MCP, as the agent's would, and episodes replay one at a time. Most of that
+time is spent starting Python and importing τ²-bench. `--in-process` calls
+`tau2_mcp.Episode` directly instead, and `--jobs N` replays N episodes at
+once in forked workers that inherit the imports. The rows are the same
+either way.
 """
 
 import argparse
 import asyncio
 import json
 import sys
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -54,12 +62,25 @@ def flow_calls(text: str) -> list[tuple[str, str]]:
     return out
 
 
+# tau2_mcp.py's own defaults for a server started as above.
+MAX_CALLS, FLOW_MAX, FLOW_BUDGET = 60, 8, 40
+
+
 async def replay(task_id: str, messages: list, episode: Path, address: str, args) -> dict:
     episode.mkdir(parents=True, exist_ok=True)
     for stale in ("trajectory.jsonl", "tools-state.json"):
         (episode / stale).unlink(missing_ok=True)
-    trajectory = episode / "trajectory.jsonl"
-    server = StdioServerParameters(
+    if getattr(args, "in_process", False):
+        import tau2_mcp
+
+        server = tau2_mcp.Episode(args.domain, task_id, episode, MAX_CALLS, address, FLOW_MAX, FLOW_BUDGET)
+        server.save_state()
+
+        async def call(name: str, arguments: dict) -> str:
+            return server.call(name, arguments)[0]
+
+        return await walk(messages, episode, call, task_id)
+    params = StdioServerParameters(
         command=sys.executable,
         args=[
             str(HERE / "tau2_mcp.py"),
@@ -69,40 +90,51 @@ async def replay(task_id: str, messages: list, episode: Path, address: str, args
             "--flow-address", address,
         ],
     )
+    with open(episode / "server.stderr", "w") as errlog:
+        async with stdio_client(params, errlog=errlog) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+
+                async def call(name: str, arguments: dict) -> str:
+                    out = await session.call_tool(name, arguments)
+                    return out.content[0].text if out.content else ""
+
+                return await walk(messages, episode, call, task_id)
+
+
+async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
+    """Replay the recorded calls through `call`, skipping those the flow made."""
+    trajectory = episode / "trajectory.jsonl"
     recorded = {key(c["name"], c["arguments"]) for m in messages for c in m.get("tool_calls") or []}
     made: set[tuple[str, str]] = set()
     by_flow: list[tuple[str, str]] = []
     turns = tool_turns = saved = calls = skipped = 0
-    with open(episode / "server.stderr", "w") as errlog:
-        async with stdio_client(server, errlog=errlog) as (read, write):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                for i, m in enumerate(messages):
-                    if m["role"] == "tool":
-                        continue  # the server records its own results
-                    # τ²-bench's scripted greeting is not an LLM turn.
-                    greeting = i == 0 and not m.get("tool_calls")
-                    if m["role"] == "assistant" and not greeting:
-                        turns += 1
-                    if not m.get("tool_calls"):
-                        with open(trajectory, "a") as f:
-                            f.write(json.dumps(m) + "\n")
-                        continue
-                    tool_turns += 1
-                    left = 0
-                    for c in m["tool_calls"]:
-                        calls += 1
-                        k = key(c["name"], c["arguments"])
-                        if k in made:
-                            skipped += 1
-                            continue
-                        left += 1
-                        out = await session.call_tool(c["name"], c["arguments"])
-                        made.add(k)
-                        for f in flow_calls(out.content[0].text if out.content else ""):
-                            made.add(f)
-                            by_flow.append(f)
-                    saved += left == 0
+    for i, m in enumerate(messages):
+        if m["role"] == "tool":
+            continue  # the server records its own results
+        # τ²-bench's scripted greeting is not an LLM turn.
+        greeting = i == 0 and not m.get("tool_calls")
+        if m["role"] == "assistant" and not greeting:
+            turns += 1
+        if not m.get("tool_calls"):
+            with open(trajectory, "a") as f:
+                f.write(json.dumps(m) + "\n")
+            continue
+        tool_turns += 1
+        left = 0
+        for c in m["tool_calls"]:
+            calls += 1
+            k = key(c["name"], c["arguments"])
+            if k in made:
+                skipped += 1
+                continue
+            left += 1
+            text = await call(c["name"], c["arguments"])
+            made.add(k)
+            for f in flow_calls(text):
+                made.add(f)
+                by_flow.append(f)
+        saved += left == 0
     state = json.loads((episode / "tools-state.json").read_text())
     return {
         "task_id": task_id,
@@ -115,6 +147,12 @@ async def replay(task_id: str, messages: list, episode: Path, address: str, args
         "flow_queries": state.get("flow_queries"),
         "detours": sum(1 for f in by_flow if f not in recorded),
     }
+
+
+def replay_one(job: tuple) -> dict:
+    """One episode's row (a worker's job with `--jobs`)."""
+    name, task_id, messages, out, address, args = job
+    return {"episode": name, **asyncio.run(replay(task_id, messages, out / name, address, args))}
 
 
 def recorded_episodes(args) -> list[tuple[str, str, list]]:
@@ -154,6 +192,8 @@ def main() -> None:
         help="`habit`: the habit alone, never asking the System-One model (arm C)",
     )
     parser.add_argument("--flow", type=Path, help="a compiled flow (`stretto compile`), else compiled here")
+    parser.add_argument("--in-process", action="store_true", help="call tau2_mcp.Episode directly instead of over MCP")
+    parser.add_argument("--jobs", type=int, default=1, help="episodes to replay at once")
     args = parser.parse_args()
     episodes = recorded_episodes(args)
     if not episodes:
@@ -175,11 +215,19 @@ def main() -> None:
         out,
     )
     rows = []
+    jobs = [(name, task_id, messages, out, address, args) for name, task_id, messages in episodes]
     try:
-        for name, task_id, messages in episodes:
-            row = asyncio.run(replay(task_id, messages, out / name, address, args))
-            rows.append({"episode": name, **row})
-            print(json.dumps(rows[-1]), flush=True)
+        if args.jobs > 1:
+            if args.in_process:
+                import tau2_mcp  # noqa: F401  (imported once, inherited by the forked workers)
+            with ProcessPoolExecutor(args.jobs) as pool:
+                for row in pool.map(replay_one, jobs):
+                    rows.append(row)
+                    print(json.dumps(row), flush=True)
+        else:
+            for job in jobs:
+                rows.append(replay_one(job))
+                print(json.dumps(rows[-1]), flush=True)
     finally:
         serve.terminate()
         serve.wait(timeout=30)
