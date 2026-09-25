@@ -5,14 +5,18 @@
 //! one thread. Anything it does not act on is still forwarded byte for byte.
 //!
 //! - **Flows.** When the server answers one of the agent's `tools/call`s,
-//!   the proxy holds the response and asks the flow what comes next. While
-//!   the flow proposes lookups (tools that the flow reads as read-only and
-//!   the server does not mark otherwise), the proxy makes them itself, as
-//!   requests with ids `stretto-<n>`. When the flow hands back, the agent
-//!   gets its own result with the flow's results appended as one more text
-//!   item under [`APPENDIX`]. The agent's prompt and tools are unchanged
-//!   (arm D0). One flow runs at a time; a response that arrives while one
-//!   runs is forwarded as it is.
+//!   the proxy holds the response and runs the flow: its run is a fugue
+//!   program ([`stretto_report::program`]) with a decision site before each
+//!   lookup and an outcome site after it, interpreted with fugue's
+//!   `run_async`. At a decision site the flow's arbiter decides what comes
+//!   next ([`Flow::next_with`]). While it proposes lookups (tools that the
+//!   flow reads as read-only and the server does not mark otherwise), the
+//!   proxy makes them itself, as requests with ids `stretto-<n>`, and the
+//!   outcome site takes the server's answer. When the flow hands back, the
+//!   agent gets its own result with the flow's results appended as one more
+//!   text item under [`APPENDIX`]. The agent's prompt and tools are
+//!   unchanged (arm D0). One flow runs at a time; a response that arrives
+//!   while one runs is forwarded as it is.
 //! - **Guards.** Before one of the agent's calls reaches the server, the
 //!   domain's guards check it against what the session has shown. A call an
 //!   enforced rule refuses never reaches the server: the agent gets an error
@@ -34,17 +38,29 @@
 //! Everything the proxy sends on its own is logged as a `proxy` entry.
 
 use crate::record::Tap;
+use fugue::{
+    run_async, Address, AsyncHandler, Categorical, ChoiceValue, Distribution, Model, Trace,
+    WithMeta,
+};
 use serde_json::{json, Value};
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::File;
+use std::future::Future;
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
+use std::pin::Pin;
+use std::rc::Rc;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
+use std::sync::Arc;
+use std::task::{Context, Poll, Waker};
 use std::time::{Duration, Instant};
+use stretto_model::{Action, Outcome as StepOutcome};
 use stretto_oracle::{request_key, Oracle};
 use stretto_report::confirm::{self, Second};
 use stretto_report::flow::{Decider, Flow, Proposal};
 use stretto_report::guards::Guards;
+use stretto_report::program::{self, DecideSite, RunModel, HAND_BACK};
 use stretto_trace::mcp::{self, LogEntry, LogHeader, McpLog, Peer};
 use stretto_trace::{Episode, ToolCall, ToolKind};
 
@@ -187,17 +203,154 @@ struct Committed {
 }
 
 enum Work {
-    /// A flow after the agent's call, holding the server's response to it.
+    /// A flow after the agent's call, holding the server's response to it,
+    /// and the flow's run.
     Flow {
         response: Value,
         original: Vec<u8>,
         looked: Vec<Looked>,
+        run: Run,
     },
     /// A commit's calls, in order.
     Commit {
         queue: VecDeque<(String, Value)>,
         done: Vec<Committed>,
     },
+}
+
+/// A flow's run as `run_async` interprets it: the lookups made, each with
+/// whether it succeeded, and the run's trace.
+type RunFuture = Pin<Box<dyn Future<Output = (Vec<(String, bool)>, Trace)>>>;
+
+/// A flow's run in progress: its program, interpreted with `run_async` by a
+/// [`LiveRun`] that hands each site to the engine through `mailbox`, and the
+/// lookup its last decision chose, until the outcome site makes it.
+struct Run {
+    future: RunFuture,
+    mailbox: Rc<RefCell<Mailbox>>,
+    pending: Option<(String, Value)>,
+}
+
+impl Run {
+    fn new(program: Model<Vec<(String, bool)>>) -> Self {
+        let mailbox = Rc::new(RefCell::new(Mailbox::default()));
+        let handler = LiveRun {
+            mailbox: mailbox.clone(),
+            trace: Trace::default(),
+        };
+        Self {
+            future: Box::pin(run_async(handler, program)),
+            mailbox,
+            pending: None,
+        }
+    }
+}
+
+/// What a run asks the engine at a site, and the engine's answer.
+#[derive(Default)]
+struct Mailbox {
+    ask: Option<Ask>,
+    answer: Option<Answer>,
+}
+
+enum Ask {
+    /// Decide at the decision site `address`: which of `site`'s options.
+    Decide { address: String, site: DecideSite },
+    /// Make the lookup the last decision chose.
+    LookUp,
+}
+
+enum Answer {
+    /// The option taken, an index into the site's options.
+    Option(usize),
+    /// Whether the lookup failed.
+    Failed(bool),
+}
+
+/// The handler that executes a flow's run: the engine answers each site.
+/// A decision is the arbiter's, and deterministic, so its propensity is 1
+/// (`logp` 0). An outcome is the server's answer, scored under the
+/// program's distribution like an observation, in the likelihood.
+struct LiveRun {
+    mailbox: Rc<RefCell<Mailbox>>,
+    trace: Trace,
+}
+
+impl LiveRun {
+    fn ask(&self, ask: Ask) -> impl Future<Output = Answer> {
+        self.mailbox.borrow_mut().ask = Some(ask);
+        let mailbox = self.mailbox.clone();
+        std::future::poll_fn(move |_| match mailbox.borrow_mut().answer.take() {
+            Some(answer) => Poll::Ready(answer),
+            None => Poll::Pending,
+        })
+    }
+}
+
+impl AsyncHandler for LiveRun {
+    async fn on_sample_usize(&mut self, addr: &Address, dist: &dyn Distribution<usize>) -> usize {
+        let site = dist
+            .downcast_ref::<WithMeta<Categorical, DecideSite>>()
+            .map(|d| d.meta().clone())
+            .expect("a flow's decision sites carry their site");
+        let choice = match self
+            .ask(Ask::Decide {
+                address: addr.to_string(),
+                site,
+            })
+            .await
+        {
+            Answer::Option(i) => i,
+            Answer::Failed(_) => HAND_BACK,
+        };
+        self.trace
+            .insert_choice(addr.clone(), ChoiceValue::Usize(choice), 0.0);
+        choice
+    }
+
+    async fn on_sample_bool(&mut self, addr: &Address, dist: &dyn Distribution<bool>) -> bool {
+        let ok = match self.ask(Ask::LookUp).await {
+            Answer::Failed(failed) => !failed,
+            Answer::Option(_) => false,
+        };
+        let logp = dist.log_prob(&ok);
+        self.trace.log_likelihood += logp;
+        self.trace
+            .insert_choice(addr.clone(), ChoiceValue::Bool(ok), logp);
+        ok
+    }
+
+    async fn on_sample_f64(&mut self, addr: &Address, _: &dyn Distribution<f64>) -> f64 {
+        unreachable!("a flow's program has no f64 site ({addr})")
+    }
+
+    async fn on_sample_u64(&mut self, addr: &Address, _: &dyn Distribution<u64>) -> u64 {
+        unreachable!("a flow's program has no u64 site ({addr})")
+    }
+
+    async fn on_observe_f64(&mut self, addr: &Address, _: &dyn Distribution<f64>, _: f64) {
+        unreachable!("a flow's program observes nothing ({addr})")
+    }
+
+    async fn on_observe_bool(&mut self, addr: &Address, _: &dyn Distribution<bool>, _: bool) {
+        unreachable!("a flow's program observes nothing ({addr})")
+    }
+
+    async fn on_observe_u64(&mut self, addr: &Address, _: &dyn Distribution<u64>, _: u64) {
+        unreachable!("a flow's program observes nothing ({addr})")
+    }
+
+    async fn on_observe_usize(&mut self, addr: &Address, _: &dyn Distribution<usize>, _: usize) {
+        unreachable!("a flow's program observes nothing ({addr})")
+    }
+
+    async fn on_factor(&mut self, _: f64) {
+        unreachable!("a flow's program has no factor")
+    }
+
+    async fn finish(self) -> Trace {
+        self.trace
+    }
 }
 
 /// A request of the proxy's own, awaiting the server.
@@ -240,6 +393,8 @@ pub(crate) struct Engine<'a, W: Write> {
     flow_log: Option<File>,
     confirm_log: Option<File>,
     confirm_questions: usize,
+    /// The flow's statistics, which its runs' programs draw on.
+    run_model: Option<Arc<RunModel>>,
 }
 
 impl<'a, W: Write> Engine<'a, W> {
@@ -286,6 +441,10 @@ impl<'a, W: Write> Engine<'a, W> {
             flow_log,
             confirm_log,
             confirm_questions: 0,
+            run_model: active
+                .flow
+                .as_ref()
+                .map(|fc| Arc::new(RunModel::new(&fc.flow))),
         }
     }
 
@@ -385,16 +544,19 @@ impl<'a, W: Write> Engine<'a, W> {
             return self.send_host(&line);
         }
         if self.calls.remove(&k) && self.flow_may_follow(&m) {
-            let job = Job {
-                client_id: id,
-                waiting: None,
-                work: Work::Flow {
-                    response: m,
-                    original: line,
-                    looked: Vec::new(),
-                },
-            };
-            return self.step(job);
+            if let Some(run) = self.flow_run() {
+                let job = Job {
+                    client_id: id,
+                    waiting: None,
+                    work: Work::Flow {
+                        response: m,
+                        original: line,
+                        looked: Vec::new(),
+                        run,
+                    },
+                };
+                return self.drive(job);
+            }
         }
         self.send_host(&line);
     }
@@ -489,54 +651,124 @@ impl<'a, W: Write> Engine<'a, W> {
         }
     }
 
-    /// Take the job's next step: a request of the proxy's own, or its end.
-    fn step(&mut self, mut job: Job) {
-        let active = self.active;
-        match &mut job.work {
-            Work::Flow { looked, .. } => {
-                let fc = active.flow.as_ref().expect("flow jobs need a flow");
-                if looked.len() >= fc.per_call
-                    || self.lookups >= fc.per_session
-                    || self.questions >= fc.max_questions
-                {
-                    return self.finish(job);
-                }
-                self.read_context();
-                let episode = self.episode();
-                let asked = Instant::now();
-                let next =
-                    match fc
-                        .flow
-                        .next_with(&episode, fc.oracle.as_ref(), fc.threshold, fc.decider)
-                    {
-                        Ok(next) => next,
-                        Err(e) => {
-                            eprintln!("stretto-proxy: the flow failed, handing back: {e:#}");
-                            return self.finish(job);
-                        }
-                    };
-                self.questions += usize::from(next.key.is_some());
-                if let Some(f) = self.flow_log.as_mut() {
-                    let mut entry = serde_json::to_value(&next).unwrap_or(Value::Null);
-                    entry["after"] = job.client_id.clone();
-                    entry["ms"] = json!(asked.elapsed().as_millis() as u64);
-                    if fc.shadow {
-                        entry["shadow"] = json!(true);
-                    }
-                    let _ = writeln!(f, "{entry}");
-                }
-                match next.proposal {
-                    // In shadow mode the decision is only logged, and the
-                    // agent gets its result as the server sent it.
-                    Proposal::Lookup { tool, arguments }
-                        if !fc.shadow && self.may_look_up(fc, &tool) =>
-                    {
-                        self.lookups += 1;
-                        self.request(job, tool, arguments);
-                    }
-                    _ => self.finish(job),
-                }
+    /// The flow's run after the agent's call that just returned: its
+    /// program, from the call's site. `None` when the session's last step is
+    /// not a tool call, so there is no site to start from.
+    fn flow_run(&self) -> Option<Run> {
+        let fc = self.active.flow.as_ref()?;
+        let model = self.run_model.clone()?;
+        let episode = self.episode();
+        let steps = stretto_model::steps(&episode);
+        let last = steps.last()?;
+        let Action::Tool(tool) = &last.action else {
+            return None;
+        };
+        let failed = last.outcome == StepOutcome::Err;
+        Some(Run::new(program::run(
+            model,
+            tool.clone(),
+            failed,
+            fc.per_call,
+        )))
+    }
+
+    /// Run the job's flow until it waits on the server or ends: each
+    /// decision it asks for is made here, and each lookup it asks for is
+    /// sent, the run resuming when the server answers ([`Self::resume`]).
+    fn drive(&mut self, mut job: Job) {
+        let mut cx = Context::from_waker(Waker::noop());
+        loop {
+            let Work::Flow { run, .. } = &mut job.work else {
+                unreachable!("only flow jobs have a run")
+            };
+            if run.future.as_mut().poll(&mut cx).is_ready() {
+                return self.finish(job);
             }
+            let mailbox = run.mailbox.clone();
+            let ask = mailbox.borrow_mut().ask.take();
+            match ask {
+                Some(Ask::Decide { address, site }) => {
+                    let choice = self.decide(&mut job, &address, &site);
+                    mailbox.borrow_mut().answer = Some(Answer::Option(choice));
+                }
+                Some(Ask::LookUp) => {
+                    let Work::Flow { run, .. } = &mut job.work else {
+                        unreachable!("only flow jobs have a run")
+                    };
+                    match run.pending.take() {
+                        Some((tool, arguments)) => return self.request(job, tool, arguments),
+                        None => mailbox.borrow_mut().answer = Some(Answer::Failed(true)),
+                    }
+                }
+                // A run that waits on nothing cannot go on.
+                None => return self.finish(job),
+            }
+        }
+    }
+
+    /// Decide at a flow's decision site `address`: the arbiter's choice
+    /// among `site`'s options, logged. A lookup is taken only within the
+    /// session's limits, outside shadow mode, and when the server has the
+    /// tool and does not mark it as a write; otherwise the flow hands back.
+    fn decide(&mut self, job: &mut Job, address: &str, site: &DecideSite) -> usize {
+        let active = self.active;
+        let fc = active.flow.as_ref().expect("flow jobs need a flow");
+        let Work::Flow { looked, run, .. } = &mut job.work else {
+            unreachable!("only flow jobs decide")
+        };
+        if looked.len() >= fc.per_call
+            || self.lookups >= fc.per_session
+            || self.questions >= fc.max_questions
+        {
+            return HAND_BACK;
+        }
+        self.read_context();
+        let episode = self.episode();
+        let asked = Instant::now();
+        let next = match fc
+            .flow
+            .next_with(&episode, fc.oracle.as_ref(), fc.threshold, fc.decider)
+        {
+            Ok(next) => next,
+            Err(e) => {
+                eprintln!("stretto-proxy: the flow failed, handing back: {e:#}");
+                return HAND_BACK;
+            }
+        };
+        self.questions += usize::from(next.key.is_some());
+        if let Some(f) = self.flow_log.as_mut() {
+            let mut entry = serde_json::to_value(&next).unwrap_or(Value::Null);
+            entry["after"] = job.client_id.clone();
+            entry["address"] = json!(address);
+            entry["ms"] = json!(asked.elapsed().as_millis() as u64);
+            if fc.shadow {
+                entry["shadow"] = json!(true);
+            }
+            let _ = writeln!(f, "{entry}");
+        }
+        match next.proposal {
+            // In shadow mode the decision is only logged, and the agent gets
+            // its result as the server sent it.
+            Proposal::Lookup { tool, arguments } if !fc.shadow && self.may_look_up(fc, &tool) => {
+                let Some(choice) = site.options.iter().position(|o| *o == tool) else {
+                    eprintln!(
+                        "stretto-proxy: the flow chose {tool}, which its program does not offer at {}; handing back",
+                        site.site
+                    );
+                    return HAND_BACK;
+                };
+                self.lookups += 1;
+                run.pending = Some((tool, arguments));
+                choice
+            }
+            _ => HAND_BACK,
+        }
+    }
+
+    /// Take a commit's next step: a request of the proxy's own, or its end.
+    fn step(&mut self, mut job: Job) {
+        match &mut job.work {
+            Work::Flow { .. } => self.drive(job),
             Work::Commit { queue, done } => {
                 let Some((name, arguments)) = queue.pop_front() else {
                     return self.finish(job);
@@ -591,14 +823,15 @@ impl<'a, W: Write> Engine<'a, W> {
         let w = job.waiting.take().expect("resumed jobs wait");
         let (text, error) = result_text(response);
         match &mut job.work {
-            Work::Flow { looked, .. } => {
+            Work::Flow { looked, run, .. } => {
                 looked.push(Looked {
                     tool: w.tool,
                     arguments: w.arguments,
                     text,
                     error,
                 });
-                self.step(job);
+                run.mailbox.borrow_mut().answer = Some(Answer::Failed(error));
+                self.drive(job);
             }
             Work::Commit { done, .. } => {
                 done.push(Committed {
@@ -622,6 +855,7 @@ impl<'a, W: Write> Engine<'a, W> {
                 response,
                 original,
                 looked,
+                ..
             } => {
                 if looked.is_empty() {
                     return self.send_host(&original);
@@ -921,7 +1155,9 @@ fn tool_result(id: Value, text: &str, error: bool) -> Value {
 
 /// A `tools/call` response's text, and whether it failed.
 fn result_text(response: &Value) -> (String, bool) {
-    if let Some(e) = response.get("error") {
+    // As the session's episode reads it (a null error is none), so a
+    // flow's program and its arbiter agree on whether a lookup failed.
+    if let Some(e) = response.get("error").filter(|e| !e.is_null()) {
         let message = e.get("message").and_then(Value::as_str).unwrap_or("error");
         return (message.to_string(), true);
     }

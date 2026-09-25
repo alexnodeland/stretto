@@ -30,6 +30,7 @@ Everything so far: the first design of [RFC-001](docs/rfc/001-habit-compiler.md)
 - Active mode: `--flow` runs a flow behind the agent's calls and appends its lookups to the result. `--guards` refuses writes a policy check fails. `--confirm-judge log|enforce` adds the confirmation judge. `--commit` adds a tool for confirmed writes in one call. `--context` reads the conversation the host writes.
 - `stretto-mcp-demo`, a tiny server for trying it.
 - `--retain-days N` deletes, at start, the logs and cached answers older than N days.
+- Each run of a flow after one of the agent's calls is a fugue program ([`program.rs`](crates/stretto-report/src/program.rs), RFC-001 §3.2): a decision site `decide#i` before each lookup, which the flow's arbiter decides, and an outcome site `outcome#i` after it, which takes the server's answer and scores it. The proxy interprets it with fugue's `run_async`. The sites carry their site as metadata (`WithMeta`), and their distributions are the flow's own statistics: a flat Dirichlet's predictive over what the agent did next there, and a flat Beta's over how often the tool succeeded, from fugue's conjugate helpers. Flow-log lines carry the decision's `address`. The same program simulates a flow with `PriorHandler` and scores a recorded run with `ScoreGivenTrace`.
 
 ### Privacy
 

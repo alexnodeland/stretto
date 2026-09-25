@@ -20,6 +20,8 @@ path = "src/bin/stretto-mcp-demo.rs"
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
+fugue.workspace = true
+stretto-model.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 stretto-oracle.workspace = true

@@ -357,6 +357,8 @@ The spike surfaced six changes to `fugue-ppl`. All are additive, and they will g
 
 *Moved (2026-09-25):* the six changes are tracked in [fugue#61](https://github.com/alexnodeland/fugue/issues/61), as #62–#67 there. [Fugue's copy of this RFC](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md) keeps this section, the mapping in §3.2 and the spike.
 
+*Amended (2026-09-25):* built in fugue. `AsyncHandler` and `run_async` (fugue#62), `Distribution::as_any` and `WithMeta` (fugue#63), `Delegate` and `Overrides` (fugue#64), the conjugate helpers and `sample_dirichlet` (fugue#66), and a how-to for sample-or-observe sites (fugue#67). A flow's live run is now a fugue program, as §3.2 maps it: `stretto-proxy` interprets it with `run_async`, deciding at each `decide#i` site with the arbiter and making each lookup at its `outcome#i` site. stretto depends on fugue by git revision until fugue's next release.
+
 ### 3.10 Phased plan
 
 | Phase | Build | Gate to start |

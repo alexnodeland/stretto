@@ -248,9 +248,8 @@ dependencies = [
 
 [[package]]
 name = "fugue-ppl"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "925f7e577a165c90b9c6cfa1b7fdb5baa47a5b7f2d53c5e5c0620d2d3dfeb0dc"
+version = "0.2.3"
+source = "git+https://github.com/alexnodeland/fugue?rev=ac6f61fda219411bdb9e3963d8dc329f0265ea83#ac6f61fda219411bdb9e3963d8dc329f0265ea83"
 dependencies = [
  "libm",
  "rand 0.8.8",
@@ -1067,9 +1066,11 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap",
+ "fugue-ppl",
  "reqwest",
  "serde",
  "serde_json",
+ "stretto-model",
  "stretto-oracle",
  "stretto-report",
  "stretto-trace",

@@ -596,6 +596,11 @@ impl Sites {
         self.reads.contains(tool)
     }
 
+    /// Every read-only tool, by name: every lookup a flow could make.
+    pub fn reads(&self) -> impl Iterator<Item = &String> {
+        self.reads.iter()
+    }
+
     /// The lookups seen after `tool` (failed or not), by name: every
     /// read-only tool, if the sites offer every one.
     pub fn options(&self, tool: &str, failed: bool) -> Vec<String> {

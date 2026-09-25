@@ -371,6 +371,21 @@ fn flows_guards_and_commit_through_the_proxy() {
     assert_eq!(session_logs.len(), 1);
     assert_eq!(flow_logs.len(), 1);
     assert!(!fs::read_to_string(&flow_logs[0]).unwrap().is_empty());
+    // Each run of the flow after one of the agent's calls is a fugue
+    // program, and its decisions are that program's sites, in order.
+    let mut runs: Vec<(Value, Vec<String>)> = Vec::new();
+    for line in fs::read_to_string(&flow_logs[0]).unwrap().lines() {
+        let d: Value = serde_json::from_str(line).unwrap();
+        let address = d["address"].as_str().unwrap().to_string();
+        match runs.last_mut() {
+            Some((after, sites)) if *after == d["after"] => sites.push(address),
+            _ => runs.push((d["after"].clone(), vec![address])),
+        }
+    }
+    for (_, sites) in &runs {
+        let expected: Vec<String> = (0..sites.len()).map(|i| format!("decide#{i}")).collect();
+        assert_eq!(*sites, expected);
+    }
     let log = read_log(&session_logs[0]).unwrap();
     let ep = episode(&log);
     let said: Vec<&str> = ep
@@ -867,6 +882,8 @@ fn a_shadow_flow_decides_and_logs_but_makes_no_lookups() {
         .map(|l| serde_json::from_str(l).unwrap())
         .collect();
     assert_eq!(decisions[0]["shadow"], true, "{decisions:?}");
+    // Each decision is a site of the flow's run, as a fugue program.
+    assert_eq!(decisions[0]["address"], "decide#0");
     assert_eq!(decisions[0]["action"], "lookup");
     assert_eq!(decisions[0]["tool"], "get_user_details");
     assert_eq!(decisions[0]["arguments"], json!({"user_id": "user_7"}));
