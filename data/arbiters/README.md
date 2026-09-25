@@ -15,7 +15,7 @@ stretto learn --sessions ~/.stretto/logs --domain orders --arbiter-from data/arb
 | [`airline.json`](airline.json) | τ²-bench airline | 2,042 |
 
 - **The decisions** are those of τ²-bench's published 2025 trajectories of four agents (Claude 3.7 Sonnet, GPT-4.1, GPT-4.1 mini and o4-mini) on the test tasks, with Jev's answers from the published bundles.
-- **Each file holds** the eight fitted weights, Jev's agreement with the agents at each tool (per-site counts), the three yes/no questions it weighs (`data/predicates-v2.json`), and the model it asks. It holds no answer or conversation text.
+- **Each file holds** the eight fitted weights, Jev's agreement with the agents at each tool (per-site counts), the three yes/no questions it weighs (`data/predicates-v2.json`), and the model it asks. It holds no answer or conversation text. [docs/formats.md](../../docs/formats.md#the-arbiter-file-stretto_arbiter-1) describes every field.
 - **At a site it never saw**, as at any tool of another domain, the arbiter weighs Jev's answers by their agreement with the agents over all the sites it was fitted on.
 
 ## Which to use

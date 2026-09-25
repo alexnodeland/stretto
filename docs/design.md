@@ -86,7 +86,7 @@ stretto-proxy session logs ─┼─► stretto-trace (Episode) ─► stretto-m
 |---|---|---|
 | Measure on published trajectories (Phase 0) | Built | `stretto phase0` |
 | System-One questions and the arbiter (Phase 0b, v2) | Built | `stretto phase0 --oracle … --questions v2`; `shadow.rs`, `arbitrate.rs` |
-| Flow IR: compile from τ²-bench, learn from sessions, serve | Built | `stretto compile`, `learn`, `serve`; `flow.rs` |
+| Flow IR: compile from τ²-bench, learn from sessions, serve | Built; fields documented in [formats.md](formats.md) | `stretto compile`, `learn`, `serve`; `flow.rs` |
 | Read-only flows live (arm D0) | Built; paired pilots in retail and airline | `stretto-proxy --flow`; the pilot harness (`pilot/`) |
 | Policy guards (arms B and E) | Built, audited against τ²-bench; arm B live in airline (GLM-5.3 gave them nothing to refuse) | `guards.rs`; `stretto guards`; `stretto-proxy --guards`; `pilot/run_episode.py --arm guards` |
 | Confirmed writes in one call | Built; no live run has used it yet ([#7](https://github.com/alexnodeland/stretto/issues/7)) | `stretto-proxy --commit` (`stretto_commit`) |
