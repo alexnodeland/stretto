@@ -8,6 +8,7 @@ also gets an exact McNemar test on the pairs that disagree.
     python analyze_paired.py pairs OUT DOMAIN TRIALS [--basis FILE]
     python analyze_paired.py detours OUT DOMAIN TRIALS
     python analyze_paired.py pool OUT...
+    python analyze_paired.py arms --tasks ID... --arm NAME=DIR... [--json FILE]
 
 - `pairs` writes OUT/analysis.json: every pair, and the domain's summary.
   `--basis` takes `rescore.py --scoring basis --json` rows and adds the
@@ -21,6 +22,10 @@ also gets an exact McNemar test on the pairs that disagree.
   counted with tiktoken's cl100k_base, a stand-in for GLM's tokenizer. The
   turns come from Claude Code's event stream (`events.jsonl`).
 - `pool` pools domains' `pairs` output, drawing tasks within each domain.
+- `arms` compares arms that ran the same tasks once each, each with the
+  first, which is usually the arm without a flow: turns, tokens, passes and
+  the flow's lookups, the agent's own and detours as for `detours`. Each
+  DIR holds `task-<id>` episodes.
 """
 
 import argparse
@@ -266,6 +271,53 @@ def pool(args) -> None:
     print(json.dumps(res, indent=1))
 
 
+def arms(args) -> None:
+    named = [a.split("=", 1) for a in args.arm]
+    base_name, base_dir = named[0]
+    base_calls = {t: {(c["name"], json.dumps(c["arguments"], sort_keys=True))
+                      for c in session_calls(Path(base_dir) / f"task-{t}")} for t in args.tasks}
+    out = {"tasks": args.tasks, "base": base_name, "arms": {}}
+    base = {t: run_pilot.episode_summary(Path(base_dir) / f"task-{t}") for t in args.tasks}
+    for name, directory in named:
+        eps = {t: run_pilot.episode_summary(Path(directory) / f"task-{t}") for t in args.tasks}
+        pairs = {t: [{"turns_a": base[t]["llm_turns"], "turns_b": eps[t]["llm_turns"],
+                      "tok_a": base[t]["agent_input_tokens"], "tok_b": eps[t]["agent_input_tokens"],
+                      "pass_a": base[t]["reward"] >= 1 - 1e-9, "pass_b": eps[t]["reward"] >= 1 - 1e-9}]
+                 for t in args.tasks}
+        own = detour = 0
+        for t in args.tasks:
+            for call in session_calls(Path(directory) / f"task-{t}"):
+                for lookup in appended(call["text"]):
+                    key = (lookup["name"], json.dumps(lookup["arguments"], sort_keys=True))
+                    own += key in base_calls[t]
+                    detour += key not in base_calls[t]
+        b_only = sum(ps[0]["pass_a"] and not ps[0]["pass_b"] for ps in pairs.values())
+        a_only = sum(ps[0]["pass_b"] and not ps[0]["pass_a"] for ps in pairs.values())
+        out["arms"][name] = {
+            "passed": sum(e["reward"] >= 1 - 1e-9 for e in eps.values()),
+            "failed_tasks": [t for t in args.tasks if eps[t]["reward"] < 1 - 1e-9],
+            "turns": sum(e["llm_turns"] for e in eps.values()),
+            "input_tokens": sum(e["agent_input_tokens"] for e in eps.values()),
+            "credits": round(sum(e["credits_billed"] for e in eps.values()), 1),
+            "agent_calls": sum(e["agent_calls"] for e in eps.values()),
+            "flow_lookups": sum(e["flow_lookups"] for e in eps.values()),
+            "repeats": sum(e["repeats"] for e in eps.values()),
+            "own": own, "detours": detour,
+            "turns_saved_share": clustered(pairs, lambda ps: 1 - sum(p["turns_b"] for p in ps) / sum(p["turns_a"] for p in ps)),
+            "turn_difference_per_episode": clustered(
+                pairs, lambda ps: sum(p["turns_b"] - p["turns_a"] for p in ps) / len(ps)),
+            "input_tokens_saved_share": clustered(pairs, lambda ps: 1 - sum(p["tok_b"] for p in ps) / sum(p["tok_a"] for p in ps)),
+            "fewer_turns": sum(eps[t]["llm_turns"] < base[t]["llm_turns"] for t in args.tasks),
+            "more_turns": sum(eps[t]["llm_turns"] > base[t]["llm_turns"] for t in args.tasks),
+            "passed_only_here": a_only, "passed_only_in_base": b_only,
+            "per_task": {t: {k: eps[t][k] for k in ("reward", "llm_turns", "agent_input_tokens", "flow_lookups",
+                                                    "repeats", "credits_billed")} for t in args.tasks},
+        }
+    if args.json:
+        args.json.write_text(json.dumps(out, indent=1) + "\n")
+    print(json.dumps({k: {m: v for m, v in a.items() if m != "per_task"} for k, a in out["arms"].items()}, indent=1))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -280,8 +332,12 @@ def main() -> None:
             p.add_argument("--basis", type=Path, help="rescore.py --scoring basis --json rows")
     p = sub.add_parser("pool")
     p.add_argument("outs", type=Path, nargs="+")
+    p = sub.add_parser("arms")
+    p.add_argument("--tasks", nargs="+", required=True)
+    p.add_argument("--arm", action="append", required=True, help="NAME=DIR; the first is the base")
+    p.add_argument("--json", type=Path, help="also write every arm's numbers here")
     args = parser.parse_args()
-    {"pairs": pairs, "detours": detours, "pool": pool}[args.command](args)
+    {"pairs": pairs, "detours": detours, "pool": pool, "arms": arms}[args.command](args)
 
 
 if __name__ == "__main__":

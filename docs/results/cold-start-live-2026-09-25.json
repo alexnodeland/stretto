@@ -1,0 +1,627 @@
+{
+ "run": "stretto #3: the cold start live; see cold-start-live-2026-09-25.md",
+ "live": {
+  "tasks": [
+   "17",
+   "18",
+   "27",
+   "36",
+   "51",
+   "60",
+   "64",
+   "68",
+   "77",
+   "101"
+  ],
+  "base": "no flow",
+  "arms": {
+   "no flow": {
+    "passed": 8,
+    "failed_tasks": [
+     "27",
+     "64"
+    ],
+    "turns": 110,
+    "input_tokens": 723926,
+    "credits": 128.5,
+    "agent_calls": 69,
+    "flow_lookups": 0,
+    "repeats": 0,
+    "own": 0,
+    "detours": 0,
+    "turns_saved_share": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turn_difference_per_episode": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "input_tokens_saved_share": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fewer_turns": 0,
+    "more_turns": 0,
+    "passed_only_here": 0,
+    "passed_only_in_base": 0,
+    "per_task": {
+     "17": {
+      "reward": 1.0,
+      "llm_turns": 6,
+      "agent_input_tokens": 30604,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 6.13
+     },
+     "18": {
+      "reward": 1.0,
+      "llm_turns": 11,
+      "agent_input_tokens": 73304,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 12.51
+     },
+     "27": {
+      "reward": 0.0,
+      "llm_turns": 14,
+      "agent_input_tokens": 102663,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 17.56
+     },
+     "36": {
+      "reward": 1.0,
+      "llm_turns": 16,
+      "agent_input_tokens": 125565,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 21.73
+     },
+     "51": {
+      "reward": 1.0,
+      "llm_turns": 10,
+      "agent_input_tokens": 57658,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 8.49
+     },
+     "60": {
+      "reward": 1.0,
+      "llm_turns": 6,
+      "agent_input_tokens": 34600,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 7.05
+     },
+     "64": {
+      "reward": 0.0,
+      "llm_turns": 11,
+      "agent_input_tokens": 66349,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 12.58
+     },
+     "68": {
+      "reward": 1.0,
+      "llm_turns": 9,
+      "agent_input_tokens": 50599,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 13.13
+     },
+     "77": {
+      "reward": 1.0,
+      "llm_turns": 8,
+      "agent_input_tokens": 43346,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 7.36
+     },
+     "101": {
+      "reward": 1.0,
+      "llm_turns": 19,
+      "agent_input_tokens": 139238,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 22.0
+     }
+    }
+   },
+   "D0": {
+    "passed": 8,
+    "failed_tasks": [
+     "27",
+     "64"
+    ],
+    "turns": 84,
+    "input_tokens": 571528,
+    "credits": 108.0,
+    "agent_calls": 42,
+    "flow_lookups": 26,
+    "repeats": 3,
+    "own": 26,
+    "detours": 0,
+    "turns_saved_share": [
+     0.2364,
+     0.1429,
+     0.3276
+    ],
+    "turn_difference_per_episode": [
+     -2.6,
+     -3.9,
+     -1.4
+    ],
+    "input_tokens_saved_share": [
+     0.2105,
+     0.1004,
+     0.3182
+    ],
+    "fewer_turns": 9,
+    "more_turns": 1,
+    "passed_only_here": 0,
+    "passed_only_in_base": 0,
+    "per_task": {
+     "17": {
+      "reward": 1.0,
+      "llm_turns": 7,
+      "agent_input_tokens": 36027,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 5.79
+     },
+     "18": {
+      "reward": 1.0,
+      "llm_turns": 9,
+      "agent_input_tokens": 58737,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 10.34
+     },
+     "27": {
+      "reward": 0.0,
+      "llm_turns": 8,
+      "agent_input_tokens": 64423,
+      "flow_lookups": 5,
+      "repeats": 0,
+      "credits_billed": 12.59
+     },
+     "36": {
+      "reward": 1.0,
+      "llm_turns": 11,
+      "agent_input_tokens": 84453,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 16.06
+     },
+     "51": {
+      "reward": 1.0,
+      "llm_turns": 5,
+      "agent_input_tokens": 26123,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 5.27
+     },
+     "60": {
+      "reward": 1.0,
+      "llm_turns": 5,
+      "agent_input_tokens": 29410,
+      "flow_lookups": 1,
+      "repeats": 0,
+      "credits_billed": 6.73
+     },
+     "64": {
+      "reward": 0.0,
+      "llm_turns": 9,
+      "agent_input_tokens": 59949,
+      "flow_lookups": 3,
+      "repeats": 1,
+      "credits_billed": 11.88
+     },
+     "68": {
+      "reward": 1.0,
+      "llm_turns": 8,
+      "agent_input_tokens": 45978,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 11.56
+     },
+     "77": {
+      "reward": 1.0,
+      "llm_turns": 6,
+      "agent_input_tokens": 33694,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 6.57
+     },
+     "101": {
+      "reward": 1.0,
+      "llm_turns": 16,
+      "agent_input_tokens": 132734,
+      "flow_lookups": 3,
+      "repeats": 2,
+      "credits_billed": 21.17
+     }
+    }
+   },
+   "habit, four agents": {
+    "passed": 9,
+    "failed_tasks": [
+     "64"
+    ],
+    "turns": 79,
+    "input_tokens": 550910,
+    "credits": 109.1,
+    "agent_calls": 36,
+    "flow_lookups": 37,
+    "repeats": 0,
+    "own": 31,
+    "detours": 6,
+    "turns_saved_share": [
+     0.2818,
+     0.2083,
+     0.3672
+    ],
+    "turn_difference_per_episode": [
+     -3.1,
+     -4.4,
+     -2.0
+    ],
+    "input_tokens_saved_share": [
+     0.239,
+     0.1579,
+     0.3271
+    ],
+    "fewer_turns": 10,
+    "more_turns": 0,
+    "passed_only_here": 1,
+    "passed_only_in_base": 0,
+    "per_task": {
+     "17": {
+      "reward": 1.0,
+      "llm_turns": 5,
+      "agent_input_tokens": 29849,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 6.57
+     },
+     "18": {
+      "reward": 1.0,
+      "llm_turns": 8,
+      "agent_input_tokens": 52596,
+      "flow_lookups": 3,
+      "repeats": 0,
+      "credits_billed": 10.68
+     },
+     "27": {
+      "reward": 1.0,
+      "llm_turns": 7,
+      "agent_input_tokens": 56651,
+      "flow_lookups": 5,
+      "repeats": 0,
+      "credits_billed": 12.02
+     },
+     "36": {
+      "reward": 1.0,
+      "llm_turns": 13,
+      "agent_input_tokens": 104411,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 17.28
+     },
+     "51": {
+      "reward": 1.0,
+      "llm_turns": 5,
+      "agent_input_tokens": 30396,
+      "flow_lookups": 5,
+      "repeats": 0,
+      "credits_billed": 6.32
+     },
+     "60": {
+      "reward": 1.0,
+      "llm_turns": 5,
+      "agent_input_tokens": 34365,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 7.27
+     },
+     "64": {
+      "reward": 0.0,
+      "llm_turns": 8,
+      "agent_input_tokens": 52785,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 10.69
+     },
+     "68": {
+      "reward": 1.0,
+      "llm_turns": 7,
+      "agent_input_tokens": 38735,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 10.17
+     },
+     "77": {
+      "reward": 1.0,
+      "llm_turns": 7,
+      "agent_input_tokens": 40861,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 9.37
+     },
+     "101": {
+      "reward": 1.0,
+      "llm_turns": 14,
+      "agent_input_tokens": 110261,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 18.7
+     }
+    }
+   },
+   "habit, five sessions": {
+    "passed": 8,
+    "failed_tasks": [
+     "27",
+     "64"
+    ],
+    "turns": 79,
+    "input_tokens": 552523,
+    "credits": 109.0,
+    "agent_calls": 38,
+    "flow_lookups": 37,
+    "repeats": 0,
+    "own": 31,
+    "detours": 6,
+    "turns_saved_share": [
+     0.2818,
+     0.1895,
+     0.3689
+    ],
+    "turn_difference_per_episode": [
+     -3.1,
+     -4.6,
+     -1.8
+    ],
+    "input_tokens_saved_share": [
+     0.2368,
+     0.1307,
+     0.3311
+    ],
+    "fewer_turns": 9,
+    "more_turns": 0,
+    "passed_only_here": 0,
+    "passed_only_in_base": 0,
+    "per_task": {
+     "17": {
+      "reward": 1.0,
+      "llm_turns": 6,
+      "agent_input_tokens": 36790,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 7.75
+     },
+     "18": {
+      "reward": 1.0,
+      "llm_turns": 9,
+      "agent_input_tokens": 63429,
+      "flow_lookups": 3,
+      "repeats": 0,
+      "credits_billed": 11.42
+     },
+     "27": {
+      "reward": 0.0,
+      "llm_turns": 8,
+      "agent_input_tokens": 61598,
+      "flow_lookups": 5,
+      "repeats": 0,
+      "credits_billed": 10.0
+     },
+     "36": {
+      "reward": 1.0,
+      "llm_turns": 14,
+      "agent_input_tokens": 112307,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 19.1
+     },
+     "51": {
+      "reward": 1.0,
+      "llm_turns": 5,
+      "agent_input_tokens": 30404,
+      "flow_lookups": 5,
+      "repeats": 0,
+      "credits_billed": 6.08
+     },
+     "60": {
+      "reward": 1.0,
+      "llm_turns": 5,
+      "agent_input_tokens": 34390,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 7.74
+     },
+     "64": {
+      "reward": 0.0,
+      "llm_turns": 8,
+      "agent_input_tokens": 52959,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 11.19
+     },
+     "68": {
+      "reward": 1.0,
+      "llm_turns": 7,
+      "agent_input_tokens": 39275,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 11.01
+     },
+     "77": {
+      "reward": 1.0,
+      "llm_turns": 6,
+      "agent_input_tokens": 33556,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 6.49
+     },
+     "101": {
+      "reward": 1.0,
+      "llm_turns": 11,
+      "agent_input_tokens": 87815,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 18.19
+     }
+    }
+   },
+   "habit, five sessions, airline arbiter": {
+    "passed": 8,
+    "failed_tasks": [
+     "27",
+     "64"
+    ],
+    "turns": 70,
+    "input_tokens": 477557,
+    "credits": 95.6,
+    "agent_calls": 37,
+    "flow_lookups": 34,
+    "repeats": 4,
+    "own": 32,
+    "detours": 2,
+    "turns_saved_share": [
+     0.3636,
+     0.2626,
+     0.4454
+    ],
+    "turn_difference_per_episode": [
+     -4.0,
+     -5.6,
+     -2.5
+    ],
+    "input_tokens_saved_share": [
+     0.3403,
+     0.2478,
+     0.4193
+    ],
+    "fewer_turns": 9,
+    "more_turns": 0,
+    "passed_only_here": 0,
+    "passed_only_in_base": 0,
+    "per_task": {
+     "17": {
+      "reward": 1.0,
+      "llm_turns": 6,
+      "agent_input_tokens": 32285,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 6.72
+     },
+     "18": {
+      "reward": 1.0,
+      "llm_turns": 10,
+      "agent_input_tokens": 65971,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 11.43
+     },
+     "27": {
+      "reward": 0.0,
+      "llm_turns": 7,
+      "agent_input_tokens": 52590,
+      "flow_lookups": 5,
+      "repeats": 0,
+      "credits_billed": 10.15
+     },
+     "36": {
+      "reward": 1.0,
+      "llm_turns": 8,
+      "agent_input_tokens": 80820,
+      "flow_lookups": 6,
+      "repeats": 4,
+      "credits_billed": 16.78
+     },
+     "51": {
+      "reward": 1.0,
+      "llm_turns": 5,
+      "agent_input_tokens": 26184,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 5.25
+     },
+     "60": {
+      "reward": 1.0,
+      "llm_turns": 4,
+      "agent_input_tokens": 25256,
+      "flow_lookups": 3,
+      "repeats": 0,
+      "credits_billed": 6.27
+     },
+     "64": {
+      "reward": 0.0,
+      "llm_turns": 6,
+      "agent_input_tokens": 38073,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 7.7
+     },
+     "68": {
+      "reward": 1.0,
+      "llm_turns": 6,
+      "agent_input_tokens": 31715,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 8.41
+     },
+     "77": {
+      "reward": 1.0,
+      "llm_turns": 5,
+      "agent_input_tokens": 28150,
+      "flow_lookups": 3,
+      "repeats": 0,
+      "credits_billed": 6.21
+     },
+     "101": {
+      "reward": 1.0,
+      "llm_turns": 13,
+      "agent_input_tokens": 96513,
+      "flow_lookups": 3,
+      "repeats": 0,
+      "credits_billed": 16.67
+     }
+    }
+   }
+  }
+ },
+ "offline_check": {
+  "habit, five sessions": {
+   "turns": 347,
+   "tool_turns": 194,
+   "turns_saved": 71,
+   "calls": 283,
+   "calls_skipped": 138,
+   "flow_lookups": 151,
+   "flow_queries": 296,
+   "detours": 13,
+   "episodes": 40,
+   "turns_saved_share": 0.2046,
+   "episodes_with_detour": 5
+  },
+  "habit, five sessions, airline arbiter": {
+   "turns": 347,
+   "tool_turns": 194,
+   "turns_saved": 68,
+   "calls": 283,
+   "calls_skipped": 144,
+   "flow_lookups": 154,
+   "flow_queries": 293,
+   "detours": 10,
+   "episodes": 40,
+   "turns_saved_share": 0.196,
+   "episodes_with_detour": 7
+  }
+ }
+}

@@ -15,7 +15,7 @@ Each of these spends the Z.ai coding-plan key, so each needs an approved credit 
 | Issue | What | Why | Cost |
 |---|---|---|---|
 | [#2](https://github.com/alexnodeland/stretto/issues/2) | A paired run on every test task | Done: 80 pairs. The flow saved 25.5% of LLM turns (95% interval 20.5% to 30.4%), and the pass rate moved −1.25 points (−7.5 to +6.25) ([results](results/paired-2026-09-25.md)). A one-point bound would take about 4,300 pairs | 1,897 credits |
-| [#3](https://github.com/alexnodeland/stretto/issues/3) | The cold start live: the habit alone against the habit with a shipped arbiter | Offline, both beat an arbiter fitted on the first sessions; live, only that arbiter flow ran, on three tasks | About 240 credits for retail; airline adds 420 |
+| [#3](https://github.com/alexnodeland/stretto/issues/3) | The cold start live: the habit alone against the habit with a shipped arbiter | Done in retail. On the pilot's ten tasks, the habit from five sessions took 79 LLM turns against 110 with no flow, making exactly the lookups the four-agent habit made. With the shipped airline arbiter it took 70, with fewer detours ([results](results/cold-start-live-2026-09-25.md)). Airline is left | 205 credits for retail; airline would add about 420 |
 | [#4](https://github.com/alexnodeland/stretto/issues/4) | A simulated customer that is not the agent's own model | In every pilot, GLM-5.3 played both parts | A key for the customer's model |
 | [#5](https://github.com/alexnodeland/stretto/issues/5) | More agent models live | Every live result is one model; offline, savings follow calling style | A key and a budget per model |
 | [#6](https://github.com/alexnodeland/stretto/issues/6) | The confirmation judge enforced | Enforced, it would refuse 5–11% of the writes accepted in successful episodes; whether that costs passes or turns is untested. The proxy can enforce it since #14 | About 240 credits for retail, 340 for airline |
@@ -96,7 +96,7 @@ All six are built. A live flow now runs as a fugue program: the flow IR holds it
    - telecom (#10);
    - the cold start's other agents and draws (#9);
    - independent labels (#11).
-4. **Live runs, as budgets are approved.** The paired run (#2) is done. It puts the pass-rate change between −7.5 and +6.25 points, not within one. Next come the confirmation judge enforced (#6) and the cold start live (#3).
+4. **Live runs, as budgets are approved.** The paired run (#2) and the cold start live in retail (#3) are done. The paired run puts the pass-rate change between −7.5 and +6.25 points, not within one. Next comes the confirmation judge enforced (#6).
 5. **Phase 3 features** as the evidence calls for them:
    - counterfactual evaluation (#15);
    - predicate refinement (#16);

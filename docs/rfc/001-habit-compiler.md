@@ -1,6 +1,6 @@
 # RFC-001: Habit compiler — compiling agent behavior into System-One flows
 
-- **Status:** Accepted (2026-09-23, [fugue#51](https://github.com/alexnodeland/fugue/pull/51)). Amended the same day with what Phase 0 found (§3.12, [fugue#52](https://github.com/alexnodeland/fugue/pull/52)) and with Phase 0b v2's read-only flows and arbitration (§3.13, [fugue#53](https://github.com/alexnodeland/fugue/pull/53)), and on 2026-09-24 with the first live form and pilot (§3.14, [fugue#54](https://github.com/alexnodeland/fugue/pull/54)), with the built implementation, the airline pilot, policy guards and the flow audit (§3.15, [fugue#55](https://github.com/alexnodeland/fugue/pull/55)), with the arms measured before building macro-tools (§3.16, [fugue#56](https://github.com/alexnodeland/fugue/pull/56)), with the habit alone live, fewer traces and Jev as a confirmation judge (§3.17, [fugue#58](https://github.com/alexnodeland/fugue/pull/58)), with a cold start from an agent's own sessions, options from the manifest, a second confirmation question and matching descriptions to records (§3.18, [fugue#59](https://github.com/alexnodeland/fugue/pull/59)), and with an arbiter shipped with the compiler (§3.19, [fugue#60](https://github.com/alexnodeland/fugue/pull/60)). On 2026-09-25 it was amended here with the paired run on every test task (§3.20). The design was iterated with @alexnodeland on 2026-09-23; the decisions are in §3.11. On 2026-09-25 it moved from fugue's decision log to stretto ([fugue#68](https://github.com/alexnodeland/fugue/pull/68)), where it is amended from now on. [Fugue's copy](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md) keeps fugue's side of it: the mapping onto fugue (§3.2), what fugue decided about its own scope and the six changes to `fugue-ppl` (§3.9), and the spike (Appendix A).
+- **Status:** Accepted (2026-09-23, [fugue#51](https://github.com/alexnodeland/fugue/pull/51)). Amended the same day with what Phase 0 found (§3.12, [fugue#52](https://github.com/alexnodeland/fugue/pull/52)) and with Phase 0b v2's read-only flows and arbitration (§3.13, [fugue#53](https://github.com/alexnodeland/fugue/pull/53)), and on 2026-09-24 with the first live form and pilot (§3.14, [fugue#54](https://github.com/alexnodeland/fugue/pull/54)), with the built implementation, the airline pilot, policy guards and the flow audit (§3.15, [fugue#55](https://github.com/alexnodeland/fugue/pull/55)), with the arms measured before building macro-tools (§3.16, [fugue#56](https://github.com/alexnodeland/fugue/pull/56)), with the habit alone live, fewer traces and Jev as a confirmation judge (§3.17, [fugue#58](https://github.com/alexnodeland/fugue/pull/58)), with a cold start from an agent's own sessions, options from the manifest, a second confirmation question and matching descriptions to records (§3.18, [fugue#59](https://github.com/alexnodeland/fugue/pull/59)), and with an arbiter shipped with the compiler (§3.19, [fugue#60](https://github.com/alexnodeland/fugue/pull/60)). On 2026-09-25 it was amended here with the paired run on every test task (§3.20) and the cold start live (§3.21). The design was iterated with @alexnodeland on 2026-09-23; the decisions are in §3.11. On 2026-09-25 it moved from fugue's decision log to stretto ([fugue#68](https://github.com/alexnodeland/fugue/pull/68)), where it is amended from now on. [Fugue's copy](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md) keeps fugue's side of it: the mapping onto fugue (§3.2), what fugue decided about its own scope and the six changes to `fugue-ppl` (§3.9), and the spike (Appendix A).
 - **Authors:** @alexnodeland (drafted with Claude Code)
 - **Created:** 2026-09-23
 - **Updated:** 2026-09-25
@@ -27,6 +27,7 @@
     - [`docs/results/matching-2026-09-24.md`](../results/matching-2026-09-24.md) (matching descriptions to records);
     - [`docs/results/arbiter-transfer-2026-09-24.md`](../results/arbiter-transfer-2026-09-24.md) (shipped arbiters across domains);
     - [`docs/results/paired-2026-09-25.md`](../results/paired-2026-09-25.md) (the paired run on every test task);
+    - [`docs/results/cold-start-live-2026-09-25.md`](../results/cold-start-live-2026-09-25.md) (the cold start, live);
     - the working paper, [alexnodeland.github.io/stretto](https://alexnodeland.github.io/stretto/);
   - TypeSafe AI's Jev (released 2026-09-15).
 
@@ -979,6 +980,27 @@ What this changes:
   - the confirmation judge enforced;
   - more agent models, and a simulated customer that is not the agent's own model.
 
+### 3.21 Amendment 10: the cold start, live (2026-09-25)
+
+§3.18 left the cold start live on three tasks, with a flow whose arbiter was fitted on two of GLM-5.3's five recorded sessions. Offline, two other starts did better (§3.18, §3.19). This round learned both from all five sessions and ran them on all ten of the retail pilot's tasks: the habit alone, and the habit with the shipped airline arbiter.
+
+- **Details:** stretto's [cold start, live](../results/cold-start-live-2026-09-25.md), and the [working paper](https://alexnodeland.github.io/stretto/)'s §5.12.
+
+| | No flow | D0 | Habit, four agents | Habit, five sessions | With the shipped airline arbiter |
+|---|---|---|---|---|---|
+| LLM turns, ten tasks | 110 | 84 | 79 | 79 | 70 |
+| Passed | 8 | 8 | 9 | 8 | 8 |
+| Detours | | 0 | 6 | 6 | 2 |
+
+- **Five sessions teach the habit what four agents' episodes do.** On every task, the habit learned from five of GLM-5.3's sessions made exactly the lookups that the habit learned from four other agents' 2025 episodes made. Their episodes still differed on six tasks and on the pass of one: that is the agent's and the customer's own variance.
+- **The shipped arbiter added precision.** It cut detours from 6 to 2, and took 0.9 fewer turns per episode than the habit alone (95% interval −2.3 to +0.2).
+- **Both passed 8 of 10,** failing the two tasks the arms without a flow and with D0 failed, with the same agent errors.
+
+What this changes:
+
+- **A deployment's first flow (§3.6)** is confirmed live in retail. It is the habit from its first five sessions, which needs no key, with a shipped arbiter where detours matter.
+- **Next:** the same in airline, where offline the habit alone saves less and the arbiter trades savings for fewer detours.
+
 ---
 
 ## 4. Drawbacks
@@ -1052,7 +1074,7 @@ What this changes:
    - With few traces, on §3.17's clustered samples and an arbiter fitted on thousands of other agents' decisions, they carried the savings. From a deployment's own first sessions they did not: the habit alone saved more than an arbiter fitted on those sessions until about twenty (§3.18). An arbiter fitted elsewhere lifted a narrow start.
    - Judging a confirmation before a write: where Jev and the word list disagree, hand labels side with Jev on 30 of 40. A second question catches calls that differ from what the customer agreed to, and half its flags are false (§3.18). Enforcing it is untested.
    - Matching a description to a record: no. Jev picked the expected record less often than the agents did (§3.18).
-   - An arbiter fitted once, on public traces, serves a domain it never saw as well as that domain's own arbiter does (§3.19).
+   - An arbiter fitted once, on public traces, serves a domain it never saw as well as that domain's own arbiter does (§3.19). Live, on ten retail tasks, the airline arbiter cut a five-session habit's detours from 6 to 2, at no cost in turns (§3.21).
 
 ---
 
@@ -1108,6 +1130,9 @@ What this changes:
   - Amended on 2026-09-25 (§3.20), after the paired run on every test task:
     - over 80 pairs, the flow saved 25.5% of LLM turns (95% interval 20.5% to 30.4%), which meets the gate's turns half;
     - the pass rate moved −1.25 points (−7.5 to +6.25), so a loss of up to 7.5 points is not ruled out. A one-point bound would take about 4,300 pairs.
+  - Amended again on 2026-09-25 (§3.21), with the cold start live on ten retail tasks:
+    - the habit from five of GLM-5.3's sessions made exactly the four-agent habit's lookups, and took 79 LLM turns against 110 with no flow;
+    - with the shipped airline arbiter it took 70, with 2 detours where the habit alone made 6.
 
 ---
 

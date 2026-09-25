@@ -44,7 +44,7 @@ Everything so far: the first design of [RFC-001](docs/rfc/001-habit-compiler.md)
 
 ### Live runs
 
-- `pilot/run_paired.py` runs every test task of a domain in both arms, reusing a pilot's pairs, under a Z.ai credit budget that it checks against a ledger before each episode. `pilot/analyze_paired.py` reports on the result: paired pass rates with a bootstrap interval and McNemar's test, turns and tokens saved, detours and their token cost, and a pooled estimate across domains ([the paired run](docs/results/paired-2026-09-25.md)).
+- `pilot/run_paired.py` runs every test task of a domain in both arms, reusing a pilot's pairs, under a Z.ai credit budget that it checks against a ledger before each episode. `pilot/analyze_paired.py` reports on the result: paired pass rates with a bootstrap interval and McNemar's test, turns and tokens saved, detours and their token cost, and a pooled estimate across domains ([the paired run](docs/results/paired-2026-09-25.md)). Its `arms` command compares any arms run on the same tasks ([the cold start, live](docs/results/cold-start-live-2026-09-25.md)).
 
 ### Documentation
 

@@ -84,6 +84,11 @@ In the flows arm, the agent's first call found the user. The flow then looked up
 - 71 of 80 pairs passed the database check without the flow and 70 with it: −1.25 points (−7.5 to +6.25). That cannot rule out a loss of a few points.
 - 242 of the flow's 259 lookups were calls the agent made without the flow too. The 17 detours carried under 3% of the input tokens the flow saved.
 
+**Cold start, live.** Two flows learned from the five sessions GLM-5.3 recorded, the habit alone and the habit with the shipped airline arbiter, ran on the retail pilot's ten tasks (`run_episode.py --arm habit` and `--arm flows`, each with `--flow`). See [the summary](../docs/results/cold-start-live-2026-09-25.md):
+
+- The habit alone took 79 LLM turns, against 110 without a flow. It made exactly the lookups the habit from four other agents made.
+- With the arbiter it took 70 turns, with 2 detours where the habit alone made 6. Both passed 8 of 10.
+
 **Guards pilot, airline.** The guards arm (`run_episode.py --arm guards`) runs the tools behind `stretto-proxy --guards`, which refuses a write an enforced policy rule fails. It ran on the four airline test tasks where the guard audit finds the 2025 agents' refused writes concentrated (35, 45, 32, 48), plus four harm checks against the airline pilot's baselines. See [the summary](../docs/results/pilot-guards-2026-09-24.md):
 
 - GLM-5.3 passed all four main tasks in both arms, and the guards refused nothing. It never tried the cancellations the policy forbids.
