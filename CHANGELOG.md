@@ -60,4 +60,4 @@ Everything so far: the first design of [RFC-001](docs/rfc/001-habit-compiler.md)
 
 - Install from the tag: `cargo install --git https://github.com/alexnodeland/stretto --tag v0.1.0 stretto-proxy stretto-report`. It is not on crates.io yet: it depends on fugue's `program` feature, which is not in a fugue release yet.
 - The shipped arbiters stay in [`data/arbiters/`](data/arbiters/README.md); take them from a checkout or from the tag.
-- A version tag makes a GitHub release with that version's section of this file as its notes.
+- A version tag, or the release workflow run by hand, makes a GitHub release with that version's section of this file as its notes.

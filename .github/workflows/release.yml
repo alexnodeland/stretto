@@ -1,10 +1,13 @@
 name: Release
 
-# On a version tag (v0.1.0), makes a GitHub release whose notes are that
-# version's section of CHANGELOG.md. Nothing is published to crates.io.
+# Makes a GitHub release whose notes are the version's section of
+# CHANGELOG.md, on a version tag (v0.1.0), or when run by hand from the
+# Actions tab, which tags the commit it runs on v<the version in Cargo.toml>
+# first. Nothing is published to crates.io.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -14,17 +17,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: The tag
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            echo "TAG=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+          else
+            version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
+            echo "TAG=v$version" >> "$GITHUB_ENV"
+          fi
       - name: Notes from CHANGELOG.md
         run: |
-          version="${GITHUB_REF_NAME#v}"
-          awk -v head="## $version " '
+          awk -v head="## ${TAG#v} " '
             /^## / { if (found) exit; if (index($0, head) == 1) { found = 1; next } }
             found { print }
           ' CHANGELOG.md \
-            | perl -pe 's{\]\((?!https?://|#)([^)]+)\)}{](https://github.com/$ENV{GITHUB_REPOSITORY}/blob/$ENV{GITHUB_REF_NAME}/$1)}g' \
+            | perl -pe 's{\]\((?!https?://|#)([^)]+)\)}{](https://github.com/$ENV{GITHUB_REPOSITORY}/blob/$ENV{TAG}/$1)}g' \
             > notes.md
           test -s notes.md
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --verify-tag --title "stretto $GITHUB_REF_NAME" --notes-file notes.md
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            gh release create "$TAG" --verify-tag --title "stretto $TAG" --notes-file notes.md
+          else
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "stretto $TAG" --notes-file notes.md
+          fi
