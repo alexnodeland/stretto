@@ -39,6 +39,8 @@ Together with the v2 bundle, it also compiles the live flow (`stretto flow-serve
 
 ## Reproduce
 
+[The CLI reference](../cli.md) lists every option.
+
 ```sh
 for b in phase0b-v2-2026-09-23 phase0b-v2-goal-free-2026-09-24; do
   gunzip -c docs/results/$b-answers.jsonl.gz | stretto import-answers --oracle-cache .oracle-cache

@@ -26,80 +26,108 @@ struct Cli {
     /// Write a session log (JSONL) into this directory, created if missing.
     ///
     /// A leading `~` is expanded, since hosts start servers without a shell.
-    #[arg(long, value_name = "DIR")]
+    #[arg(help_heading = "Recording", long, value_name = "DIR")]
     record: Option<PathBuf>,
     /// Domain for the log header, e.g. `retail`; --guards uses its rules.
-    #[arg(long, value_name = "NAME")]
+    #[arg(help_heading = "Recording", long, value_name = "NAME")]
     domain: Option<String>,
     /// Model that drives the agent, for the log header.
-    #[arg(long, value_name = "MODEL")]
+    #[arg(help_heading = "Recording", long, value_name = "MODEL")]
     agent_model: Option<String>,
     /// Run this flow (from `stretto compile` or `stretto learn`) after each
     /// of the agent's calls, and append its lookups to the result.
-    #[arg(long, value_name = "FILE")]
+    #[arg(help_heading = "Flows", long, value_name = "FILE")]
     flow: Option<PathBuf>,
     /// Who answers the flow's and the confirmation judge's questions: `jev`
     /// (needs TYPESAFE_API_KEY), `replay` (the cache only) or `mock`.
-    #[arg(long, value_enum, default_value_t = OracleArg::Jev)]
+    #[arg(help_heading = "The System-One model", long, value_enum, default_value_t = OracleArg::Jev)]
     oracle: OracleArg,
     /// Replay cache for the System-One model's answers.
-    #[arg(long, value_name = "DIR", default_value = "~/.stretto/oracle-cache")]
+    #[arg(
+        help_heading = "The System-One model",
+        long,
+        value_name = "DIR",
+        default_value = "~/.stretto/oracle-cache"
+    )]
     oracle_cache: PathBuf,
     /// Take a lookup when the tool's probability times its arguments'
     /// agreement is at least this.
-    #[arg(long, default_value_t = 0.3)]
+    #[arg(help_heading = "Flows", value_name = "P", long, default_value_t = 0.3)]
     flow_threshold: f64,
     /// Where the tool's probability comes from: `arbiter` (the habit, the
     /// System-One model's answers and the predicates, combined) or `habit`
     /// (the habit alone, which never asks a System-One model and needs no
     /// key).
-    #[arg(long, value_enum, default_value_t = DeciderArg::Arbiter)]
+    #[arg(help_heading = "Flows", long, value_enum, default_value_t = DeciderArg::Arbiter)]
     flow_decider: DeciderArg,
     /// Lookups appended to one result, at most.
-    #[arg(long, default_value_t = 8)]
+    #[arg(help_heading = "Flows", value_name = "N", long, default_value_t = 8)]
     flow_per_call: usize,
     /// Lookups per session, at most.
-    #[arg(long, default_value_t = 40)]
+    #[arg(help_heading = "Flows", value_name = "N", long, default_value_t = 40)]
     flow_per_session: usize,
     /// Questions to the System-One model per session, at most.
-    #[arg(long, default_value_t = 300)]
+    #[arg(help_heading = "Flows", value_name = "N", long, default_value_t = 300)]
     flow_questions: usize,
     /// Append the flow's decisions here (default: next to the session log).
-    #[arg(long, value_name = "FILE")]
+    #[arg(help_heading = "Flows", long, value_name = "FILE")]
     flow_log: Option<PathBuf>,
     /// Check each of the agent's calls against the policy guards of
     /// --domain (`retail` or `airline`), and refuse the ones they fail.
-    #[arg(long)]
+    #[arg(help_heading = "Writes", long)]
     guards: bool,
     /// Put each write the guards check for a confirmation to the System-One
     /// model too, with the questions `stretto confirm` asks: `log` records
     /// each judgment; `enforce` also refuses a write the judge fails. Needs
     /// --guards and --context. A judge that cannot answer refuses nothing.
-    #[arg(long, value_enum, value_name = "MODE", requires_all = ["guards", "context"])]
+    #[arg(help_heading = "Writes", long, value_enum, value_name = "MODE", requires_all = ["guards", "context"])]
     confirm_judge: Option<JudgeArg>,
     /// Also ask the second question (`proposed`: had the agent proposed the
     /// change?); a write then fails unless both answers are yes.
-    #[arg(long, value_enum, value_name = "QUESTION", requires = "confirm_judge")]
+    #[arg(
+        help_heading = "Writes",
+        long,
+        value_enum,
+        value_name = "QUESTION",
+        requires = "confirm_judge"
+    )]
     confirm_second: Option<SecondArg>,
     /// A write fails when an answer's probability of a yes is below this.
-    #[arg(long, default_value_t = 0.5, requires = "confirm_judge")]
+    #[arg(
+        help_heading = "Writes",
+        value_name = "P",
+        long,
+        default_value_t = 0.5,
+        requires = "confirm_judge"
+    )]
     confirm_threshold: f64,
     /// The judge's questions per session, at most.
-    #[arg(long, default_value_t = 100, requires = "confirm_judge")]
+    #[arg(
+        help_heading = "Writes",
+        value_name = "N",
+        long,
+        default_value_t = 100,
+        requires = "confirm_judge"
+    )]
     confirm_questions: usize,
     /// Append the judgments here (default: next to the session log).
-    #[arg(long, value_name = "FILE", requires = "confirm_judge")]
+    #[arg(
+        help_heading = "Writes",
+        long,
+        value_name = "FILE",
+        requires = "confirm_judge"
+    )]
     confirm_log: Option<PathBuf>,
     /// Add `stretto_commit`, which makes several calls in one, in order,
     /// each checked by the guards.
-    #[arg(long)]
+    #[arg(help_heading = "Writes", long)]
     commit: bool,
     /// Read the conversation from this file, which the host appends to as
     /// JSON lines: `{"role": "user" | "assistant", "content": text}`.
-    #[arg(long, value_name = "FILE")]
+    #[arg(help_heading = "The conversation", long, value_name = "FILE")]
     context: Option<PathBuf>,
     /// Task id, which picks the flow's fold (default: the session).
-    #[arg(long, value_name = "ID")]
+    #[arg(help_heading = "Flows", long, value_name = "ID")]
     task_id: Option<String>,
     /// The MCP server to run, and its arguments.
     #[arg(last = true, required = true, value_name = "SERVER_COMMAND")]
@@ -236,4 +264,21 @@ fn active(cli: &Cli) -> Result<Active> {
         context: cli.context.clone().map(expand_home),
         task_id: cli.task_id.clone(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Cli;
+    use clap::CommandFactory;
+    use stretto_report::cli_doc;
+
+    /// `docs/cli.md` documents this CLI as it is.
+    #[test]
+    fn the_cli_reference_is_current() {
+        let page = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/cli.md");
+        let section = cli_doc::markdown(&Cli::command());
+        if let Err(e) = cli_doc::check_page(&page, "stretto-proxy", &section) {
+            panic!("{e}");
+        }
+    }
 }

@@ -63,6 +63,8 @@
 
 ## Reproduce
 
+[The CLI reference](../cli.md) lists every option.
+
 Import the published answer bundles, then:
 
 ```sh

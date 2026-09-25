@@ -24,6 +24,7 @@
 
 pub mod arbitrate;
 pub mod audit;
+pub mod cli_doc;
 pub mod confirm;
 pub mod flow;
 pub mod guards;

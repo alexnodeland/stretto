@@ -10,9 +10,10 @@ use stretto_report::flow::{Arbiter, Decider};
 use stretto_report::shadow::{OracleKind, QuestionSet, ShadowConfig};
 use stretto_report::{phase0, render};
 
-/// stretto: compile agent behavior into typed probabilistic flows.
+/// Compile an agent's recorded behavior into flows, serve them, and measure
+/// them against published τ²-bench trajectories.
 #[derive(Parser)]
-#[command(version, about)]
+#[command(name = "stretto", version)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -29,10 +30,10 @@ enum Command {
         #[command(flatten)]
         data: Phase0Args,
         /// Write the Markdown report here (default: stdout).
-        #[arg(long)]
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
         out: Option<PathBuf>,
         /// Also write the full report as JSON here.
-        #[arg(long)]
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
         json: Option<PathBuf>,
     },
     /// Serve a live read-only flow (RFC-001 §3.13): compile it from the same
@@ -46,23 +47,38 @@ enum Command {
         data: Phase0Args,
         /// Address to listen on (port 0: any free port; the ready line on
         /// stderr names it).
-        #[arg(long, default_value = "127.0.0.1:0")]
+        #[arg(
+            help_heading = "Serving",
+            value_name = "ADDR",
+            long,
+            default_value = "127.0.0.1:0"
+        )]
         listen: String,
         /// Take the most likely lookup when its probability, times the
         /// chance that its arguments are the agent's, is at least this.
-        #[arg(long, default_value_t = 0.3)]
+        #[arg(
+            help_heading = "Serving",
+            value_name = "P",
+            long,
+            default_value_t = 0.3
+        )]
         threshold: f64,
         /// Where each option's probability comes from: `arbiter` (the
         /// habit, the System-One model and the predicates, combined: arm D0)
         /// or `habit` (the habit alone, never asking the System-One model:
         /// a flow compiled from traces only, arm C at a high threshold).
-        #[arg(long, value_enum, default_value_t = DeciderArg::Arbiter)]
+        #[arg(help_heading = "Serving", long, value_enum, default_value_t = DeciderArg::Arbiter)]
         decider: DeciderArg,
         /// Stop asking the System-One model after this many live questions.
-        #[arg(long, default_value_t = 300)]
+        #[arg(
+            help_heading = "Serving",
+            value_name = "N",
+            long,
+            default_value_t = 300
+        )]
         max_questions: usize,
         /// Append every query's answer here (JSON lines).
-        #[arg(long)]
+        #[arg(help_heading = "Serving", value_name = "FILE", long)]
         log: Option<PathBuf>,
     },
     /// Compile a live read-only flow and write its IR (JSON) to a file: the
@@ -73,7 +89,7 @@ enum Command {
         #[command(flatten)]
         data: Phase0Args,
         /// Where to write the flow.
-        #[arg(long)]
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
         out: PathBuf,
     },
     /// Learn a live flow from sessions recorded by `stretto-proxy` (JSONL
@@ -83,114 +99,151 @@ enum Command {
     /// With `--results`, the sessions are τ²-bench episodes on a checkout's
     /// training tasks instead, as if a deployment had recorded them.
     Learn {
-        /// Directory of session logs (`*.jsonl`).
-        #[arg(long, required_unless_present = "results")]
+        /// Directory of session logs (`*.jsonl`); needed unless `--results` is
+        /// given.
+        #[arg(
+            help_heading = "Inputs",
+            value_name = "DIR",
+            long,
+            required_unless_present = "results"
+        )]
         sessions: Option<PathBuf>,
         /// τ²-bench results to learn from in place of `--sessions`
         /// (repeatable): their episodes on the training tasks of the
         /// `--tau2` checkout's split, with their rewards. The tools come
         /// from the checkout.
-        #[arg(
+        #[arg(help_heading = "Inputs", value_name = "FILE", 
             long = "results",
             requires = "tau2",
             conflicts_with_all = ["sessions", "manifest", "rewards"]
         )]
         results: Vec<PathBuf>,
         /// The τ²-bench checkout that `--results` belong to.
-        #[arg(long)]
+        #[arg(help_heading = "Inputs", value_name = "DIR", long)]
         tau2: Option<PathBuf>,
         /// With `--results`, learn from this share of the training tasks:
         /// the sample `compile --train-fraction` takes.
-        #[arg(long, default_value_t = 1.0)]
+        #[arg(
+            help_heading = "Inputs",
+            value_name = "SHARE",
+            long,
+            default_value_t = 1.0
+        )]
         train_fraction: f64,
         /// With `--results`, learn from these training tasks only
         /// (comma-separated), in place of `--train-fraction`.
-        #[arg(long, value_delimiter = ',', conflicts_with = "train_fraction")]
+        #[arg(
+            help_heading = "Inputs",
+            value_name = "IDS",
+            long,
+            value_delimiter = ',',
+            conflicts_with = "train_fraction"
+        )]
         train_tasks: Vec<String>,
         /// With `--results`, only these trials of each task (default: all).
-        #[arg(long, num_args = 1..)]
+        #[arg(help_heading = "Inputs", value_name = "N", long, num_args = 1..)]
         trials: Vec<u32>,
         /// Ask no System-One model: every session trains the habit, and the
         /// flow has no arbiter (serve it with `--decider habit`).
-        #[arg(long)]
+        #[arg(help_heading = "The arbiter", long)]
         habit_only: bool,
         /// Once the arbiter is fitted on the held-out sessions, learn the
         /// habit, the sites and the bindings again from every session.
-        #[arg(long, conflicts_with = "habit_only")]
+        #[arg(help_heading = "The arbiter", long, conflicts_with = "habit_only")]
         refit_habit: bool,
         /// Ask no System-One model while learning: every session trains the
         /// habit, and the flow serves this arbiter instead. It is an arbiter
         /// file (`export-arbiter`; `data/arbiters/` ships two), or a flow
         /// whose arbiter to take, such as one `compile` fitted on other
         /// agents' traces.
-        #[arg(long, conflicts_with_all = ["habit_only", "refit_habit"])]
+        #[arg(help_heading = "The arbiter", value_name = "FILE", long, conflicts_with_all = ["habit_only", "refit_habit"])]
         arbiter_from: Option<PathBuf>,
         /// Offer every read-only tool at every site (see `compile`). Only
         /// the arbiter a flow fits here weighs such options.
-        #[arg(long, conflicts_with_all = ["habit_only", "arbiter_from"])]
+        #[arg(help_heading = "The arbiter", long, conflicts_with_all = ["habit_only", "arbiter_from"])]
         manifest_options: bool,
         /// The domain to name the flow for.
-        #[arg(long)]
+        #[arg(help_heading = "Inputs", value_name = "NAME", long)]
         domain: String,
         /// A tool manifest (JSON, as stretto-trace writes it) instead of the
         /// sessions' own `tools/list`.
-        #[arg(long)]
+        #[arg(help_heading = "Inputs", value_name = "FILE", long)]
         manifest: Option<PathBuf>,
         /// Rewards by session id (JSON object). Sessions without one count as
         /// successful.
-        #[arg(long)]
+        #[arg(help_heading = "Inputs", value_name = "FILE", long)]
         rewards: Option<PathBuf>,
         /// Who answers the held-out questions the arbiter is fitted on.
         /// `--habit-only` and `--arbiter-from` ask nothing, so they take none
         /// of the oracle's options.
-        #[arg(long, value_enum, default_value_t = OracleArg::Jev, conflicts_with_all = ["habit_only", "arbiter_from"])]
+        #[arg(help_heading = "The arbiter", long, value_enum, default_value_t = OracleArg::Jev, conflicts_with_all = ["habit_only", "arbiter_from"])]
         oracle: OracleArg,
         /// Replay cache for oracle answers.
-        #[arg(long, default_value = ".oracle-cache", conflicts_with_all = ["habit_only", "arbiter_from"])]
+        #[arg(help_heading = "The arbiter", value_name = "DIR", long, default_value = ".oracle-cache", conflicts_with_all = ["habit_only", "arbiter_from"])]
         oracle_cache: PathBuf,
         /// Refuse to start if uncached questions could cost more than this
         /// many dollars.
-        #[arg(long, default_value_t = 1.0, conflicts_with_all = ["habit_only", "arbiter_from"])]
+        #[arg(help_heading = "The arbiter", value_name = "DOLLARS", long, default_value_t = 1.0, conflicts_with_all = ["habit_only", "arbiter_from"])]
         oracle_budget: f64,
         /// Yes/no predicates to ask and weigh (see `data/predicates-v2.json`).
         /// An arbiter from `--arbiter-from` brings its own.
-        #[arg(long, conflicts_with_all = ["habit_only", "arbiter_from"])]
+        #[arg(help_heading = "The arbiter", value_name = "FILE", long, conflicts_with_all = ["habit_only", "arbiter_from"])]
         predicates: Option<PathBuf>,
         /// Where to write the flow.
-        #[arg(long)]
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
         out: PathBuf,
     },
     /// Serve a compiled flow (from `compile`), as `flow-serve` does.
     Serve {
         /// The flow IR to load.
-        #[arg(long)]
+        #[arg(help_heading = "Inputs", value_name = "FILE", long)]
         flow: PathBuf,
         /// Who answers live questions: `jev` (needs TYPESAFE_API_KEY),
         /// `replay` (the cache only) or `mock`.
-        #[arg(long, value_enum, default_value_t = OracleArg::Jev)]
+        #[arg(help_heading = "The System-One model", long, value_enum, default_value_t = OracleArg::Jev)]
         oracle: OracleArg,
         /// Replay cache for oracle answers.
-        #[arg(long, default_value = ".oracle-cache")]
+        #[arg(
+            help_heading = "The System-One model",
+            value_name = "DIR",
+            long,
+            default_value = ".oracle-cache"
+        )]
         oracle_cache: PathBuf,
         /// Address to listen on (port 0: any free port; the ready line on
         /// stderr names it).
-        #[arg(long, default_value = "127.0.0.1:0")]
+        #[arg(
+            help_heading = "Serving",
+            value_name = "ADDR",
+            long,
+            default_value = "127.0.0.1:0"
+        )]
         listen: String,
         /// Take the most likely lookup when its probability, times the
         /// chance that its arguments are the agent's, is at least this.
-        #[arg(long, default_value_t = 0.3)]
+        #[arg(
+            help_heading = "Serving",
+            value_name = "P",
+            long,
+            default_value_t = 0.3
+        )]
         threshold: f64,
         /// Where each option's probability comes from: `arbiter` (the
         /// habit, the System-One model and the predicates, combined: arm D0)
         /// or `habit` (the habit alone, never asking the System-One model:
         /// a flow compiled from traces only, arm C at a high threshold).
-        #[arg(long, value_enum, default_value_t = DeciderArg::Arbiter)]
+        #[arg(help_heading = "Serving", long, value_enum, default_value_t = DeciderArg::Arbiter)]
         decider: DeciderArg,
         /// Stop asking the System-One model after this many live questions.
-        #[arg(long, default_value_t = 300)]
+        #[arg(
+            help_heading = "Serving",
+            value_name = "N",
+            long,
+            default_value_t = 300
+        )]
         max_questions: usize,
         /// Append every query's answer here (JSON lines).
-        #[arg(long)]
+        #[arg(help_heading = "Serving", value_name = "FILE", long)]
         log: Option<PathBuf>,
     },
     /// Test the policy guards (typed checks a proxy runs before a write)
@@ -200,20 +253,20 @@ enum Command {
     /// or wrong.
     Guards {
         /// Path to a τ²-bench checkout (its published baselines are read).
-        #[arg(long)]
+        #[arg(help_heading = "Inputs", value_name = "DIR", long)]
         tau2: PathBuf,
         /// Domains to audit.
-        #[arg(long = "domain", default_values_t = ["retail".to_string(), "airline".to_string()])]
+        #[arg(help_heading = "Inputs", value_name = "NAME", long = "domain", default_values_t = ["retail".to_string(), "airline".to_string()])]
         domains: Vec<String>,
         /// Extra τ²-bench results to audit: `path` or `label=path`
         /// (repeatable; files for other domains are skipped).
-        #[arg(long = "source")]
+        #[arg(help_heading = "Inputs", value_name = "[LABEL=]PATH", long = "source")]
         sources: Vec<String>,
         /// Write the Markdown report here (default: stdout).
-        #[arg(long)]
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
         out: Option<PathBuf>,
         /// Also write the audit as JSON here.
-        #[arg(long)]
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
         json: Option<PathBuf>,
     },
     /// Judge the customer's confirmation before each write with a
@@ -222,47 +275,62 @@ enum Command {
     /// whether the tool accepted it and the episode passed.
     Confirm {
         /// Path to a τ²-bench checkout (its published baselines are read).
-        #[arg(long)]
+        #[arg(help_heading = "Inputs", value_name = "DIR", long)]
         tau2: PathBuf,
         /// Domains to judge.
-        #[arg(long = "domain", default_values_t = ["retail".to_string(), "airline".to_string()])]
+        #[arg(help_heading = "Inputs", value_name = "NAME", long = "domain", default_values_t = ["retail".to_string(), "airline".to_string()])]
         domains: Vec<String>,
         /// Extra τ²-bench results to judge: `path` or `label=path`
         /// (repeatable; files for other domains are skipped).
-        #[arg(long = "source")]
+        #[arg(help_heading = "Inputs", value_name = "[LABEL=]PATH", long = "source")]
         sources: Vec<String>,
         /// Who judges: `jev` (needs TYPESAFE_API_KEY; pays once per distinct
         /// question), `replay` (the cache only) or `mock`.
-        #[arg(long, value_enum, default_value_t = OracleArg::Replay)]
+        #[arg(help_heading = "The judge", long, value_enum, default_value_t = OracleArg::Replay)]
         oracle: OracleArg,
         /// Replay cache for oracle answers.
-        #[arg(long, default_value = ".oracle-cache")]
+        #[arg(
+            help_heading = "The judge",
+            value_name = "DIR",
+            long,
+            default_value = ".oracle-cache"
+        )]
         oracle_cache: PathBuf,
         /// Refuse to start if uncached questions could cost more than this
         /// many dollars.
-        #[arg(long, default_value_t = 2.0)]
+        #[arg(
+            help_heading = "The judge",
+            value_name = "DOLLARS",
+            long,
+            default_value_t = 2.0
+        )]
         oracle_budget: f64,
         /// The judge fails a write below this probability of an explicit yes.
-        #[arg(long, default_value_t = 0.5)]
+        #[arg(
+            help_heading = "The judge",
+            value_name = "P",
+            long,
+            default_value_t = 0.5
+        )]
         threshold: f64,
         /// Disagreements to show, of each kind, per domain.
-        #[arg(long, default_value_t = 8)]
+        #[arg(help_heading = "Output", value_name = "N", long, default_value_t = 8)]
         examples: usize,
         /// Also ask a second question about each write: whether the agent had
         /// `proposed` this change before the customer's reply, or (the first
         /// wording, too literal) whether its message `described` it. The
         /// judge then fails a write unless both answers are yes.
-        #[arg(long, value_enum)]
+        #[arg(help_heading = "The judge", long, value_enum)]
         second_question: Option<SecondArg>,
         /// Write every distinct question to this file (JSON lines; the
         /// domain is added to the file name).
-        #[arg(long)]
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
         oracle_dump: Option<PathBuf>,
         /// Write the Markdown report here (default: stdout).
-        #[arg(long)]
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
         out: Option<PathBuf>,
         /// Also write every judged write, and the audits, as JSON here.
-        #[arg(long)]
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
         json: Option<PathBuf>,
     },
     /// Match descriptions to records (RFC-001): at each write in τ²-bench's
@@ -272,38 +340,48 @@ enum Command {
     /// agent's pick, and score both against the task's expected actions.
     Match {
         /// Path to a τ²-bench checkout.
-        #[arg(long)]
+        #[arg(help_heading = "Inputs", value_name = "DIR", long)]
         tau2: PathBuf,
         /// Domains to judge.
-        #[arg(long = "domain", default_values_t = ["retail".to_string(), "airline".to_string()])]
+        #[arg(help_heading = "Inputs", value_name = "NAME", long = "domain", default_values_t = ["retail".to_string(), "airline".to_string()])]
         domains: Vec<String>,
         /// Extra τ²-bench results to judge, besides the published baselines
         /// (repeatable).
-        #[arg(long = "source")]
+        #[arg(help_heading = "Inputs", value_name = "[LABEL=]PATH", long = "source")]
         sources: Vec<String>,
         /// Who answers: `jev` (needs TYPESAFE_API_KEY), `replay` (the cache
         /// only) or `mock`.
-        #[arg(long, value_enum, default_value_t = OracleArg::Jev)]
+        #[arg(help_heading = "The System-One model", long, value_enum, default_value_t = OracleArg::Jev)]
         oracle: OracleArg,
         /// Replay cache for oracle answers.
-        #[arg(long, default_value = ".oracle-cache")]
+        #[arg(
+            help_heading = "The System-One model",
+            value_name = "DIR",
+            long,
+            default_value = ".oracle-cache"
+        )]
         oracle_cache: PathBuf,
         /// Refuse to start if uncached questions could cost more than this
         /// many dollars.
-        #[arg(long, default_value_t = 2.0)]
+        #[arg(
+            help_heading = "The System-One model",
+            value_name = "DOLLARS",
+            long,
+            default_value_t = 2.0
+        )]
         oracle_budget: f64,
         /// Disagreements to show, of each kind, per domain.
-        #[arg(long, default_value_t = 8)]
+        #[arg(help_heading = "Output", value_name = "N", long, default_value_t = 8)]
         examples: usize,
         /// Write every distinct question to this file (JSON lines; the
         /// domain is added to the file name).
-        #[arg(long)]
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
         oracle_dump: Option<PathBuf>,
         /// Write the Markdown report here (default: stdout).
-        #[arg(long)]
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
         out: Option<PathBuf>,
         /// Also write every choice, and the audits, as JSON here.
-        #[arg(long)]
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
         json: Option<PathBuf>,
     },
     /// Audit a flow against recorded episodes: score the agent's own steps
@@ -312,32 +390,37 @@ enum Command {
     /// sessions before trusting a flow compiled from older ones.
     Audit {
         /// The flow IR to audit.
-        #[arg(long)]
+        #[arg(help_heading = "Inputs", value_name = "FILE", long)]
         flow: PathBuf,
         /// Sessions recorded by stretto-proxy (a directory of `*.jsonl`).
-        #[arg(long)]
+        #[arg(help_heading = "Inputs", value_name = "DIR", long)]
         sessions: Option<PathBuf>,
         /// τ²-bench results files (repeatable); files for other domains are
         /// skipped.
-        #[arg(long = "results")]
+        #[arg(help_heading = "Inputs", value_name = "FILE", long = "results")]
         results: Vec<PathBuf>,
         /// With --results: keep only the test split of this τ²-bench
         /// checkout, the tasks a flow compiled from it never trained on.
-        #[arg(long)]
+        #[arg(help_heading = "Inputs", value_name = "DIR", long)]
         tau2: Option<PathBuf>,
         /// Who answers the flow's questions: `replay` (the cache only;
         /// decisions it cannot answer are left out), `jev` (needs
         /// TYPESAFE_API_KEY; about $0.0001 per decision) or `mock`.
-        #[arg(long, value_enum, default_value_t = OracleArg::Replay)]
+        #[arg(help_heading = "The System-One model", long, value_enum, default_value_t = OracleArg::Replay)]
         oracle: OracleArg,
         /// Replay cache for oracle answers.
-        #[arg(long, default_value = ".oracle-cache")]
+        #[arg(
+            help_heading = "The System-One model",
+            value_name = "DIR",
+            long,
+            default_value = ".oracle-cache"
+        )]
         oracle_cache: PathBuf,
         /// Write the Markdown report here (default: stdout).
-        #[arg(long)]
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
         out: Option<PathBuf>,
         /// Also write the audit as JSON here.
-        #[arg(long)]
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
         json: Option<PathBuf>,
     },
     /// Check that Jev is reachable with TYPESAFE_API_KEY: ask one small
@@ -350,10 +433,10 @@ enum Command {
     /// flow from `learn`).
     ExportArbiter {
         /// The flow whose arbiter to write.
-        #[arg(long)]
+        #[arg(value_name = "FILE", long)]
         flow: PathBuf,
         /// Where to write it.
-        #[arg(long)]
+        #[arg(value_name = "FILE", long)]
         out: PathBuf,
     },
     /// Write every cached oracle answer to stdout as JSON lines
@@ -361,13 +444,13 @@ enum Command {
     /// bundle can be shared to replay Phase 0b without a key.
     ExportAnswers {
         /// Replay cache to read.
-        #[arg(long, default_value = ".oracle-cache")]
+        #[arg(value_name = "DIR", long, default_value = ".oracle-cache")]
         oracle_cache: PathBuf,
     },
     /// Read JSON lines from `export-answers` on stdin into a replay cache.
     ImportAnswers {
         /// Replay cache to fill.
-        #[arg(long, default_value = ".oracle-cache")]
+        #[arg(value_name = "DIR", long, default_value = ".oracle-cache")]
         oracle_cache: PathBuf,
     },
 }
@@ -377,117 +460,208 @@ enum Command {
 #[derive(clap::Args)]
 struct Phase0Args {
     /// Path to a τ²-bench checkout.
-    #[arg(long)]
+    #[arg(help_heading = "Inputs", value_name = "DIR", long)]
     tau2: PathBuf,
     /// Domains to analyze.
-    #[arg(long = "domain", default_values_t = ["retail".to_string(), "airline".to_string()])]
+    #[arg(help_heading = "Inputs", value_name = "NAME", long = "domain", default_values_t = ["retail".to_string(), "airline".to_string()])]
     domains: Vec<String>,
     /// Context length for coverage and transfer.
-    #[arg(long, default_value_t = 2)]
+    #[arg(
+        help_heading = "The habit",
+        value_name = "N",
+        long,
+        default_value_t = 2
+    )]
     order: usize,
     /// MH draws for the posterior over α (0 to use --alpha).
-    #[arg(long, default_value_t = 600)]
+    #[arg(
+        help_heading = "The habit",
+        value_name = "N",
+        long,
+        default_value_t = 600
+    )]
     alpha_samples: usize,
     /// α to use when --alpha-samples is 0.
-    #[arg(long, default_value_t = 1.0)]
+    #[arg(help_heading = "The habit", long, default_value_t = 1.0)]
     alpha: f64,
     /// Training observations a context needs before the habit may act on it.
-    #[arg(long, default_value_t = 5.0)]
+    #[arg(
+        help_heading = "The habit",
+        value_name = "N",
+        long,
+        default_value_t = 5.0
+    )]
     min_evidence: f64,
     /// Seed for the MH chain.
-    #[arg(long, default_value_t = 7)]
+    #[arg(
+        help_heading = "The habit",
+        value_name = "N",
+        long,
+        default_value_t = 7
+    )]
     seed: u64,
     /// Skip learning code features from tool outputs.
-    #[arg(long)]
+    #[arg(help_heading = "The habit", long)]
     no_features: bool,
     /// Do not train on τ²-bench's published baselines in the checkout
     /// (then pass --source).
-    #[arg(long)]
+    #[arg(help_heading = "Inputs", long)]
     no_baselines: bool,
     /// Do not let flows know the episode's goal: the habit is not
     /// conditioned on it and System-One questions do not name it (for
     /// live flows nobody names).
-    #[arg(long)]
+    #[arg(help_heading = "The habit", long)]
     no_intent: bool,
     /// Extra τ²-bench results to train on: `path` or `label=path`
     /// (repeatable; files for other domains are skipped).
-    #[arg(long = "source")]
+    #[arg(help_heading = "Inputs", value_name = "[LABEL=]PATH", long = "source")]
     sources: Vec<String>,
     /// τ²-bench results for an agent model the habit never trains on,
     /// measured as a transfer target: `path` or `label=path` (repeatable;
     /// files for other domains are skipped).
-    #[arg(long = "target")]
+    #[arg(help_heading = "Inputs", value_name = "[LABEL=]PATH", long = "target")]
     targets: Vec<String>,
     /// Phase 0b: who answers the System-One questions. `jev` needs
     /// TYPESAFE_API_KEY and pays once per distinct question; `replay`
-    /// reads the cache only; `mock` checks the pipeline for free.
-    #[arg(long, value_enum)]
+    /// reads the cache only; `mock` checks the pipeline for free. The other
+    /// options under this heading need it.
+    #[arg(help_heading = "Phase 0b: the System-One model", long, value_enum)]
     oracle: Option<OracleArg>,
     /// Which Phase 0b questions to ask: `v1` (one question over every
     /// tool, for flows that may call any tool) or `v2` (RFC-001 §3.5:
     /// read-only flows, a site's own lookups as options, a state slice,
     /// the stop decision asked on its own, and the answers combined with
     /// the habit).
-    #[arg(long, value_enum, default_value_t = QuestionArg::V1, requires = "oracle")]
+    #[arg(help_heading = "Phase 0b: the System-One model", long, value_enum, default_value_t = QuestionArg::V1, requires = "oracle")]
     questions: QuestionArg,
     /// v2: also describe each lookup by what its results supply,
     /// learned from argument dataflow in training.
-    #[arg(long, requires = "oracle")]
+    #[arg(
+        help_heading = "Phase 0b: the System-One model",
+        long,
+        requires = "oracle"
+    )]
     dataflow_hints: bool,
     /// v2: a JSON file of yes/no predicates about the state (see
     /// `data/predicates-v2.json`) to ask with every next-step question and
     /// weigh in the arbiter.
-    #[arg(long, requires = "oracle")]
+    #[arg(
+        help_heading = "Phase 0b: the System-One model",
+        value_name = "FILE",
+        long,
+        requires = "oracle"
+    )]
     predicates: Option<PathBuf>,
     /// v2: ask the predicates but leave them out of the arbiter, to
     /// measure what they add.
-    #[arg(long, requires = "oracle")]
+    #[arg(
+        help_heading = "Phase 0b: the System-One model",
+        long,
+        requires = "oracle"
+    )]
     no_predicate_features: bool,
     /// v2: offer every read-only tool at every site, not only the lookups
     /// seen there in training, for the System-One model to choose from. A
     /// lookup training never made is bound by argument name.
-    #[arg(long, requires = "oracle")]
+    #[arg(
+        help_heading = "Phase 0b: the System-One model",
+        long,
+        requires = "oracle"
+    )]
     manifest_options: bool,
     /// v2, `compile`: give the flow one arbiter, fitted on every held-out
     /// decision, in place of one per fold, so that `export-arbiter` can
     /// ship it. Replayed on the same test tasks it has seen other agents'
     /// decisions on them, so compare flows without it.
-    #[arg(long, requires = "oracle")]
+    #[arg(
+        help_heading = "Phase 0b: the System-One model",
+        long,
+        requires = "oracle"
+    )]
     pooled_arbiter: bool,
     /// Replay cache for oracle answers.
-    #[arg(long, default_value = ".oracle-cache", requires = "oracle")]
+    #[arg(
+        help_heading = "Phase 0b: the System-One model",
+        value_name = "DIR",
+        long,
+        default_value = ".oracle-cache",
+        requires = "oracle"
+    )]
     oracle_cache: PathBuf,
     /// Oracle requests in flight at once.
-    #[arg(long, default_value_t = 8, requires = "oracle")]
+    #[arg(
+        help_heading = "Phase 0b: the System-One model",
+        value_name = "N",
+        long,
+        default_value_t = 8,
+        requires = "oracle"
+    )]
     oracle_concurrency: usize,
     /// Ask at most this many distinct questions (a stable sample), for a
     /// pilot run.
-    #[arg(long, requires = "oracle")]
+    #[arg(
+        help_heading = "Phase 0b: the System-One model",
+        value_name = "N",
+        long,
+        requires = "oracle"
+    )]
     oracle_limit: Option<usize>,
     /// Refuse to start if uncached questions could cost more than this
     /// many dollars.
-    #[arg(long, default_value_t = 5.0, requires = "oracle")]
+    #[arg(
+        help_heading = "Phase 0b: the System-One model",
+        value_name = "DOLLARS",
+        long,
+        default_value_t = 5.0,
+        requires = "oracle"
+    )]
     oracle_budget: f64,
     /// Model id to request (default: TYPESAFE_DEFAULT_MODEL, else jev-latest).
-    #[arg(long, requires = "oracle")]
+    #[arg(
+        help_heading = "Phase 0b: the System-One model",
+        value_name = "MODEL",
+        long,
+        requires = "oracle"
+    )]
     oracle_model: Option<String>,
     /// Write every distinct oracle request to this file (JSON lines; the
     /// domain is added to the file name).
-    #[arg(long, requires = "oracle")]
+    #[arg(
+        help_heading = "Phase 0b: the System-One model",
+        value_name = "FILE",
+        long,
+        requires = "oracle"
+    )]
     oracle_dump: Option<PathBuf>,
     /// Write every decision, with the agent's option and the oracle's
     /// pick, to this file (JSON lines; the domain is added to the file
     /// name).
-    #[arg(long, requires = "oracle")]
+    #[arg(
+        help_heading = "Phase 0b: the System-One model",
+        value_name = "FILE",
+        long,
+        requires = "oracle"
+    )]
     oracle_log: Option<PathBuf>,
     /// Train on this share of the training tasks: a fixed sample by task
     /// id, each smaller share part of every larger one. To see how flows
     /// do with fewer traces.
-    #[arg(long, default_value_t = 1.0)]
+    #[arg(
+        help_heading = "Inputs",
+        value_name = "SHARE",
+        long,
+        default_value_t = 1.0
+    )]
     train_fraction: f64,
     /// Train on these training tasks only (comma-separated), in place of
     /// `--train-fraction`: a sample named exactly.
-    #[arg(long, value_delimiter = ',', conflicts_with = "train_fraction")]
+    #[arg(
+        help_heading = "Inputs",
+        value_name = "IDS",
+        long,
+        value_delimiter = ',',
+        conflicts_with = "train_fraction"
+    )]
     train_tasks: Vec<String>,
 }
 
@@ -1304,7 +1478,18 @@ fn write(path: &PathBuf, bytes: &[u8]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::Cli;
-    use clap::{error::ErrorKind, Parser};
+    use clap::{error::ErrorKind, CommandFactory, Parser};
+    use stretto_report::cli_doc;
+
+    /// `docs/cli.md` documents this CLI as it is.
+    #[test]
+    fn the_cli_reference_is_current() {
+        let page = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/cli.md");
+        let section = cli_doc::markdown(&Cli::command());
+        if let Err(e) = cli_doc::check_page(&page, "stretto", &section) {
+            panic!("{e}");
+        }
+    }
 
     fn parse(args: &str) -> Result<Cli, clap::Error> {
         Cli::try_parse_from(std::iter::once("stretto").chain(args.split_whitespace()))

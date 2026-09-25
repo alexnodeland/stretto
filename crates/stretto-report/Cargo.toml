@@ -1,6 +1,6 @@
 [package]
 name = "stretto-report"
-description = "The stretto CLI: Phase 0 measurement reports over agent traces."
+description = "The stretto CLI: compile, learn, serve and audit flows from agent traces."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

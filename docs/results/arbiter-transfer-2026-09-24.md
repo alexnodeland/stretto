@@ -51,6 +51,8 @@ No LLM ran. Fitting the two shipped arbiters asked nothing: their answers are in
 
 ## Reproduce
 
+[The CLI reference](../cli.md) lists every option.
+
 Import the answer bundles as [this round's bundle page](answers-2026-09-24-arbiter-transfer.md) shows, then build each flow and replay it as in [the cold start](cold-start-2026-09-24.md#reproduce). For example, a retail habit from five sessions with the airline arbiter:
 
 ```sh

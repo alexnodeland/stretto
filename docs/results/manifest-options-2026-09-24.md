@@ -36,6 +36,8 @@ No LLM ran. Jev answered 9,100 new questions, 27.8M input tokens, $1.17. The arb
 
 ## Reproduce
 
+[The CLI reference](../cli.md) lists every option.
+
 With the answer bundles imported, name each of the sweep's samples (retail: `109`, and `104,105,109`; airline: `49`, and `42,43,49`; see [the samples](sweep-2026-09-24-samples.json)):
 
 ```sh

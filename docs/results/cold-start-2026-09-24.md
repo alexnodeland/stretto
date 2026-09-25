@@ -121,6 +121,8 @@ In airline, from five random sessions, the refitted flow saves 6.0% (40 detours)
 
 ## Reproduce
 
+[The CLI reference](../cli.md) lists every option.
+
 Import the answer bundles as [this round's bundle page](answers-2026-09-24-cold-manifest-match.md) shows, and fetch GLM-5's published results with `scripts/fetch-leaderboard.sh`. Each flow, from the cache:
 
 ```sh

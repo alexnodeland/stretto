@@ -127,6 +127,8 @@ Jev's raw answers to every question are in [phase0b-v2-2026-09-23-answers.jsonl.
 
 ## Reproduce
 
+[The CLI reference](../cli.md) lists every option.
+
 ```sh
 gunzip -c docs/results/phase0b-v2-2026-09-23-answers.jsonl.gz | stretto import-answers --oracle-cache .oracle-cache
 stretto phase0 --tau2 ../tau2-bench $(scripts/fetch-leaderboard.sh glm-5 | sed 's/^/--target /') \
