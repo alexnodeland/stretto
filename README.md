@@ -15,14 +15,15 @@ The design is [RFC-001](docs/rfc/001-habit-compiler.md), first accepted in fugue
 
 ## Status
 
-Pre-alpha, with every piece of the first design built ([implementation status](docs/design.md#implementation-status-2026-09-24)).
+Pre-alpha, with every piece of the first design built ([implementation status](docs/design.md#implementation-status-2026-09-24)). 0.1.0 is tagged ([changelog](CHANGELOG.md)). It is not on crates.io yet, because it depends on a fugue release that is not out yet (its `program` feature).
 
 ## Use it with your agent
 
 `stretto-proxy` wraps any MCP server, run as a command or reached over Streamable HTTP (`--upstream`). Record your agent's sessions through it, learn a flow from them, serve the flow behind the agent's calls, and audit it on new sessions:
 
 ```bash
-cargo install --path crates/stretto-proxy && cargo install --path crates/stretto-report
+cargo install --git https://github.com/alexnodeland/stretto --tag v0.1.0 stretto-proxy stretto-report
+# or, from a checkout: cargo install --path crates/stretto-proxy && cargo install --path crates/stretto-report
 
 # 1. In the MCP host's config, run the server behind the proxy. The host may append
 #    the conversation to the context file, one JSON line per message.

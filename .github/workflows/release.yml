@@ -1,0 +1,30 @@
+name: Release
+
+# On a version tag (v0.1.0), makes a GitHub release whose notes are that
+# version's section of CHANGELOG.md. Nothing is published to crates.io.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Notes from CHANGELOG.md
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v head="## $version " '
+            /^## / { if (found) exit; if (index($0, head) == 1) { found = 1; next } }
+            found { print }
+          ' CHANGELOG.md \
+            | perl -pe 's{\]\((?!https?://|#)([^)]+)\)}{](https://github.com/$ENV{GITHUB_REPOSITORY}/blob/$ENV{GITHUB_REF_NAME}/$1)}g' \
+            > notes.md
+          test -s notes.md
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --verify-tag --title "stretto $GITHUB_REF_NAME" --notes-file notes.md

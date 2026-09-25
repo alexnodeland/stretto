@@ -2,7 +2,7 @@
 
 The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stretto-trace`, `stretto-oracle`, `stretto-model`, `stretto-report`) make no stability promise before 1.0. The file formats carry versions of their own ([docs/formats.md](docs/formats.md#versions)).
 
-## Unreleased (0.1.0)
+## 0.1.0 (2026-09-25)
 
 Everything so far: the first design of [RFC-001](docs/rfc/001-habit-compiler.md), built and measured. [docs/results](docs/results/README.md) has every result.
 
@@ -55,3 +55,9 @@ Everything so far: the first design of [RFC-001](docs/rfc/001-habit-compiler.md)
 - [Privacy](docs/privacy.md): what each file holds, what is sent to the System-One model, retention and redaction.
 - [The file formats](docs/formats.md), [the CLI reference](docs/cli.md) (generated from the code, kept current by CI), [the design](docs/design.md) and [the roadmap](docs/roadmap.md).
 - The working paper, published at [alexnodeland.github.io/stretto](https://alexnodeland.github.io/stretto/).
+
+### Release
+
+- Install from the tag: `cargo install --git https://github.com/alexnodeland/stretto --tag v0.1.0 stretto-proxy stretto-report`. It is not on crates.io yet: it depends on fugue's `program` feature, which is not in a fugue release yet.
+- The shipped arbiters stay in [`data/arbiters/`](data/arbiters/README.md); take them from a checkout or from the tag.
+- A version tag makes a GitHub release with that version's section of this file as its notes.
