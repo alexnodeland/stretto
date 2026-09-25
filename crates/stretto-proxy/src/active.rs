@@ -99,6 +99,8 @@ pub struct FlowConfig {
     pub log: Option<PathBuf>,
     /// Shadow mode (RFC-001 §3.7): decide and log, but make no lookups.
     pub shadow: bool,
+    /// Exploration at the flow's decisions, logged with each one.
+    pub explore: Option<stretto_report::flow::Explore>,
 }
 
 /// A System-One model judging whether the customer confirmed each write.
@@ -756,10 +758,13 @@ impl<'a, W: Write> Engine<'a, W> {
         self.read_context();
         let episode = self.episode();
         let asked = Instant::now();
-        let next = match fc
-            .flow
-            .next_with(&episode, fc.oracle.as_ref(), fc.threshold, fc.decider)
-        {
+        let next = match fc.flow.next_explored(
+            &episode,
+            fc.oracle.as_ref(),
+            fc.threshold,
+            fc.decider,
+            fc.explore,
+        ) {
             Ok(next) => next,
             Err(e) => {
                 eprintln!("stretto-proxy: the flow failed, handing back: {e:#}");

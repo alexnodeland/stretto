@@ -1,0 +1,986 @@
+{
+ "retail explore": {
+  "epsilon": 0.2,
+  "explore_replay": {
+   "turns": 1384,
+   "tool_turns": 771,
+   "turns_saved": 253,
+   "calls": 1153,
+   "calls_skipped": 553,
+   "flow_lookups": 825,
+   "flow_queries": 1415,
+   "detours": 272,
+   "episodes": 160,
+   "turns_saved_share": 0.1828,
+   "episodes_with_detour": 116
+  },
+  "targets": {
+   "d0": {
+    "target": "D0",
+    "truth": {
+     "lookups": 656.0,
+     "used": 598.0,
+     "detours": 58.0,
+     "turns": 324.40000000000003,
+     "turns_saved": 294,
+     "replay_turns": 1384,
+     "flow_lookups": 656,
+     "detours_replay": 58,
+     "decisions": 1164
+    },
+    "estimates": {
+     "direct": {
+      "detours": 106.0,
+      "lookups": 724.0,
+      "turns": 336.01666666666665,
+      "used": 618.0
+     },
+     "ips": {
+      "detours": 106.75,
+      "lookups": 723.25,
+      "turns": 336.78333333333336,
+      "used": 616.5
+     },
+     "ips_se": {
+      "detours": 8.903365644817573,
+      "lookups": 12.276583857032778,
+      "turns": 10.065100754122145,
+      "used": 13.809786389033142
+     },
+     "snips": {
+      "detours": 106.8606982371241,
+      "lookups": 724.0,
+      "turns": 337.1325728770596,
+      "used": 617.1393017628759
+     },
+     "dr": {
+      "detours": 107.13070289094472,
+      "lookups": 724.0,
+      "turns": 334.9066276284885,
+      "used": 616.8692971090545
+     },
+     "dr_se": {
+      "detours": 8.457261900093577,
+      "lookups": 0.0,
+      "turns": 7.72286643836778,
+      "used": 8.457261900093735
+     }
+    },
+    "decisions": 1368,
+    "looks": 724,
+    "matched": 603,
+    "unsupported": 0,
+    "ess": 598.8015310867854
+   },
+   "habit": {
+    "target": "habit@0.3",
+    "truth": {
+     "lookups": 649.0,
+     "used": 591.0,
+     "detours": 58.0,
+     "turns": 311.0,
+     "turns_saved": 311,
+     "replay_turns": 1384,
+     "flow_lookups": 649,
+     "detours_replay": 58,
+     "decisions": 1164
+    },
+    "estimates": {
+     "direct": {
+      "detours": 52.0,
+      "lookups": 645.0,
+      "turns": 311.31666666666666,
+      "used": 593.0
+     },
+     "ips": {
+      "detours": 52.72975840547425,
+      "lookups": 647.2919899088456,
+      "turns": 312.2310580353168,
+      "used": 594.5622315033713
+     },
+     "ips_se": {
+      "detours": 15.529848519686562,
+      "lookups": 29.654686159789986,
+      "turns": 13.734077504456602,
+      "used": 26.947451847149136
+     },
+     "snips": {
+      "detours": 52.54304811700269,
+      "lookups": 645.0,
+      "turns": 311.1254821199622,
+      "used": 592.4569518829973
+     },
+     "dr": {
+      "detours": 48.3771067821663,
+      "lookups": 645.0,
+      "turns": 310.2657905790701,
+      "used": 596.6228932178341
+     },
+     "dr_se": {
+      "detours": 9.265494291342483,
+      "lookups": 0.0,
+      "turns": 9.695147844233718,
+      "used": 9.265494291342506
+     }
+    },
+    "decisions": 1368,
+    "looks": 645,
+    "matched": 471,
+    "unsupported": 0,
+    "ess": 274.3537066246598
+   },
+   "c": {
+    "target": "C",
+    "truth": {
+     "lookups": 24.0,
+     "used": 24.0,
+     "detours": 0.0,
+     "turns": 24.0,
+     "turns_saved": 24,
+     "replay_turns": 1384,
+     "flow_lookups": 24,
+     "detours_replay": 0,
+     "decisions": 1106
+    },
+    "estimates": {
+     "direct": {
+      "detours": 0.0,
+      "lookups": 19.0,
+      "turns": 19.0,
+      "used": 19.0
+     },
+     "ips": {
+      "detours": 0.0,
+      "lookups": 20.0,
+      "turns": 20.0,
+      "used": 20.0
+     },
+     "ips_se": {
+      "detours": 0.0,
+      "lookups": 2.0412414523193148,
+      "turns": 2.0412414523193148,
+      "used": 2.0412414523193148
+     },
+     "snips": {
+      "detours": 0.0,
+      "lookups": 19.0,
+      "turns": 19.0,
+      "used": 19.0
+     },
+     "dr": {
+      "detours": -0.039370078740157424,
+      "lookups": 19.0,
+      "turns": 19.525984251968506,
+      "used": 19.039370078740156
+     },
+     "dr_se": {
+      "detours": 0.08036383670548483,
+      "lookups": 0.0,
+      "turns": 1.0736608583852727,
+      "used": 0.08036383670552692
+     }
+    },
+    "decisions": 1368,
+    "looks": 19,
+    "matched": 16,
+    "unsupported": 0,
+    "ess": 16.0
+   },
+   "d05": {
+    "target": "arbiter@0.5",
+    "truth": {
+     "lookups": 546.0,
+     "used": 517.0,
+     "detours": 29.0,
+     "turns": 269.6833333333334,
+     "turns_saved": 228,
+     "replay_turns": 1384,
+     "flow_lookups": 546,
+     "detours_replay": 29,
+     "decisions": 1135
+    },
+    "estimates": {
+     "direct": {
+      "detours": 38.0,
+      "lookups": 563.0,
+      "turns": 282.7166666666668,
+      "used": 525.0
+     },
+     "ips": {
+      "detours": 38.25,
+      "lookups": 557.25,
+      "turns": 278.74999999999994,
+      "used": 519.0
+     },
+     "ips_se": {
+      "detours": 6.116053790188665,
+      "lookups": 10.970583594802207,
+      "turns": 8.738107764873515,
+      "used": 12.116650081036871
+     },
+     "snips": {
+      "detours": 38.64468371467026,
+      "lookups": 563.0,
+      "turns": 281.626289816061,
+      "used": 524.3553162853298
+     },
+     "dr": {
+      "detours": 39.22558482346239,
+      "lookups": 563.0,
+      "turns": 281.24079933554435,
+      "used": 523.7744151765368
+     },
+     "dr_se": {
+      "detours": 6.244544334566321,
+      "lookups": 0.0,
+      "turns": 6.16272398267382,
+      "used": 6.244544334566515
+     }
+    },
+    "decisions": 1368,
+    "looks": 563,
+    "matched": 466,
+    "unsupported": 0,
+    "ess": 462.5678242249325
+   }
+  }
+ },
+ "retail explore10": {
+  "epsilon": 0.1,
+  "explore_replay": {
+   "turns": 1384,
+   "tool_turns": 771,
+   "turns_saved": 281,
+   "calls": 1153,
+   "calls_skipped": 586,
+   "flow_lookups": 715,
+   "flow_queries": 1277,
+   "detours": 129,
+   "episodes": 160,
+   "turns_saved_share": 0.203,
+   "episodes_with_detour": 75
+  },
+  "targets": {
+   "d0": {
+    "target": "D0",
+    "truth": {
+     "lookups": 656.0,
+     "used": 598.0,
+     "detours": 58.0,
+     "turns": 324.40000000000003,
+     "turns_saved": 294,
+     "replay_turns": 1384,
+     "flow_lookups": 656,
+     "detours_replay": 58,
+     "decisions": 1164
+    },
+    "estimates": {
+     "direct": {
+      "detours": 69.0,
+      "lookups": 677.0,
+      "turns": 331.90000000000003,
+      "used": 608.0
+     },
+     "ips": {
+      "detours": 73.77777777777779,
+      "lookups": 695.0000000000005,
+      "turns": 335.2611111111115,
+      "used": 621.2222222222229
+     },
+     "ips_se": {
+      "detours": 7.480334449869949,
+      "lookups": 7.103963111419513,
+      "turns": 8.228767826041082,
+      "used": 10.003697760325664
+     },
+     "snips": {
+      "detours": 71.86698641087126,
+      "lookups": 677.0,
+      "turns": 326.57808952837746,
+      "used": 605.1330135891288
+     },
+     "dr": {
+      "detours": 70.46364962929492,
+      "lookups": 677.0,
+      "turns": 329.4727450641722,
+      "used": 606.5363503707035
+     },
+     "dr_se": {
+      "detours": 7.458321990480222,
+      "lookups": 0.0,
+      "turns": 7.0692825736766585,
+      "used": 7.45832199048045
+     }
+    },
+    "decisions": 1230,
+    "looks": 677,
+    "matched": 633,
+    "unsupported": 0,
+    "ess": 632.3236363636374
+   },
+   "habit": {
+    "target": "habit@0.3",
+    "truth": {
+     "lookups": 649.0,
+     "used": 591.0,
+     "detours": 58.0,
+     "turns": 311.0,
+     "turns_saved": 311,
+     "replay_turns": 1384,
+     "flow_lookups": 649,
+     "detours_replay": 58,
+     "decisions": 1164
+    },
+    "estimates": {
+     "direct": {
+      "detours": 45.0,
+      "lookups": 635.0,
+      "turns": 309.2,
+      "used": 590.0
+     },
+     "ips": {
+      "detours": 31.55555555555555,
+      "lookups": 661.7707395054142,
+      "turns": 326.9915327034068,
+      "used": 630.2151839498587
+     },
+     "ips_se": {
+      "detours": 5.446339854085148,
+      "lookups": 46.52180672175367,
+      "turns": 22.00535977834954,
+      "used": 46.7811482663683
+     },
+     "snips": {
+      "detours": 30.279032573657386,
+      "lookups": 635.0,
+      "turns": 313.7636810927095,
+      "used": 604.7209674263426
+     },
+     "dr": {
+      "detours": 32.25525978853841,
+      "lookups": 635.0,
+      "turns": 322.1180438409323,
+      "used": 602.7447402114597
+     },
+     "dr_se": {
+      "detours": 5.7436136734393015,
+      "lookups": 0.0,
+      "turns": 9.66507666763325,
+      "used": 5.743613673439625
+     }
+    },
+    "decisions": 1230,
+    "looks": 635,
+    "matched": 528,
+    "unsupported": 0,
+    "ess": 153.69782784856088
+   },
+   "c": {
+    "target": "C",
+    "truth": {
+     "lookups": 24.0,
+     "used": 24.0,
+     "detours": 0.0,
+     "turns": 24.0,
+     "turns_saved": 24,
+     "replay_turns": 1384,
+     "flow_lookups": 24,
+     "detours_replay": 0,
+     "decisions": 1106
+    },
+    "estimates": {
+     "direct": {
+      "detours": 0.0,
+      "lookups": 23.0,
+      "turns": 23.0,
+      "used": 23.0
+     },
+     "ips": {
+      "detours": 0.0,
+      "lookups": 19.999999999999996,
+      "turns": 19.999999999999996,
+      "used": 19.999999999999996
+     },
+     "ips_se": {
+      "detours": 0.0,
+      "lookups": 2.2473328748774777,
+      "turns": 2.2473328748774777,
+      "used": 2.2473328748774777
+     },
+     "snips": {
+      "detours": 0.0,
+      "lookups": 23.0,
+      "turns": 23.0,
+      "used": 23.0
+     },
+     "dr": {
+      "detours": 0.12949640287769779,
+      "lookups": 23.0,
+      "turns": 21.367266187050365,
+      "used": 22.870503597122294
+     },
+     "dr_se": {
+      "detours": 0.09700717445514276,
+      "lookups": 0.0,
+      "turns": 1.223098791255254,
+      "used": 0.09700717445514255
+     }
+    },
+    "decisions": 1230,
+    "looks": 23,
+    "matched": 18,
+    "unsupported": 0,
+    "ess": 17.999999999999986
+   },
+   "d05": {
+    "target": "arbiter@0.5",
+    "truth": {
+     "lookups": 546.0,
+     "used": 517.0,
+     "detours": 29.0,
+     "turns": 269.6833333333334,
+     "turns_saved": 228,
+     "replay_turns": 1384,
+     "flow_lookups": 546,
+     "detours_replay": 29,
+     "decisions": 1135
+    },
+    "estimates": {
+     "direct": {
+      "detours": 34.0,
+      "lookups": 562.0,
+      "turns": 282.2666666666668,
+      "used": 528.0
+     },
+     "ips": {
+      "detours": 36.222222222222214,
+      "lookups": 572.2222222222233,
+      "turns": 282.12037037037084,
+      "used": 536.0000000000009
+     },
+     "ips_se": {
+      "detours": 5.801747883839587,
+      "lookups": 6.749722068870731,
+      "turns": 7.095030695789681,
+      "used": 8.71746508792559
+     },
+     "snips": {
+      "detours": 35.57514563106788,
+      "lookups": 562.0,
+      "turns": 277.0805501618122,
+      "used": 526.424854368932
+     },
+     "dr": {
+      "detours": 35.195633761159186,
+      "lookups": 562.0,
+      "turns": 279.7383584320229,
+      "used": 526.8043662388399
+     },
+     "dr_se": {
+      "detours": 5.846174459834497,
+      "lookups": 0.0,
+      "turns": 5.804858220905894,
+      "used": 5.8461744598347245
+     }
+    },
+    "decisions": 1230,
+    "looks": 562,
+    "matched": 522,
+    "unsupported": 0,
+    "ess": 521.3780224100674
+   }
+  }
+ },
+ "airline explore": {
+  "epsilon": 0.2,
+  "explore_replay": {
+   "turns": 630,
+   "tool_turns": 292,
+   "turns_saved": 31,
+   "calls": 645,
+   "calls_skipped": 178,
+   "flow_lookups": 319,
+   "flow_queries": 783,
+   "detours": 141,
+   "episodes": 80,
+   "turns_saved_share": 0.0492,
+   "episodes_with_detour": 48
+  },
+  "targets": {
+   "d0": {
+    "target": "D0",
+    "truth": {
+     "lookups": 210.0,
+     "used": 184.0,
+     "detours": 26.0,
+     "turns": 54.47222222222219,
+     "turns_saved": 41,
+     "replay_turns": 630,
+     "flow_lookups": 210,
+     "detours_replay": 26,
+     "decisions": 581
+    },
+    "estimates": {
+     "direct": {
+      "detours": 39.0,
+      "lookups": 221.0,
+      "turns": 54.22222222222219,
+      "used": 182.0
+     },
+     "ips": {
+      "detours": 43.75,
+      "lookups": 236.5,
+      "turns": 56.78055555555555,
+      "used": 192.75
+     },
+     "ips_se": {
+      "detours": 5.152591512794597,
+      "lookups": 5.387187257774679,
+      "turns": 2.60002774701579,
+      "used": 6.543374157982685
+     },
+     "snips": {
+      "detours": 40.88266384778013,
+      "lookups": 221.0,
+      "turns": 53.05920836269674,
+      "used": 180.11733615221988
+     },
+     "dr": {
+      "detours": 39.481930992736075,
+      "lookups": 221.0,
+      "turns": 53.86038366794452,
+      "used": 181.5180690072638
+     },
+     "dr_se": {
+      "detours": 4.799906337457762,
+      "lookups": 0.0,
+      "turns": 2.32261514765623,
+      "used": 4.799906337457775
+     }
+    },
+    "decisions": 694,
+    "looks": 221,
+    "matched": 200,
+    "unsupported": 0,
+    "ess": 198.25343376163048
+   },
+   "habit": {
+    "target": "habit@0.3",
+    "truth": {
+     "lookups": 250.0,
+     "used": 200.0,
+     "detours": 50.0,
+     "turns": 60.57692307692306,
+     "turns_saved": 55,
+     "replay_turns": 630,
+     "flow_lookups": 250,
+     "detours_replay": 50,
+     "decisions": 603
+    },
+    "estimates": {
+     "direct": {
+      "detours": 42.0,
+      "lookups": 242.0,
+      "turns": 60.215811965811945,
+      "used": 200.0
+     },
+     "ips": {
+      "detours": 41.27661858957151,
+      "lookups": 253.4179577955822,
+      "turns": 61.578944017619165,
+      "used": 212.14133920601068
+     },
+     "ips_se": {
+      "detours": 9.565163276560593,
+      "lookups": 18.49915850260108,
+      "turns": 4.649157005407598,
+      "used": 16.84255943740412
+     },
+     "snips": {
+      "detours": 39.41686605624774,
+      "lookups": 242.0,
+      "turns": 58.80445325143262,
+      "used": 202.58313394375227
+     },
+     "dr": {
+      "detours": 31.146642334225444,
+      "lookups": 242.0,
+      "turns": 60.245764588185345,
+      "used": 210.85335766577433
+     },
+     "dr_se": {
+      "detours": 4.739886002075292,
+      "lookups": 0.0,
+      "turns": 4.713552369240269,
+      "used": 4.739886002075317
+     }
+    },
+    "decisions": 694,
+    "looks": 242,
+    "matched": 182,
+    "unsupported": 0,
+    "ess": 105.1168179878017
+   },
+   "c": {
+    "target": "C",
+    "truth": {
+     "lookups": 0.0,
+     "used": 0.0,
+     "detours": 0.0,
+     "turns": 0.0,
+     "turns_saved": 0,
+     "replay_turns": 630,
+     "flow_lookups": 0,
+     "detours_replay": 0,
+     "decisions": 556
+    },
+    "estimates": {
+     "direct": {
+      "detours": 0.0,
+      "lookups": 0.0,
+      "turns": 0.0,
+      "used": 0.0
+     },
+     "ips": {
+      "detours": 0.0,
+      "lookups": 0.0,
+      "turns": 0.0,
+      "used": 0.0
+     },
+     "ips_se": {
+      "detours": 0.0,
+      "lookups": 0.0,
+      "turns": 0.0,
+      "used": 0.0
+     },
+     "snips": {
+      "detours": 0.0,
+      "lookups": 0.0,
+      "turns": 0.0,
+      "used": 0.0
+     },
+     "dr": {
+      "detours": 0.0,
+      "lookups": 0.0,
+      "turns": 0.0,
+      "used": 0.0
+     },
+     "dr_se": {
+      "detours": 0.0,
+      "lookups": 0.0,
+      "turns": 0.0,
+      "used": 0.0
+     }
+    },
+    "decisions": 694,
+    "looks": 0,
+    "matched": 0,
+    "unsupported": 0,
+    "ess": 0.0
+   },
+   "d05": {
+    "target": "arbiter@0.5",
+    "truth": {
+     "lookups": 161.0,
+     "used": 161.0,
+     "detours": 0.0,
+     "turns": 49.03333333333332,
+     "turns_saved": 28,
+     "replay_turns": 630,
+     "flow_lookups": 161,
+     "detours_replay": 0,
+     "decisions": 556
+    },
+    "estimates": {
+     "direct": {
+      "detours": 5.0,
+      "lookups": 162.0,
+      "turns": 47.73333333333332,
+      "used": 157.0
+     },
+     "ips": {
+      "detours": 5.0,
+      "lookups": 170.5,
+      "turns": 49.412499999999994,
+      "used": 165.5
+     },
+     "ips_se": {
+      "detours": 2.144733824410408,
+      "lookups": 4.513414584873993,
+      "turns": 2.2126437993437125,
+      "used": 4.863799138130065
+     },
+     "snips": {
+      "detours": 4.750733137829912,
+      "lookups": 162.0,
+      "turns": 46.9491202346041,
+      "used": 157.2492668621701
+     },
+     "dr": {
+      "detours": 4.216964285714288,
+      "lookups": 162.0,
+      "turns": 47.35236855158726,
+      "used": 157.78303571428566
+     },
+     "dr_se": {
+      "detours": 2.1470773696272247,
+      "lookups": 0.0,
+      "turns": 1.9071370546699102,
+      "used": 2.147077369627232
+     }
+    },
+    "decisions": 694,
+    "looks": 162,
+    "matched": 147,
+    "unsupported": 0,
+    "ess": 145.44215134459037
+   }
+  }
+ },
+ "airline explore10": {
+  "epsilon": 0.1,
+  "explore_replay": {
+   "turns": 630,
+   "tool_turns": 292,
+   "turns_saved": 36,
+   "calls": 645,
+   "calls_skipped": 178,
+   "flow_lookups": 266,
+   "flow_queries": 731,
+   "detours": 88,
+   "episodes": 80,
+   "turns_saved_share": 0.0571,
+   "episodes_with_detour": 33
+  },
+  "targets": {
+   "d0": {
+    "target": "D0",
+    "truth": {
+     "lookups": 210.0,
+     "used": 184.0,
+     "detours": 26.0,
+     "turns": 54.47222222222219,
+     "turns_saved": 41,
+     "replay_turns": 630,
+     "flow_lookups": 210,
+     "detours_replay": 26,
+     "decisions": 581
+    },
+    "estimates": {
+     "direct": {
+      "detours": 34.0,
+      "lookups": 216.0,
+      "turns": 53.97222222222219,
+      "used": 182.0
+     },
+     "ips": {
+      "detours": 37.77777777777777,
+      "lookups": 224.00000000000028,
+      "turns": 55.25740740740743,
+      "used": 186.22222222222248
+     },
+     "ips_se": {
+      "detours": 4.626137159137416,
+      "lookups": 3.263166955817285,
+      "turns": 2.315805914139654,
+      "used": 5.1457204518003
+     },
+     "snips": {
+      "detours": 36.428571428571374,
+      "lookups": 216.0,
+      "turns": 53.28392857142852,
+      "used": 179.5714285714286
+     },
+     "dr": {
+      "detours": 36.34305205121016,
+      "lookups": 216.0,
+      "turns": 53.500295922499454,
+      "used": 179.65694794879002
+     },
+     "dr_se": {
+      "detours": 4.455339008955128,
+      "lookups": 0.0,
+      "turns": 2.218306358356194,
+      "used": 4.4553390089550975
+     }
+    },
+    "decisions": 642,
+    "looks": 216,
+    "matched": 207,
+    "unsupported": 0,
+    "ess": 206.58005489478555
+   },
+   "habit": {
+    "target": "habit@0.3",
+    "truth": {
+     "lookups": 250.0,
+     "used": 200.0,
+     "detours": 50.0,
+     "turns": 60.57692307692306,
+     "turns_saved": 55,
+     "replay_turns": 630,
+     "flow_lookups": 250,
+     "detours_replay": 50,
+     "decisions": 603
+    },
+    "estimates": {
+     "direct": {
+      "detours": 36.0,
+      "lookups": 235.0,
+      "turns": 59.715811965811945,
+      "used": 199.0
+     },
+     "ips": {
+      "detours": 30.17950609368399,
+      "lookups": 236.54100947288129,
+      "turns": 59.653211560982875,
+      "used": 206.36150337919727
+     },
+     "ips_se": {
+      "detours": 10.458897192562553,
+      "lookups": 23.40455471081772,
+      "turns": 5.5939155912542615,
+      "used": 21.668643568886207
+     },
+     "snips": {
+      "detours": 29.982893654763213,
+      "lookups": 235.0,
+      "turns": 59.26458480950279,
+      "used": 205.01710634523675
+     },
+     "dr": {
+      "detours": 26.251293632191665,
+      "lookups": 235.0,
+      "turns": 60.21827541160154,
+      "used": 208.7487063678086
+     },
+     "dr_se": {
+      "detours": 4.546233734625784,
+      "lookups": 0.0,
+      "turns": 4.735222322871574,
+      "used": 4.546233734625726
+     }
+    },
+    "decisions": 642,
+    "looks": 235,
+    "matched": 186,
+    "unsupported": 0,
+    "ess": 71.82931357872181
+   },
+   "c": {
+    "target": "C",
+    "truth": {
+     "lookups": 0.0,
+     "used": 0.0,
+     "detours": 0.0,
+     "turns": 0.0,
+     "turns_saved": 0,
+     "replay_turns": 630,
+     "flow_lookups": 0,
+     "detours_replay": 0,
+     "decisions": 556
+    },
+    "estimates": {
+     "direct": {
+      "detours": 0.0,
+      "lookups": 0.0,
+      "turns": 0.0,
+      "used": 0.0
+     },
+     "ips": {
+      "detours": 0.0,
+      "lookups": 0.0,
+      "turns": 0.0,
+      "used": 0.0
+     },
+     "ips_se": {
+      "detours": 0.0,
+      "lookups": 0.0,
+      "turns": 0.0,
+      "used": 0.0
+     },
+     "snips": {
+      "detours": 0.0,
+      "lookups": 0.0,
+      "turns": 0.0,
+      "used": 0.0
+     },
+     "dr": {
+      "detours": 0.0,
+      "lookups": 0.0,
+      "turns": 0.0,
+      "used": 0.0
+     },
+     "dr_se": {
+      "detours": 0.0,
+      "lookups": 0.0,
+      "turns": 0.0,
+      "used": 0.0
+     }
+    },
+    "decisions": 642,
+    "looks": 0,
+    "matched": 0,
+    "unsupported": 0,
+    "ess": 0.0
+   },
+   "d05": {
+    "target": "arbiter@0.5",
+    "truth": {
+     "lookups": 161.0,
+     "used": 161.0,
+     "detours": 0.0,
+     "turns": 49.03333333333332,
+     "turns_saved": 28,
+     "replay_turns": 630,
+     "flow_lookups": 161,
+     "detours_replay": 0,
+     "decisions": 556
+    },
+    "estimates": {
+     "direct": {
+      "detours": 5.0,
+      "lookups": 162.0,
+      "turns": 47.78333333333332,
+      "used": 157.0
+     },
+     "ips": {
+      "detours": 5.555555555555555,
+      "lookups": 168.55555555555577,
+      "turns": 49.14629629629631,
+      "used": 163.00000000000023
+     },
+     "ips_se": {
+      "detours": 2.4380762540903085,
+      "lookups": 2.4380762540902445,
+      "turns": 2.0005644816171344,
+      "used": 3.3640559489971724
+     },
+     "snips": {
+      "detours": 5.339485827290699,
+      "lookups": 162.0,
+      "turns": 47.23487145682263,
+      "used": 156.6605141727093
+     },
+     "dr": {
+      "detours": 5.022583559168926,
+      "lookups": 162.0,
+      "turns": 47.52339656729902,
+      "used": 156.97741644083118
+     },
+     "dr_se": {
+      "detours": 2.436603743263349,
+      "lookups": 0.0,
+      "turns": 1.9071925054392442,
+      "used": 2.4366037432633223
+     }
+    },
+    "decisions": 642,
+    "looks": 162,
+    "matched": 157,
+    "unsupported": 0,
+    "ess": 156.62485537330727
+   }
+  }
+ }
+}

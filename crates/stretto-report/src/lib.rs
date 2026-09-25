@@ -26,6 +26,7 @@ pub mod arbitrate;
 pub mod audit;
 pub mod cli_doc;
 pub mod confirm;
+pub mod evaluate;
 pub mod flow;
 pub mod guards;
 pub mod matching;

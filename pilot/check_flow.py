@@ -20,6 +20,13 @@ on only where training shows no branch).
     python check_flow.py --results glm-5_retail.json --oracle-cache CACHE \\
         --flow-oracle jev
 
+`--explore EPSILON` serves the flow exploring (`stretto serve --explore`)
+and writes every decision with each option's outcome to `decisions.jsonl`,
+for `stretto evaluate`: `used` if the agent makes the lookup later (a
+recorded call not yet made), `detour` if it never makes it, and `turn`, one
+over the calls of the recorded turn the lookup spares a call of. `--explore
+0` explores nothing and still writes them.
+
 By default each episode's tools run in their own `tau2_mcp.py` process over
 MCP, as the agent's would, and episodes replay one at a time. Most of that
 time is spent starting Python and importing τ²-bench. `--in-process` calls
@@ -73,7 +80,10 @@ async def replay(task_id: str, messages: list, episode: Path, address: str, args
     if getattr(args, "in_process", False):
         import tau2_mcp
 
-        server = tau2_mcp.Episode(args.domain, task_id, episode, MAX_CALLS, address, FLOW_MAX, FLOW_BUDGET)
+        server = tau2_mcp.Episode(
+            args.domain, task_id, episode, MAX_CALLS, address, FLOW_MAX, FLOW_BUDGET,
+            record_answers=exploring(args),
+        )
         server.save_state()
 
         async def call(name: str, arguments: dict) -> str:
@@ -88,7 +98,7 @@ async def replay(task_id: str, messages: list, episode: Path, address: str, args
             "--task-id", task_id,
             "--episode-dir", str(episode),
             "--flow-address", address,
-        ],
+        ] + (["--record-answers"] if exploring(args) else []),
     )
     with open(episode / "server.stderr", "w") as errlog:
         async with stdio_client(params, errlog=errlog) as (read, write):
@@ -102,10 +112,37 @@ async def replay(task_id: str, messages: list, episode: Path, address: str, args
                 return await walk(messages, episode, call, task_id)
 
 
+def exploring(args) -> bool:
+    return getattr(args, "explore", None) is not None
+
+
+def label(answer: dict, made: set, recorded: set, turn_of: dict, name: str) -> dict:
+    """A flow answer with each option's outcome, for `stretto evaluate`."""
+    labels = []
+    for o in answer["policy"]["options"]:
+        if o.get("arguments") is None:
+            labels.append({"used": False, "detour": False, "turn": 0.0})
+            continue
+        k = key(o["tool"], o["arguments"])
+        used = k in recorded and k not in made
+        labels.append({"used": used, "detour": k not in recorded, "turn": 1.0 / turn_of[k] if used else 0.0})
+    return {**answer, "labels": labels, "episode": name}
+
+
 async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
     """Replay the recorded calls through `call`, skipping those the flow made."""
     trajectory = episode / "trajectory.jsonl"
     recorded = {key(c["name"], c["arguments"]) for m in messages for c in m.get("tool_calls") or []}
+    # The calls in the first turn of each recorded call: a lookup that
+    # spares one of them spares that share of the turn.
+    turn_of: dict[tuple[str, str], int] = {}
+    for m in messages:
+        for c in m.get("tool_calls") or []:
+            turn_of.setdefault(key(c["name"], c["arguments"]), len(m["tool_calls"]))
+    answers = episode / "flow-answers.jsonl"
+    answers.unlink(missing_ok=True)
+    seen_answers = 0
+    decisions: list[dict] = []
     made: set[tuple[str, str]] = set()
     by_flow: list[tuple[str, str]] = []
     turns = tool_turns = saved = calls = skipped = 0
@@ -131,12 +168,25 @@ async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
             left += 1
             text = await call(c["name"], c["arguments"])
             made.add(k)
+            # The flow's decisions after this call, each with what was made
+            # by then: the call, then each lookup before it.
+            if answers.exists():
+                new = answers.read_text().splitlines()[seen_answers:]
+                seen_answers += len(new)
+                chain = set(made)
+                for line in new:
+                    answer = json.loads(line)["answer"]
+                    if "policy" in answer:
+                        decisions.append(label(answer, chain, recorded, turn_of, episode.name))
+                    if answer.get("action") == "lookup":
+                        chain.add(key(answer["tool"], answer.get("arguments") or {}))
             for f in flow_calls(text):
                 made.add(f)
                 by_flow.append(f)
         saved += left == 0
     state = json.loads((episode / "tools-state.json").read_text())
     return {
+        "decisions": decisions,
         "task_id": task_id,
         "turns": turns,
         "tool_turns": tool_turns,
@@ -153,6 +203,17 @@ def replay_one(job: tuple) -> dict:
     """One episode's row (a worker's job with `--jobs`)."""
     name, task_id, messages, out, address, args = job
     return {"episode": name, **asyncio.run(replay(task_id, messages, out / name, address, args))}
+
+
+def keep(row: dict, out: Path) -> dict:
+    """Print a replayed episode's row, and write its labelled decisions."""
+    decisions = row.pop("decisions", [])
+    if decisions:
+        with open(out / "decisions.jsonl", "a") as f:
+            for d in decisions:
+                f.write(json.dumps(d) + "\n")
+    print(json.dumps(row), flush=True)
+    return row
 
 
 def recorded_episodes(args) -> list[tuple[str, str, list]]:
@@ -192,6 +253,11 @@ def main() -> None:
         help="`habit`: the habit alone, never asking the System-One model (arm C)",
     )
     parser.add_argument("--flow", type=Path, help="a compiled flow (`stretto compile`), else compiled here")
+    parser.add_argument(
+        "--explore", type=float, metavar="EPSILON",
+        help="serve the flow exploring, and write each decision with its options' outcomes to decisions.jsonl",
+    )
+    parser.add_argument("--explore-seed", type=int, default=0, help="seed for the exploration draws")
     parser.add_argument("--in-process", action="store_true", help="call tau2_mcp.Episode directly instead of over MCP")
     parser.add_argument("--jobs", type=int, default=1, help="episodes to replay at once")
     args = parser.parse_args()
@@ -211,9 +277,12 @@ def main() -> None:
             flow_decider=args.flow_decider,
             flow_max_questions=50 * len(episodes),
             flow=args.flow,
+            explore=args.explore,
+            explore_seed=args.explore_seed,
         ),
         out,
     )
+    (out / "decisions.jsonl").unlink(missing_ok=True)
     rows = []
     jobs = [(name, task_id, messages, out, address, args) for name, task_id, messages in episodes]
     try:
@@ -222,12 +291,10 @@ def main() -> None:
                 import tau2_mcp  # noqa: F401  (imported once, inherited by the forked workers)
             with ProcessPoolExecutor(args.jobs) as pool:
                 for row in pool.map(replay_one, jobs):
-                    rows.append(row)
-                    print(json.dumps(row), flush=True)
+                    rows.append(keep(row, out))
         else:
             for job in jobs:
-                rows.append(replay_one(job))
-                print(json.dumps(rows[-1]), flush=True)
+                rows.append(keep(replay_one(job), out))
     finally:
         serve.terminate()
         serve.wait(timeout=30)
@@ -239,6 +306,7 @@ def main() -> None:
         "decider": args.flow_decider,
         "threshold": args.flow_threshold,
         "oracle": args.flow_oracle,
+        "explore": args.explore,
     }
     (out / "check.json").write_text(
         json.dumps({"flow": flow, "total": total, "episodes": rows}, indent=1)

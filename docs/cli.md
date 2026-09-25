@@ -23,6 +23,7 @@ Compile an agent's recorded behavior into flows, serve them, and measure them ag
 | [`audit`](#stretto-audit) | Audit a flow against recorded episodes. |
 | [`flow-show`](#stretto-flow-show) | Show a flow as a reviewer reads it (Markdown). |
 | [`flow-diff`](#stretto-flow-diff) | What changed from one flow to another, as a change list for a pull request (Markdown). |
+| [`evaluate`](#stretto-evaluate) | Estimate what another rule would have done on a flow's logged decisions (RFC-001 §3.7). |
 | [`promote`](#stretto-promote) | Promote a flow's sites (RFC-001 §3.7). |
 | [`redact`](#stretto-redact) | Pseudonymize recorded sessions. |
 | [`jev-check`](#stretto-jev-check) | Check that Jev is reachable with TYPESAFE_API_KEY. |
@@ -134,6 +135,8 @@ Usage: stretto flow-serve [OPTIONS] --tau2 <DIR>
 - `--decider <DECIDER>` (one of `arbiter`, `habit`; default `arbiter`): Where each option's probability comes from: `arbiter` (the habit, the System-One model and the predicates, combined: arm D0) or `habit` (the habit alone, never asking the System-One model: a flow compiled from traces only, arm C at a high threshold).
 - `--max-questions <N>` (default `300`): Stop asking the System-One model after this many live questions.
 - `--log <FILE>`: Append every query's answer here (JSON lines).
+- `--explore <EPSILON>`: Explore: with this probability, take a lookup other than the rule's choice, drawn by the decider's probabilities among those that bind. Each answer then carries its `policy`: every option and the chance that the flow took what it took, for `evaluate`. 0 explores nothing but still logs it.
+- `--explore-seed <N>` (default `0`): Seed for the exploration draws.
 
 ### `stretto compile`
 
@@ -243,6 +246,8 @@ Usage: stretto serve [OPTIONS] --flow <FILE>
 - `--decider <DECIDER>` (one of `arbiter`, `habit`; default `arbiter`): Where each option's probability comes from: `arbiter` (the habit, the System-One model and the predicates, combined: arm D0) or `habit` (the habit alone, never asking the System-One model: a flow compiled from traces only, arm C at a high threshold).
 - `--max-questions <N>` (default `300`): Stop asking the System-One model after this many live questions.
 - `--log <FILE>`: Append every query's answer here (JSON lines).
+- `--explore <EPSILON>`: Explore: with this probability, take a lookup other than the rule's choice, drawn by the decider's probabilities among those that bind. Each answer then carries its `policy`: every option and the chance that the flow took what it took, for `evaluate`. 0 explores nothing but still logs it.
+- `--explore-seed <N>` (default `0`): Seed for the exploration draws.
 
 ### `stretto guards`
 
@@ -380,6 +385,28 @@ Usage: stretto flow-diff [OPTIONS] <OLD> <NEW>
 - `--tolerance <X>` (default `0.05`): Leave out shares, chances and weights that moved by less than this.
 - `--threshold <P>` (default `0.3`): The threshold the flow will be served with (`stretto-proxy --flow-threshold`).
 - `--out <FILE>`: Write the Markdown here (default: stdout).
+
+### `stretto evaluate`
+
+Estimate what another rule would have done on a flow's logged decisions (RFC-001 §3.7). The decisions are JSON lines, each a flow answer logged with its `policy` (`serve --explore`, `stretto-proxy --flow-explore`) and a `labels` list: each option's outcome (`used`, `detour`, `turn`), as `pilot/check_flow.py --explore` writes them. For each target, per site and in total: the lookups, used lookups, detours and turns spared, estimated directly from every option's label, and by IPS, self-normalized IPS and doubly robust estimates from the taken option's label alone.
+
+```text
+Usage: stretto evaluate [OPTIONS] --decisions <FILE> --target <RULE>
+```
+
+**Inputs**
+
+- `--decisions <FILE>` (required; repeatable): Labelled decisions (JSON lines).
+
+**Targets**
+
+- `--target <RULE>` (required; repeatable): A rule to evaluate: `NAME=DECIDER@THRESHOLD`, the decider `arbiter` (the logged decider's probabilities) or `habit`.
+- `--min-ess <N>` (default `10`): Refuse weighted estimates, a site's or the total's, below this effective sample size.
+
+**Output**
+
+- `--out <FILE>`: Write the Markdown here (default: stdout).
+- `--json <FILE>`: Also write every estimate as JSON here.
 
 ### `stretto promote`
 
@@ -538,6 +565,8 @@ Usage: stretto-proxy [OPTIONS] [-- <SERVER_COMMAND>...]
 - `--flow-questions <N>` (default `300`): Questions to the System-One model per session, at most.
 - `--flow-log <FILE>`: Append the flow's decisions here (default: next to the session log).
 - `--flow-shadow`: Shadow mode: the flow decides after each call and logs what it would look up (`"shadow": true`), but makes no lookups, so the agent gets the server's results unchanged. `stretto promote --sessions` then makes the same decisions again from the answers cached in --oracle-cache, and scores them against what the agent did.
+- `--flow-explore <EPSILON>`: Explore: with this probability, take a lookup other than the rule's choice, drawn by the decider's probabilities among those that bind. Each decision in the flow log then carries its `policy`: every option and the chance that the flow took what it took, for `stretto evaluate`. 0 explores nothing but still logs it.
+- `--flow-explore-seed <N>` (default `0`): Seed for the exploration draws.
 - `--task-id <ID>`: Task id, which picks the flow's fold (default: the session).
 
 **The System-One model**

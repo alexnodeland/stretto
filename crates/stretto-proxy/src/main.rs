@@ -85,6 +85,27 @@ struct Cli {
     /// --oracle-cache, and scores them against what the agent did.
     #[arg(help_heading = "Flows", long, requires = "flow")]
     flow_shadow: bool,
+    /// Explore: with this probability, take a lookup other than the rule's
+    /// choice, drawn by the decider's probabilities among those that bind.
+    /// Each decision in the flow log then carries its `policy`: every
+    /// option and the chance that the flow took what it took, for `stretto
+    /// evaluate`. 0 explores nothing but still logs it.
+    #[arg(
+        help_heading = "Flows",
+        long,
+        value_name = "EPSILON",
+        requires = "flow"
+    )]
+    flow_explore: Option<f64>,
+    /// Seed for the exploration draws.
+    #[arg(
+        help_heading = "Flows",
+        long,
+        value_name = "N",
+        default_value_t = 0,
+        requires = "flow_explore"
+    )]
+    flow_explore_seed: u64,
     /// Check each of the agent's calls against the policy guards of
     /// --domain (`retail` or `airline`), and refuse the ones they fail.
     #[arg(help_heading = "Writes", long)]
@@ -303,6 +324,16 @@ fn active(cli: &Cli) -> Result<Active> {
                 max_questions: cli.flow_questions,
                 log: cli.flow_log.clone().map(expand_home),
                 shadow: cli.flow_shadow,
+                explore: match cli.flow_explore {
+                    Some(e) if !(0.0..=1.0).contains(&e) => {
+                        bail!("--flow-explore must be in [0, 1]")
+                    }
+                    Some(epsilon) => Some(stretto_report::flow::Explore {
+                        epsilon,
+                        seed: cli.flow_explore_seed,
+                    }),
+                    None => None,
+                },
             })
         }
         None => None,

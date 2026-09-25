@@ -2,6 +2,10 @@
 
 The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stretto-trace`, `stretto-oracle`, `stretto-model`, `stretto-report`) make no stability promise before 1.0. The file formats carry versions of their own ([docs/formats.md](docs/formats.md#versions)).
 
+## Unreleased
+
+- **Counterfactual evaluation** (RFC-001 §3.7, [#15](https://github.com/alexnodeland/stretto/issues/15)). `stretto-proxy --flow-explore EPSILON`, and `serve --explore` and `flow-serve --explore`, explore at read-only sites: with that probability the flow takes a lookup other than its rule's choice, drawn by the decider's probabilities among the lookups that bind. Each decision then logs its `policy`: every option and the chance that the flow took what it took. `stretto evaluate` reads such decisions, with each option's outcome, and estimates what another rule (the arbiter's or the habit's probabilities at a threshold) would have done, per site and in total: directly from every option's outcome, and by IPS, self-normalized IPS and a doubly robust estimate from the taken option's alone, with each site's effective sample size. `pilot/check_flow.py --explore` writes the labelled decisions from replays.
+
 ## 0.1.0 (2026-09-25)
 
 Everything so far: the first design of [RFC-001](docs/rfc/001-habit-compiler.md), built and measured. [docs/results](docs/results/README.md) has every result.

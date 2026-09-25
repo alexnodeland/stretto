@@ -80,6 +80,22 @@ enum Command {
         /// Append every query's answer here (JSON lines).
         #[arg(help_heading = "Serving", value_name = "FILE", long)]
         log: Option<PathBuf>,
+        /// Explore: with this probability, take a lookup other than the
+        /// rule's choice, drawn by the decider's probabilities among those
+        /// that bind. Each answer then carries its `policy`: every option
+        /// and the chance that the flow took what it took, for `evaluate`.
+        /// 0 explores nothing but still logs it.
+        #[arg(help_heading = "Serving", value_name = "EPSILON", long)]
+        explore: Option<f64>,
+        /// Seed for the exploration draws.
+        #[arg(
+            help_heading = "Serving",
+            value_name = "N",
+            long,
+            default_value_t = 0,
+            requires = "explore"
+        )]
+        explore_seed: u64,
     },
     /// Compile a live read-only flow and write its IR (JSON) to a file: the
     /// same data and questions as `phase0 --questions v2`, goal free, from
@@ -245,6 +261,22 @@ enum Command {
         /// Append every query's answer here (JSON lines).
         #[arg(help_heading = "Serving", value_name = "FILE", long)]
         log: Option<PathBuf>,
+        /// Explore: with this probability, take a lookup other than the
+        /// rule's choice, drawn by the decider's probabilities among those
+        /// that bind. Each answer then carries its `policy`: every option
+        /// and the chance that the flow took what it took, for `evaluate`.
+        /// 0 explores nothing but still logs it.
+        #[arg(help_heading = "Serving", value_name = "EPSILON", long)]
+        explore: Option<f64>,
+        /// Seed for the exploration draws.
+        #[arg(
+            help_heading = "Serving",
+            value_name = "N",
+            long,
+            default_value_t = 0,
+            requires = "explore"
+        )]
+        explore_seed: u64,
     },
     /// Test the policy guards (typed checks a proxy runs before a write)
     /// against recorded τ²-bench trajectories: every write is checked
@@ -468,6 +500,49 @@ enum Command {
         /// Write the Markdown here (default: stdout).
         #[arg(value_name = "FILE", long)]
         out: Option<PathBuf>,
+    },
+    /// Estimate what another rule would have done on a flow's logged
+    /// decisions (RFC-001 §3.7). The decisions are JSON lines, each a flow
+    /// answer logged with its `policy` (`serve --explore`, `stretto-proxy
+    /// --flow-explore`) and a `labels` list: each option's outcome (`used`,
+    /// `detour`, `turn`), as `pilot/check_flow.py --explore` writes them. For
+    /// each target, per site and in total: the lookups, used lookups,
+    /// detours and turns spared, estimated directly from every option's
+    /// label, and by IPS, self-normalized IPS and doubly robust estimates
+    /// from the taken option's label alone.
+    Evaluate {
+        /// Labelled decisions (JSON lines).
+        #[arg(
+            help_heading = "Inputs",
+            value_name = "FILE",
+            long = "decisions",
+            required = true
+        )]
+        decisions: Vec<PathBuf>,
+        /// A rule to evaluate: `NAME=DECIDER@THRESHOLD`, the decider
+        /// `arbiter` (the logged decider's probabilities) or `habit`.
+        #[arg(
+            help_heading = "Targets",
+            value_name = "RULE",
+            long = "target",
+            required = true
+        )]
+        targets: Vec<String>,
+        /// Refuse weighted estimates, a site's or the total's, below this
+        /// effective sample size.
+        #[arg(
+            help_heading = "Targets",
+            value_name = "N",
+            long,
+            default_value_t = 10.0
+        )]
+        min_ess: f64,
+        /// Write the Markdown here (default: stdout).
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
+        out: Option<PathBuf>,
+        /// Also write every estimate as JSON here.
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
+        json: Option<PathBuf>,
     },
     /// Promote a flow's sites (RFC-001 §3.7). Wherever the flow would decide
     /// in recorded sessions or τ²-bench results, score the lookup it would
@@ -945,6 +1020,8 @@ fn main() -> Result<()> {
             decider,
             max_questions,
             log,
+            explore,
+            explore_seed,
         } => {
             let domains = data.domains.clone();
             let [domain] = domains.as_slice() else {
@@ -961,6 +1038,7 @@ fn main() -> Result<()> {
                 threshold,
                 decider: decider.into(),
                 max_questions,
+                explore: explore_arg(explore, explore_seed)?,
             };
             serve(&flow, oracle.as_ref(), &listen, rule, log)
         }
@@ -1100,6 +1178,8 @@ fn main() -> Result<()> {
             decider,
             max_questions,
             log,
+            explore,
+            explore_seed,
         } => {
             let flow = stretto_report::flow::Flow::load(&flow)?;
             if decider == DeciderArg::Arbiter && !flow.has_arbiter() {
@@ -1114,6 +1194,7 @@ fn main() -> Result<()> {
                 threshold,
                 decider: decider.into(),
                 max_questions,
+                explore: explore_arg(explore, explore_seed)?,
             };
             serve(&flow, oracle.as_ref(), &listen, rule, log)
         }
@@ -1354,6 +1435,66 @@ fn main() -> Result<()> {
                     std::process::exit(2)
                 }
             }
+        }
+        Command::Evaluate {
+            decisions,
+            targets,
+            min_ess,
+            out,
+            json,
+        } => {
+            use stretto_report::evaluate::{evaluate, markdown, Record, Target};
+            let targets = targets
+                .iter()
+                .map(|t| Target::parse(t).map_err(anyhow::Error::msg))
+                .collect::<Result<Vec<_>>>()?;
+            let mut records = Vec::new();
+            for path in &decisions {
+                let text = std::fs::read_to_string(path)
+                    .with_context(|| format!("reading {}", path.display()))?;
+                for (i, line) in text
+                    .lines()
+                    .enumerate()
+                    .filter(|(_, l)| !l.trim().is_empty())
+                {
+                    let record: Record = serde_json::from_str(line).with_context(|| {
+                        format!("{}:{}: not a labelled decision", path.display(), i + 1)
+                    })?;
+                    if record.labels.len() != record.policy.options.len() {
+                        anyhow::bail!(
+                            "{}:{}: {} labels for {} options",
+                            path.display(),
+                            i + 1,
+                            record.labels.len(),
+                            record.policy.options.len()
+                        );
+                    }
+                    records.push(record);
+                }
+            }
+            if let Some(t) = targets.iter().find(|t| !t.habit) {
+                if let Some(r) = records.iter().find(|r| r.policy.decider != "arbiter") {
+                    anyhow::bail!(
+                        "{} needs the arbiter's probabilities, but a decision was logged with the {}",
+                        t.name,
+                        r.policy.decider
+                    );
+                }
+            }
+            eprintln!("stretto: {} decisions", records.len());
+            let evaluations: Vec<_> = targets
+                .iter()
+                .map(|t| evaluate(&records, t, min_ess))
+                .collect();
+            let md = markdown(&evaluations, min_ess);
+            match out {
+                Some(path) => write(&path, md.as_bytes())?,
+                None => print!("{md}"),
+            }
+            if let Some(path) = json {
+                write(&path, &serde_json::to_vec_pretty(&evaluations)?)?;
+            }
+            Ok(())
         }
         Command::Promote {
             flow,
@@ -1912,6 +2053,17 @@ struct Rule {
     decider: Decider,
     /// Stop asking the System-One model after this many live questions.
     max_questions: usize,
+    /// Exploration, if any.
+    explore: Option<stretto_report::flow::Explore>,
+}
+
+/// `--explore` and `--explore-seed` as an [`Explore`](stretto_report::flow::Explore).
+fn explore_arg(epsilon: Option<f64>, seed: u64) -> Result<Option<stretto_report::flow::Explore>> {
+    match epsilon {
+        Some(e) if !(0.0..=1.0).contains(&e) => anyhow::bail!("--explore must be in [0, 1]"),
+        Some(epsilon) => Ok(Some(stretto_report::flow::Explore { epsilon, seed })),
+        None => Ok(None),
+    }
 }
 
 /// Answer one flow query per connection on `listen`, asking `oracle`.
@@ -1926,6 +2078,7 @@ fn serve(
         threshold,
         decider,
         max_questions,
+        explore,
     } = rule;
     let listener =
         std::net::TcpListener::bind(listen).with_context(|| format!("listening on {listen}"))?;
@@ -1966,7 +2119,9 @@ fn serve(
                     flow.domain(),
                     &query.agent_model,
                 )
-                .and_then(|episode| flow.next_with(&episode, oracle, threshold, decider));
+                .and_then(|episode| {
+                    flow.next_explored(&episode, oracle, threshold, decider, explore)
+                });
                 match answer {
                     Ok(next) => {
                         asked += next.key.is_some() as usize;

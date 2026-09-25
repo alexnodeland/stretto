@@ -63,6 +63,7 @@ class Episode:
         flow_max: int = 8,
         flow_budget: int = 40,
         read_only_hints: bool = False,
+        record_answers: bool = False,
     ):
         self.dir = directory
         self.task_id = str(task_id)
@@ -84,6 +85,8 @@ class Episode:
         self.flow_budget = flow_budget
         self.flow_queries = 0
         self.flow_lookups = 0
+        # Each flow answer, for check_flow.py --explore.
+        self.record_answers = record_answers
         # One call (and the flow after it) at a time.
         self.lock = asyncio.Lock()
 
@@ -187,6 +190,9 @@ class Episode:
             except (OSError, ValueError) as e:
                 print(f"tau2_mcp: flow unavailable: {e}", file=sys.stderr)
                 break
+            if self.record_answers:
+                with open(self.dir / "flow-answers.jsonl", "a") as f:
+                    f.write(json.dumps({"call": self.calls, "answer": answer}) + "\n")
             if answer.get("action") != "lookup" or answer.get("tool") not in self.tools:
                 break
             tool, args = answer["tool"], answer.get("arguments") or {}
@@ -228,6 +234,10 @@ def main() -> None:
         "--read-only-hints", action="store_true",
         help="mark read tools readOnlyHint: true and writes false in tools/list",
     )
+    parser.add_argument(
+        "--record-answers", action="store_true",
+        help="append each flow answer to flow-answers.jsonl in the episode directory",
+    )
     args = parser.parse_args()
     episode = Episode(
         args.domain,
@@ -238,6 +248,7 @@ def main() -> None:
         args.flow_max,
         args.flow_budget,
         args.read_only_hints,
+        args.record_answers,
     )
     episode.save_state()
     asyncio.run(serve(episode))

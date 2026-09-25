@@ -93,6 +93,8 @@ def start_flow(args, episode: Path) -> tuple[subprocess.Popen, str]:
         "--max-questions", str(getattr(args, "flow_max_questions", 300)),
         "--log", str(episode / "flow.jsonl"),
     ]
+    if getattr(args, "explore", None) is not None:
+        serving += ["--explore", str(args.explore), "--explore-seed", str(getattr(args, "explore_seed", 0))]
     if getattr(args, "flow", None):
         command = [str(STRETTO), "serve", "--flow", str(args.flow)] + serving
     else:

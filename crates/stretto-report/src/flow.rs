@@ -245,6 +245,151 @@ pub enum Decider {
     Habit,
 }
 
+/// Exploration at a flow's decisions (RFC-001 §3.7): with probability
+/// `epsilon`, the flow takes a lookup other than the one its rule picks,
+/// drawn in proportion to the decider's probabilities among the lookups it
+/// can bind. A wrong lookup at a read-only site is a detour, so this is the
+/// cheap, reversible exploration §3.7 allows. Each decision then logs its
+/// [`PolicyView`]: every option, and the chance that the flow took what it
+/// took, which `stretto evaluate` reweights.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Explore {
+    /// The chance of exploring at a decision that has an alternative. Zero
+    /// explores nothing, but still logs the view.
+    pub epsilon: f64,
+    /// Seeds the draws: the same seed, flow and episode give the same ones.
+    pub seed: u64,
+}
+
+/// Every option at one decision, and how the flow chose among them, for
+/// counterfactual evaluation (`stretto evaluate`).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PolicyView {
+    /// Who decided: `arbiter` or `habit`.
+    pub decider: String,
+    /// The rule's threshold.
+    pub threshold: f64,
+    /// The exploration rate.
+    pub epsilon: f64,
+    /// Whether this decision explored.
+    pub explored: bool,
+    /// What the rule alone does here: the lookup's tool, or none to hand
+    /// back.
+    pub greedy: Option<String>,
+    /// The chance that the flow took what it took: `1 - epsilon` for the
+    /// rule's choice when there was an alternative, `epsilon` times an
+    /// explored lookup's share of the alternatives, and 1 when there was
+    /// none.
+    pub propensity: f64,
+    /// The episode's task.
+    pub task_id: String,
+    /// The events before the decision.
+    pub events: usize,
+    /// Each lookup the site offers, in the decider's order.
+    pub options: Vec<OptionView>,
+}
+
+/// One lookup a site offers, at one decision.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct OptionView {
+    /// The tool.
+    pub tool: String,
+    /// The decider's probability that the agent calls it next.
+    pub p: f64,
+    /// The habit's probability, which the decider `habit` uses.
+    pub habit: f64,
+    /// The chance that its bound arguments are the agent's, if it binds.
+    pub binding: Option<f64>,
+    /// Its bound arguments, if it binds.
+    pub arguments: Option<Value>,
+    /// Why it does not bind.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unbound: Option<String>,
+}
+
+impl PolicyView {
+    /// What the rule does with probabilities `p` (the logged decider's, or
+    /// the habit's with `habit`) at `threshold`: the index of the lookup it
+    /// takes, or `None` to hand back. As [`Flow::next_with`] does: the
+    /// likeliest lookup (the first of equals), if its probability, and that
+    /// times its binding's chance, reach the threshold.
+    pub fn rule(&self, habit: bool, threshold: f64) -> Option<usize> {
+        let p = |o: &OptionView| if habit { o.habit } else { o.p };
+        let (best, pb) = self.options.iter().enumerate().fold(
+            None::<(usize, f64)>,
+            |best, (i, o)| match best {
+                Some((_, q)) if q >= p(o) => best,
+                _ => Some((i, p(o))),
+            },
+        )?;
+        if pb < threshold {
+            return None;
+        }
+        let chance = self.options[best].binding?;
+        (pb * chance >= threshold).then_some(best)
+    }
+
+    /// The index of the option the flow took, or `None` if it handed back.
+    pub fn taken(&self, proposal: &Proposal) -> Option<usize> {
+        match proposal {
+            Proposal::Lookup { tool, .. } => self.options.iter().position(|o| o.tool == *tool),
+            Proposal::HandBack { .. } => None,
+        }
+    }
+}
+
+/// `events` as JSON without call ids and token usage, which differ between
+/// runs of the same conversation.
+fn content_key(events: &[Event]) -> String {
+    fn strip(v: &mut Value) {
+        match v {
+            Value::Object(map) => {
+                for key in ["id", "call_id", "usage"] {
+                    map.remove(key);
+                }
+                map.values_mut().for_each(strip);
+            }
+            Value::Array(items) => items.iter_mut().for_each(strip),
+            _ => {}
+        }
+    }
+    let mut v = serde_json::to_value(events).unwrap_or_default();
+    strip(&mut v);
+    v.to_string()
+}
+
+/// A small deterministic generator (splitmix64) for exploration draws.
+struct Draws(u64);
+
+impl Draws {
+    fn new(seed: u64, key: &str) -> Self {
+        Draws(seed ^ task_group(key))
+    }
+
+    /// A uniform draw in `[0, 1)`.
+    fn uniform(&mut self) -> f64 {
+        self.0 = self.0.wrapping_add(0x9e37_79b9_7f4a_7c15);
+        let mut z = self.0;
+        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        z ^= z >> 31;
+        (z >> 11) as f64 / (1u64 << 53) as f64
+    }
+}
+
+/// A site's options and the probabilities a decision weighs them by.
+#[derive(Clone, Copy)]
+struct Chosen<'a> {
+    /// The options, handing back among them.
+    options: &'a [String],
+    /// The decider's probability of each.
+    probs: &'a [f64],
+    /// The habit's.
+    habit: &'a [f64],
+    /// Who decided.
+    decider: Decider,
+}
+
 /// What the flow does next.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(tag = "action", rename_all = "snake_case")]
@@ -285,6 +430,9 @@ pub struct Next {
     pub predicates: BTreeMap<String, f64>,
     /// The request's key in the replay cache.
     pub key: Option<String>,
+    /// With exploration: every option and how the flow chose ([`Explore`]).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub policy: Option<PolicyView>,
 }
 
 impl Flow {
@@ -478,6 +626,19 @@ impl Flow {
         threshold: f64,
         decider: Decider,
     ) -> Result<Next> {
+        self.next_explored(episode, oracle, threshold, decider, None)
+    }
+
+    /// [`Flow::next_with`], exploring as `explore` says, and logging the
+    /// decision's [`PolicyView`] when it is given.
+    pub fn next_explored(
+        &self,
+        episode: &Episode,
+        oracle: &dyn Oracle,
+        threshold: f64,
+        decider: Decider,
+        explore: Option<Explore>,
+    ) -> Result<Next> {
         let mut next = Next {
             proposal: Proposal::HandBack {
                 reason: String::new(),
@@ -489,6 +650,7 @@ impl Flow {
             oracle: BTreeMap::new(),
             predicates: BTreeMap::new(),
             key: None,
+            policy: None,
         };
         let hand_back = |mut next: Next, reason: String| {
             next.proposal = Proposal::HandBack { reason };
@@ -526,7 +688,13 @@ impl Flow {
             let Some(prior) = habit_prior(&options, &predicted, &self.vocab) else {
                 return hand_back(next, "handing back was not an option".to_string());
             };
-            return self.look_up(next, episode, &options, &prior, threshold);
+            let chosen = Chosen {
+                options: &options,
+                probs: &prior,
+                habit: &prior,
+                decider,
+            };
+            return self.look_up(next, episode, chosen, threshold, explore);
         }
         if !self.has_arbiter() {
             anyhow::bail!("this flow has no arbiter, so it decides with the habit alone");
@@ -577,14 +745,130 @@ impl Flow {
             return hand_back(next, "handing back was not an option".to_string());
         };
         let judged = self.folds[(group % FOLDS) as usize].judge(&case);
-        self.look_up(next, episode, &options, &judged.probs, threshold)
+        let habit = habit_prior(&options, &predicted, &self.vocab)
+            .unwrap_or_else(|| vec![0.0; options.len()]);
+        let chosen = Chosen {
+            options: &options,
+            probs: &judged.probs,
+            habit: &habit,
+            decider,
+        };
+        self.look_up(next, episode, chosen, threshold, explore)
+    }
+
+    /// The rule's choice ([`Flow::rule`]), explored as `explore` says: with
+    /// probability epsilon, a lookup other than the rule's choice, drawn in
+    /// proportion to its probability among those that bind.
+    fn look_up(
+        &self,
+        next: Next,
+        episode: &Episode,
+        chosen: Chosen,
+        threshold: f64,
+        explore: Option<Explore>,
+    ) -> Result<Next> {
+        let mut next = self.rule(next, episode, chosen.options, chosen.probs, threshold)?;
+        let Some(explore) = explore else {
+            return Ok(next);
+        };
+        let options: Vec<OptionView> = chosen
+            .options
+            .iter()
+            .zip(chosen.probs)
+            .zip(chosen.habit)
+            .filter(|((o, _), _)| o.as_str() != RESPOND)
+            .map(|((tool, &p), &habit)| {
+                let bound = self.bind_lookup(tool, episode);
+                OptionView {
+                    tool: tool.clone(),
+                    p,
+                    habit,
+                    binding: bound.as_ref().ok().map(|(_, c)| *c),
+                    arguments: bound.as_ref().ok().map(|(a, _)| a.clone()),
+                    unbound: bound.err(),
+                }
+            })
+            .collect();
+        let greedy = match &next.proposal {
+            Proposal::Lookup { tool, .. } => Some(tool.clone()),
+            Proposal::HandBack { .. } => None,
+        };
+        // The alternatives: lookups that bind, other than the rule's choice.
+        let alternatives: Vec<(usize, f64)> = options
+            .iter()
+            .enumerate()
+            .filter(|(_, o)| o.arguments.is_some() && o.p > 0.0 && Some(&o.tool) != greedy.as_ref())
+            .map(|(i, o)| (i, o.p))
+            .collect();
+        let total: f64 = alternatives.iter().map(|(_, w)| w).sum();
+        // Keyed by everything so far but the call ids, which hosts make up
+        // afresh each run: the same episode draws the same, and episodes
+        // that differ draw independently.
+        let mut draws = Draws::new(
+            explore.seed,
+            &format!("{}/{}", episode.task_id, content_key(&episode.events)),
+        );
+        let (explored, propensity) = if alternatives.is_empty() || explore.epsilon <= 0.0 {
+            (false, 1.0)
+        } else if draws.uniform() < explore.epsilon {
+            let mut u = draws.uniform() * total;
+            let &(i, w) = alternatives
+                .iter()
+                .find(|(_, w)| {
+                    u -= w;
+                    u < 0.0
+                })
+                .unwrap_or(alternatives.last().expect("not empty"));
+            let o = &options[i];
+            next.proposal = Proposal::Lookup {
+                tool: o.tool.clone(),
+                arguments: o.arguments.clone().expect("alternatives bind"),
+            };
+            (true, explore.epsilon * w / total)
+        } else {
+            (false, 1.0 - explore.epsilon)
+        };
+        next.policy = Some(PolicyView {
+            decider: match chosen.decider {
+                Decider::Arbiter => "arbiter",
+                Decider::Habit => "habit",
+            }
+            .to_string(),
+            threshold,
+            epsilon: explore.epsilon,
+            explored,
+            greedy,
+            propensity,
+            task_id: episode.task_id.clone(),
+            events: episode.events.len(),
+            options,
+        });
+        Ok(next)
+    }
+
+    /// A lookup's arguments bound from `episode`, and the chance that they
+    /// are the agent's. One that training never made (offered from the
+    /// manifest) is bound by argument name.
+    fn bind_lookup(
+        &self,
+        tool: &str,
+        episode: &Episode,
+    ) -> std::result::Result<(Value, f64), String> {
+        if self.bindings.knows(tool) {
+            self.bindings.bind(tool, episode)
+        } else {
+            match self.manifest.docs.get(tool) {
+                Some(doc) => self.bindings.bind_by_name(tool, &doc.args, episode),
+                None => Err("never called in training, and its arguments are unknown".into()),
+            }
+        }
     }
 
     /// Lookup first: take the most likely lookup among `options` (the first
     /// of equals, as offline) if its probability in `probs`, times the
     /// chance that its bound arguments are the agent's, is at least
     /// `threshold`; else hand back.
-    fn look_up(
+    fn rule(
         &self,
         mut next: Next,
         episode: &Episode,
@@ -613,17 +897,8 @@ impl Flow {
             return hand_back(next, format!("{tool} at {p:.2}, below {threshold}"));
         }
         // The lookup is the agent's next step only if the tool is and the
-        // arguments are its own. One training never made (offered from the
-        // manifest) is bound by argument name.
-        let bound = if self.bindings.knows(tool) {
-            self.bindings.bind(tool, episode)
-        } else {
-            match self.manifest.docs.get(tool) {
-                Some(doc) => self.bindings.bind_by_name(tool, &doc.args, episode),
-                None => Err("never called in training, and its arguments are unknown".into()),
-            }
-        };
-        match bound {
+        // arguments are its own.
+        match self.bind_lookup(tool, episode) {
             Ok((arguments, chance)) => {
                 next.binding = Some(chance);
                 if p * chance < threshold {
@@ -1621,6 +1896,96 @@ mod tests {
             arbiter.proposal,
             Proposal::HandBack { ref reason } if reason.contains("System-One model failed")
         ));
+    }
+
+    #[test]
+    fn exploration_logs_the_chance_of_what_the_flow_took() {
+        let flow = toy_flow();
+        let live = episode(vec![
+            Event::User {
+                text: "I want to cancel something".to_string(),
+            },
+            call("a", "get_user_details", json!({"user_id": "bob_2"})),
+            result("a", "get_user_details", user(&["#W7", "#W8"])),
+        ]);
+        let explore = |epsilon: f64, seed: u64| Some(Explore { epsilon, seed });
+        // At 0.99 the rule hands back, so the one lookup that binds is the
+        // alternative: taken with probability epsilon, and logged so.
+        let (runs, epsilon) = (4000, 0.3);
+        let mut explored = 0;
+        for seed in 0..runs {
+            let next = flow
+                .next_explored(
+                    &live,
+                    &Unasked,
+                    0.99,
+                    Decider::Habit,
+                    explore(epsilon, seed),
+                )
+                .unwrap();
+            let view = next.policy.as_ref().unwrap();
+            assert_eq!(view.greedy, None);
+            assert_eq!(view.rule(true, 0.99), None);
+            match &next.proposal {
+                Proposal::Lookup { tool, arguments } => {
+                    explored += 1;
+                    assert!(view.explored);
+                    assert!((view.propensity - epsilon).abs() < 1e-12);
+                    assert_eq!(tool, "get_order_details");
+                    assert_eq!(arguments, &json!({"order_id": "#W7"}));
+                }
+                Proposal::HandBack { .. } => {
+                    assert!(!view.explored);
+                    assert!((view.propensity - (1.0 - epsilon)).abs() < 1e-12);
+                }
+            }
+            // The logged propensity is the one `evaluate` computes.
+            let taken = view.taken(&next.proposal);
+            assert!((crate::evaluate::propensity(view, taken) - view.propensity).abs() < 1e-12);
+        }
+        let share = explored as f64 / runs as f64;
+        assert!((share - epsilon).abs() < 0.03, "{share}");
+        // The same seed draws the same, whatever ids the host gave the calls.
+        let renamed = episode(vec![
+            Event::User {
+                text: "I want to cancel something".to_string(),
+            },
+            call("zz9", "get_user_details", json!({"user_id": "bob_2"})),
+            result("zz9", "get_user_details", user(&["#W7", "#W8"])),
+        ]);
+        for seed in 0..50 {
+            let a = flow.next_explored(&live, &Unasked, 0.99, Decider::Habit, explore(0.5, seed));
+            let b =
+                flow.next_explored(&renamed, &Unasked, 0.99, Decider::Habit, explore(0.5, seed));
+            assert_eq!(a.unwrap().proposal, b.unwrap().proposal);
+        }
+        // The view's rule is the flow's, for either decider, at any
+        // threshold; epsilon 0 changes nothing but the log.
+        let oracle = stretto_oracle::MockOracle {
+            confidence: 0.6,
+            noul: 0.5,
+        };
+        for decider in [Decider::Habit, Decider::Arbiter] {
+            for t in [0.05, 0.3, 0.5, 0.7, 0.95] {
+                let plain = flow.next_with(&live, &oracle, t, decider).unwrap();
+                let logged = flow
+                    .next_explored(&live, &oracle, t, decider, explore(0.0, 0))
+                    .unwrap();
+                assert_eq!(plain.proposal, logged.proposal);
+                assert!(plain.policy.is_none());
+                let view = logged.policy.unwrap();
+                assert_eq!(view.propensity, 1.0);
+                let rule = view
+                    .rule(decider == Decider::Habit, t)
+                    .map(|i| view.options[i].tool.clone());
+                let own = match plain.proposal {
+                    Proposal::Lookup { tool, .. } => Some(tool),
+                    Proposal::HandBack { .. } => None,
+                };
+                assert_eq!(rule, own, "{decider:?} at {t}");
+                assert_eq!(view.greedy, own);
+            }
+        }
     }
 
     #[test]
