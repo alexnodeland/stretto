@@ -772,3 +772,90 @@ fn the_confirmation_judge_refuses_writes_the_customer_did_not_confirm() {
     }
     fs::remove_dir_all(&dir).unwrap();
 }
+
+/// Shadow mode: the flow decides and logs, the agent gets the server's
+/// results unchanged, and `stretto promote` scores the logged session.
+#[test]
+fn a_shadow_flow_decides_and_logs_but_makes_no_lookups() {
+    let dir = std::env::temp_dir().join(format!("stretto-shadow-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    let flow_path = learned_flow(&dir);
+    let logs = dir.join("logs");
+    let context = dir.join("context.jsonl");
+    say_to(
+        &context,
+        "Hi, I'm c7@example.com and I want to cancel an order.",
+    );
+    let mut host = Host::start(&[
+        "--record",
+        logs.to_str().unwrap(),
+        "--domain",
+        "retail",
+        "--flow",
+        flow_path.to_str().unwrap(),
+        "--oracle",
+        "mock",
+        "--flow-shadow",
+        "--context",
+        context.to_str().unwrap(),
+        "--",
+        DEMO,
+        "--world",
+        "retail",
+    ]);
+    open_session(&mut host);
+    // The flow would read the user's details, but the agent gets only its
+    // own result; then it reads them itself.
+    let found = host.call(
+        3,
+        "find_user_id_by_email",
+        json!({"email": "c7@example.com"}),
+    );
+    assert_eq!(texts(&found), ["user_7"]);
+    let details = host.call(4, "get_user_details", json!({"user_id": "user_7"}));
+    assert_eq!(texts(&details).len(), 1, "{details}");
+    assert_eq!(host.finish(), 0);
+
+    let flow_log = fs::read_dir(&logs)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .find(|p| p.to_string_lossy().ends_with(".flow.jsonl"))
+        .expect("a flow log next to the session log");
+    let decisions: Vec<Value> = fs::read_to_string(&flow_log)
+        .unwrap()
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    assert_eq!(decisions[0]["shadow"], true, "{decisions:?}");
+    assert_eq!(decisions[0]["action"], "lookup");
+    assert_eq!(decisions[0]["tool"], "get_user_details");
+    assert_eq!(decisions[0]["arguments"], json!({"user_id": "user_7"}));
+
+    // Scored on the recorded session, the would-be lookup was the agent's
+    // next step.
+    let session = fs::read_dir(&logs)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .find(|p| {
+            let name = p.to_string_lossy();
+            name.ends_with(".jsonl") && !name.ends_with(".flow.jsonl")
+        })
+        .unwrap();
+    let mut recorded = episode(&read_log(&session).unwrap());
+    recorded.task_id = recorded.id.clone();
+    let flow = stretto_report::flow::Flow::load(&flow_path).unwrap();
+    let oracle = MockOracle {
+        confidence: 0.6,
+        noul: 0.5,
+    };
+    let scored = stretto_report::promote::score(
+        &flow,
+        &[recorded],
+        &oracle,
+        stretto_report::flow::Decider::Arbiter,
+        0.3,
+    );
+    let site = &scored.sites["find_user_id_by_email"];
+    assert_eq!((site.lookups, site.used), (1, 1), "{scored:?}");
+}

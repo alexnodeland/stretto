@@ -77,10 +77,11 @@ The diff speaks in the same terms as `flow-show` and lists first what needs a re
 | Every read tool offered after every call (`--manifest-options`) | Yes |
 | An argument bound from a new source (tool and JSON path) | Yes |
 | An arbiter added, another System-One model, or new or reworded predicates | Yes: the flow sends the conversation to a model, or asks it something new |
-| Lookups, sources or an arbiter removed, a tool no longer read-only | No: the flow does less |
+| A site newly promoted, or a promotion lifted (`stretto promote`) | Yes: the flow acts after a call where it handed back |
+| Lookups, sources or an arbiter removed, a tool no longer read-only, a site no longer promoted | No: the flow does less |
 | What the flow does after each call with the habit alone, at `--threshold` (0.3) | No; listed |
 | Shares, binding chances and arbiter weights that moved by `--tolerance` (0.05) or more | No; listed |
-| Code features and provenance | No; listed |
+| Code features, the promotion's bar, and provenance | No; listed |
 
 The exit status is 0 when nothing needs review, 1 when something does and 2 on an error, as with `diff`. A CI job can post the diff on a pull request that changes a flow, and ask for a review when it exits with 1:
 

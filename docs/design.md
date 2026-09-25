@@ -93,6 +93,7 @@ stretto-proxy session logs ─┼─► stretto-trace (Episode) ─► stretto-m
 | The conversation for flows and guards | Built | `stretto-proxy --context` |
 | Record, learn, serve from any MCP server | Built, tested end to end | `crates/stretto-proxy/tests/active.rs` |
 | A flow as a fugue program: score and simulate | Built | `stretto audit`; `audit.rs` |
+| Shadow mode and per-site promotion | Built, replayed: promoted on half the test tasks and replayed on the other half, D0 kept 277 of 294 retail turns saved and all 41 in airline, with detours down from 58 to 28 and from 26 to 11 ([results](results/promotion-2026-09-25.md)). No live shadow traffic yet | `stretto-proxy --flow-shadow`; `stretto promote`; `promote.rs` |
 | Reviewing flows as code | Built: a flow rendered for review, and a change list between two that exits with 1 when a change needs review ([reviewing flows](review.md)) | `stretto flow-show`, `stretto flow-diff`; `review.rs` |
 | `plan_*` / `resume_*` macro-tools the LLM names (arms C and D) | Not built, by decision: naming could add at most 0–1.9% of turns in retail and 0.9–7.9% in airline | Phase 0's *Lookups inside runs* |
 | Arm C and the habit alone, as flows behind the tools | Built; replayed against D0 on GLM-5's test episodes ([arms](results/arms-2026-09-24.md)); the habit alone live in retail ([pilot](results/pilot-habit-2026-09-24.md)) | `--flow-decider habit` in `stretto-proxy`, `serve`, `flow-serve` and `pilot/check_flow.py`; `pilot/run_episode.py --arm habit` |

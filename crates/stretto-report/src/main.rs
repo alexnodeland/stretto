@@ -469,6 +469,90 @@ enum Command {
         #[arg(value_name = "FILE", long)]
         out: Option<PathBuf>,
     },
+    /// Promote a flow's sites (RFC-001 §3.7). Wherever the flow would decide
+    /// in recorded sessions or τ²-bench results, score the lookup it would
+    /// make: used if the agent made it later in the session, a detour if it
+    /// never did. The promoted flow acts only after the calls whose record
+    /// meets the bar, and hands back after the rest.
+    /// Sessions recorded with `stretto-proxy --flow-shadow` have the flow's
+    /// questions answered in the proxy's cache: pass it as --oracle-cache.
+    Promote {
+        /// The flow to promote.
+        #[arg(help_heading = "Inputs", value_name = "FILE", long)]
+        flow: PathBuf,
+        /// Sessions recorded by stretto-proxy (a directory of `*.jsonl`);
+        /// each counts as its own task.
+        #[arg(help_heading = "Inputs", value_name = "DIR", long)]
+        sessions: Option<PathBuf>,
+        /// τ²-bench results files (repeatable); files for other domains are
+        /// skipped.
+        #[arg(help_heading = "Inputs", value_name = "FILE", long = "results")]
+        results: Vec<PathBuf>,
+        /// With --results: keep only the test split of this τ²-bench
+        /// checkout, the tasks a flow compiled from it never trained on.
+        #[arg(help_heading = "Inputs", value_name = "DIR", long)]
+        tau2: Option<PathBuf>,
+        /// With --results: keep only these tasks.
+        #[arg(
+            help_heading = "Inputs",
+            value_name = "IDS",
+            long,
+            value_delimiter = ','
+        )]
+        task_ids: Vec<String>,
+        /// Who answers the flow's questions: `replay` (the cache only;
+        /// decisions it cannot answer are left out), `jev` (needs
+        /// TYPESAFE_API_KEY) or `mock`.
+        #[arg(help_heading = "The System-One model", long, value_enum, default_value_t = OracleArg::Replay)]
+        oracle: OracleArg,
+        /// Replay cache for oracle answers.
+        #[arg(
+            help_heading = "The System-One model",
+            value_name = "DIR",
+            long,
+            default_value = ".oracle-cache"
+        )]
+        oracle_cache: PathBuf,
+        /// How the flow decides: `arbiter` or `habit`. Default: the
+        /// arbiter, or the habit for a flow without one.
+        #[arg(help_heading = "The System-One model", long, value_enum)]
+        decider: Option<DeciderArg>,
+        /// The threshold the flow will be served with (`stretto-proxy
+        /// --flow-threshold`).
+        #[arg(
+            help_heading = "The bar",
+            value_name = "P",
+            long,
+            default_value_t = 0.3
+        )]
+        threshold: f64,
+        /// The least share of the flow's lookups at a site that the agent
+        /// made later in the session.
+        #[arg(
+            help_heading = "The bar",
+            value_name = "X",
+            long,
+            default_value_t = 0.7
+        )]
+        min_used: f64,
+        /// The least lower bound on that share (Wilson, 90% two-sided).
+        #[arg(
+            help_heading = "The bar",
+            value_name = "X",
+            long,
+            default_value_t = 0.5
+        )]
+        min_lower: f64,
+        /// The fewest distinct tasks (or sessions) the lookups came from.
+        #[arg(help_heading = "The bar", value_name = "N", long, default_value_t = 3)]
+        min_tasks: usize,
+        /// Write the promoted flow here.
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
+        out: PathBuf,
+        /// Write each site's record here, as Markdown (default: stdout).
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
+        report: Option<PathBuf>,
+    },
     /// Check that Jev is reachable with TYPESAFE_API_KEY: ask one small
     /// question (uncached) and print the answer, model version and latency.
     JevCheck,
@@ -1167,34 +1251,7 @@ fn main() -> Result<()> {
         } => {
             let flow = stretto_report::flow::Flow::load(&flow)?;
             let domain = flow.domain().to_string();
-            let mut episodes = Vec::new();
-            if let Some(dir) = sessions {
-                for log in stretto_trace::mcp::read_sessions(&dir)? {
-                    let mut ep = stretto_trace::mcp::episode(&log);
-                    ep.task_id = ep.id.clone();
-                    episodes.push(ep);
-                }
-            }
-            let test = match &tau2 {
-                Some(root) => Some(
-                    stretto_trace::tau2::load_split(
-                        &root.join(format!("data/tau2/domains/{domain}/split_tasks.json")),
-                    )?
-                    .test,
-                ),
-                None => None,
-            };
-            for path in &results {
-                let run = stretto_trace::tau2::load_results(path)?;
-                if run.domain != domain {
-                    continue;
-                }
-                episodes.extend(
-                    run.episodes
-                        .into_iter()
-                        .filter(|ep| test.as_ref().is_none_or(|t| t.contains(&ep.task_id))),
-                );
-            }
+            let episodes = recorded(&domain, sessions.as_deref(), &results, tau2.as_deref(), &[])?;
             if episodes.is_empty() {
                 anyhow::bail!("no episodes to audit: pass --sessions or --results for {domain}");
             }
@@ -1268,6 +1325,77 @@ fn main() -> Result<()> {
                 Err(e) => {
                     eprintln!("stretto: {e:#}");
                     std::process::exit(2)
+                }
+            }
+        }
+        Command::Promote {
+            flow,
+            sessions,
+            results,
+            tau2,
+            task_ids,
+            oracle,
+            oracle_cache,
+            decider,
+            threshold,
+            min_used,
+            min_lower,
+            min_tasks,
+            out,
+            report,
+        } => {
+            let flow = stretto_report::flow::Flow::load(&flow)?;
+            let domain = flow.domain().to_string();
+            let episodes = recorded(
+                &domain,
+                sessions.as_deref(),
+                &results,
+                tau2.as_deref(),
+                &task_ids,
+            )?;
+            if episodes.is_empty() {
+                anyhow::bail!("no episodes to score: pass --sessions or --results for {domain}");
+            }
+            let mut sc = ShadowConfig::new(oracle_kind(oracle));
+            sc.cache_dir = oracle_cache;
+            let oracle = sc.build()?;
+            let decider = decider.map_or(flow.default_decider(), Decider::from);
+            if decider == Decider::Arbiter && !flow.has_arbiter() {
+                anyhow::bail!("the flow has no arbiter: promote it with --decider habit");
+            }
+            let scored = stretto_report::promote::score(
+                &flow,
+                &episodes,
+                oracle.as_ref(),
+                decider,
+                threshold,
+            );
+            let bar = stretto_report::flow::Bar {
+                threshold,
+                min_used,
+                min_lower,
+                min_tasks,
+            };
+            let promotion = stretto_report::promote::promote(&scored, bar);
+            let promoted = promotion.sites.values().filter(|r| r.promoted).count();
+            eprintln!(
+                "stretto: scored {} episodes ({} decisions left out, unanswered); {promoted} of {} sites promoted",
+                scored.episodes,
+                scored.unanswered,
+                promotion.sites.len()
+            );
+            if promoted == 0 {
+                eprintln!(
+                    "stretto: no site met the bar, so the promoted flow hands back after every call"
+                );
+            }
+            let md = stretto_report::promote::markdown(&promotion);
+            flow.with_promotion(Some(promotion)).save(&out)?;
+            match report {
+                Some(path) => write(&path, md.as_bytes()),
+                None => {
+                    print!("{md}");
+                    Ok(())
                 }
             }
         }
@@ -1600,6 +1728,47 @@ fn ask(
         todo.len()
     );
     Ok(())
+}
+
+/// Recorded episodes for a flow of `domain`: the proxy's sessions in
+/// `sessions` (each its own task), and the episodes of `results` for the
+/// domain, only the test split of `tau2` if given, and only `task_ids` if
+/// any are.
+fn recorded(
+    domain: &str,
+    sessions: Option<&Path>,
+    results: &[PathBuf],
+    tau2: Option<&Path>,
+    task_ids: &[String],
+) -> Result<Vec<stretto_trace::Episode>> {
+    let mut episodes = Vec::new();
+    if let Some(dir) = sessions {
+        for log in stretto_trace::mcp::read_sessions(dir)? {
+            let mut ep = stretto_trace::mcp::episode(&log);
+            ep.task_id = ep.id.clone();
+            episodes.push(ep);
+        }
+    }
+    let test = match tau2 {
+        Some(root) => Some(
+            stretto_trace::tau2::load_split(
+                &root.join(format!("data/tau2/domains/{domain}/split_tasks.json")),
+            )?
+            .test,
+        ),
+        None => None,
+    };
+    for path in results {
+        let run = stretto_trace::tau2::load_results(path)?;
+        if run.domain != domain {
+            continue;
+        }
+        episodes.extend(run.episodes.into_iter().filter(|ep| {
+            test.as_ref().is_none_or(|t| t.contains(&ep.task_id))
+                && (task_ids.is_empty() || task_ids.contains(&ep.task_id))
+        }));
+    }
+    Ok(episodes)
 }
 
 fn oracle_kind(kind: OracleArg) -> OracleKind {

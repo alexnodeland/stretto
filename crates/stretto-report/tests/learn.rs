@@ -639,3 +639,90 @@ fn flow_diff_exits_with_1_when_a_change_needs_review() {
     assert!(String::from_utf8_lossy(&shown.stdout).starts_with("# Flow: shop\n"));
     std::fs::remove_dir_all(&dir).ok();
 }
+
+// Promoting a flow's sites (`stretto promote`).
+
+#[test]
+fn a_promoted_flow_acts_only_where_its_lookups_were_the_agents_own() {
+    let flow = habit_flow(&(0..60).map(session).collect::<Vec<_>>(), &manifest());
+    // New sessions where the agent, having read the account, answers
+    // without reading any order.
+    let brief: Vec<Episode> = (100..110)
+        .map(|i| {
+            let mut ep = session(i);
+            ep.events.truncate(5);
+            ep.events.push(say("You have two orders."));
+            ep
+        })
+        .collect();
+    let scored = stretto_report::promote::score(&flow, &brief, &MOCK, Decider::Habit, 0.3);
+    let bar = stretto_report::flow::Bar {
+        threshold: 0.3,
+        min_used: 0.5,
+        min_lower: 0.3,
+        min_tasks: 3,
+    };
+    let promotion = stretto_report::promote::promote(&scored, bar);
+    let found = &promotion.sites["find_account"];
+    assert_eq!((found.lookups, found.used, found.tasks), (10, 10, 10));
+    assert!(found.promoted);
+    let account = &promotion.sites["get_account"];
+    assert_eq!((account.lookups, account.used), (10, 0));
+    assert!(!account.promoted);
+
+    // Served, it still reads the account, but no longer the orders.
+    let promoted = flow.clone().with_promotion(Some(promotion));
+    let next = promoted
+        .next_with(&new_customer(), &MOCK, 0.3, Decider::Habit)
+        .unwrap();
+    assert!(
+        matches!(&next.proposal, Proposal::Lookup { tool, .. } if tool == "get_account"),
+        "{next:?}"
+    );
+    let mut later = session(999);
+    later.events.truncate(5);
+    let next = promoted
+        .next_with(&later, &MOCK, 0.3, Decider::Habit)
+        .unwrap();
+    assert_eq!(
+        next.proposal,
+        Proposal::HandBack {
+            reason: "the site is not promoted".to_string()
+        }
+    );
+    let unpromoted = flow.next_with(&later, &MOCK, 0.3, Decider::Habit).unwrap();
+    assert!(matches!(unpromoted.proposal, Proposal::Lookup { .. }));
+
+    // The promotion is part of the IR, and review shows it.
+    let back =
+        stretto_report::flow::Flow::from_json(&serde_json::to_string(&promoted).unwrap()).unwrap();
+    assert_eq!(back.promotion(), promoted.promotion());
+    let md = stretto_report::review::show(&promoted, 0.3);
+    assert!(
+        md.contains("| `get_account` | `get_order` (60) | get_order 100% (of 60) | hands back: not promoted |"),
+        "{md}"
+    );
+    assert!(
+        md.contains("| `get_account` | 10 | 10 | 0 (0%) | 0.00 | 10 | no |"),
+        "{md}"
+    );
+    // Lifting the promotion lets the flow act where it handed back: after
+    // the account, and after an order, a site the new sessions never
+    // reached, so never scored.
+    assert!(!promoted
+        .promotion()
+        .unwrap()
+        .sites
+        .contains_key("get_order"));
+    let d = stretto_report::review::diff(&promoted, &flow, 0.05, 0.3);
+    assert_eq!(
+        d.needs_review,
+        [
+            "the flow now acts after `get_account`, where it handed back",
+            "the flow now acts after `get_order`, where it handed back"
+        ]
+    );
+    assert!(stretto_report::review::diff(&flow, &promoted, 0.05, 0.3)
+        .needs_review
+        .is_empty());
+}

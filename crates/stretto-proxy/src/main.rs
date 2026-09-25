@@ -72,6 +72,13 @@ struct Cli {
     /// Append the flow's decisions here (default: next to the session log).
     #[arg(help_heading = "Flows", long, value_name = "FILE")]
     flow_log: Option<PathBuf>,
+    /// Shadow mode: the flow decides after each call and logs what it
+    /// would look up (`"shadow": true`), but makes no lookups, so the agent
+    /// gets the server's results unchanged. `stretto promote --sessions`
+    /// then makes the same decisions again from the answers cached in
+    /// --oracle-cache, and scores them against what the agent did.
+    #[arg(help_heading = "Flows", long, requires = "flow")]
+    flow_shadow: bool,
     /// Check each of the agent's calls against the policy guards of
     /// --domain (`retail` or `airline`), and refuse the ones they fail.
     #[arg(help_heading = "Writes", long)]
@@ -220,6 +227,7 @@ fn active(cli: &Cli) -> Result<Active> {
                 per_session: cli.flow_per_session,
                 max_questions: cli.flow_questions,
                 log: cli.flow_log.clone().map(expand_home),
+                shadow: cli.flow_shadow,
             })
         }
         None => None,

@@ -171,6 +171,59 @@ pub struct Flow {
     pub(crate) bindings: Bindings,
     /// The System-One model id to request.
     pub(crate) model: String,
+    /// Where the flow may act, once promoted (`stretto promote`). Absent, it
+    /// acts after any call where a lookup clears the threshold.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) promoted: Option<Promotion>,
+}
+
+/// Where a flow may act (RFC-001 §3.7), from `stretto promote`: each site
+/// scored on recorded sessions, and the bar a site had to meet.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Promotion {
+    /// The bar.
+    pub bar: Bar,
+    /// Every site scored, by name (the tool, and ` (error)` when it failed).
+    pub sites: BTreeMap<String, SiteRecord>,
+}
+
+impl Promotion {
+    /// Whether the flow may act after `site`. A site never scored may not.
+    pub fn allows(&self, site: &str) -> bool {
+        self.sites.get(site).is_some_and(|s| s.promoted)
+    }
+}
+
+/// What a site's record must show for the flow to act there.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Bar {
+    /// The threshold the flow was scored at, as it will be served.
+    pub threshold: f64,
+    /// The least share of the flow's lookups there that the agent made later
+    /// in the session.
+    pub min_used: f64,
+    /// The least lower bound on that share (Wilson, 90% two-sided).
+    pub min_lower: f64,
+    /// The fewest distinct tasks the lookups came from (sessions, for
+    /// recorded sessions).
+    pub min_tasks: usize,
+}
+
+/// One site's record on the sessions a flow was promoted on.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct SiteRecord {
+    /// Decisions the flow made there.
+    pub decisions: usize,
+    /// The lookups it would have made.
+    pub lookups: usize,
+    /// Of those, the ones the agent made later in the session.
+    pub used: usize,
+    /// The distinct tasks the lookups came from.
+    pub tasks: usize,
+    /// The lower bound on `used / lookups` (Wilson, 90% two-sided).
+    pub lower: f64,
+    /// Whether the site met the bar.
+    pub promoted: bool,
 }
 
 /// Where a flow's probability for each option comes from.
@@ -243,6 +296,18 @@ impl Flow {
     /// The tools the flow knows, with their kinds.
     pub fn manifest(&self) -> &ToolManifest {
         &self.manifest
+    }
+
+    /// Where the flow may act, if it was promoted.
+    pub fn promotion(&self) -> Option<&Promotion> {
+        self.promoted.as_ref()
+    }
+
+    /// This flow, acting only where `promotion` allows (everywhere, with
+    /// `None`).
+    pub fn with_promotion(mut self, promotion: Option<Promotion>) -> Self {
+        self.promoted = promotion;
+        self
     }
 
     /// Whether the flow has an arbiter. One learned without a System-One
@@ -426,7 +491,11 @@ impl Flow {
         ) else {
             return hand_back(next, "the last step is not a tool call".to_string());
         };
-        next.site = Some(Sites::name(&live.prev, live.failed));
+        let site = Sites::name(&live.prev, live.failed);
+        next.site = Some(site.clone());
+        if self.promoted.as_ref().is_some_and(|p| !p.allows(&site)) {
+            return hand_back(next, "the site is not promoted".to_string());
+        }
         let Some(request) = live.request else {
             return hand_back(next, "no lookups followed here in training".to_string());
         };
@@ -1454,6 +1523,7 @@ mod tests {
             weighed: Vec::new(),
             model: "jev-test".to_string(),
             manifest,
+            promoted: None,
         }
     }
 

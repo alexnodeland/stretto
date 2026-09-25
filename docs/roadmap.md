@@ -42,7 +42,7 @@ These cost Jev dollars, CPU time or people's time, and no LLM runs.
 | [#16](https://github.com/alexnodeland/stretto/issues/16) | Predicate refinement | RFC-001 §3.4; the three predicates were written by hand |
 | [#17](https://github.com/alexnodeland/stretto/issues/17) | Hand back when a session surprises the flow | RFC-001 §3.6; surprise is measured only after the fact |
 | [#18](https://github.com/alexnodeland/stretto/issues/18) | Drift alarms | RFC-001 §3.3 and §4: change-point alarms and forgetting |
-| [#19](https://github.com/alexnodeland/stretto/issues/19) | Shadow mode and per-site promotion | RFC-001 §3.7; today one threshold serves every site |
+| [#19](https://github.com/alexnodeland/stretto/issues/19) | Shadow mode and per-site promotion | Done: `stretto-proxy --flow-shadow` and `stretto promote`; replayed, promotion halved D0's detours for 6% of its retail savings ([results](results/promotion-2026-09-25.md)) |
 | [#20](https://github.com/alexnodeland/stretto/issues/20) | `stretto flow show` and `flow diff` | Done: `stretto flow-show` and `stretto flow-diff` ([reviewing flows](review.md)) |
 | [#21](https://github.com/alexnodeland/stretto/issues/21) | Streamable HTTP for the proxy | The proxy speaks stdio only |
 | [#22](https://github.com/alexnodeland/stretto/issues/22) | Learn from several servers' logs of one session | One proxy wraps one server |

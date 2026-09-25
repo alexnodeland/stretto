@@ -82,6 +82,8 @@ pub struct FlowConfig {
     pub max_questions: usize,
     /// Append every decision here, as JSON lines.
     pub log: Option<PathBuf>,
+    /// Shadow mode (RFC-001 §3.7): decide and log, but make no lookups.
+    pub shadow: bool,
 }
 
 /// A System-One model judging whether the customer confirmed each write.
@@ -519,10 +521,17 @@ impl<'a, W: Write> Engine<'a, W> {
                     let mut entry = serde_json::to_value(&next).unwrap_or(Value::Null);
                     entry["after"] = job.client_id.clone();
                     entry["ms"] = json!(asked.elapsed().as_millis() as u64);
+                    if fc.shadow {
+                        entry["shadow"] = json!(true);
+                    }
                     let _ = writeln!(f, "{entry}");
                 }
                 match next.proposal {
-                    Proposal::Lookup { tool, arguments } if self.may_look_up(fc, &tool) => {
+                    // In shadow mode the decision is only logged, and the
+                    // agent gets its result as the server sent it.
+                    Proposal::Lookup { tool, arguments }
+                        if !fc.shadow && self.may_look_up(fc, &tool) =>
+                    {
                         self.lookups += 1;
                         self.request(job, tool, arguments);
                     }

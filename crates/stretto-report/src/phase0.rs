@@ -1266,6 +1266,7 @@ fn featured(
                 folds: parts.folds,
                 bindings: Bindings::learn(habit_set.iter().map(|p| p.ep), manifest),
                 model: parts.model,
+                promoted: None,
             })
         }
         None => None,

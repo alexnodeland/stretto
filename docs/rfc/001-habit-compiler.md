@@ -285,6 +285,8 @@ The runtime also:
 - **Shadow, then canary, then promote.** A site is automated only after:
   - shadow mode shows the required agreement and calibration on real traffic;
   - a canary shows no drop in downstream success.
+
+  *Amended:* shadow mode and promotion are built. `stretto-proxy --flow-shadow` lets the flow decide and log without acting. `stretto promote` scores each lookup the flow would make against the rest of the session, and promotes a site when at least 70% were the agent's own, the lower bound of a 90% interval on that share is at least 0.5, and they came from at least three tasks. Replayed with promotion fitted on other tasks, D0 kept 94% of its retail savings and all of its airline savings, and made half the detours ([results](../results/promotion-2026-09-25.md)). The canary is still to come: no live traffic has run in shadow.
 - **Per-site calibration.** TypeSafe claims calibration in general. The harness measures it per site (reliability curves, ECE), because the traces contain the labels: what the LLM did, and whether the episode succeeded.
 - **Counterfactual evaluation.** Every stochastic decision logs a propensity, so a candidate flow can be evaluated on old logs by re-scoring them. In the spike this estimated a sampled target at 0.768 (inverse propensity scoring, IPS) against an on-policy 0.777. But:
   - Whole-trajectory importance weights degenerate quickly. The same run had an effective sample size (ESS) of 20 out of 4000.

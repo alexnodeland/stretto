@@ -1,0 +1,3058 @@
+{
+ "about": "stretto #19: per-site promotion against the global threshold alone, replayed on GLM-5's test episodes (four trials). Each half of the test tasks is replayed with a flow promoted on the other half's episodes. Totals are check_flow.py's: calls_skipped are the flow's lookups the agent made too, detours the ones it never made.",
+ "bars": {
+  "a": {
+   "min_used": 0.5,
+   "min_lower": 0.3,
+   "min_tasks": 3
+  },
+  "b": {
+   "min_used": 0.7,
+   "min_lower": 0.5,
+   "min_tasks": 3
+  },
+  "c": {
+   "min_used": 0.8,
+   "min_lower": 0.6,
+   "min_tasks": 5
+  }
+ },
+ "default_bar": "b",
+ "threshold": 0.3,
+ "halves": {
+  "retail": [
+   [
+    "5",
+    "12",
+    "18",
+    "27",
+    "33",
+    "38",
+    "40",
+    "45",
+    "51",
+    "55",
+    "60",
+    "62",
+    "65",
+    "70",
+    "74",
+    "79",
+    "90",
+    "97",
+    "101",
+    "108"
+   ],
+   [
+    "9",
+    "17",
+    "26",
+    "32",
+    "36",
+    "39",
+    "42",
+    "49",
+    "53",
+    "56",
+    "61",
+    "64",
+    "68",
+    "71",
+    "77",
+    "86",
+    "94",
+    "100",
+    "102",
+    "111"
+   ]
+  ],
+  "airline": [
+   [
+    "2",
+    "8",
+    "16",
+    "19",
+    "24",
+    "26",
+    "30",
+    "32",
+    "37",
+    "45"
+   ],
+   [
+    "6",
+    "13",
+    "18",
+    "22",
+    "25",
+    "29",
+    "31",
+    "35",
+    "44",
+    "48"
+   ]
+  ]
+ },
+ "results": {
+  "retail arbiter": {
+   "none": {
+    "turns": 1384,
+    "turns_saved": 294,
+    "flow_lookups": 656,
+    "calls_skipped": 598,
+    "detours": 58,
+    "episodes": 160,
+    "episodes_with_detour": 27
+   },
+   "a": {
+    "turns": 1384,
+    "turns_saved": 277,
+    "flow_lookups": 627,
+    "calls_skipped": 581,
+    "detours": 46,
+    "episodes": 160,
+    "episodes_with_detour": 23,
+    "sites": [
+     {
+      "calculate": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "cancel_pending_order": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "exchange_delivered_order_items": {
+       "decisions": 15,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_email": {
+       "decisions": 4,
+       "lookups": 4,
+       "used": 4,
+       "tasks": 1,
+       "lower": 0.5965213826846573,
+       "promoted": false
+      },
+      "find_user_id_by_email (error)": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_name_zip": {
+       "decisions": 70,
+       "lookups": 68,
+       "used": 63,
+       "tasks": 19,
+       "lower": 0.856551139956153,
+       "promoted": true
+      },
+      "find_user_id_by_name_zip (error)": {
+       "decisions": 3,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_order_details": {
+       "decisions": 239,
+       "lookups": 158,
+       "used": 158,
+       "tasks": 17,
+       "lower": 0.9831645921554757,
+       "promoted": true
+      },
+      "get_product_details": {
+       "decisions": 97,
+       "lookups": 33,
+       "used": 27,
+       "tasks": 5,
+       "lower": 0.6851985992626128,
+       "promoted": true
+      },
+      "get_user_details": {
+       "decisions": 71,
+       "lookups": 68,
+       "used": 68,
+       "tasks": 19,
+       "lower": 0.9617350601288828,
+       "promoted": true
+      },
+      "list_all_product_types": {
+       "decisions": 4,
+       "lookups": 4,
+       "used": 0,
+       "tasks": 1,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_address": {
+       "decisions": 20,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_items": {
+       "decisions": 38,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_payment": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_user_address": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "return_delivered_order_items": {
+       "decisions": 14,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 6,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     },
+     {
+      "cancel_pending_order": {
+       "decisions": 18,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "exchange_delivered_order_items": {
+       "decisions": 15,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_email": {
+       "decisions": 16,
+       "lookups": 16,
+       "used": 16,
+       "tasks": 4,
+       "lower": 0.8553614127867204,
+       "promoted": true
+      },
+      "find_user_id_by_email (error)": {
+       "decisions": 8,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_name_zip": {
+       "decisions": 64,
+       "lookups": 61,
+       "used": 59,
+       "tasks": 16,
+       "lower": 0.905651422947514,
+       "promoted": true
+      },
+      "get_order_details": {
+       "decisions": 208,
+       "lookups": 117,
+       "used": 114,
+       "tasks": 16,
+       "lower": 0.9375682289096431,
+       "promoted": true
+      },
+      "get_product_details": {
+       "decisions": 77,
+       "lookups": 17,
+       "used": 11,
+       "tasks": 3,
+       "lower": 0.44864590503000884,
+       "promoted": true
+      },
+      "get_user_details": {
+       "decisions": 76,
+       "lookups": 76,
+       "used": 70,
+       "tasks": 19,
+       "lower": 0.8545297336810034,
+       "promoted": true
+      },
+      "list_all_product_types": {
+       "decisions": 4,
+       "lookups": 3,
+       "used": 1,
+       "tasks": 2,
+       "lower": 0.07826572801142472,
+       "promoted": false
+      },
+      "modify_pending_order_address": {
+       "decisions": 8,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_items": {
+       "decisions": 21,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_payment": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_user_address": {
+       "decisions": 3,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "return_delivered_order_items": {
+       "decisions": 14,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "return_delivered_order_items (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 6,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     }
+    ]
+   },
+   "b": {
+    "turns": 1384,
+    "turns_saved": 277,
+    "flow_lookups": 591,
+    "calls_skipped": 563,
+    "detours": 28,
+    "episodes": 160,
+    "episodes_with_detour": 17,
+    "sites": [
+     {
+      "calculate": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "cancel_pending_order": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "exchange_delivered_order_items": {
+       "decisions": 15,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_email": {
+       "decisions": 4,
+       "lookups": 4,
+       "used": 4,
+       "tasks": 1,
+       "lower": 0.5965213826846573,
+       "promoted": false
+      },
+      "find_user_id_by_email (error)": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_name_zip": {
+       "decisions": 70,
+       "lookups": 68,
+       "used": 63,
+       "tasks": 19,
+       "lower": 0.856551139956153,
+       "promoted": true
+      },
+      "find_user_id_by_name_zip (error)": {
+       "decisions": 3,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_order_details": {
+       "decisions": 239,
+       "lookups": 158,
+       "used": 158,
+       "tasks": 17,
+       "lower": 0.9831645921554757,
+       "promoted": true
+      },
+      "get_product_details": {
+       "decisions": 97,
+       "lookups": 33,
+       "used": 27,
+       "tasks": 5,
+       "lower": 0.6851985992626128,
+       "promoted": true
+      },
+      "get_user_details": {
+       "decisions": 71,
+       "lookups": 68,
+       "used": 68,
+       "tasks": 19,
+       "lower": 0.9617350601288828,
+       "promoted": true
+      },
+      "list_all_product_types": {
+       "decisions": 4,
+       "lookups": 4,
+       "used": 0,
+       "tasks": 1,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_address": {
+       "decisions": 20,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_items": {
+       "decisions": 38,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_payment": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_user_address": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "return_delivered_order_items": {
+       "decisions": 14,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 6,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     },
+     {
+      "cancel_pending_order": {
+       "decisions": 18,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "exchange_delivered_order_items": {
+       "decisions": 15,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_email": {
+       "decisions": 16,
+       "lookups": 16,
+       "used": 16,
+       "tasks": 4,
+       "lower": 0.8553614127867204,
+       "promoted": true
+      },
+      "find_user_id_by_email (error)": {
+       "decisions": 8,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_name_zip": {
+       "decisions": 64,
+       "lookups": 61,
+       "used": 59,
+       "tasks": 16,
+       "lower": 0.905651422947514,
+       "promoted": true
+      },
+      "get_order_details": {
+       "decisions": 208,
+       "lookups": 117,
+       "used": 114,
+       "tasks": 16,
+       "lower": 0.9375682289096431,
+       "promoted": true
+      },
+      "get_product_details": {
+       "decisions": 77,
+       "lookups": 17,
+       "used": 11,
+       "tasks": 3,
+       "lower": 0.44864590503000884,
+       "promoted": false
+      },
+      "get_user_details": {
+       "decisions": 76,
+       "lookups": 76,
+       "used": 70,
+       "tasks": 19,
+       "lower": 0.8545297336810034,
+       "promoted": true
+      },
+      "list_all_product_types": {
+       "decisions": 4,
+       "lookups": 3,
+       "used": 1,
+       "tasks": 2,
+       "lower": 0.07826572801142472,
+       "promoted": false
+      },
+      "modify_pending_order_address": {
+       "decisions": 8,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_items": {
+       "decisions": 21,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_payment": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_user_address": {
+       "decisions": 3,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "return_delivered_order_items": {
+       "decisions": 14,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "return_delivered_order_items (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 6,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     }
+    ]
+   },
+   "c": {
+    "turns": 1384,
+    "turns_saved": 273,
+    "flow_lookups": 587,
+    "calls_skipped": 559,
+    "detours": 28,
+    "episodes": 160,
+    "episodes_with_detour": 17,
+    "sites": [
+     {
+      "calculate": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "cancel_pending_order": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "exchange_delivered_order_items": {
+       "decisions": 15,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_email": {
+       "decisions": 4,
+       "lookups": 4,
+       "used": 4,
+       "tasks": 1,
+       "lower": 0.5965213826846573,
+       "promoted": false
+      },
+      "find_user_id_by_email (error)": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_name_zip": {
+       "decisions": 70,
+       "lookups": 68,
+       "used": 63,
+       "tasks": 19,
+       "lower": 0.856551139956153,
+       "promoted": true
+      },
+      "find_user_id_by_name_zip (error)": {
+       "decisions": 3,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_order_details": {
+       "decisions": 239,
+       "lookups": 158,
+       "used": 158,
+       "tasks": 17,
+       "lower": 0.9831645921554757,
+       "promoted": true
+      },
+      "get_product_details": {
+       "decisions": 97,
+       "lookups": 33,
+       "used": 27,
+       "tasks": 5,
+       "lower": 0.6851985992626128,
+       "promoted": true
+      },
+      "get_user_details": {
+       "decisions": 71,
+       "lookups": 68,
+       "used": 68,
+       "tasks": 19,
+       "lower": 0.9617350601288828,
+       "promoted": true
+      },
+      "list_all_product_types": {
+       "decisions": 4,
+       "lookups": 4,
+       "used": 0,
+       "tasks": 1,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_address": {
+       "decisions": 20,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_items": {
+       "decisions": 38,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_payment": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_user_address": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "return_delivered_order_items": {
+       "decisions": 14,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 6,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     },
+     {
+      "cancel_pending_order": {
+       "decisions": 18,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "exchange_delivered_order_items": {
+       "decisions": 15,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_email": {
+       "decisions": 16,
+       "lookups": 16,
+       "used": 16,
+       "tasks": 4,
+       "lower": 0.8553614127867204,
+       "promoted": false
+      },
+      "find_user_id_by_email (error)": {
+       "decisions": 8,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_name_zip": {
+       "decisions": 64,
+       "lookups": 61,
+       "used": 59,
+       "tasks": 16,
+       "lower": 0.905651422947514,
+       "promoted": true
+      },
+      "get_order_details": {
+       "decisions": 208,
+       "lookups": 117,
+       "used": 114,
+       "tasks": 16,
+       "lower": 0.9375682289096431,
+       "promoted": true
+      },
+      "get_product_details": {
+       "decisions": 77,
+       "lookups": 17,
+       "used": 11,
+       "tasks": 3,
+       "lower": 0.44864590503000884,
+       "promoted": false
+      },
+      "get_user_details": {
+       "decisions": 76,
+       "lookups": 76,
+       "used": 70,
+       "tasks": 19,
+       "lower": 0.8545297336810034,
+       "promoted": true
+      },
+      "list_all_product_types": {
+       "decisions": 4,
+       "lookups": 3,
+       "used": 1,
+       "tasks": 2,
+       "lower": 0.07826572801142472,
+       "promoted": false
+      },
+      "modify_pending_order_address": {
+       "decisions": 8,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_items": {
+       "decisions": 21,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_payment": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_user_address": {
+       "decisions": 3,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "return_delivered_order_items": {
+       "decisions": 14,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "return_delivered_order_items (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 6,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     }
+    ]
+   }
+  },
+  "retail habit": {
+   "none": {
+    "turns": 1384,
+    "turns_saved": 311,
+    "flow_lookups": 649,
+    "calls_skipped": 591,
+    "detours": 58,
+    "episodes": 160,
+    "episodes_with_detour": 27
+   },
+   "a": {
+    "turns": 1384,
+    "turns_saved": 294,
+    "flow_lookups": 625,
+    "calls_skipped": 574,
+    "detours": 51,
+    "episodes": 160,
+    "episodes_with_detour": 20,
+    "sites": [
+     {
+      "calculate": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "cancel_pending_order": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "exchange_delivered_order_items": {
+       "decisions": 15,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_email": {
+       "decisions": 4,
+       "lookups": 4,
+       "used": 4,
+       "tasks": 1,
+       "lower": 0.5965213826846573,
+       "promoted": false
+      },
+      "find_user_id_by_email (error)": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_name_zip": {
+       "decisions": 70,
+       "lookups": 70,
+       "used": 63,
+       "tasks": 19,
+       "lower": 0.825359965059655,
+       "promoted": true
+      },
+      "find_user_id_by_name_zip (error)": {
+       "decisions": 3,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_order_details": {
+       "decisions": 239,
+       "lookups": 169,
+       "used": 165,
+       "tasks": 17,
+       "lower": 0.9483210063539734,
+       "promoted": true
+      },
+      "get_product_details": {
+       "decisions": 97,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_user_details": {
+       "decisions": 71,
+       "lookups": 71,
+       "used": 70,
+       "tasks": 19,
+       "lower": 0.9393059790237519,
+       "promoted": true
+      },
+      "list_all_product_types": {
+       "decisions": 4,
+       "lookups": 4,
+       "used": 0,
+       "tasks": 1,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_address": {
+       "decisions": 20,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_items": {
+       "decisions": 38,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_payment": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_user_address": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "return_delivered_order_items": {
+       "decisions": 14,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 6,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     },
+     {
+      "cancel_pending_order": {
+       "decisions": 18,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "exchange_delivered_order_items": {
+       "decisions": 15,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_email": {
+       "decisions": 16,
+       "lookups": 16,
+       "used": 16,
+       "tasks": 4,
+       "lower": 0.8553614127867204,
+       "promoted": true
+      },
+      "find_user_id_by_email (error)": {
+       "decisions": 8,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_name_zip": {
+       "decisions": 64,
+       "lookups": 64,
+       "used": 60,
+       "tasks": 16,
+       "lower": 0.8678764152895744,
+       "promoted": true
+      },
+      "get_order_details": {
+       "decisions": 208,
+       "lookups": 140,
+       "used": 129,
+       "tasks": 17,
+       "lower": 0.8755385454919373,
+       "promoted": true
+      },
+      "get_product_details": {
+       "decisions": 77,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_user_details": {
+       "decisions": 76,
+       "lookups": 76,
+       "used": 70,
+       "tasks": 19,
+       "lower": 0.8545297336810034,
+       "promoted": true
+      },
+      "list_all_product_types": {
+       "decisions": 4,
+       "lookups": 4,
+       "used": 1,
+       "tasks": 2,
+       "lower": 0.05790732243095231,
+       "promoted": false
+      },
+      "modify_pending_order_address": {
+       "decisions": 8,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_items": {
+       "decisions": 21,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_payment": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_user_address": {
+       "decisions": 3,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "return_delivered_order_items": {
+       "decisions": 14,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "return_delivered_order_items (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 6,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     }
+    ]
+   },
+   "b": {
+    "turns": 1384,
+    "turns_saved": 294,
+    "flow_lookups": 625,
+    "calls_skipped": 574,
+    "detours": 51,
+    "episodes": 160,
+    "episodes_with_detour": 20,
+    "sites": [
+     {
+      "calculate": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "cancel_pending_order": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "exchange_delivered_order_items": {
+       "decisions": 15,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_email": {
+       "decisions": 4,
+       "lookups": 4,
+       "used": 4,
+       "tasks": 1,
+       "lower": 0.5965213826846573,
+       "promoted": false
+      },
+      "find_user_id_by_email (error)": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_name_zip": {
+       "decisions": 70,
+       "lookups": 70,
+       "used": 63,
+       "tasks": 19,
+       "lower": 0.825359965059655,
+       "promoted": true
+      },
+      "find_user_id_by_name_zip (error)": {
+       "decisions": 3,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_order_details": {
+       "decisions": 239,
+       "lookups": 169,
+       "used": 165,
+       "tasks": 17,
+       "lower": 0.9483210063539734,
+       "promoted": true
+      },
+      "get_product_details": {
+       "decisions": 97,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_user_details": {
+       "decisions": 71,
+       "lookups": 71,
+       "used": 70,
+       "tasks": 19,
+       "lower": 0.9393059790237519,
+       "promoted": true
+      },
+      "list_all_product_types": {
+       "decisions": 4,
+       "lookups": 4,
+       "used": 0,
+       "tasks": 1,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_address": {
+       "decisions": 20,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_items": {
+       "decisions": 38,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_payment": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_user_address": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "return_delivered_order_items": {
+       "decisions": 14,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 6,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     },
+     {
+      "cancel_pending_order": {
+       "decisions": 18,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "exchange_delivered_order_items": {
+       "decisions": 15,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_email": {
+       "decisions": 16,
+       "lookups": 16,
+       "used": 16,
+       "tasks": 4,
+       "lower": 0.8553614127867204,
+       "promoted": true
+      },
+      "find_user_id_by_email (error)": {
+       "decisions": 8,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_name_zip": {
+       "decisions": 64,
+       "lookups": 64,
+       "used": 60,
+       "tasks": 16,
+       "lower": 0.8678764152895744,
+       "promoted": true
+      },
+      "get_order_details": {
+       "decisions": 208,
+       "lookups": 140,
+       "used": 129,
+       "tasks": 17,
+       "lower": 0.8755385454919373,
+       "promoted": true
+      },
+      "get_product_details": {
+       "decisions": 77,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_user_details": {
+       "decisions": 76,
+       "lookups": 76,
+       "used": 70,
+       "tasks": 19,
+       "lower": 0.8545297336810034,
+       "promoted": true
+      },
+      "list_all_product_types": {
+       "decisions": 4,
+       "lookups": 4,
+       "used": 1,
+       "tasks": 2,
+       "lower": 0.05790732243095231,
+       "promoted": false
+      },
+      "modify_pending_order_address": {
+       "decisions": 8,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_items": {
+       "decisions": 21,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_payment": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_user_address": {
+       "decisions": 3,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "return_delivered_order_items": {
+       "decisions": 14,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "return_delivered_order_items (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 6,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     }
+    ]
+   },
+   "c": {
+    "turns": 1384,
+    "turns_saved": 290,
+    "flow_lookups": 621,
+    "calls_skipped": 570,
+    "detours": 51,
+    "episodes": 160,
+    "episodes_with_detour": 20,
+    "sites": [
+     {
+      "calculate": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "cancel_pending_order": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "exchange_delivered_order_items": {
+       "decisions": 15,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_email": {
+       "decisions": 4,
+       "lookups": 4,
+       "used": 4,
+       "tasks": 1,
+       "lower": 0.5965213826846573,
+       "promoted": false
+      },
+      "find_user_id_by_email (error)": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_name_zip": {
+       "decisions": 70,
+       "lookups": 70,
+       "used": 63,
+       "tasks": 19,
+       "lower": 0.825359965059655,
+       "promoted": true
+      },
+      "find_user_id_by_name_zip (error)": {
+       "decisions": 3,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_order_details": {
+       "decisions": 239,
+       "lookups": 169,
+       "used": 165,
+       "tasks": 17,
+       "lower": 0.9483210063539734,
+       "promoted": true
+      },
+      "get_product_details": {
+       "decisions": 97,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_user_details": {
+       "decisions": 71,
+       "lookups": 71,
+       "used": 70,
+       "tasks": 19,
+       "lower": 0.9393059790237519,
+       "promoted": true
+      },
+      "list_all_product_types": {
+       "decisions": 4,
+       "lookups": 4,
+       "used": 0,
+       "tasks": 1,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_address": {
+       "decisions": 20,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_items": {
+       "decisions": 38,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_payment": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_user_address": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "return_delivered_order_items": {
+       "decisions": 14,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 6,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     },
+     {
+      "cancel_pending_order": {
+       "decisions": 18,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "exchange_delivered_order_items": {
+       "decisions": 15,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_email": {
+       "decisions": 16,
+       "lookups": 16,
+       "used": 16,
+       "tasks": 4,
+       "lower": 0.8553614127867204,
+       "promoted": false
+      },
+      "find_user_id_by_email (error)": {
+       "decisions": 8,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "find_user_id_by_name_zip": {
+       "decisions": 64,
+       "lookups": 64,
+       "used": 60,
+       "tasks": 16,
+       "lower": 0.8678764152895744,
+       "promoted": true
+      },
+      "get_order_details": {
+       "decisions": 208,
+       "lookups": 140,
+       "used": 129,
+       "tasks": 17,
+       "lower": 0.8755385454919373,
+       "promoted": true
+      },
+      "get_product_details": {
+       "decisions": 77,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_user_details": {
+       "decisions": 76,
+       "lookups": 76,
+       "used": 70,
+       "tasks": 19,
+       "lower": 0.8545297336810034,
+       "promoted": true
+      },
+      "list_all_product_types": {
+       "decisions": 4,
+       "lookups": 4,
+       "used": 1,
+       "tasks": 2,
+       "lower": 0.05790732243095231,
+       "promoted": false
+      },
+      "modify_pending_order_address": {
+       "decisions": 8,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_items": {
+       "decisions": 21,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_pending_order_payment": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "modify_user_address": {
+       "decisions": 3,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "return_delivered_order_items": {
+       "decisions": 14,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "return_delivered_order_items (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 6,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     }
+    ]
+   }
+  },
+  "airline arbiter": {
+   "none": {
+    "turns": 630,
+    "turns_saved": 41,
+    "flow_lookups": 210,
+    "calls_skipped": 184,
+    "detours": 26,
+    "episodes": 80,
+    "episodes_with_detour": 8
+   },
+   "a": {
+    "turns": 630,
+    "turns_saved": 41,
+    "flow_lookups": 187,
+    "calls_skipped": 176,
+    "detours": 11,
+    "episodes": 80,
+    "episodes_with_detour": 2,
+    "sites": [
+     {
+      "book_reservation": {
+       "decisions": 9,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "cancel_reservation": {
+       "decisions": 3,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_flight_status": {
+       "decisions": 38,
+       "lookups": 32,
+       "used": 0,
+       "tasks": 1,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_reservation_details": {
+       "decisions": 116,
+       "lookups": 66,
+       "used": 66,
+       "tasks": 6,
+       "lower": 0.9606211779587762,
+       "promoted": true
+      },
+      "get_user_details": {
+       "decisions": 36,
+       "lookups": 27,
+       "used": 25,
+       "tasks": 9,
+       "lower": 0.7990893465882897,
+       "promoted": true
+      },
+      "get_user_details (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_direct_flight": {
+       "decisions": 92,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_onestop_flight": {
+       "decisions": 12,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_baggages": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_flights": {
+       "decisions": 30,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_flights (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_passengers": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     },
+     {
+      "book_reservation": {
+       "decisions": 8,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "cancel_reservation": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_flight_status": {
+       "decisions": 16,
+       "lookups": 4,
+       "used": 1,
+       "tasks": 1,
+       "lower": 0.05790732243095231,
+       "promoted": false
+      },
+      "get_reservation_details": {
+       "decisions": 100,
+       "lookups": 57,
+       "used": 57,
+       "tasks": 8,
+       "lower": 0.9546852232987239,
+       "promoted": true
+      },
+      "get_user_details": {
+       "decisions": 39,
+       "lookups": 29,
+       "used": 29,
+       "tasks": 9,
+       "lower": 0.9146665510743877,
+       "promoted": true
+      },
+      "get_user_details (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "list_all_airports": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_direct_flight": {
+       "decisions": 84,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_onestop_flight": {
+       "decisions": 11,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_flights": {
+       "decisions": 12,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     }
+    ]
+   },
+   "b": {
+    "turns": 630,
+    "turns_saved": 41,
+    "flow_lookups": 187,
+    "calls_skipped": 176,
+    "detours": 11,
+    "episodes": 80,
+    "episodes_with_detour": 2,
+    "sites": [
+     {
+      "book_reservation": {
+       "decisions": 9,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "cancel_reservation": {
+       "decisions": 3,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_flight_status": {
+       "decisions": 38,
+       "lookups": 32,
+       "used": 0,
+       "tasks": 1,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_reservation_details": {
+       "decisions": 116,
+       "lookups": 66,
+       "used": 66,
+       "tasks": 6,
+       "lower": 0.9606211779587762,
+       "promoted": true
+      },
+      "get_user_details": {
+       "decisions": 36,
+       "lookups": 27,
+       "used": 25,
+       "tasks": 9,
+       "lower": 0.7990893465882897,
+       "promoted": true
+      },
+      "get_user_details (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_direct_flight": {
+       "decisions": 92,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_onestop_flight": {
+       "decisions": 12,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_baggages": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_flights": {
+       "decisions": 30,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_flights (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_passengers": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     },
+     {
+      "book_reservation": {
+       "decisions": 8,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "cancel_reservation": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_flight_status": {
+       "decisions": 16,
+       "lookups": 4,
+       "used": 1,
+       "tasks": 1,
+       "lower": 0.05790732243095231,
+       "promoted": false
+      },
+      "get_reservation_details": {
+       "decisions": 100,
+       "lookups": 57,
+       "used": 57,
+       "tasks": 8,
+       "lower": 0.9546852232987239,
+       "promoted": true
+      },
+      "get_user_details": {
+       "decisions": 39,
+       "lookups": 29,
+       "used": 29,
+       "tasks": 9,
+       "lower": 0.9146665510743877,
+       "promoted": true
+      },
+      "get_user_details (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "list_all_airports": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_direct_flight": {
+       "decisions": 84,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_onestop_flight": {
+       "decisions": 11,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_flights": {
+       "decisions": 12,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     }
+    ]
+   },
+   "c": {
+    "turns": 630,
+    "turns_saved": 41,
+    "flow_lookups": 187,
+    "calls_skipped": 176,
+    "detours": 11,
+    "episodes": 80,
+    "episodes_with_detour": 2,
+    "sites": [
+     {
+      "book_reservation": {
+       "decisions": 9,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "cancel_reservation": {
+       "decisions": 3,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_flight_status": {
+       "decisions": 38,
+       "lookups": 32,
+       "used": 0,
+       "tasks": 1,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_reservation_details": {
+       "decisions": 116,
+       "lookups": 66,
+       "used": 66,
+       "tasks": 6,
+       "lower": 0.9606211779587762,
+       "promoted": true
+      },
+      "get_user_details": {
+       "decisions": 36,
+       "lookups": 27,
+       "used": 25,
+       "tasks": 9,
+       "lower": 0.7990893465882897,
+       "promoted": true
+      },
+      "get_user_details (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_direct_flight": {
+       "decisions": 92,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_onestop_flight": {
+       "decisions": 12,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_baggages": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_flights": {
+       "decisions": 30,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_flights (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_passengers": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     },
+     {
+      "book_reservation": {
+       "decisions": 8,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "cancel_reservation": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_flight_status": {
+       "decisions": 16,
+       "lookups": 4,
+       "used": 1,
+       "tasks": 1,
+       "lower": 0.05790732243095231,
+       "promoted": false
+      },
+      "get_reservation_details": {
+       "decisions": 100,
+       "lookups": 57,
+       "used": 57,
+       "tasks": 8,
+       "lower": 0.9546852232987239,
+       "promoted": true
+      },
+      "get_user_details": {
+       "decisions": 39,
+       "lookups": 29,
+       "used": 29,
+       "tasks": 9,
+       "lower": 0.9146665510743877,
+       "promoted": true
+      },
+      "get_user_details (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "list_all_airports": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_direct_flight": {
+       "decisions": 84,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_onestop_flight": {
+       "decisions": 11,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_flights": {
+       "decisions": 12,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     }
+    ]
+   }
+  },
+  "airline habit": {
+   "none": {
+    "turns": 630,
+    "turns_saved": 55,
+    "flow_lookups": 250,
+    "calls_skipped": 200,
+    "detours": 50,
+    "episodes": 80,
+    "episodes_with_detour": 20
+   },
+   "a": {
+    "turns": 630,
+    "turns_saved": 55,
+    "flow_lookups": 245,
+    "calls_skipped": 200,
+    "detours": 45,
+    "episodes": 80,
+    "episodes_with_detour": 15,
+    "sites": [
+     {
+      "book_reservation": {
+       "decisions": 9,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "cancel_reservation": {
+       "decisions": 3,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_flight_status": {
+       "decisions": 38,
+       "lookups": 4,
+       "used": 0,
+       "tasks": 1,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_reservation_details": {
+       "decisions": 116,
+       "lookups": 79,
+       "used": 76,
+       "tasks": 7,
+       "lower": 0.9087289819753647,
+       "promoted": true
+      },
+      "get_user_details": {
+       "decisions": 36,
+       "lookups": 32,
+       "used": 28,
+       "tasks": 9,
+       "lower": 0.7489096030735697,
+       "promoted": true
+      },
+      "get_user_details (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_direct_flight": {
+       "decisions": 92,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_onestop_flight": {
+       "decisions": 12,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_baggages": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_flights": {
+       "decisions": 30,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_flights (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_passengers": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     },
+     {
+      "book_reservation": {
+       "decisions": 8,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "cancel_reservation": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_flight_status": {
+       "decisions": 16,
+       "lookups": 4,
+       "used": 0,
+       "tasks": 1,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_reservation_details": {
+       "decisions": 100,
+       "lookups": 67,
+       "used": 58,
+       "tasks": 10,
+       "lower": 0.7828134500849654,
+       "promoted": true
+      },
+      "get_user_details": {
+       "decisions": 39,
+       "lookups": 35,
+       "used": 34,
+       "tasks": 10,
+       "lower": 0.8816029637823984,
+       "promoted": true
+      },
+      "get_user_details (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "list_all_airports": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_direct_flight": {
+       "decisions": 84,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_onestop_flight": {
+       "decisions": 11,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_flights": {
+       "decisions": 12,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     }
+    ]
+   },
+   "b": {
+    "turns": 630,
+    "turns_saved": 55,
+    "flow_lookups": 245,
+    "calls_skipped": 200,
+    "detours": 45,
+    "episodes": 80,
+    "episodes_with_detour": 15,
+    "sites": [
+     {
+      "book_reservation": {
+       "decisions": 9,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "cancel_reservation": {
+       "decisions": 3,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_flight_status": {
+       "decisions": 38,
+       "lookups": 4,
+       "used": 0,
+       "tasks": 1,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_reservation_details": {
+       "decisions": 116,
+       "lookups": 79,
+       "used": 76,
+       "tasks": 7,
+       "lower": 0.9087289819753647,
+       "promoted": true
+      },
+      "get_user_details": {
+       "decisions": 36,
+       "lookups": 32,
+       "used": 28,
+       "tasks": 9,
+       "lower": 0.7489096030735697,
+       "promoted": true
+      },
+      "get_user_details (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_direct_flight": {
+       "decisions": 92,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_onestop_flight": {
+       "decisions": 12,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_baggages": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_flights": {
+       "decisions": 30,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_flights (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_passengers": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     },
+     {
+      "book_reservation": {
+       "decisions": 8,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "cancel_reservation": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_flight_status": {
+       "decisions": 16,
+       "lookups": 4,
+       "used": 0,
+       "tasks": 1,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_reservation_details": {
+       "decisions": 100,
+       "lookups": 67,
+       "used": 58,
+       "tasks": 10,
+       "lower": 0.7828134500849654,
+       "promoted": true
+      },
+      "get_user_details": {
+       "decisions": 39,
+       "lookups": 35,
+       "used": 34,
+       "tasks": 10,
+       "lower": 0.8816029637823984,
+       "promoted": true
+      },
+      "get_user_details (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "list_all_airports": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_direct_flight": {
+       "decisions": 84,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_onestop_flight": {
+       "decisions": 11,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_flights": {
+       "decisions": 12,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     }
+    ]
+   },
+   "c": {
+    "turns": 630,
+    "turns_saved": 55,
+    "flow_lookups": 245,
+    "calls_skipped": 200,
+    "detours": 45,
+    "episodes": 80,
+    "episodes_with_detour": 15,
+    "sites": [
+     {
+      "book_reservation": {
+       "decisions": 9,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "cancel_reservation": {
+       "decisions": 3,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_flight_status": {
+       "decisions": 38,
+       "lookups": 4,
+       "used": 0,
+       "tasks": 1,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_reservation_details": {
+       "decisions": 116,
+       "lookups": 79,
+       "used": 76,
+       "tasks": 7,
+       "lower": 0.9087289819753647,
+       "promoted": true
+      },
+      "get_user_details": {
+       "decisions": 36,
+       "lookups": 32,
+       "used": 28,
+       "tasks": 9,
+       "lower": 0.7489096030735697,
+       "promoted": true
+      },
+      "get_user_details (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_direct_flight": {
+       "decisions": 92,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_onestop_flight": {
+       "decisions": 12,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_baggages": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_flights": {
+       "decisions": 30,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_flights (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_passengers": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     },
+     {
+      "book_reservation": {
+       "decisions": 8,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "cancel_reservation": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_flight_status": {
+       "decisions": 16,
+       "lookups": 4,
+       "used": 0,
+       "tasks": 1,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "get_reservation_details": {
+       "decisions": 100,
+       "lookups": 67,
+       "used": 58,
+       "tasks": 10,
+       "lower": 0.7828134500849654,
+       "promoted": true
+      },
+      "get_user_details": {
+       "decisions": 39,
+       "lookups": 35,
+       "used": 34,
+       "tasks": 10,
+       "lower": 0.8816029637823984,
+       "promoted": true
+      },
+      "get_user_details (error)": {
+       "decisions": 1,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "list_all_airports": {
+       "decisions": 4,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_direct_flight": {
+       "decisions": 84,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "search_onestop_flight": {
+       "decisions": 11,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "transfer_to_human_agents": {
+       "decisions": 10,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      },
+      "update_reservation_flights": {
+       "decisions": 12,
+       "lookups": 0,
+       "used": 0,
+       "tasks": 0,
+       "lower": 0.0,
+       "promoted": false
+      }
+     }
+    ]
+   }
+  }
+ }
+}

@@ -8,7 +8,7 @@
 //! one to review.
 
 use crate::flow::{Flow, LookupBinding};
-use crate::shadow::{Predicate, RESPOND};
+use crate::shadow::{Predicate, Sites, RESPOND};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write;
 use stretto_model::world::decode;
@@ -124,6 +124,28 @@ fn verdict(likely: Option<&Likely>, threshold: f64) -> String {
         Some(l) if l.prob() >= threshold => format!("looks up {}", l.describe()),
         Some(l) => format!("hands back: {}", l.describe()),
         None => "hands back: no lookup offered".to_string(),
+    }
+}
+
+/// Whether `flow` may act after a call to `tool` that failed or not: always,
+/// unless it was promoted and the site was not.
+fn acts(flow: &Flow, tool: &str, failed: bool) -> bool {
+    flow.promotion()
+        .is_none_or(|p| p.allows(&Sites::name(tool, failed)))
+}
+
+/// What the flow does after a site, promoted or not.
+fn action(
+    flow: &Flow,
+    tool: &str,
+    failed: bool,
+    likely: Option<&Likely>,
+    threshold: f64,
+) -> String {
+    if acts(flow, tool, failed) {
+        verdict(likely, threshold)
+    } else {
+        "hands back: not promoted".to_string()
     }
 }
 
@@ -302,11 +324,22 @@ pub fn show(flow: &Flow, threshold: f64) -> String {
             offered.join(", "),
             top_shares(&shares, 4),
             thousands(total.round() as usize),
-            verdict(
+            action(
+                flow,
+                tool,
+                *failed,
                 likely(flow, tool, *failed, &shares, &bound).as_ref(),
                 threshold
             )
         );
+    }
+    if let Some(p) = flow.promotion() {
+        let _ = writeln!(md, "\n## Promotion\n");
+        let _ = writeln!(
+            md,
+            "The flow acts only after the promoted calls, and hands back after the rest (`stretto promote`).\n"
+        );
+        md.push_str(&crate::promote::markdown(p));
     }
     let _ = writeln!(md, "\n## Bindings\n");
     let _ = writeln!(
@@ -476,6 +509,19 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
         for l in la.difference(&lb) {
             sites.push(format!("after {site}: no longer looks up `{l}`"));
         }
+        // Where it acts: a site promoted, or promotion lifted.
+        if a.is_some() && b.is_some() {
+            match (acts(old, &key.0, key.1), acts(new, &key.0, key.1)) {
+                (false, true) => {
+                    sites.push(format!("after {site}: now acts"));
+                    review.push(format!(
+                        "the flow now acts after {site}, where it handed back"
+                    ));
+                }
+                (true, false) => sites.push(format!("after {site}: no longer acts (not promoted)")),
+                _ => {}
+            }
+        }
     }
     sections.push(("Sites".to_string(), sites));
 
@@ -490,24 +536,26 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
         let (sb, _) = followed(new, tool, failed);
         let lb = likely(new, tool, failed, &sb, &bound_new);
         let clears_b = lb.as_ref().is_some_and(|l| l.prob() >= threshold);
+        let clears_b = clears_b && acts(new, tool, failed);
         if !old.sites.next().contains_key(key) {
             if clears_b {
                 habit.push(format!(
                     "after {site}, a new site: {}",
-                    verdict(lb.as_ref(), threshold)
+                    action(new, tool, failed, lb.as_ref(), threshold)
                 ));
             }
             continue;
         }
         let (sa, _) = followed(old, tool, failed);
         let la = likely(old, tool, failed, &sa, &bound_old);
-        let clears_a = la.as_ref().is_some_and(|l| l.prob() >= threshold);
+        let clears_a =
+            la.as_ref().is_some_and(|l| l.prob() >= threshold) && acts(old, tool, failed);
         let same_tool = la.as_ref().map(|l| &l.tool) == lb.as_ref().map(|l| &l.tool);
         if clears_a != clears_b || (clears_b && !same_tool) {
             habit.push(format!(
                 "after {site}: {} (was: {})",
-                verdict(lb.as_ref(), threshold),
-                verdict(la.as_ref(), threshold)
+                action(new, tool, failed, lb.as_ref(), threshold),
+                action(old, tool, failed, la.as_ref(), threshold)
             ));
         }
         let actions: BTreeSet<&String> = sa.keys().chain(sb.keys()).collect();
@@ -657,6 +705,24 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
         (false, false) => {}
     }
     sections.push(("Arbiter".to_string(), arbiter));
+
+    let mut promotion = Vec::new();
+    let summary = |f: &Flow| match f.promotion() {
+        None => "none: it may act after every call".to_string(),
+        Some(p) => format!(
+            "{} of {} sites scored (at least {:.0}% used, a lower bound of {:.2}, {} tasks, at {})",
+            p.sites.values().filter(|r| r.promoted).count(),
+            p.sites.len(),
+            100.0 * p.bar.min_used,
+            p.bar.min_lower,
+            p.bar.min_tasks,
+            p.bar.threshold
+        ),
+    };
+    if old.promotion() != new.promotion() {
+        promotion.push(format!("{} → {}", summary(old), summary(new)));
+    }
+    sections.push(("Promotion".to_string(), promotion));
 
     let (pa, pb) = (&old.provenance, &new.provenance);
     let mut provenance = Vec::new();

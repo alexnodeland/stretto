@@ -31,7 +31,22 @@ const KIND_VALUES: &[&str] = &["manifest.tools.{}", "predicates.*.favors"];
 
 /// Fields the examples do not show: written only when set, or only in flows
 /// with code features.
-const NOT_IN_EXAMPLES: &[&str] = &["every_read", "Scalar", "Len"];
+const NOT_IN_EXAMPLES: &[&str] = &[
+    "every_read",
+    "Scalar",
+    "Len",
+    "promoted",
+    "bar",
+    "threshold",
+    "min_used",
+    "min_lower",
+    "min_tasks",
+    "decisions",
+    "lookups",
+    "used",
+    "tasks",
+    "lower",
+];
 
 fn names(v: &Value, path: &str, out: &mut BTreeSet<String>) {
     let at = |key: &str| {

@@ -44,6 +44,8 @@ The [working paper](https://alexnodeland.github.io/stretto/) puts them together,
 | [Telecom](telecom-2026-09-25.md) ([report](telecom-2026-09-25-report.md), [rows](telecom-2026-09-25.json)) | Telecom compresses like retail and airline, but Jev agrees with the agents less (67.9%). Neither shipped arbiter, nor one fitted on both domains, carries to it: they made 43–50% of the agent's lookups, against 66% for the habit alone and 75% for telecom's own |
 | [Answers: telecom](answers-2026-09-25-telecom.md) | The answer bundle for the page above |
 | [What `stretto_commit` could save](commit-bound-2026-09-25.md) | Bundling consecutive confirmed writes into one call saves at most 0.2–3.5% of LLM turns, too little for a ten-task live pilot to see |
+| [Shadow mode and per-site promotion](promotion-2026-09-25.md) ([rows](promotion-2026-09-25.json)) | Promoted on half the test tasks and replayed on the other half, D0 kept 277 of its 294 retail turns saved and all 41 in airline, with detours down from 58 to 28 and from 26 to 11. The habit alone gains little: its detours are at sites that pass the bar |
+| [Answers: promotion](answers-2026-09-25-promotion.md) | The answer bundle for the page above |
 
 ## Recorded episodes
 

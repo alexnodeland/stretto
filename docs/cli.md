@@ -23,6 +23,7 @@ Compile an agent's recorded behavior into flows, serve them, and measure them ag
 | [`audit`](#stretto-audit) | Audit a flow against recorded episodes. |
 | [`flow-show`](#stretto-flow-show) | Show a flow as a reviewer reads it (Markdown). |
 | [`flow-diff`](#stretto-flow-diff) | What changed from one flow to another, as a change list for a pull request (Markdown). |
+| [`promote`](#stretto-promote) | Promote a flow's sites (RFC-001 §3.7). |
 | [`jev-check`](#stretto-jev-check) | Check that Jev is reachable with TYPESAFE_API_KEY. |
 | [`export-arbiter`](#stretto-export-arbiter) | Write a flow's arbiter to its own file, to ship. |
 | [`fit-arbiter`](#stretto-fit-arbiter) | Fit one arbiter, to ship, on the held-out decisions of one or more compiles. |
@@ -379,6 +380,40 @@ Usage: stretto flow-diff [OPTIONS] <OLD> <NEW>
 - `--threshold <P>` (default `0.3`): The threshold the flow will be served with (`stretto-proxy --flow-threshold`).
 - `--out <FILE>`: Write the Markdown here (default: stdout).
 
+### `stretto promote`
+
+Promote a flow's sites (RFC-001 §3.7). Wherever the flow would decide in recorded sessions or τ²-bench results, score the lookup it would make: used if the agent made it later in the session, a detour if it never did. The promoted flow acts only after the calls whose record meets the bar, and hands back after the rest. Sessions recorded with `stretto-proxy --flow-shadow` have the flow's questions answered in the proxy's cache: pass it as --oracle-cache.
+
+```text
+Usage: stretto promote [OPTIONS] --flow <FILE> --out <FILE>
+```
+
+**Inputs**
+
+- `--flow <FILE>` (required): The flow to promote.
+- `--sessions <DIR>`: Sessions recorded by stretto-proxy (a directory of `*.jsonl`); each counts as its own task.
+- `--results <FILE>` (repeatable): τ²-bench results files (repeatable); files for other domains are skipped.
+- `--tau2 <DIR>`: With --results: keep only the test split of this τ²-bench checkout, the tasks a flow compiled from it never trained on.
+- `--task-ids <IDS>` (repeatable): With --results: keep only these tasks.
+
+**The System-One model**
+
+- `--oracle <ORACLE>` (one of `jev`, `replay`, `mock`; default `replay`): Who answers the flow's questions: `replay` (the cache only; decisions it cannot answer are left out), `jev` (needs TYPESAFE_API_KEY) or `mock`.
+- `--oracle-cache <DIR>` (default `.oracle-cache`): Replay cache for oracle answers.
+- `--decider <DECIDER>` (one of `arbiter`, `habit`): How the flow decides: `arbiter` or `habit`. Default: the arbiter, or the habit for a flow without one.
+
+**The bar**
+
+- `--threshold <P>` (default `0.3`): The threshold the flow will be served with (`stretto-proxy --flow-threshold`).
+- `--min-used <X>` (default `0.7`): The least share of the flow's lookups at a site that the agent made later in the session.
+- `--min-lower <X>` (default `0.5`): The least lower bound on that share (Wilson, 90% two-sided).
+- `--min-tasks <N>` (default `3`): The fewest distinct tasks (or sessions) the lookups came from.
+
+**Output**
+
+- `--out <FILE>` (required): Write the promoted flow here.
+- `--report <FILE>`: Write each site's record here, as Markdown (default: stdout).
+
 ### `stretto jev-check`
 
 Check that Jev is reachable with TYPESAFE_API_KEY: ask one small question (uncached) and print the answer, model version and latency.
@@ -484,6 +519,7 @@ Usage: stretto-proxy [OPTIONS] -- <SERVER_COMMAND>...
 - `--flow-per-session <N>` (default `40`): Lookups per session, at most.
 - `--flow-questions <N>` (default `300`): Questions to the System-One model per session, at most.
 - `--flow-log <FILE>`: Append the flow's decisions here (default: next to the session log).
+- `--flow-shadow`: Shadow mode: the flow decides after each call and logs what it would look up (`"shadow": true`), but makes no lookups, so the agent gets the server's results unchanged. `stretto promote --sessions` then makes the same decisions again from the answers cached in --oracle-cache, and scores them against what the agent did.
 - `--task-id <ID>`: Task id, which picks the flow's fold (default: the session).
 
 **The System-One model**

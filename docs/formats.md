@@ -35,6 +35,7 @@ A flow makes read-only calls on the agent's behalf, so a review asks what it may
 | `folds` | The arbiter's fitted weights and Jev's record, one per fold of tasks |
 | `bindings` | Where each lookup's arguments came from in training, and how often binding them that way matched the agent |
 | `model` | The System-One model the flow asks |
+| `promoted` | Where the flow may act, once promoted; absent until `stretto promote` writes it |
 
 ### `provenance`
 
@@ -122,6 +123,15 @@ How the flow fills a lookup's arguments, learned from the agent's own lookups in
 ### `model`
 
 The System-One model id the flow requests, `jev-latest` by default. It is part of each question's cache key. Empty in a flow with no arbiter.
+
+### `promoted`
+
+Written by `stretto promote` ([RFC-001 §3.7](rfc/001-habit-compiler.md)), and absent until then. A promoted flow acts only after the calls whose record met the bar. After the rest it hands back, with the reason `the site is not promoted`.
+
+- `bar`: `threshold`, the one the flow was scored at, as it will be served; `min_used`, the least share of its lookups at a site that the agent made later in the session; `min_lower`, the least lower bound on that share (Wilson, 90% two-sided); and `min_tasks`, the fewest distinct tasks the lookups came from. Each recorded session counts as its own task.
+- `sites`: for each site scored, by name (the tool, and ` (error)` after a failed call): `decisions`, the times the flow decided there; `lookups`, the lookups it would have made; `used`, the ones the agent made later in the session (the rest are detours); `tasks`; `lower`; and `promoted`. A site never scored is not promoted.
+
+Check: a site newly promoted lets the flow act where it handed back, and `stretto flow-diff` lists it as needing review.
 
 ## A flow, walked through
 
