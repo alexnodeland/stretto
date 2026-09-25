@@ -53,7 +53,7 @@ cat /tmp/stretto-logs/*.jsonl
 
 To try it in a host, configure `stretto-proxy` as above with `stretto-mcp-demo` after `--`.
 
-`stretto-mcp-demo --world retail` serves a tiny shop instead, with four of τ²-bench retail's tool names and canned data (`cN@example.com` is `user_N`, whose orders `#WNa` and `#WNb` are pending), for trying active mode.
+`stretto-mcp-demo --world retail` serves a tiny shop instead, with four of τ²-bench retail's tool names and canned data (`cN@example.com` is `user_N`, whose orders `#WNa` and `#WNb` are pending), for trying active mode. [The walkthrough](../../docs/walkthrough.md) runs the proxy on a real server, the official MCP filesystem server.
 
 ## Active mode
 
