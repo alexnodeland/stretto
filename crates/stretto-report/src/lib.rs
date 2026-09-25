@@ -33,6 +33,7 @@ pub mod matching;
 pub mod phase0;
 pub mod program;
 pub mod promote;
+pub mod refine;
 pub mod render;
 pub mod review;
 pub mod shadow;

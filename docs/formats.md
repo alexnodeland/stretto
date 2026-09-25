@@ -95,7 +95,7 @@ and `P_{-1}` uniform over the vocabulary, so a history never seen in training fa
 
 ### `predicates` and `weighed`
 
-The yes/no questions asked with each next-step question ([RFC-001 §3.4](rfc/001-habit-compiler.md); `data/predicates-v2.json`), and those of them the arbiter weighs. Each has an `id` (asked as `pred_<id>`), `favors` (the options its answer bears on: `same_lookup`, the lookup just made, made again; `any_lookup`, every lookup; `hand_back`), the `question`, and what `yes` and `no` mean. With `--no-predicate-features` they are asked but not weighed, and `weighed` is empty. A flow with no arbiter has neither.
+The yes/no questions asked with each next-step question ([RFC-001 §3.4](rfc/001-habit-compiler.md); `data/predicates-v2.json`), and those of them the arbiter weighs. Each has an `id` (asked as `pred_<id>`), `favors` (the options its answer bears on: `same_lookup`, the lookup just made, made again; `any_lookup`, every lookup; `hand_back`; or `{"lookup": TOOL}`, one named lookup wherever a site offers it), the `question`, and what `yes` and `no` mean. With `--no-predicate-features` they are asked but not weighed, and `weighed` is empty. A flow with no arbiter has neither.
 
 ### `folds`
 

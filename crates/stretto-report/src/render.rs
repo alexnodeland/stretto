@@ -817,6 +817,28 @@ fn shadow_section(s: &mut String, f: &FeaturedReport) {
             }
             let _ = writeln!(s);
         }
+        if !sh.candidates.is_empty() {
+            let _ = writeln!(
+                s,
+                "Candidate predicates, each asked alone at every asked next-step decision \
+                 ({} questions, {} input tokens); the arbiter weighs {}:\n",
+                sh.candidate_questions,
+                sh.candidate_input_tokens,
+                if sh.weighed_candidates.is_empty() {
+                    "none of them".to_string()
+                } else {
+                    sh.weighed_candidates
+                        .iter()
+                        .map(|id| format!("`{id}`"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                }
+            );
+            for q in &sh.candidates {
+                let _ = writeln!(s, "- `{}`: {}", q.id, q.question);
+            }
+            let _ = writeln!(s);
+        }
     } else {
         let _ = writeln!(s, "Next step (which tool next, or hand back):\n");
         let _ = writeln!(

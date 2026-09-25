@@ -3,8 +3,8 @@
 use crate::arbitrate::{self, Case, Fitted};
 use crate::flow::{Bindings, Flow};
 use crate::shadow::{
-    self, Agreement, Decision, Favors, Kind, Predicate, QuestionSet, Scored, ShadowConfig,
-    ShadowEpisode, Sites, RESPOND,
+    self, Agreement, Decision, Kind, Predicate, QuestionSet, Scored, ShadowConfig, ShadowEpisode,
+    Sites, RESPOND,
 };
 use anyhow::{bail, Context, Result};
 use serde::Serialize;
@@ -320,6 +320,18 @@ pub struct ShadowReport {
     pub weights: Vec<(String, f64)>,
     /// v2: the predicates asked alongside the next-step questions.
     pub predicates: Vec<Predicate>,
+    /// v2: candidate predicates, each asked alone at every asked next-step
+    /// decision (see [`ShadowConfig::candidates`]).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub candidates: Vec<Predicate>,
+    /// v2: the candidates the arbiter also weighed.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub weighed_candidates: Vec<String>,
+    /// v2: distinct candidate requests, and the input tokens reported for
+    /// their answers.
+    pub candidate_questions: usize,
+    /// See `candidate_questions`.
+    pub candidate_input_tokens: u64,
 }
 
 /// Phase 0b agreement for one closed-set argument.
@@ -1559,21 +1571,60 @@ fn shadow_run(
     } else {
         vec![None; decisions.len()]
     };
-    let predicates: Vec<BTreeMap<String, f64>> = decisions
+    let mut predicates: Vec<BTreeMap<String, f64>> = decisions
         .iter()
         .map(|d| shadow::predicate_answers(d, &asked))
         .collect();
+    // Candidates, each asked alone, so the answers above keep their keys.
+    let (mut candidate_questions, mut candidate_input_tokens) = (0, 0);
+    if v2 && !sc.candidates.is_empty() {
+        let side: Vec<Decision> = decisions
+            .iter()
+            .flat_map(|d| {
+                sc.candidates
+                    .iter()
+                    .filter_map(|p| shadow::candidate_request(d, p))
+            })
+            .map(|request| Decision {
+                episode: 0,
+                step: 0,
+                kind: Kind::Next,
+                tool: None,
+                actual: String::new(),
+                agent: String::new(),
+                request: Some(request),
+                fixed: None,
+            })
+            .collect();
+        let mut side_config = sc.clone();
+        side_config.dump = None;
+        let side_asked = shadow::ask(oracle, &side, &side_config, &manifest.domain)?;
+        candidate_questions = side_asked.distinct;
+        candidate_input_tokens = side_asked
+            .responses
+            .values()
+            .map(|r| r.usage.input_tokens)
+            .sum();
+        for (d, answers) in decisions.iter().zip(predicates.iter_mut()) {
+            answers.extend(shadow::candidate_answers(d, &sc.candidates, &side_asked));
+        }
+    }
+    let weighed: Vec<Predicate> = if sc.predicate_features {
+        sc.predicates
+            .iter()
+            .chain(sc.candidates.iter().filter(|c| sc.weigh.contains(&c.id)))
+            .cloned()
+            .collect()
+    } else {
+        Vec::new()
+    };
     let (combined, weights, folds, pooled, cases, arbitrated) = if v2 {
         let (c, w, f, p, n, a) = combine(
             &decisions,
             &scored,
             &split,
             &predicates,
-            if sc.predicate_features {
-                &sc.predicates
-            } else {
-                &[]
-            },
+            &weighed,
             replayed,
             habit,
             vocab,
@@ -1750,6 +1801,10 @@ fn shadow_run(
         offered: if v2 { offered } else { 1.0 },
         weights,
         predicates: sc.predicates.clone(),
+        candidates: sc.candidates.clone(),
+        weighed_candidates: sc.weigh.clone(),
+        candidate_questions,
+        candidate_input_tokens,
     };
     Ok(ShadowRun {
         report,
@@ -1924,11 +1979,7 @@ pub(crate) fn case_of(
             // Each predicate's answer, on the options it bears on (zero
             // where it was not asked).
             for q in weighed {
-                let on = match q.favors {
-                    Favors::SameLookup => o == prev,
-                    Favors::AnyLookup => a != respond,
-                    Favors::HandBack => a == respond,
-                };
+                let on = q.favors.on(o, prev);
                 let answer = predicates.get(&q.id).copied().map_or(0.0, logit);
                 x.push(if on { answer } else { 0.0 });
             }

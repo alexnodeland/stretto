@@ -24,6 +24,7 @@ Compile an agent's recorded behavior into flows, serve them, and measure them ag
 | [`flow-show`](#stretto-flow-show) | Show a flow as a reviewer reads it (Markdown). |
 | [`flow-diff`](#stretto-flow-diff) | What changed from one flow to another, as a change list for a pull request (Markdown). |
 | [`evaluate`](#stretto-evaluate) | Estimate what another rule would have done on a flow's logged decisions (RFC-001 §3.7). |
+| [`refine`](#stretto-refine) | Refine the arbiter's predicates (RFC-001 §3.4). |
 | [`promote`](#stretto-promote) | Promote a flow's sites (RFC-001 §3.7). |
 | [`redact`](#stretto-redact) | Pseudonymize recorded sessions. |
 | [`jev-check`](#stretto-jev-check) | Check that Jev is reachable with TYPESAFE_API_KEY. |
@@ -68,6 +69,8 @@ Usage: stretto phase0 [OPTIONS] --tau2 <DIR>
 - `--dataflow-hints`: v2: also describe each lookup by what its results supply, learned from argument dataflow in training.
 - `--predicates <FILE>`: v2: a JSON file of yes/no predicates about the state (see `data/predicates-v2.json`) to ask with every next-step question and weigh in the arbiter.
 - `--no-predicate-features`: v2: ask the predicates but leave them out of the arbiter, to measure what they add.
+- `--candidates <FILE>`: v2, `phase0`: candidate predicates (same format as --predicates), each asked alone at every asked next-step decision with the same state, so the other answers keep their cache keys. Their answers go to --oracle-log, for `stretto refine`.
+- `--weigh <ID>` (repeatable): v2, `phase0`: also weigh this candidate in the arbiter (repeatable).
 - `--manifest-options`: v2: offer every read-only tool at every site, not only the lookups seen there in training, for the System-One model to choose from. A lookup training never made is bound by argument name.
 - `--pooled-arbiter`: v2, `compile`: give the flow one arbiter, fitted on every held-out decision, in place of one per fold, so that `export-arbiter` can ship it. Replayed on the same test tasks it has seen other agents' decisions on them, so compare flows without it.
 - `--oracle-cache <DIR>` (default `.oracle-cache`): Replay cache for oracle answers.
@@ -118,6 +121,8 @@ Usage: stretto flow-serve [OPTIONS] --tau2 <DIR>
 - `--dataflow-hints`: v2: also describe each lookup by what its results supply, learned from argument dataflow in training.
 - `--predicates <FILE>`: v2: a JSON file of yes/no predicates about the state (see `data/predicates-v2.json`) to ask with every next-step question and weigh in the arbiter.
 - `--no-predicate-features`: v2: ask the predicates but leave them out of the arbiter, to measure what they add.
+- `--candidates <FILE>`: v2, `phase0`: candidate predicates (same format as --predicates), each asked alone at every asked next-step decision with the same state, so the other answers keep their cache keys. Their answers go to --oracle-log, for `stretto refine`.
+- `--weigh <ID>` (repeatable): v2, `phase0`: also weigh this candidate in the arbiter (repeatable).
 - `--manifest-options`: v2: offer every read-only tool at every site, not only the lookups seen there in training, for the System-One model to choose from. A lookup training never made is bound by argument name.
 - `--pooled-arbiter`: v2, `compile`: give the flow one arbiter, fitted on every held-out decision, in place of one per fold, so that `export-arbiter` can ship it. Replayed on the same test tasks it has seen other agents' decisions on them, so compare flows without it.
 - `--oracle-cache <DIR>` (default `.oracle-cache`): Replay cache for oracle answers.
@@ -173,6 +178,8 @@ Usage: stretto compile [OPTIONS] --tau2 <DIR> --out <FILE>
 - `--dataflow-hints`: v2: also describe each lookup by what its results supply, learned from argument dataflow in training.
 - `--predicates <FILE>`: v2: a JSON file of yes/no predicates about the state (see `data/predicates-v2.json`) to ask with every next-step question and weigh in the arbiter.
 - `--no-predicate-features`: v2: ask the predicates but leave them out of the arbiter, to measure what they add.
+- `--candidates <FILE>`: v2, `phase0`: candidate predicates (same format as --predicates), each asked alone at every asked next-step decision with the same state, so the other answers keep their cache keys. Their answers go to --oracle-log, for `stretto refine`.
+- `--weigh <ID>` (repeatable): v2, `phase0`: also weigh this candidate in the arbiter (repeatable).
 - `--manifest-options`: v2: offer every read-only tool at every site, not only the lookups seen there in training, for the System-One model to choose from. A lookup training never made is bound by argument name.
 - `--pooled-arbiter`: v2, `compile`: give the flow one arbiter, fitted on every held-out decision, in place of one per fold, so that `export-arbiter` can ship it. Replayed on the same test tasks it has seen other agents' decisions on them, so compare flows without it.
 - `--oracle-cache <DIR>` (default `.oracle-cache`): Replay cache for oracle answers.
@@ -407,6 +414,36 @@ Usage: stretto evaluate [OPTIONS] --decisions <FILE> --target <RULE>
 
 - `--out <FILE>`: Write the Markdown here (default: stdout).
 - `--json <FILE>`: Also write every estimate as JSON here.
+
+### `stretto refine`
+
+Refine the arbiter's predicates (RFC-001 §3.4). From one domain's decision log (`phase0 --questions v2 --oracle-log`, with the candidates asked by `--candidates`), fit the arbiter by cross-validation over tasks with each candidate added, and keep candidates greedily while one raises the held-out log-likelihood of the agents' steps by more than a penalty. With --examples, first write examples from the sites where the arbiter is weakest, for whoever proposes the candidates: a person or a model.
+
+```text
+Usage: stretto refine [OPTIONS] --log <FILE>
+```
+
+**Inputs**
+
+- `--log <FILE>` (required): One domain's decision log (`phase0 --oracle-log`).
+- `--candidates <FILE>`: The candidates to weigh (the `phase0 --candidates` file the log was written with).
+
+**Search**
+
+- `--penalty <NATS>`: Keep a candidate only when it raises the held-out log-likelihood by more than this many nats (default: half the log of the decisions scored, what BIC charges a parameter).
+
+**Examples**
+
+- `--examples <FILE>`: Write examples from the sites where the arbiter is weakest here (Markdown), for a proposer.
+- `--dump <FILE>`: The requests `phase0 --oracle-dump` wrote in the same run, for each example's state.
+- `--sites <N>` (default `4`): Sites to take examples from.
+- `--per-site <N>` (default `6`): Examples per site, one per task.
+
+**Output**
+
+- `--domain <NAME>` (default `airline`): The domain, for the report's title.
+- `--out <FILE>`: Write the Markdown here (default: stdout).
+- `--json <FILE>`: Also write the search as JSON here.
 
 ### `stretto promote`
 

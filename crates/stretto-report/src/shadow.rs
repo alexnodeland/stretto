@@ -122,7 +122,7 @@ pub struct Predicate {
 }
 
 /// The options a [`Predicate`]'s answer bears on, as the arbiter's feature.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Favors {
     /// The lookup the agent has just made, made again.
@@ -131,6 +131,20 @@ pub enum Favors {
     AnyLookup,
     /// Handing back.
     HandBack,
+    /// One named lookup, wherever a site offers it: `{"lookup": TOOL}`.
+    Lookup(String),
+}
+
+impl Favors {
+    /// Whether the answer bears on `option`, at a site after `prev`.
+    pub fn on(&self, option: &str, prev: &str) -> bool {
+        match self {
+            Favors::SameLookup => option == prev,
+            Favors::AnyLookup => option != RESPOND,
+            Favors::HandBack => option == RESPOND,
+            Favors::Lookup(tool) => option == tool,
+        }
+    }
 }
 
 /// Which System-One oracle answers.
@@ -185,6 +199,14 @@ pub struct ShadowConfig {
     /// v2: offer every read-only tool at every site (see
     /// [`Sites::offer_every_read`]).
     pub manifest_options: bool,
+    /// v2: candidate predicates (RFC-001 §3.4), each asked alone at every
+    /// asked next-step decision with the same state slice (see
+    /// [`candidate_request`]), so that the other questions' answers, and
+    /// their cache keys, do not change. Their answers are logged with the
+    /// decision's predicates, for `stretto refine`.
+    pub candidates: Vec<Predicate>,
+    /// v2: the candidates the arbiter also weighs, by id.
+    pub weigh: Vec<String>,
 }
 
 impl ShadowConfig {
@@ -206,6 +228,8 @@ impl ShadowConfig {
             predicates: Vec::new(),
             predicate_features: true,
             manifest_options: false,
+            candidates: Vec::new(),
+            weigh: Vec::new(),
         }
     }
 
@@ -762,22 +786,59 @@ fn next_step_request(
     }
     let mut questions = next_questions_v2(manifest, sites, prev, failed, &options);
     for p in predicates {
-        questions.insert(
-            format!("pred_{}", p.id),
-            Question::Noul {
-                instructions: format!("{V2_CONTEXT} {}", p.question),
-                criteria: Some(NoulCriteria {
-                    yes: p.yes.clone(),
-                    no: p.no.clone(),
-                }),
-            },
-        );
+        questions.insert(format!("pred_{}", p.id), predicate_question(p));
     }
     Some(Request {
         model: model.to_string(),
         state: slice(before, goal, None),
         questions,
     })
+}
+
+/// How a [`Predicate`] is asked: a yes/no question about the state.
+fn predicate_question(p: &Predicate) -> Question {
+    Question::Noul {
+        instructions: format!("{V2_CONTEXT} {}", p.question),
+        criteria: Some(NoulCriteria {
+            yes: p.yes.clone(),
+            no: p.no.clone(),
+        }),
+    }
+}
+
+/// The request that asks candidate `p` alone at the next-step decision `d`:
+/// the state slice of `d`'s own request, with `pred_<id>` as its only
+/// question. `None` unless `d` is an asked next-step decision.
+pub fn candidate_request(d: &Decision, p: &Predicate) -> Option<Request> {
+    if d.kind != Kind::Next {
+        return None;
+    }
+    let r = d.request.as_ref()?;
+    Some(Request {
+        model: r.model.clone(),
+        state: r.state.clone(),
+        questions: BTreeMap::from([(format!("pred_{}", p.id), predicate_question(p))]),
+    })
+}
+
+/// The candidates' answers at `d`, asked alone (see [`candidate_request`]),
+/// by id: the probability of "yes".
+pub fn candidate_answers(
+    d: &Decision,
+    candidates: &[Predicate],
+    asked: &Asked,
+) -> BTreeMap<String, f64> {
+    candidates
+        .iter()
+        .filter_map(|p| {
+            let r = candidate_request(d, p)?;
+            let response = asked.responses.get(&request_key(&r))?;
+            match response.answers.get(&format!("pred_{}", p.id))? {
+                Answer::Noul { noul } => Some((p.id.clone(), *noul)),
+                _ => None,
+            }
+        })
+        .collect()
 }
 
 /// The decision a live flow faces once the last tool call of `episode` has

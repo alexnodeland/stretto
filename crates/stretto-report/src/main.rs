@@ -544,6 +544,61 @@ enum Command {
         #[arg(help_heading = "Output", value_name = "FILE", long)]
         json: Option<PathBuf>,
     },
+    /// Refine the arbiter's predicates (RFC-001 §3.4). From one domain's
+    /// decision log (`phase0 --questions v2 --oracle-log`, with the
+    /// candidates asked by `--candidates`), fit the arbiter by
+    /// cross-validation over tasks with each candidate added, and keep
+    /// candidates greedily while one raises the held-out log-likelihood of
+    /// the agents' steps by more than a penalty. With --examples, first
+    /// write examples from the sites where the arbiter is weakest, for
+    /// whoever proposes the candidates: a person or a model.
+    Refine {
+        /// One domain's decision log (`phase0 --oracle-log`).
+        #[arg(help_heading = "Inputs", value_name = "FILE", long)]
+        log: PathBuf,
+        /// The candidates to weigh (the `phase0 --candidates` file the log
+        /// was written with).
+        #[arg(help_heading = "Inputs", value_name = "FILE", long)]
+        candidates: Option<PathBuf>,
+        /// Keep a candidate only when it raises the held-out
+        /// log-likelihood by more than this many nats (default: half the
+        /// log of the decisions scored, what BIC charges a parameter).
+        #[arg(help_heading = "Search", value_name = "NATS", long)]
+        penalty: Option<f64>,
+        /// Write examples from the sites where the arbiter is weakest here
+        /// (Markdown), for a proposer.
+        #[arg(
+            help_heading = "Examples",
+            value_name = "FILE",
+            long,
+            requires = "dump"
+        )]
+        examples: Option<PathBuf>,
+        /// The requests `phase0 --oracle-dump` wrote in the same run, for
+        /// each example's state.
+        #[arg(help_heading = "Examples", value_name = "FILE", long)]
+        dump: Option<PathBuf>,
+        /// Sites to take examples from.
+        #[arg(help_heading = "Examples", value_name = "N", long, default_value_t = 4)]
+        sites: usize,
+        /// Examples per site, one per task.
+        #[arg(help_heading = "Examples", value_name = "N", long, default_value_t = 6)]
+        per_site: usize,
+        /// The domain, for the report's title.
+        #[arg(
+            help_heading = "Output",
+            value_name = "NAME",
+            long,
+            default_value = "airline"
+        )]
+        domain: String,
+        /// Write the Markdown here (default: stdout).
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
+        out: Option<PathBuf>,
+        /// Also write the search as JSON here.
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
+        json: Option<PathBuf>,
+    },
     /// Promote a flow's sites (RFC-001 §3.7). Wherever the flow would decide
     /// in recorded sessions or τ²-bench results, score the lookup it would
     /// make: used if the agent made it later in the session, a detour if it
@@ -842,6 +897,25 @@ struct Phase0Args {
         requires = "oracle"
     )]
     no_predicate_features: bool,
+    /// v2, `phase0`: candidate predicates (same format as --predicates),
+    /// each asked alone at every asked next-step decision with the same
+    /// state, so the other answers keep their cache keys. Their answers
+    /// go to --oracle-log, for `stretto refine`.
+    #[arg(
+        help_heading = "Phase 0b: the System-One model",
+        value_name = "FILE",
+        long,
+        requires = "oracle"
+    )]
+    candidates: Option<PathBuf>,
+    /// v2, `phase0`: also weigh this candidate in the arbiter (repeatable).
+    #[arg(
+        help_heading = "Phase 0b: the System-One model",
+        value_name = "ID",
+        long = "weigh",
+        requires = "candidates"
+    )]
+    weigh: Vec<String>,
     /// v2: offer every read-only tool at every site, not only the lookups
     /// seen there in training, for the System-One model to choose from. A
     /// lookup training never made is bound by argument name.
@@ -1436,6 +1510,75 @@ fn main() -> Result<()> {
                 }
             }
         }
+        Command::Refine {
+            log,
+            candidates,
+            penalty,
+            examples,
+            dump,
+            sites,
+            per_site,
+            domain,
+            out,
+            json,
+        } => {
+            use stretto_report::refine;
+            let logged = refine::read_log(
+                &std::fs::read_to_string(&log)
+                    .with_context(|| format!("reading {}", log.display()))?,
+            )?;
+            if logged.is_empty() {
+                anyhow::bail!(
+                    "{}: no next-step decisions the arbiter judged (phase0 --questions v2 --oracle-log)",
+                    log.display()
+                );
+            }
+            let folds = stretto_model::features::FOLDS;
+            if let Some(path) = examples {
+                let dump = dump.expect("clap requires --dump");
+                let states = refine::read_dump(
+                    &std::fs::read_to_string(&dump)
+                        .with_context(|| format!("reading {}", dump.display()))?,
+                )?;
+                std::fs::write(
+                    &path,
+                    refine::examples(&logged, &states, folds, sites, per_site),
+                )
+                .with_context(|| format!("writing {}", path.display()))?;
+                eprintln!("stretto: wrote examples to {}", path.display());
+            }
+            let candidates = match candidates {
+                Some(path) => {
+                    let text = std::fs::read_to_string(&path)
+                        .with_context(|| format!("reading {}", path.display()))?;
+                    serde_json::from_str::<PredicateFile>(&text)
+                        .with_context(|| format!("parsing {}", path.display()))?
+                        .predicates
+                }
+                None => Vec::new(),
+            };
+            let unanswered: Vec<&str> = candidates
+                .iter()
+                .filter(|c| !logged.iter().any(|d| d.predicates.contains_key(&c.id)))
+                .map(|c| c.id.as_str())
+                .collect();
+            if !unanswered.is_empty() {
+                anyhow::bail!(
+                    "no answers in {} for {unanswered:?}: run phase0 with --candidates first",
+                    log.display()
+                );
+            }
+            let refined = refine::refine(&logged, &candidates, folds, penalty);
+            let md = refine::markdown(&refined, &domain);
+            match out {
+                Some(path) => write(&path, md.as_bytes())?,
+                None => print!("{md}"),
+            }
+            if let Some(path) = json {
+                write(&path, &serde_json::to_vec_pretty(&refined)?)?;
+            }
+            Ok(())
+        }
         Command::Evaluate {
             decisions,
             targets,
@@ -1808,6 +1951,8 @@ fn phase0_config(data: Phase0Args) -> Result<phase0::Config> {
         dataflow_hints,
         predicates,
         no_predicate_features,
+        candidates,
+        weigh,
         manifest_options,
         pooled_arbiter,
         oracle_cache,
@@ -1848,12 +1993,39 @@ fn phase0_config(data: Phase0Args) -> Result<phase0::Config> {
         }
         None => Vec::new(),
     };
+    let candidates = match candidates {
+        Some(path) => {
+            let text = std::fs::read_to_string(&path)
+                .with_context(|| format!("reading {}", path.display()))?;
+            serde_json::from_str::<PredicateFile>(&text)
+                .with_context(|| format!("parsing {}", path.display()))?
+                .predicates
+        }
+        None => Vec::new(),
+    };
+    if let Some(c) = candidates
+        .iter()
+        .find(|c| predicates.iter().any(|p| p.id == c.id))
+    {
+        anyhow::bail!("candidate `{}` is already a predicate", c.id);
+    }
+    if let Some(w) = weigh
+        .iter()
+        .find(|w| !candidates.iter().any(|c| c.id == **w))
+    {
+        anyhow::bail!("--weigh {w}: no such candidate");
+    }
+    if !candidates.is_empty() && questions != QuestionArg::V2 {
+        anyhow::bail!("--candidates needs --questions v2");
+    }
     config.shadow = oracle.map(|kind| {
         let mut sc = ShadowConfig::new(oracle_kind(kind));
         sc.cache_dir = oracle_cache;
         sc.hints = dataflow_hints;
         sc.predicates = predicates.clone();
         sc.predicate_features = !no_predicate_features;
+        sc.candidates = candidates.clone();
+        sc.weigh = weigh.clone();
         sc.manifest_options = manifest_options;
         sc.questions = match questions {
             QuestionArg::V1 => QuestionSet::V1,
@@ -2022,6 +2194,12 @@ fn compile(config: &phase0::Config, domain: &str) -> Result<stretto_report::flow
         .context("compiling a flow needs --oracle (jev, or replay)")?;
     if sc.questions != QuestionSet::V2 {
         anyhow::bail!("flows ask the v2 questions: pass --questions v2");
+    }
+    if !sc.candidates.is_empty() {
+        anyhow::bail!(
+            "--candidates is for phase0 and refine: a flow asks its predicates with each \
+             next-step question, so add a kept candidate to --predicates"
+        );
     }
     let mut offline = config.clone();
     if let Some(sc) = offline.shadow.as_mut() {
