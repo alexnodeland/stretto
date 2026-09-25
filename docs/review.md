@@ -96,8 +96,9 @@ The diff speaks in the same terms as `flow-show` and lists first what needs a re
 | Every read tool offered after every call (`--manifest-options`) | Yes |
 | An argument bound from a new source (tool and JSON path) | Yes |
 | An arbiter added, another System-One model, or new or reworded predicates | Yes: the flow sends the conversation to a model, or asks it something new |
-| A site newly promoted, or a promotion lifted (`stretto promote`) | Yes: the flow acts after a call where it handed back |
-| Lookups, sources or an arbiter removed, a tool no longer read-only, a site no longer promoted | No: the flow does less |
+| A site newly promoted, or a promotion lifted (`stretto promote`), or a site a search switched off switched back on | Yes: the flow acts after a call where it handed back |
+| Lookups, sources or an arbiter removed, a tool no longer read-only, a site no longer promoted or switched off | No: the flow does less |
+| A site's own threshold set, raised or lowered (`stretto search`) | No; listed. It moves the bar for lookups the flow could already make there, as `--threshold` does |
 | What the flow does after each call with the habit alone, at `--threshold` (0.3) | No; listed |
 | Shares, binding chances and arbiter weights that moved by `--tolerance` (0.05) or more | No; listed |
 | Code features, the promotion's bar, and provenance | No; listed |

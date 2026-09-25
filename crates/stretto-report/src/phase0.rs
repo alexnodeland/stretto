@@ -1280,6 +1280,7 @@ fn featured(
                 model: parts.model,
                 program: crate::program::standard(),
                 promoted: None,
+                thresholds: BTreeMap::new(),
             })
         }
         None => None,

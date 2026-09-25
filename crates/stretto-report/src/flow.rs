@@ -45,8 +45,14 @@ const REQUIRED_SHARE: f64 = 0.9;
 /// customer said.
 const MIN_MENTION: usize = 4;
 
-/// The flow file format this build reads and writes.
+/// The flow file format this build writes, unless a flow has per-site
+/// thresholds.
 pub const FLOW_VERSION: u32 = 1;
+
+/// The format of a flow with per-site thresholds (`thresholds`), which a
+/// build that reads only [`FLOW_VERSION`] must refuse rather than ignore.
+/// This build reads both.
+pub const FLOW_THRESHOLDS_VERSION: u32 = 2;
 
 /// The arbiter file format this build reads and writes.
 pub const ARBITER_VERSION: u32 = 1;
@@ -180,6 +186,10 @@ pub struct Flow {
     /// acts after any call where a lookup clears the threshold.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) promoted: Option<Promotion>,
+    /// Per-site thresholds (`stretto search`), in place of the served one at
+    /// those sites. Above 1, the flow never acts at the site.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub(crate) thresholds: BTreeMap<String, f64>,
 }
 
 /// Where a flow may act (RFC-001 §3.7), from `stretto promote`: each site
@@ -470,6 +480,28 @@ impl Flow {
         !self.folds.is_empty()
     }
 
+    /// The sites where the flow may make a lookup.
+    pub fn sites(&self) -> Vec<String> {
+        self.sites.names()
+    }
+
+    /// Its per-site thresholds (see [`Flow::with_thresholds`]).
+    pub fn thresholds(&self) -> &BTreeMap<String, f64> {
+        &self.thresholds
+    }
+
+    /// The flow with `thresholds` in place of the served threshold at those
+    /// sites; above 1, it never acts at a site.
+    pub fn with_thresholds(mut self, thresholds: BTreeMap<String, f64>) -> Self {
+        self.stretto_flow = if thresholds.is_empty() {
+            FLOW_VERSION
+        } else {
+            FLOW_THRESHOLDS_VERSION
+        };
+        self.thresholds = thresholds;
+        self
+    }
+
     /// How the flow decides unless told otherwise: with its arbiter, or with
     /// the habit alone if it has none.
     pub fn default_decider(&self) -> Decider {
@@ -586,13 +618,17 @@ impl Flow {
         }
         let v: Version =
             serde_json::from_str(text).map_err(|e| anyhow::anyhow!("not a stretto flow: {e}"))?;
-        if v.stretto_flow != FLOW_VERSION {
+        if v.stretto_flow != FLOW_VERSION && v.stretto_flow != FLOW_THRESHOLDS_VERSION {
             anyhow::bail!(
-                "flow format {} is not supported (this build reads {FLOW_VERSION})",
+                "flow format {} is not supported (this build reads {FLOW_VERSION} and \
+                 {FLOW_THRESHOLDS_VERSION})",
                 v.stretto_flow
             );
         }
         let flow: Self = serde_json::from_str(text)?;
+        if flow.stretto_flow == FLOW_VERSION && !flow.thresholds.is_empty() {
+            anyhow::bail!("a flow with per-site thresholds is format {FLOW_THRESHOLDS_VERSION}");
+        }
         crate::program::FlowProgram::new(&flow)?;
         Ok(flow)
     }
@@ -671,6 +707,16 @@ impl Flow {
         if self.promoted.as_ref().is_some_and(|p| !p.allows(&site)) {
             return hand_back(next, "the site is not promoted".to_string());
         }
+        // A site's own threshold, if a search set one; above 1 the site is
+        // switched off. (The served threshold may be above 1 on purpose: the
+        // audit reads the probabilities without acting.)
+        let threshold = match self.thresholds.get(&site) {
+            Some(&t) if t > 1.0 => {
+                return hand_back(next, "the site is switched off".to_string());
+            }
+            Some(&t) => t,
+            None => threshold,
+        };
         let Some(request) = live.request else {
             return hand_back(next, "no lookups followed here in training".to_string());
         };
@@ -1485,7 +1531,7 @@ fn walk(v: &Value, rest: &str, parent: Option<&Value>, out: &mut Vec<(String, Ve
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use serde_json::json;
     use stretto_trace::ToolCall;
@@ -1813,6 +1859,7 @@ mod tests {
             manifest,
             program: crate::program::standard(),
             promoted: None,
+            thresholds: BTreeMap::new(),
         }
     }
 
@@ -1896,6 +1943,55 @@ mod tests {
             arbiter.proposal,
             Proposal::HandBack { ref reason } if reason.contains("System-One model failed")
         ));
+    }
+
+    #[test]
+    fn per_site_thresholds_take_the_served_ones_place() {
+        let flow = toy_flow();
+        let live = episode(vec![
+            Event::User {
+                text: "I want to cancel something".to_string(),
+            },
+            call("a", "get_user_details", json!({"user_id": "bob_2"})),
+            result("a", "get_user_details", user(&["#W7", "#W8"])),
+        ]);
+        let site = "get_user_details".to_string();
+        assert!(flow.sites().contains(&site));
+        let at = |t: f64| {
+            flow.clone()
+                .with_thresholds(BTreeMap::from([(site.clone(), t)]))
+                .next_with(&live, &Unasked, 0.3, Decider::Habit)
+                .unwrap()
+        };
+        let served = flow
+            .next_with(&live, &Unasked, 0.3, Decider::Habit)
+            .unwrap();
+        assert!(matches!(served.proposal, Proposal::Lookup { .. }));
+        // The same lookup, but above what the site now asks for.
+        assert!(matches!(at(0.99).proposal, Proposal::HandBack { .. }));
+        assert_eq!(at(0.3).proposal, served.proposal);
+        // Switched off, the site hands back before asking anything, with
+        // either decider.
+        let off = flow
+            .clone()
+            .with_thresholds(BTreeMap::from([(site.clone(), 2.0)]));
+        for next in [
+            off.next(&live, &Unasked, 0.3).unwrap(),
+            off.next_with(&live, &Unasked, 0.3, Decider::Habit).unwrap(),
+        ] {
+            assert!(next.key.is_none());
+            assert!(matches!(
+                next.proposal,
+                Proposal::HandBack { ref reason } if reason.contains("switched off")
+            ));
+        }
+        // Another site's threshold changes nothing here.
+        let other = flow
+            .clone()
+            .with_thresholds(BTreeMap::from([("get_order_details".to_string(), 2.0)]))
+            .next_with(&live, &Unasked, 0.3, Decider::Habit)
+            .unwrap();
+        assert_eq!(other.proposal, served.proposal);
     }
 
     #[test]

@@ -36,4 +36,5 @@ pub mod promote;
 pub mod refine;
 pub mod render;
 pub mod review;
+pub mod search;
 pub mod shadow;

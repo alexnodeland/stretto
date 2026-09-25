@@ -128,10 +128,27 @@ fn verdict(likely: Option<&Likely>, threshold: f64) -> String {
 }
 
 /// Whether `flow` may act after a call to `tool` that failed or not: always,
-/// unless it was promoted and the site was not.
+/// unless it was promoted and the site was not, or the site is switched off.
 fn acts(flow: &Flow, tool: &str, failed: bool) -> bool {
     flow.promotion()
         .is_none_or(|p| p.allows(&Sites::name(tool, failed)))
+        && !switched_off(flow, tool, failed)
+}
+
+/// Whether a search switched the site off.
+fn switched_off(flow: &Flow, tool: &str, failed: bool) -> bool {
+    flow.thresholds()
+        .get(&Sites::name(tool, failed))
+        .is_some_and(|t| *t > 1.0)
+}
+
+/// The threshold `flow` acts on after `tool`: the site's own, if a search
+/// set one, else the one it is served with.
+fn threshold_at(flow: &Flow, tool: &str, failed: bool, served: f64) -> f64 {
+    flow.thresholds()
+        .get(&Sites::name(tool, failed))
+        .copied()
+        .unwrap_or(served)
 }
 
 /// What the flow does after a site, promoted or not.
@@ -143,7 +160,9 @@ fn action(
     threshold: f64,
 ) -> String {
     if acts(flow, tool, failed) {
-        verdict(likely, threshold)
+        verdict(likely, threshold_at(flow, tool, failed, threshold))
+    } else if switched_off(flow, tool, failed) {
+        "hands back: switched off".to_string()
     } else {
         "hands back: not promoted".to_string()
     }
@@ -317,6 +336,13 @@ pub fn show(flow: &Flow, threshold: f64) -> String {
         md,
         "After each call: the lookups the flow may make next, what the agent did next in training, and what the flow does there with the habit alone at a threshold of {threshold}, which is the likeliest lookup's share times the chance its bound arguments are the agent's. The share pools over the calls before and the code features, so a live decision near the threshold can go either way.\n"
     );
+    if !flow.thresholds().is_empty() {
+        let _ = writeln!(
+            md,
+            "A search set the threshold at {} of these sites (`thresholds`), and the table uses those. A site set above 1 is switched off.\n",
+            flow.thresholds().len()
+        );
+    }
     let _ = writeln!(
         md,
         "| After | Lookups it may make next (times seen) | What the agent did next in training | With the habit alone |\n|---|---|---|---|"
@@ -547,9 +573,37 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
                         "the flow now acts after {site}, where it handed back"
                     ));
                 }
-                (true, false) => sites.push(format!("after {site}: no longer acts (not promoted)")),
+                (true, false) => sites.push(format!(
+                    "after {site}: no longer acts ({})",
+                    if switched_off(new, &key.0, key.1) {
+                        "switched off"
+                    } else {
+                        "not promoted"
+                    }
+                )),
                 _ => {}
             }
+        }
+    }
+    // Per-site thresholds a search set.
+    let set: BTreeSet<&String> = old
+        .thresholds()
+        .keys()
+        .chain(new.thresholds().keys())
+        .collect();
+    let describe = |t: Option<&f64>| match t {
+        None => "the served threshold".to_string(),
+        Some(t) if *t > 1.0 => "off".to_string(),
+        Some(t) => format!("{t:.2}"),
+    };
+    for site in set {
+        let (a, b) = (old.thresholds().get(site), new.thresholds().get(site));
+        if a != b {
+            sites.push(format!(
+                "after `{site}`: {} (was: {})",
+                describe(b),
+                describe(a)
+            ));
         }
     }
     sections.push(("Sites".to_string(), sites));
@@ -564,7 +618,9 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
         let site = site_name(tool, failed);
         let (sb, _) = followed(new, tool, failed);
         let lb = likely(new, tool, failed, &sb, &bound_new);
-        let clears_b = lb.as_ref().is_some_and(|l| l.prob() >= threshold);
+        let clears_b = lb
+            .as_ref()
+            .is_some_and(|l| l.prob() >= threshold_at(new, tool, failed, threshold));
         let clears_b = clears_b && acts(new, tool, failed);
         if !old.sites.next().contains_key(key) {
             if clears_b {
@@ -577,8 +633,10 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
         }
         let (sa, _) = followed(old, tool, failed);
         let la = likely(old, tool, failed, &sa, &bound_old);
-        let clears_a =
-            la.as_ref().is_some_and(|l| l.prob() >= threshold) && acts(old, tool, failed);
+        let clears_a = la
+            .as_ref()
+            .is_some_and(|l| l.prob() >= threshold_at(old, tool, failed, threshold))
+            && acts(old, tool, failed);
         let same_tool = la.as_ref().map(|l| &l.tool) == lb.as_ref().map(|l| &l.tool);
         if clears_a != clears_b || (clears_b && !same_tool) {
             habit.push(format!(
@@ -809,6 +867,50 @@ mod tests {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join(format!("../../docs/examples/{name}.flow.json"));
         Flow::load(&path).unwrap()
+    }
+
+    #[test]
+    fn per_site_thresholds_show_and_diff() {
+        let old = example("retail-5-sessions");
+        let site = "get_user_details".to_string();
+        assert!(old.sites().contains(&site));
+        let new = old
+            .clone()
+            .with_thresholds(BTreeMap::from([(site.clone(), 2.0)]));
+        assert!(show(&old, 0.3)
+            .lines()
+            .any(|l| l.contains("`get_user_details`") && l.contains("looks up")));
+        assert!(show(&new, 0.3)
+            .lines()
+            .any(|l| l.contains("`get_user_details`") && l.contains("hands back: switched off")));
+        assert!(!show(&old, 0.3).contains("A search set the threshold"));
+        assert!(show(&new, 0.3).contains("A search set the threshold at 1 of these sites"));
+        let d = diff(&old, &new, 0.05, 0.3);
+        assert!(
+            d.markdown
+                .contains("- after `get_user_details`: off (was: the served threshold)"),
+            "{}",
+            d.markdown
+        );
+        assert!(d
+            .markdown
+            .contains("- after `get_user_details`: no longer acts (switched off)"));
+        // Switching a site off acts less, so it needs no review; switching it
+        // back on does.
+        assert!(d.needs_review.is_empty(), "{:?}", d.needs_review);
+        let back = diff(&new, &old, 0.05, 0.3);
+        assert_eq!(back.needs_review.len(), 1, "{:?}", back.needs_review);
+        assert!(back.needs_review[0].contains("now acts after `get_user_details`"));
+        // Lowering a site's threshold moves the bar for a lookup the flow
+        // could already make: listed, not flagged.
+        let lower = old
+            .clone()
+            .with_thresholds(BTreeMap::from([(site.clone(), 0.1)]));
+        let d = diff(&old, &lower, 0.05, 0.3);
+        assert!(d
+            .markdown
+            .contains("- after `get_user_details`: 0.10 (was: the served threshold)"));
+        assert!(d.needs_review.is_empty(), "{:?}", d.needs_review);
     }
 
     #[test]

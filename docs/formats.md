@@ -19,7 +19,7 @@ A flow makes read-only calls on the agent's behalf, so a review asks what it may
 4. **`provenance`.** Check which sources the flow learned from, how many successful episodes (`habit_episodes`) and how many held-out decisions (`arbiter_cases`). The [cold start](results/cold-start-2026-09-24.md) found an arbiter fitted on a handful of decisions worse than none.
 5. **`map.ids`.** Holds values copied from training outputs, such as user ids. Treat a flow with features like the data it was learned from before sharing it. The rest of the file holds tool names, argument names, JSON paths, counts, the tools' documentation, and the questions' text.
 
-## The flow IR (`stretto_flow: 1`)
+## The flow IR (`stretto_flow: 1`, or `2` with per-site thresholds)
 
 | Field | What it holds |
 |---|---|
@@ -37,6 +37,7 @@ A flow makes read-only calls on the agent's behalf, so a review asks what it may
 | `model` | The System-One model the flow asks |
 | `program` | The flow's run after each call, as a fugue program |
 | `promoted` | Where the flow may act, once promoted; absent until `stretto promote` writes it |
+| `thresholds` | Per-site thresholds, in place of the served one at those sites; absent unless a search set them |
 
 ### `provenance`
 
@@ -162,6 +163,10 @@ Written by `stretto promote` ([RFC-001 §3.7](rfc/001-habit-compiler.md)), and a
 
 Check: a site newly promoted lets the flow act where it handed back, and `stretto flow-diff` lists it as needing review.
 
+### `thresholds`
+
+A map from site to threshold, written when a flow's settings come from `stretto search` ([RFC-001 §3.10](rfc/001-habit-compiler.md)), and absent otherwise. A flow with thresholds is format version 2 ([Versions](#versions)). At a listed site the flow takes a lookup when it clears that site's threshold instead of the one it is served with (`--threshold`). Above 1, the flow never acts at the site: it hands back with the reason `the site is switched off`, before asking anything.
+
 ## A flow, walked through
 
 [The live cold start's flow](results/cold-start-2026-09-24-live.flow.json) was learned from five retail sessions GLM-5.3 ran through the proxy, and it served the three tasks of [the cold start's live run](results/cold-start-2026-09-24.md).
@@ -196,8 +201,12 @@ A flow's arbiter on its own, to serve with a habit learned elsewhere ([data/arbi
 
 ## Versions
 
-Every reader checks the version field first and refuses any other version, with a message naming both. Nothing has been released yet, and fields added so far, such as `every_read`, kept version 1. From the first release on:
+Every reader checks the version field first and refuses any other version, with a message naming both. Before the first release, fields added, such as `every_read`, kept version 1. Since it:
+
+- **Flow version 2** adds `thresholds`, which a build that reads only version 1 would ignore and must not. A flow is written as version 2 only when it has thresholds, and this build reads versions 1 and 2.
+
+The rules:
 
 - **A new version** comes with any change after which one build would read another's file wrongly. That covers a field removed, renamed, or given a new meaning or encoding (the symbols, the vocabulary's ids, the order of the weights). It also covers a new field an older build would ignore but must not, as it would ignore `every_read` and offer fewer lookups.
 - **The same version** holds for a new field that an older build can ignore without acting differently, read with a default that keeps today's behavior.
-- **Old files.** Before 1.0, a build reads only its own version, and the release notes say which version each release reads. A flow is cheap to learn again from the recorded sessions or results it came from, so a new version may not convert old files. A shipped arbiter is rebuilt from the published answer bundles ([data/arbiters](../data/arbiters/README.md#rebuild-them)).
+- **Old files.** Before 1.0, a build reads only its own version and those it extends, and the release notes say which version each release reads. A flow is cheap to learn again from the recorded sessions or results it came from, so a new version may not convert old files. A shipped arbiter is rebuilt from the published answer bundles ([data/arbiters](../data/arbiters/README.md#rebuild-them)).

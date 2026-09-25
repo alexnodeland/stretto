@@ -16,6 +16,7 @@ path = "src/main.rs"
 anyhow.workspace = true
 clap.workspace = true
 fugue.workspace = true
+fugue-evo.workspace = true
 rand.workspace = true
 serde.workspace = true
 serde_json.workspace = true

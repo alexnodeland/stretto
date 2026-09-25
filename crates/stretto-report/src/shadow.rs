@@ -637,6 +637,15 @@ impl Sites {
             .unwrap_or_default()
     }
 
+    /// The sites where a flow may make a lookup, by name.
+    pub fn names(&self) -> Vec<String> {
+        self.next
+            .keys()
+            .filter(|(tool, failed)| !self.options(tool, *failed).is_empty())
+            .map(|(tool, failed)| Self::name(tool, *failed))
+            .collect()
+    }
+
     /// A site's name: the tool, marked when it failed.
     pub fn name(tool: &str, failed: bool) -> String {
         if failed {

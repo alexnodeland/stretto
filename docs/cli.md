@@ -25,6 +25,7 @@ Compile an agent's recorded behavior into flows, serve them, and measure them ag
 | [`flow-diff`](#stretto-flow-diff) | What changed from one flow to another, as a change list for a pull request (Markdown). |
 | [`evaluate`](#stretto-evaluate) | Estimate what another rule would have done on a flow's logged decisions (RFC-001 §3.7). |
 | [`refine`](#stretto-refine) | Refine the arbiter's predicates (RFC-001 §3.4). |
+| [`search`](#stretto-search) | Search a flow's settings (RFC-001 §3.10). |
 | [`promote`](#stretto-promote) | Promote a flow's sites (RFC-001 §3.7). |
 | [`redact`](#stretto-redact) | Pseudonymize recorded sessions. |
 | [`jev-check`](#stretto-jev-check) | Check that Jev is reachable with TYPESAFE_API_KEY. |
@@ -444,6 +445,36 @@ Usage: stretto refine [OPTIONS] --log <FILE>
 - `--domain <NAME>` (default `airline`): The domain, for the report's title.
 - `--out <FILE>`: Write the Markdown here (default: stdout).
 - `--json <FILE>`: Also write the search as JSON here.
+
+### `stretto search`
+
+Search a flow's settings (RFC-001 §3.10): NSGA-II, from fugue-evo, over each site's threshold (0.10 to 0.95, or off) and the decider, to save the most turns for the fewest detours. Each setting is scored by the replay command after `--`, run with `--flow FILE --flow-decider NAME --out DIR` added; it must print a `CHECK {…}` line of totals, as `pilot/check_flow.py` does. A decision the replay cannot answer, such as a question missing from a replay cache, hands back and makes a setting look safer than it is. The report counts them (unanswered), so let the replay ask what its cache lacks. The hand-set flows start the search: every site at 0.3 with the arbiter (D0), and with the habit alone at 0.3 and at 0.9 (arm C). With --rescore, replay an earlier search's hand-set settings and front on the command's episodes instead.
+
+```text
+Usage: stretto search [OPTIONS] --flow <FILE> --dir <DIR> -- <COMMAND>...
+```
+
+**Inputs**
+
+- `--flow <FILE>` (required): The flow whose settings to search.
+- `--site <SITE>` (repeatable): Search this site only (repeatable; default: every site where the flow may look something up).
+
+**Search**
+
+- `--population <N>` (default `16`): Settings in each generation.
+- `--generations <N>` (default `10`): Generations to breed.
+- `--seed <N>` (default `25`): Seed for the search.
+- `--rescore <FILE>`: Replay the hand-set settings and front of this earlier search (its --json) instead of searching.
+
+**Output**
+
+- `--dir <DIR>` (required): Where each setting's flow and replay go.
+- `--out <FILE>`: Write the Markdown here (default: stdout).
+- `--json <FILE>`: Also write every setting replayed, and the front, as JSON here.
+
+**Arguments**
+
+- `<COMMAND>...` (required): The replay command and its arguments, after `--`.
 
 ### `stretto promote`
 

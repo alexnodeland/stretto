@@ -14,6 +14,7 @@ authors = ["Alex Nodeland"]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 fugue = { package = "fugue-ppl", git = "https://github.com/alexnodeland/fugue", rev = "3d65f3db3ce489d61125c217041a6cf980492f08", features = ["program"] }
+fugue-evo = { version = "0.3.1", default-features = false, features = ["std", "classic"] }
 hex = "0.4"
 rand = "0.8"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }

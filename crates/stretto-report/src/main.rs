@@ -599,6 +599,53 @@ enum Command {
         #[arg(help_heading = "Output", value_name = "FILE", long)]
         json: Option<PathBuf>,
     },
+    /// Search a flow's settings (RFC-001 §3.10): NSGA-II, from fugue-evo,
+    /// over each site's threshold (0.10 to 0.95, or off) and the decider,
+    /// to save the most turns for the fewest detours. Each setting is scored
+    /// by the replay command after `--`, run with `--flow FILE
+    /// --flow-decider NAME --out DIR` added; it must print a `CHECK {…}`
+    /// line of totals, as `pilot/check_flow.py` does. A decision the replay
+    /// cannot answer, such as a question missing from a replay cache, hands
+    /// back and makes a setting look safer than it is. The report counts
+    /// them (unanswered), so let the replay ask what its cache lacks. The
+    /// hand-set flows start the search: every site at 0.3 with the arbiter
+    /// (D0), and with the habit alone at 0.3 and at 0.9 (arm C). With
+    /// --rescore, replay an earlier search's hand-set settings and front on
+    /// the command's episodes instead.
+    Search {
+        /// The flow whose settings to search.
+        #[arg(help_heading = "Inputs", value_name = "FILE", long)]
+        flow: PathBuf,
+        /// Search this site only (repeatable; default: every site where
+        /// the flow may look something up).
+        #[arg(help_heading = "Inputs", value_name = "SITE", long = "site")]
+        sites: Vec<String>,
+        /// Settings in each generation.
+        #[arg(help_heading = "Search", value_name = "N", long, default_value_t = 16)]
+        population: usize,
+        /// Generations to breed.
+        #[arg(help_heading = "Search", value_name = "N", long, default_value_t = 10)]
+        generations: usize,
+        /// Seed for the search.
+        #[arg(help_heading = "Search", value_name = "N", long, default_value_t = 25)]
+        seed: u64,
+        /// Replay the hand-set settings and front of this earlier search
+        /// (its --json) instead of searching.
+        #[arg(help_heading = "Search", value_name = "FILE", long)]
+        rescore: Option<PathBuf>,
+        /// Where each setting's flow and replay go.
+        #[arg(help_heading = "Output", value_name = "DIR", long)]
+        dir: PathBuf,
+        /// Write the Markdown here (default: stdout).
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
+        out: Option<PathBuf>,
+        /// Also write every setting replayed, and the front, as JSON here.
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
+        json: Option<PathBuf>,
+        /// The replay command and its arguments, after `--`.
+        #[arg(value_name = "COMMAND", last = true, required = true)]
+        replay: Vec<String>,
+    },
     /// Promote a flow's sites (RFC-001 §3.7). Wherever the flow would decide
     /// in recorded sessions or τ²-bench results, score the lookup it would
     /// make: used if the agent made it later in the session, a detour if it
@@ -1509,6 +1556,86 @@ fn main() -> Result<()> {
                     std::process::exit(2)
                 }
             }
+        }
+        Command::Search {
+            flow,
+            sites,
+            population,
+            generations,
+            seed,
+            rescore,
+            dir,
+            out,
+            json,
+            replay,
+        } => {
+            use stretto_report::search::{self, CommandReplay, Decider, Searched, Setting};
+            let flow = stretto_report::flow::Flow::from_json(
+                &std::fs::read_to_string(&flow)
+                    .with_context(|| format!("reading {}", flow.display()))?,
+            )?;
+            let known = flow.sites();
+            if let Some(s) = sites.iter().find(|s| !known.contains(s)) {
+                anyhow::bail!("the flow makes no lookup after {s}; its sites are {known:?}");
+            }
+            let sites = if sites.is_empty() { known } else { sites };
+            std::fs::create_dir_all(&dir).with_context(|| format!("creating {}", dir.display()))?;
+            let replay = CommandReplay::new(replay, dir);
+            let (md, value) = match rescore {
+                Some(path) => {
+                    let earlier: Searched = serde_json::from_str(
+                        &std::fs::read_to_string(&path)
+                            .with_context(|| format!("reading {}", path.display()))?,
+                    )
+                    .with_context(|| format!("{}: not a search's --json", path.display()))?;
+                    let settings: Vec<Setting> = earlier
+                        .seeds
+                        .iter()
+                        .chain(&earlier.front)
+                        .map(|s| s.setting.clone())
+                        .collect();
+                    let names: Vec<String> = earlier
+                        .seeds
+                        .iter()
+                        .map(|s| s.setting.label())
+                        .chain((1..=earlier.front.len()).map(|i| format!("F{i}")))
+                        .collect();
+                    let scored = search::rescore(&flow, &settings, &replay)?;
+                    let md = format!(
+                        "# Flow search, replayed again\n\nThe hand-set settings and the front of {}, \
+                         replayed on this command's episodes.\n\n{}",
+                        path.display(),
+                        search::table(&scored, &earlier.sites, &names)
+                    );
+                    let value = serde_json::json!({"names": names, "scored": scored});
+                    (md, value)
+                }
+                None => {
+                    let seeds = vec![
+                        Setting::uniform(&sites, 0.3, Decider::Arbiter),
+                        Setting::uniform(&sites, 0.3, Decider::Habit),
+                        Setting::uniform(&sites, 0.9, Decider::Habit),
+                    ];
+                    let r = search::search(
+                        &flow,
+                        &sites,
+                        &seeds,
+                        &replay,
+                        population,
+                        generations,
+                        seed,
+                    )?;
+                    (search::markdown(&r), serde_json::to_value(&r)?)
+                }
+            };
+            match out {
+                Some(path) => write(&path, md.as_bytes())?,
+                None => print!("{md}"),
+            }
+            if let Some(path) = json {
+                write(&path, &serde_json::to_vec_pretty(&value)?)?;
+            }
+            Ok(())
         }
         Command::Refine {
             log,
