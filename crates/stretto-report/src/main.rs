@@ -125,8 +125,9 @@ enum Command {
         /// agents' traces.
         #[arg(long, conflicts_with_all = ["habit_only", "refit_habit"])]
         arbiter_from: Option<PathBuf>,
-        /// Offer every read-only tool at every site (see `compile`).
-        #[arg(long)]
+        /// Offer every read-only tool at every site (see `compile`). Only
+        /// the arbiter a flow fits here weighs such options.
+        #[arg(long, conflicts_with_all = ["habit_only", "arbiter_from"])]
         manifest_options: bool,
         /// The domain to name the flow for.
         #[arg(long)]
@@ -140,17 +141,20 @@ enum Command {
         #[arg(long)]
         rewards: Option<PathBuf>,
         /// Who answers the held-out questions the arbiter is fitted on.
-        #[arg(long, value_enum, default_value_t = OracleArg::Jev)]
+        /// `--habit-only` and `--arbiter-from` ask nothing, so they take none
+        /// of the oracle's options.
+        #[arg(long, value_enum, default_value_t = OracleArg::Jev, conflicts_with_all = ["habit_only", "arbiter_from"])]
         oracle: OracleArg,
         /// Replay cache for oracle answers.
-        #[arg(long, default_value = ".oracle-cache")]
+        #[arg(long, default_value = ".oracle-cache", conflicts_with_all = ["habit_only", "arbiter_from"])]
         oracle_cache: PathBuf,
         /// Refuse to start if uncached questions could cost more than this
         /// many dollars.
-        #[arg(long, default_value_t = 1.0)]
+        #[arg(long, default_value_t = 1.0, conflicts_with_all = ["habit_only", "arbiter_from"])]
         oracle_budget: f64,
         /// Yes/no predicates to ask and weigh (see `data/predicates-v2.json`).
-        #[arg(long)]
+        /// An arbiter from `--arbiter-from` brings its own.
+        #[arg(long, conflicts_with_all = ["habit_only", "arbiter_from"])]
         predicates: Option<PathBuf>,
         /// Where to write the flow.
         #[arg(long)]
@@ -424,57 +428,57 @@ struct Phase0Args {
     /// read-only flows, a site's own lookups as options, a state slice,
     /// the stop decision asked on its own, and the answers combined with
     /// the habit).
-    #[arg(long, value_enum, default_value_t = QuestionArg::V1)]
+    #[arg(long, value_enum, default_value_t = QuestionArg::V1, requires = "oracle")]
     questions: QuestionArg,
     /// v2: also describe each lookup by what its results supply,
     /// learned from argument dataflow in training.
-    #[arg(long)]
+    #[arg(long, requires = "oracle")]
     dataflow_hints: bool,
     /// v2: a JSON file of yes/no predicates about the state (see
     /// `data/predicates-v2.json`) to ask with every next-step question and
     /// weigh in the arbiter.
-    #[arg(long)]
+    #[arg(long, requires = "oracle")]
     predicates: Option<PathBuf>,
     /// v2: ask the predicates but leave them out of the arbiter, to
     /// measure what they add.
-    #[arg(long)]
+    #[arg(long, requires = "oracle")]
     no_predicate_features: bool,
     /// v2: offer every read-only tool at every site, not only the lookups
     /// seen there in training, for the System-One model to choose from. A
     /// lookup training never made is bound by argument name.
-    #[arg(long)]
+    #[arg(long, requires = "oracle")]
     manifest_options: bool,
     /// v2, `compile`: give the flow one arbiter, fitted on every held-out
     /// decision, in place of one per fold, so that `export-arbiter` can
     /// ship it. Replayed on the same test tasks it has seen other agents'
     /// decisions on them, so compare flows without it.
-    #[arg(long)]
+    #[arg(long, requires = "oracle")]
     pooled_arbiter: bool,
     /// Replay cache for oracle answers.
-    #[arg(long, default_value = ".oracle-cache")]
+    #[arg(long, default_value = ".oracle-cache", requires = "oracle")]
     oracle_cache: PathBuf,
     /// Oracle requests in flight at once.
-    #[arg(long, default_value_t = 8)]
+    #[arg(long, default_value_t = 8, requires = "oracle")]
     oracle_concurrency: usize,
     /// Ask at most this many distinct questions (a stable sample), for a
     /// pilot run.
-    #[arg(long)]
+    #[arg(long, requires = "oracle")]
     oracle_limit: Option<usize>,
     /// Refuse to start if uncached questions could cost more than this
     /// many dollars.
-    #[arg(long, default_value_t = 5.0)]
+    #[arg(long, default_value_t = 5.0, requires = "oracle")]
     oracle_budget: f64,
     /// Model id to request (default: TYPESAFE_DEFAULT_MODEL, else jev-latest).
-    #[arg(long)]
+    #[arg(long, requires = "oracle")]
     oracle_model: Option<String>,
     /// Write every distinct oracle request to this file (JSON lines; the
     /// domain is added to the file name).
-    #[arg(long)]
+    #[arg(long, requires = "oracle")]
     oracle_dump: Option<PathBuf>,
     /// Write every decision, with the agent's option and the oracle's
     /// pick, to this file (JSON lines; the domain is added to the file
     /// name).
-    #[arg(long)]
+    #[arg(long, requires = "oracle")]
     oracle_log: Option<PathBuf>,
     /// Train on this share of the training tasks: a fixed sample by task
     /// id, each smaller share part of every larger one. To see how flows
@@ -533,6 +537,11 @@ impl From<DeciderArg> for Decider {
 fn main() -> Result<()> {
     match Cli::parse().command {
         Command::Phase0 { data, out, json } => {
+            if data.pooled_arbiter {
+                anyhow::bail!(
+                    "--pooled-arbiter shapes a flow's arbiter: pass it to compile or flow-serve"
+                );
+            }
             let config = phase0_config(data)?;
             if config.shadow.is_some() && !config.features {
                 anyhow::bail!("--oracle needs code features; drop --no-features");
@@ -1290,4 +1299,87 @@ fn write(path: &PathBuf, bytes: &[u8]) -> Result<()> {
         std::fs::create_dir_all(parent)?;
     }
     std::fs::write(path, bytes).with_context(|| format!("writing {}", path.display()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Cli;
+    use clap::{error::ErrorKind, Parser};
+
+    fn parse(args: &str) -> Result<Cli, clap::Error> {
+        Cli::try_parse_from(std::iter::once("stretto").chain(args.split_whitespace()))
+    }
+
+    fn kind(args: &str) -> Option<ErrorKind> {
+        parse(args).err().map(|e| e.kind())
+    }
+
+    const LEARN: &str = "learn --sessions logs --domain retail --out f.json";
+
+    #[test]
+    fn learn_refuses_options_its_habit_only_and_arbiter_from_branches_ignore() {
+        for extra in [
+            "--manifest-options",
+            "--predicates p.json",
+            "--oracle mock",
+            "--oracle-cache cache",
+            "--oracle-budget 2",
+        ] {
+            for branch in ["--habit-only", "--arbiter-from a.json"] {
+                assert_eq!(
+                    kind(&format!("{LEARN} {branch} {extra}")),
+                    Some(ErrorKind::ArgumentConflict),
+                    "{branch} {extra}"
+                );
+            }
+            assert!(parse(&format!("{LEARN} {extra}")).is_ok(), "{extra} alone");
+        }
+        assert!(parse(&format!("{LEARN} --habit-only")).is_ok());
+        assert!(parse(&format!("{LEARN} --arbiter-from a.json")).is_ok());
+    }
+
+    const PHASE0: &str = "phase0 --tau2 t";
+
+    #[test]
+    fn phase0_options_that_only_an_oracle_reads_need_an_oracle() {
+        for extra in [
+            "--questions v2",
+            "--dataflow-hints",
+            "--predicates p.json",
+            "--no-predicate-features",
+            "--manifest-options",
+            "--pooled-arbiter",
+            "--oracle-cache cache",
+            "--oracle-concurrency 2",
+            "--oracle-limit 10",
+            "--oracle-budget 2",
+            "--oracle-model m",
+            "--oracle-dump d.jsonl",
+            "--oracle-log l.jsonl",
+        ] {
+            assert_eq!(
+                kind(&format!("{PHASE0} {extra}")),
+                Some(ErrorKind::MissingRequiredArgument),
+                "{extra}"
+            );
+            assert!(
+                parse(&format!("{PHASE0} --oracle mock {extra}")).is_ok(),
+                "{extra} with --oracle"
+            );
+        }
+        assert!(parse(PHASE0).is_ok());
+    }
+
+    #[test]
+    fn compile_takes_the_oracle_options_with_an_oracle() {
+        assert!(parse(
+            "compile --tau2 t --domain retail --out f.json --oracle replay --questions v2 \
+             --predicates p.json --pooled-arbiter"
+        )
+        .is_ok());
+        assert_eq!(
+            kind("compile --tau2 t --domain retail --out f.json --questions v2"),
+            Some(ErrorKind::MissingRequiredArgument)
+        );
+    }
 }

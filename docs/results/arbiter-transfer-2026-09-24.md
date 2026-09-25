@@ -55,8 +55,10 @@ Import the answer bundles as [this round's bundle page](answers-2026-09-24-arbit
 
 ```sh
 stretto learn --tau2 ../tau2-bench --domain retail --results .data/tau2-targets/glm-5_enabled_retail_gpt-5.2_4trials.json \
-  --trials 0 --train-fraction 0.0676 --predicates data/predicates-v2.json \
-  --arbiter-from data/arbiters/airline.json --out flows/retail-5-airline.flow.json
+  --trials 0 --train-fraction 0.0676 --arbiter-from data/arbiters/airline.json \
+  --out flows/retail-5-airline.flow.json
 ```
+
+The arbiter file brings its own predicates, so `learn` takes no `--predicates` with `--arbiter-from`.
 
 The airline habits' own-domain arbiter is the all-task airline flow's (`stretto compile --domain airline ...`, as [the sweep](sweep-2026-09-24.md#reproduce) builds it), taken with `--arbiter-from` that flow. Per-episode rows are in [arbiter-transfer-2026-09-24.json](arbiter-transfer-2026-09-24.json).
