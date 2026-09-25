@@ -17,7 +17,7 @@ Each of these spends the Z.ai coding-plan key, so each needs an approved credit 
 | [#3](https://github.com/alexnodeland/stretto/issues/3) | The cold start live: the habit alone against the habit with a shipped arbiter | Offline, both beat an arbiter fitted on the first sessions; live, only that arbiter flow ran, on three tasks | About 240 credits for retail; airline adds 420 |
 | [#4](https://github.com/alexnodeland/stretto/issues/4) | A simulated customer that is not the agent's own model | In every pilot, GLM-5.3 played both parts | A key for the customer's model |
 | [#5](https://github.com/alexnodeland/stretto/issues/5) | More agent models live | Every live result is one model; offline, savings follow calling style | A key and a budget per model |
-| [#6](https://github.com/alexnodeland/stretto/issues/6) | The confirmation judge enforced | Enforced, it would refuse 5–11% of the writes accepted in successful episodes; whether that costs passes or turns is untested. Needs #14 | About 240 credits for retail, 340 for airline |
+| [#6](https://github.com/alexnodeland/stretto/issues/6) | The confirmation judge enforced | Enforced, it would refuse 5–11% of the writes accepted in successful episodes; whether that costs passes or turns is untested. The proxy can enforce it since #14 | About 240 credits for retail, 340 for airline |
 | [#7](https://github.com/alexnodeland/stretto/issues/7) | `stretto_commit` live | Built, never used live, and its possible saving is unmeasured. The offline bound comes first | The bound is free; a pilot is 240–340 credits |
 | [#8](https://github.com/alexnodeland/stretto/issues/8) | Flows and guards from frontier traces, serving a smaller agent | Guards bit in 38% of failed airline episodes on published runs, and never with GLM-5.3 | Priced by a smoke episode first |
 
@@ -37,7 +37,7 @@ These cost Jev dollars, CPU time or people's time, and no LLM runs.
 
 | Issue | What | Where the design asks for it |
 |---|---|---|
-| [#14](https://github.com/alexnodeland/stretto/issues/14) | The confirmation judge in the proxy's guards, logged or enforced | The judge exists only offline, in `stretto confirm` |
+| [#14](https://github.com/alexnodeland/stretto/issues/14) | The confirmation judge in the proxy's guards, logged or enforced | Done: `stretto-proxy --confirm-judge log\|enforce` |
 | [#15](https://github.com/alexnodeland/stretto/issues/15) | Counterfactual evaluation from logged decisions | RFC-001 §3.7. Flows act deterministically, so it needs a little exploration first |
 | [#16](https://github.com/alexnodeland/stretto/issues/16) | Predicate refinement | RFC-001 §3.4; the three predicates were written by hand |
 | [#17](https://github.com/alexnodeland/stretto/issues/17) | Hand back when a session surprises the flow | RFC-001 §3.6; surprise is measured only after the fact |
@@ -54,10 +54,10 @@ These cost Jev dollars, CPU time or people's time, and no LLM runs.
 
 | Issue | What |
 |---|---|
-| [#26](https://github.com/alexnodeland/stretto/issues/26) | `learn --manifest-options` is silently ignored with `--habit-only` or `--arbiter-from` |
+| [#26](https://github.com/alexnodeland/stretto/issues/26) | Done: `learn` and `phase0` refuse options they would ignore, such as `--manifest-options` with `--habit-only` or `--arbiter-from` |
 | [#27](https://github.com/alexnodeland/stretto/issues/27) | Mark τ²-bench's read-only tools in `pilot/tau2_mcp.py`, so pilot recordings learn without `--manifest` |
-| [#28](https://github.com/alexnodeland/stretto/issues/28) | Faster replays in `pilot/check_flow.py`: a replay starts a Python process per episode, and 5.4 seconds of each goes to importing τ²-bench |
-| [#29](https://github.com/alexnodeland/stretto/issues/29) | Publish the pilots' recorded episodes, which exist only where they were run |
+| [#28](https://github.com/alexnodeland/stretto/issues/28) | Done: `check_flow.py --in-process --jobs N` makes the tools' calls in one process and replays in parallel; `replay_study.py` runs a resumable list of replays |
+| [#29](https://github.com/alexnodeland/stretto/issues/29) | Done: the pilots' recorded episodes are [published](results/episodes-2026-09-24.md) |
 | [#30](https://github.com/alexnodeland/stretto/issues/30) | A first release, 0.1.0 |
 
 ## Documentation

@@ -24,11 +24,11 @@ use serde::Serialize;
 use serde_json::json;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt::Write as _;
-use stretto_oracle::{request_key, Answer, NoulCriteria, Oracle, Question, Request};
-use stretto_trace::{Episode, Event};
+use stretto_oracle::{request_key, Answer, NoulCriteria, Oracle, Question, Request, Response};
+use stretto_trace::{Episode, Event, ToolCall};
 
 /// The question's id.
-const QUESTION: &str = "confirmed";
+pub const QUESTION: &str = "confirmed";
 /// A second question about each write, asked on its own about the same
 /// state.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -112,10 +112,74 @@ impl Judged {
 
     /// The second question about this write.
     fn second(&self, second: Second) -> Request {
-        Request {
-            questions: BTreeMap::from([(second.id().to_string(), second.question())]),
-            ..self.request.clone()
+        second_request(&self.request, second)
+    }
+}
+
+/// What a write made now answers: what the agent had said when the customer
+/// last spoke, and what the customer said then. [`writes`] reads each
+/// write's exchange the same way, as the episode stood before the write.
+pub fn exchange(episode: &Episode) -> (String, String) {
+    let (mut agent_last, mut proposal, mut customer) =
+        (String::new(), String::new(), String::new());
+    for e in &episode.events {
+        match e {
+            Event::User { text } => {
+                proposal = agent_last.clone();
+                customer = text.clone();
+            }
+            Event::Assistant { text, .. } => {
+                if let Some(t) = text.as_deref().filter(|t| !t.trim().is_empty()) {
+                    agent_last = t.to_string();
+                }
+            }
+            Event::ToolResult { .. } => {}
         }
+    }
+    (proposal, customer)
+}
+
+/// The confirmation question about `call` after the exchange (`proposal`,
+/// `customer`), for `model`: the request [`writes`] asks, key for key.
+pub fn request(model: &str, proposal: &str, customer: &str, call: &ToolCall) -> Request {
+    let state = json!({
+        "agent_said_last": tail(proposal, MAX_AGENT),
+        "customer_replied": head(customer, MAX_CUSTOMER),
+        "call_about_to_be_made": {
+            "tool": call.name,
+            "arguments": call.arguments,
+        },
+    });
+    Request {
+        model: model.to_string(),
+        state,
+        questions: BTreeMap::from([(QUESTION.to_string(), question())]),
+    }
+}
+
+/// The `second` question about the write `request` asks about.
+pub fn second_request(request: &Request, second: Second) -> Request {
+    Request {
+        questions: BTreeMap::from([(second.id().to_string(), second.question())]),
+        ..request.clone()
+    }
+}
+
+/// Whether the word list passes `call` after `episode`, if `guards` check
+/// its confirmation at all.
+pub fn word_list(guards: &Guards, episode: &Episode, call: &ToolCall) -> Option<bool> {
+    guards
+        .check(episode, call)
+        .into_iter()
+        .find(|(id, _)| id.ends_with(".confirmed"))
+        .map(|(_, v)| matches!(v, Verdict::Pass))
+}
+
+/// The probability of a yes to question `id` in `response`.
+pub fn yes(response: &Response, id: &str) -> Option<f64> {
+    match response.answers.get(id) {
+        Some(Answer::Noul { noul }) => Some(*noul),
+        _ => None,
     }
 }
 
@@ -148,27 +212,10 @@ pub fn writes(guards: &Guards, episodes: &[&Episode], model: &str) -> Vec<Judged
                         ..(*ep).clone()
                     };
                     for call in calls {
-                        let Some(word_list) = guards
-                            .check(&before, call)
-                            .into_iter()
-                            .find(|(id, _)| id.ends_with(".confirmed"))
-                            .map(|(_, v)| matches!(v, Verdict::Pass))
-                        else {
+                        let Some(word_list) = word_list(guards, &before, call) else {
                             continue;
                         };
-                        let state = json!({
-                            "agent_said_last": tail(&proposal, MAX_AGENT),
-                            "customer_replied": head(&customer, MAX_CUSTOMER),
-                            "call_about_to_be_made": {
-                                "tool": call.name,
-                                "arguments": call.arguments,
-                            },
-                        });
-                        let request = Request {
-                            model: model.to_string(),
-                            state,
-                            questions: BTreeMap::from([(QUESTION.to_string(), question())]),
-                        };
+                        let request = request(model, &proposal, &customer, call);
                         out.push(Judged {
                             key: request_key(&request),
                             task_id: ep.task_id.clone(),

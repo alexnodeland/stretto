@@ -611,3 +611,164 @@ fn sessions_recorded_through_the_proxy_teach_the_flow_it_serves() {
     assert_eq!(host.finish(), 0);
     fs::remove_dir_all(&dir).unwrap();
 }
+
+/// Say `text` as the agent, in the conversation file the host keeps.
+fn agent_says(context: &Path, text: &str) {
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(context)
+        .unwrap();
+    writeln!(file, "{}", json!({"role": "assistant", "content": text})).unwrap();
+}
+
+/// The confirmation judge asks the questions `stretto confirm` asks, logs
+/// each judgment, refuses in enforce mode a write it fails, refuses nothing
+/// when it cannot answer, and never refuses in log mode.
+#[test]
+fn the_confirmation_judge_refuses_writes_the_customer_did_not_confirm() {
+    use stretto_oracle::{Answer, ReplayCache, Response};
+    use stretto_report::confirm;
+
+    let dir = std::env::temp_dir().join(format!("stretto-judge-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    let cache = dir.join("cache");
+    // The judge's answers, seeded for the exact questions the proxy will ask.
+    let seed = |proposal: &str, customer: &str, order: &str, p: f64| {
+        let call = ToolCall {
+            id: "pending".to_string(),
+            name: "cancel_pending_order".to_string(),
+            arguments: json!({"order_id": order, "reason": "no longer needed"}),
+        };
+        let request = confirm::request("jev-latest", proposal, customer, &call);
+        let response = Response {
+            model: "jev-test".to_string(),
+            answers: BTreeMap::from([(confirm::QUESTION.to_string(), Answer::Noul { noul: p })]),
+            usage: Default::default(),
+        };
+        ReplayCache::<MockOracle>::new(&cache, None)
+            .insert(&stretto_oracle::request_key(&request), &response)
+            .unwrap();
+    };
+    let offer = "I can cancel order #W7a because you no longer need it. Shall I go ahead?";
+    let yes = "Yes, please go ahead.";
+    let done = "Done: #W7a is cancelled. Anything else?";
+    let also = "Also cancel #W7b.";
+    seed(offer, yes, "#W7a", 0.92);
+    seed(done, also, "#W7b", 0.15);
+
+    for mode in ["enforce", "log"] {
+        let logs = dir.join(format!("logs-{mode}"));
+        let context = dir.join(format!("context-{mode}.jsonl"));
+        let mut host = Host::start_without(
+            &[
+                "--record",
+                logs.to_str().unwrap(),
+                "--domain",
+                "retail",
+                "--guards",
+                "--context",
+                context.to_str().unwrap(),
+                "--confirm-judge",
+                mode,
+                "--oracle",
+                "replay",
+                "--oracle-cache",
+                cache.to_str().unwrap(),
+                "--",
+                DEMO,
+                "--world",
+                "retail",
+            ],
+            &["TYPESAFE_DEFAULT_MODEL"],
+        );
+        open_session(&mut host);
+        say_to(
+            &context,
+            "Hi, I'm c7@example.com and I want to cancel two orders.",
+        );
+        host.call(
+            3,
+            "find_user_id_by_email",
+            json!({"email": "c7@example.com"}),
+        );
+        host.call(4, "get_order_details", json!({"order_id": "#W7a"}));
+        host.call(5, "get_order_details", json!({"order_id": "#W7b"}));
+
+        // Confirmed: the judge says yes, so the write goes through.
+        agent_says(&context, offer);
+        say_to(&context, yes);
+        let first = host.call(
+            6,
+            "cancel_pending_order",
+            json!({"order_id": "#W7a", "reason": "no longer needed"}),
+        );
+        assert_eq!(first["isError"], false, "{first}");
+
+        // A request, not a confirmation: the judge says no.
+        agent_says(&context, done);
+        say_to(&context, also);
+        let second = host.call(
+            7,
+            "cancel_pending_order",
+            json!({"order_id": "#W7b", "reason": "no longer needed"}),
+        );
+        if mode == "enforce" {
+            assert_eq!(second["isError"], true, "{second}");
+            let why = &texts(&second)[0];
+            assert!(why.contains("confirmation judge: p_yes 0.15"), "{why}");
+
+            // An exchange the cache has no answer for: the judge cannot
+            // answer, so it refuses nothing. (In log mode #W7b is already
+            // cancelled, and the policy check refuses before the judge asks.)
+            agent_says(
+                &context,
+                "Shall I cancel order #W7b because you no longer need it?",
+            );
+            say_to(&context, "Yes, cancel it.");
+            let third = host.call(
+                8,
+                "cancel_pending_order",
+                json!({"order_id": "#W7b", "reason": "no longer needed"}),
+            );
+            assert_eq!(third["isError"], false, "{third}");
+        } else {
+            assert_eq!(second["isError"], false, "{second}");
+        }
+        assert_eq!(host.finish(), 0);
+
+        let judged: Vec<Value> = fs::read_dir(&logs)
+            .unwrap()
+            .map(|e| e.unwrap().path())
+            .filter(|p| p.to_string_lossy().ends_with(".confirm.jsonl"))
+            .flat_map(|p| {
+                fs::read_to_string(p)
+                    .unwrap()
+                    .lines()
+                    .map(|l| serde_json::from_str(l).unwrap())
+                    .collect::<Vec<Value>>()
+            })
+            .collect();
+        assert_eq!(
+            judged.len(),
+            if mode == "enforce" { 3 } else { 2 },
+            "{judged:?}"
+        );
+        assert_eq!(judged[0]["p_yes"], 0.92);
+        assert_eq!(judged[0]["fails"], false);
+        assert_eq!(judged[1]["p_yes"], 0.15);
+        assert_eq!(judged[1]["fails"], true);
+        assert_eq!(judged[1]["enforced"], mode == "enforce");
+        if mode == "enforce" {
+            assert!(judged[2]["error"].is_string(), "{}", judged[2]);
+            assert_eq!(judged[2]["unknown"], true);
+            assert_eq!(judged[2]["fails"], false);
+        }
+        // Every judgment names the question it asked.
+        assert!(judged
+            .iter()
+            .all(|j| j["key"].as_str().is_some_and(|k| k.len() == 64)));
+    }
+    fs::remove_dir_all(&dir).unwrap();
+}

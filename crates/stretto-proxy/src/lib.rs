@@ -25,7 +25,7 @@
 pub mod active;
 mod record;
 
-pub use active::{Active, FlowConfig, APPENDIX, COMMIT_TOOL};
+pub use active::{Active, ConfirmConfig, FlowConfig, APPENDIX, COMMIT_TOOL};
 
 use anyhow::{Context, Result};
 use record::{Recorder, Tap};
@@ -173,6 +173,14 @@ where
                     .map(|r| r.path().with_extension("flow.jsonl"))
             })
         });
+        // So do the confirmation judge's.
+        let confirm_log = active.confirm.as_ref().and_then(|c| {
+            c.log.clone().or_else(|| {
+                recorder
+                    .as_ref()
+                    .map(|r| r.path().with_extension("confirm.jsonl"))
+            })
+        });
         let (tx, rx) = mpsc::channel();
         let from_host = tx.clone();
         thread::Builder::new()
@@ -204,7 +212,7 @@ where
             tap,
             started,
             (to_server, &mut host_out),
-            flow_log,
+            (flow_log, confirm_log),
         )
         .run(rx);
         let status = server.wait().context("waiting for the server");

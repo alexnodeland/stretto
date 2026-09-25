@@ -2,7 +2,10 @@ use anyhow::{bail, Context, Result};
 use clap::{Parser, ValueEnum};
 use std::ffi::OsString;
 use std::path::PathBuf;
-use stretto_proxy::{expand_home, run, run_active, Active, Config, FlowConfig, FAILURE_EXIT_CODE};
+use stretto_proxy::{
+    expand_home, run, run_active, Active, Config, ConfirmConfig, FlowConfig, FAILURE_EXIT_CODE,
+};
+use stretto_report::confirm::Second;
 use stretto_report::flow::{Decider, Flow};
 use stretto_report::guards::Guards;
 use stretto_report::shadow::{OracleKind, ShadowConfig};
@@ -15,8 +18,8 @@ use stretto_report::shadow::{OracleKind, ShadowConfig};
 /// proxy's own messages go to stderr. The exit status is the server's, or 125
 /// if the proxy itself fails.
 ///
-/// Without --flow, --guards, --commit or --context, every line is forwarded
-/// byte for byte and nothing is parsed.
+/// Without --flow, --guards, --commit, --context or --confirm-judge, every line
+/// is forwarded byte for byte and nothing is parsed.
 #[derive(Parser)]
 #[command(version)]
 struct Cli {
@@ -35,11 +38,11 @@ struct Cli {
     /// of the agent's calls, and append its lookups to the result.
     #[arg(long, value_name = "FILE")]
     flow: Option<PathBuf>,
-    /// Who answers the flow's questions: `jev` (needs TYPESAFE_API_KEY),
-    /// `replay` (the cache only) or `mock`.
+    /// Who answers the flow's and the confirmation judge's questions: `jev`
+    /// (needs TYPESAFE_API_KEY), `replay` (the cache only) or `mock`.
     #[arg(long, value_enum, default_value_t = OracleArg::Jev)]
     oracle: OracleArg,
-    /// Replay cache for the flow's questions.
+    /// Replay cache for the System-One model's answers.
     #[arg(long, value_name = "DIR", default_value = "~/.stretto/oracle-cache")]
     oracle_cache: PathBuf,
     /// Take a lookup when the tool's probability times its arguments'
@@ -68,6 +71,25 @@ struct Cli {
     /// --domain (`retail` or `airline`), and refuse the ones they fail.
     #[arg(long)]
     guards: bool,
+    /// Put each write the guards check for a confirmation to the System-One
+    /// model too, with the questions `stretto confirm` asks: `log` records
+    /// each judgment; `enforce` also refuses a write the judge fails. Needs
+    /// --guards and --context. A judge that cannot answer refuses nothing.
+    #[arg(long, value_enum, value_name = "MODE", requires_all = ["guards", "context"])]
+    confirm_judge: Option<JudgeArg>,
+    /// Also ask the second question (`proposed`: had the agent proposed the
+    /// change?); a write then fails unless both answers are yes.
+    #[arg(long, value_enum, value_name = "QUESTION", requires = "confirm_judge")]
+    confirm_second: Option<SecondArg>,
+    /// A write fails when an answer's probability of a yes is below this.
+    #[arg(long, default_value_t = 0.5, requires = "confirm_judge")]
+    confirm_threshold: f64,
+    /// The judge's questions per session, at most.
+    #[arg(long, default_value_t = 100, requires = "confirm_judge")]
+    confirm_questions: usize,
+    /// Append the judgments here (default: next to the session log).
+    #[arg(long, value_name = "FILE", requires = "confirm_judge")]
+    confirm_log: Option<PathBuf>,
     /// Add `stretto_commit`, which makes several calls in one, in order,
     /// each checked by the guards.
     #[arg(long)]
@@ -95,6 +117,18 @@ enum OracleArg {
 enum DeciderArg {
     Arbiter,
     Habit,
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum JudgeArg {
+    Log,
+    Enforce,
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum SecondArg {
+    Proposed,
+    Described,
 }
 
 fn main() {
@@ -171,9 +205,33 @@ fn active(cli: &Cli) -> Result<Active> {
     } else {
         None
     };
+    let confirm = match cli.confirm_judge {
+        Some(mode) => {
+            let mut sc = ShadowConfig::new(match cli.oracle {
+                OracleArg::Jev => OracleKind::Jev,
+                OracleArg::Replay => OracleKind::Replay,
+                OracleArg::Mock => OracleKind::Mock,
+            });
+            sc.cache_dir = expand_home(cli.oracle_cache.clone());
+            Some(ConfirmConfig {
+                oracle: sc.build()?,
+                model: sc.model.clone(),
+                second: cli.confirm_second.map(|q| match q {
+                    SecondArg::Proposed => Second::Proposed,
+                    SecondArg::Described => Second::Described,
+                }),
+                threshold: cli.confirm_threshold,
+                enforce: matches!(mode, JudgeArg::Enforce),
+                max_questions: cli.confirm_questions,
+                log: cli.confirm_log.clone().map(expand_home),
+            })
+        }
+        None => None,
+    };
     Ok(Active {
         flow,
         guards,
+        confirm,
         commit: cli.commit,
         context: cli.context.clone().map(expand_home),
         task_id: cli.task_id.clone(),

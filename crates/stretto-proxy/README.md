@@ -9,7 +9,8 @@ A stdio [MCP](https://modelcontextprotocol.io) proxy that records what an agent 
 ```text
 stretto-proxy [--record <DIR>] [--domain <NAME>] [--agent-model <MODEL>]
               [--flow <FILE> [--oracle jev|replay|mock] [--oracle-cache <DIR>] [--flow-decider arbiter|habit] ...]
-              [--guards] [--commit] [--context <FILE>] -- <SERVER_COMMAND>...
+              [--guards [--confirm-judge log|enforce [--confirm-second proposed] ...]]
+              [--commit] [--context <FILE>] -- <SERVER_COMMAND>...
 ```
 
 Install it with `cargo install --path crates/stretto-proxy`, which also installs `stretto-mcp-demo`. In the host's configuration, replace the server's command with `stretto-proxy` and put the original command after `--`:
@@ -75,6 +76,13 @@ With any of `--flow`, `--guards`, `--commit` or `--context`, the proxy reads wha
   - Each decision is appended to `--flow-log`, by default `<session>.flow.jsonl` next to the session log.
   - `--task-id` picks the flow's fold; by default it is the session.
 - **`--guards`** checks each of the agent's calls against the policy guards of `--domain` (`retail` or `airline`) before the server sees it. A call an enforced rule refuses never reaches the server. The agent gets an error result instead: `Refused by the policy check, so cancel_pending_order was not run and nothing changed: 'found it cheaper' is not an accepted reason (policy check retail.cancel_reason).` A rule that lacks the facts to decide does not refuse. `stretto guards` tests the rules against recorded trajectories.
+- **`--confirm-judge log|enforce`** (with `--guards` and `--context`) puts each write the guards check for a confirmation (the rule `retail.confirmed` or `airline.confirmed`) to the System-One model too, with the question `stretto confirm` asks: did the customer's reply explicitly agree to this exact change? The judge sees what the agent said last before the customer's last message, that message and the call, built exactly as `stretto confirm` builds them, so the two share cached answers. The guards' word list for that rule is only logged, since it cannot tell a confirmation from a request; the judge is meant to replace it.
+  - `log` records each judgment and refuses nothing the guards would not. `enforce` also refuses a write whose answer puts the probability of a yes below `--confirm-threshold` (0.5): `Refused by the policy check, so cancel_pending_order was not run and nothing changed: the customer has not explicitly agreed to this exact change (confirmation judge: p_yes 0.15); describe the change and ask the customer to confirm it first.`
+  - A judge that cannot answer refuses nothing: no key, a cache miss under `--oracle replay`, an error, or the session's `--confirm-questions` (100) spent.
+  - `--confirm-second proposed` also asks [the second question](../../docs/results/confirm-second-2026-09-24.md): had the agent proposed this change? A write then fails unless both answers are yes. `described` asks that page's first wording, which is too literal.
+  - `--oracle` and `--oracle-cache` are the ones `--flow` uses.
+  - Each judgment is appended to `--confirm-log`, by default `<session>.confirm.jsonl` next to the session log: the call, the word list's verdict, each answer, whether the write failed and whether that was enforced, the questions' cache keys, and how long the write waited for the judge.
+  - Offline, enforcing the first question would refuse 5–11% of the writes accepted in τ²-bench's successful episodes, most of them real lapses ([results](../../docs/results/confirm-2026-09-24.md)). Whether that costs passes or turns live is [#6](https://github.com/alexnodeland/stretto/issues/6).
 - **`--commit`** adds `stretto_commit` to the tools the server lists. It takes `{"calls": [{"name", "arguments"}, …]}` and makes the calls in order, each checked by the guards first. It stops at the first call that is refused or fails, and returns every call's result and the ones it did not run. It is meant for the writes the user has confirmed, in one LLM turn.
 - **`--context FILE`** gives the proxy the conversation, which MCP never carries. The host appends one JSON line per message, `{"role": "user" | "assistant", "content": text}`. Before each tool call and each decision, the proxy logs the new lines as `context` entries, so flows see what the customer said and guards can read their confirmation.
 

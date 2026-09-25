@@ -17,6 +17,11 @@
 //!   domain's guards check it against what the session has shown. A call an
 //!   enforced rule refuses never reaches the server: the agent gets an error
 //!   result that says why.
+//! - **Confirmation.** With a [`ConfirmConfig`], a write the guards check for
+//!   the customer's confirmation is also put to a System-One model, with the
+//!   questions `stretto confirm` asks offline. Each judgment is logged; in
+//!   enforce mode, a write it fails is refused like one a guard refuses. A
+//!   judge that cannot answer refuses nothing.
 //! - **Commit.** [`COMMIT_TOOL`] is added to the tools the server lists. It
 //!   makes several calls in one, in order, each checked by the guards first,
 //!   and stops at the first that is refused or fails.
@@ -37,7 +42,8 @@ use std::path::PathBuf;
 use std::process::ChildStdin;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
 use std::time::{Duration, Instant};
-use stretto_oracle::Oracle;
+use stretto_oracle::{request_key, Oracle};
+use stretto_report::confirm::{self, Second};
 use stretto_report::flow::{Decider, Flow, Proposal};
 use stretto_report::guards::Guards;
 use stretto_trace::mcp::{self, LogEntry, LogHeader, McpLog, Peer};
@@ -78,6 +84,24 @@ pub struct FlowConfig {
     pub log: Option<PathBuf>,
 }
 
+/// A System-One model judging whether the customer confirmed each write.
+pub struct ConfirmConfig {
+    /// Who answers.
+    pub oracle: Box<dyn Oracle + Sync>,
+    /// The model id to request; it is part of each question's cache key.
+    pub model: String,
+    /// Also ask this question; a write then fails unless both answers are yes.
+    pub second: Option<Second>,
+    /// A write fails when an answer's probability of a yes is below this.
+    pub threshold: f64,
+    /// Refuse a write the judge fails; otherwise only log the judgment.
+    pub enforce: bool,
+    /// Questions per session, at most.
+    pub max_questions: usize,
+    /// Append every judgment here, as JSON lines.
+    pub log: Option<PathBuf>,
+}
+
 /// What the proxy does besides forwarding.
 #[derive(Default)]
 pub struct Active {
@@ -85,6 +109,8 @@ pub struct Active {
     pub flow: Option<FlowConfig>,
     /// Check the agent's calls against these guards.
     pub guards: Option<Guards>,
+    /// Judge the writes the guards check for a confirmation (needs `guards`).
+    pub confirm: Option<ConfirmConfig>,
     /// Add [`COMMIT_TOOL`] to the server's tools.
     pub commit: bool,
     /// Read the conversation from this file (JSON lines).
@@ -96,7 +122,11 @@ pub struct Active {
 impl Active {
     /// Whether there is anything to do besides forwarding.
     pub fn is_active(&self) -> bool {
-        self.flow.is_some() || self.guards.is_some() || self.commit || self.context.is_some()
+        self.flow.is_some()
+            || self.guards.is_some()
+            || self.confirm.is_some()
+            || self.commit
+            || self.context.is_some()
     }
 }
 
@@ -207,6 +237,8 @@ pub(crate) struct Engine<'a, W: Write> {
     questions: usize,
     context_read: u64,
     flow_log: Option<File>,
+    confirm_log: Option<File>,
+    confirm_questions: usize,
 }
 
 impl<'a, W: Write> Engine<'a, W> {
@@ -216,16 +248,20 @@ impl<'a, W: Write> Engine<'a, W> {
         tap: Option<Tap>,
         started: Instant,
         (to_server, to_host): (ChildStdin, W),
-        flow_log: Option<PathBuf>,
+        (flow_log, confirm_log): (Option<PathBuf>, Option<PathBuf>),
     ) -> Self {
-        let flow_log = flow_log.as_ref().and_then(|path| {
+        let open = |path: &PathBuf, what: &str| {
             std::fs::OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(path)
-                .map_err(|e| eprintln!("stretto-proxy: flow log {}: {e}", path.display()))
+                .map_err(|e| eprintln!("stretto-proxy: {what} log {}: {e}", path.display()))
                 .ok()
-        });
+        };
+        let flow_log = flow_log.as_ref().and_then(|path| open(path, "flow"));
+        let confirm_log = confirm_log
+            .as_ref()
+            .and_then(|path| open(path, "confirmation"));
         Self {
             active,
             log: McpLog {
@@ -247,6 +283,8 @@ impl<'a, W: Write> Engine<'a, W> {
             questions: 0,
             context_read: 0,
             flow_log,
+            confirm_log,
+            confirm_questions: 0,
         }
     }
 
@@ -614,7 +652,8 @@ impl<'a, W: Write> Engine<'a, W> {
 
     // ---- guards and flows ---------------------------------------------------------------
 
-    /// Why an enforced guard refuses `name(arguments)` now, if one does.
+    /// Why an enforced guard, or the enforced confirmation judge, refuses
+    /// `name(arguments)` now, if one does.
     fn refusal(&mut self, name: &str, arguments: &Value) -> Option<String> {
         let guards = self.active.guards.as_ref()?;
         self.read_context();
@@ -623,7 +662,77 @@ impl<'a, W: Write> Engine<'a, W> {
             name: name.to_string(),
             arguments: arguments.clone(),
         };
-        guards.refusal(&self.episode(), &call)
+        let episode = self.episode();
+        if let Some(reason) = guards.refusal(&episode, &call) {
+            return Some(reason);
+        }
+        self.judge(guards, &episode, &call)
+    }
+
+    /// Put `call` to the confirmation judge, if the guards check its
+    /// confirmation, log the judgment, and say why it is refused if the judge
+    /// is enforced and fails it.
+    fn judge(&mut self, guards: &Guards, episode: &Episode, call: &ToolCall) -> Option<String> {
+        let cc = self.active.confirm.as_ref()?;
+        let word_list = confirm::word_list(guards, episode, call)?;
+        let asked = Instant::now();
+        let (proposal, customer) = confirm::exchange(episode);
+        let first = confirm::request(&cc.model, &proposal, &customer, call);
+        let mut questions = vec![("p_yes", "key", confirm::QUESTION, first.clone())];
+        if let Some(second) = cc.second {
+            let request = confirm::second_request(&first, second);
+            questions.push(("p_second", "second_key", second.id(), request));
+        }
+        let mut entry = json!({
+            "tool": call.name,
+            "arguments": call.arguments,
+            "word_list": word_list,
+            "enforced": cc.enforce,
+        });
+        let (mut fails, mut unknown) = (Vec::new(), false);
+        for (field, key_field, id, request) in &questions {
+            entry[*key_field] = json!(request_key(request));
+            if self.confirm_questions >= cc.max_questions {
+                entry["skipped"] = json!("the session's question budget is spent");
+                unknown = true;
+                break;
+            }
+            self.confirm_questions += 1;
+            match cc.oracle.ask(request) {
+                Ok(response) => match confirm::yes(&response, id) {
+                    Some(p) => {
+                        entry[*field] = json!(p);
+                        if p < cc.threshold {
+                            fails.push(format!("{field} {p:.2}"));
+                        }
+                    }
+                    None => {
+                        entry["error"] = json!(format!("no yes/no answer to {id}"));
+                        unknown = true;
+                    }
+                },
+                Err(e) => {
+                    eprintln!("stretto-proxy: the confirmation judge could not answer: {e:#}");
+                    entry["error"] = json!(format!("{e:#}"));
+                    unknown = true;
+                }
+            }
+        }
+        // An answer that fails is enough; a judge that could not answer
+        // refuses nothing.
+        entry["fails"] = json!(!fails.is_empty());
+        entry["unknown"] = json!(fails.is_empty() && unknown);
+        entry["ms"] = json!(asked.elapsed().as_millis() as u64);
+        if let Some(f) = self.confirm_log.as_mut() {
+            let _ = writeln!(f, "{entry}");
+        }
+        (cc.enforce && !fails.is_empty()).then(|| {
+            format!(
+                "the customer has not explicitly agreed to this exact change (confirmation judge: {}); \
+                 describe the change and ask the customer to confirm it first",
+                fails.join(", ")
+            )
+        })
     }
 
     fn refuse(&mut self, id: Value, name: &str, reason: &str) {
