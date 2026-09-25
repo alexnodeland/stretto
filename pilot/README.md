@@ -20,6 +20,8 @@ cargo build --release -p stretto-proxy
 
 `ZAI_API_KEY` must be set; `GLM_CLAUDE_CONFIG_DIR` optionally keeps the nested Claude Code's state apart.
 
+A Claude model can play the agent or the customer instead: `--agent-cli claude --model M` and `--customer-cli claude --customer-model M` run it through [`claude-agent.sh`](claude-agent.sh). That wrapper passes on Claude Code's own endpoint and credentials (`ANTHROPIC_BASE_URL`, `ANTHROPIC_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`) with proxy and certificate settings, and nothing else. It runs Claude Code in its normal mode, since `--bare` takes only `ANTHROPIC_API_KEY`, from an empty directory, so no `CLAUDE.md` is read. The normal mode adds a short note to the model's context, with the working directory, the model's name and the date; `--bare` adds the date alone. `CLAUDE_AGENT_CONFIG_DIR` keeps its state apart. Z.ai credits count the GLM side of an episode only, and `run_pilot.py` reports a Claude side in tokens (`claude_tokens`).
+
 ## Run one episode
 
 ```bash
@@ -27,6 +29,8 @@ PATH=~/.venvs/tau2/bin:$PATH python run_episode.py --task-id 90 --out runs/pilot
 PATH=~/.venvs/tau2/bin:$PATH python run_episode.py --task-id 90 --out runs/pilot \
   --arm flows --oracle-cache ../.oracle-cache
 ```
+
+`--confirm-judge log|enforce` adds [the confirmation judge](../crates/stretto-proxy/README.md) to the guards arm: the proxy puts each write the guards check for a confirmation to Jev as well, logs the judgment in `log/*.confirm.jsonl`, and in `enforce` refuses a write Jev fails. `--confirm-second proposed` asks the second question too, and `--confirm-second-shadow` only logs its answer. The proxy runs under the agent's process, so the harness hands it Jev's key in a file only the proxy opens (`TYPESAFE_API_KEY_FILE`): mode 0600, outside the episode directory, and deleted when the agent exits. The agent's process gets the file's path, never the key. `--label` names the arm's directory under `--out`, so two judge settings can share one. `result.json` lists the judgments.
 
 `--record-context` hands the proxy the conversation, as the guards arm does, so the session log in `log/` can train a flow with `stretto learn` (see the cold start below). `--read-only-hints` makes `tau2_mcp.py` mark τ²-bench's read tools `readOnlyHint: true` and its writes `false` in `tools/list`, as a real server would, so `stretto learn --sessions` takes the tools' kinds from the log and needs no `--manifest`. The pilots ran without it, so their agents all saw the same tool list. `--flow` serves a compiled or learned flow instead of compiling one per episode.
 

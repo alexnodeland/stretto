@@ -550,6 +550,7 @@ Usage: stretto-proxy [OPTIONS] [-- <SERVER_COMMAND>...]
 - `--guards`: Check each of the agent's calls against the policy guards of --domain (`retail` or `airline`), and refuse the ones they fail.
 - `--confirm-judge <MODE>` (one of `log`, `enforce`): Put each write the guards check for a confirmation to the System-One model too, with the questions `stretto confirm` asks: `log` records each judgment; `enforce` also refuses a write the judge fails. Needs --guards and --context. A judge that cannot answer refuses nothing.
 - `--confirm-second <QUESTION>` (one of `proposed`, `described`): Also ask the second question (`proposed`: had the agent proposed the change?); a write then fails unless both answers are yes.
+- `--confirm-second-shadow`: Ask the second question but only log its answer (shadow mode): a write then fails on the first answer alone.
 - `--confirm-threshold <P>` (default `0.5`): A write fails when an answer's probability of a yes is below this.
 - `--confirm-questions <N>` (default `100`): The judge's questions per session, at most.
 - `--confirm-log <FILE>`: Append the judgments here (default: next to the session log).

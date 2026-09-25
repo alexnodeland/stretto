@@ -3,7 +3,10 @@
 //! `POST {base}/v1/systemone` with a bearer token. Configuration follows the
 //! official SDKs' environment variables: `TYPESAFE_API_KEY` (required),
 //! `TYPESAFE_BASE_URL` (default `https://api.typesafe.ai`) and
-//! `TYPESAFE_DEFAULT_MODEL` (default `jev-latest`). Rate limiting (429),
+//! `TYPESAFE_DEFAULT_MODEL` (default `jev-latest`). Without
+//! `TYPESAFE_API_KEY`, the key is read from the file `TYPESAFE_API_KEY_FILE`
+//! names, so a process can be handed the key without its environment, or its
+//! parent's, carrying it. Rate limiting (429),
 //! overload (529), transient server errors and dropped connections are retried
 //! with exponential backoff.
 //!
@@ -12,6 +15,7 @@
 
 use crate::{Oracle, Request, Response};
 use anyhow::{anyhow, bail, Context, Result};
+use std::path::PathBuf;
 use std::time::Duration;
 
 /// Default API base URL.
@@ -49,8 +53,10 @@ impl JevClient {
 
     /// A client configured from the environment.
     pub fn from_env() -> Result<Self> {
-        let key = std::env::var("TYPESAFE_API_KEY")
-            .map_err(|_| anyhow!("TYPESAFE_API_KEY is not set"))?;
+        let key = read_key(
+            std::env::var("TYPESAFE_API_KEY").ok(),
+            std::env::var_os("TYPESAFE_API_KEY_FILE").map(PathBuf::from),
+        )?;
         let base =
             std::env::var("TYPESAFE_BASE_URL").unwrap_or_else(|_| DEFAULT_BASE_URL.to_string());
         Self::new(base, key)
@@ -98,6 +104,22 @@ impl Oracle for JevClient {
     }
 }
 
+/// The key: `var` (`TYPESAFE_API_KEY`) when it is set, else the contents of
+/// `file` (`TYPESAFE_API_KEY_FILE`), trimmed.
+fn read_key(var: Option<String>, file: Option<PathBuf>) -> Result<String> {
+    if let Some(key) = var {
+        return Ok(key);
+    }
+    let path = file.ok_or_else(|| anyhow!("TYPESAFE_API_KEY is not set"))?;
+    let key = std::fs::read_to_string(&path)
+        .with_context(|| format!("reading TYPESAFE_API_KEY_FILE {}", path.display()))?;
+    let key = key.trim();
+    if key.is_empty() {
+        bail!("TYPESAFE_API_KEY_FILE {} is empty", path.display());
+    }
+    Ok(key.to_string())
+}
+
 /// Statuses worth retrying: rate limiting, overload and transient server
 /// errors.
 fn retryable(status: u16) -> bool {
@@ -106,7 +128,30 @@ fn retryable(status: u16) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::retryable;
+    use super::{read_key, retryable};
+    use std::path::PathBuf;
+
+    #[test]
+    fn the_key_comes_from_the_variable_then_the_file() {
+        let dir = std::env::temp_dir().join(format!("stretto-jev-key-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("key");
+        std::fs::write(&file, "from-file\n").unwrap();
+        // The variable wins; the file is read only without it, and trimmed.
+        assert_eq!(
+            read_key(Some("from-var".into()), Some(file.clone())).unwrap(),
+            "from-var"
+        );
+        assert_eq!(read_key(None, Some(file.clone())).unwrap(), "from-file");
+        // Neither, a missing file and an empty one are errors that name no key.
+        let none = read_key(None, None).unwrap_err().to_string();
+        assert!(none.contains("TYPESAFE_API_KEY is not set"), "{none}");
+        assert!(read_key(None, Some(PathBuf::from("/nonexistent/stretto-key"))).is_err());
+        std::fs::write(&file, " \n").unwrap();
+        let empty = read_key(None, Some(file)).unwrap_err().to_string();
+        assert!(empty.contains("is empty"), "{empty}");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 
     #[test]
     fn only_transient_statuses_are_retried() {

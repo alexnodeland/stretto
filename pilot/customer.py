@@ -2,9 +2,10 @@
 
 τ²-bench's user-simulator prompt (its guidelines plus the task's scenario),
 answered by GLM through Claude Code on Z.ai's coding endpoint, the route
-Z.ai supports for its coding plan (see `glm-claude.sh`). Each reply is one
-headless Claude Code call with no tools and our own system prompt, so it
-costs a single short model request.
+Z.ai supports for its coding plan (see `glm-claude.sh`), or by a Claude
+model (`cli="claude"`, see `claude-agent.sh`). Each reply is one headless
+Claude Code call with no tools and our own system prompt, so it costs a
+single short model request.
 """
 
 import json
@@ -13,14 +14,19 @@ import subprocess
 import time
 from pathlib import Path
 
-WRAPPER = Path(__file__).resolve().parent / "glm-claude.sh"
+HERE = Path(__file__).resolve().parent
+# The wrapper each customer CLI runs through.
+WRAPPERS = {"glm": HERE / "glm-claude.sh", "claude": HERE / "claude-agent.sh"}
 MODEL = os.environ.get("PILOT_CUSTOMER_MODEL", "glm-5.3")
 
 
-def reply(system_prompt: str, dialogue: list[tuple[str, str]]) -> tuple[str, dict]:
+def reply(
+    system_prompt: str, dialogue: list[tuple[str, str]], cli: str = "glm", model: str | None = None
+) -> tuple[str, dict]:
     """The customer's next message after `dialogue`, a list of
     `(speaker, text)` with speaker `agent` or `customer`, and the usage it
-    cost."""
+    cost. `cli` names the wrapper (`glm` or `claude`) and `model` the model
+    (default: PILOT_CUSTOMER_MODEL, else glm-5.3)."""
     transcript = "\n\n".join(
         f"{'Agent' if speaker == 'agent' else 'You'}: {text}"
         for speaker, text in dialogue
@@ -31,7 +37,7 @@ def reply(system_prompt: str, dialogue: list[tuple[str, str]]) -> tuple[str, dic
         "Write your next message to the agent. Output only the message."
     )
     command = [
-        str(WRAPPER),
+        str(WRAPPERS[cli]),
         "-p",
         "--bare",
         "--tools",
@@ -39,7 +45,7 @@ def reply(system_prompt: str, dialogue: list[tuple[str, str]]) -> tuple[str, dic
         "--strict-mcp-config",
         "--no-session-persistence",
         "--model",
-        MODEL,
+        model or MODEL,
         "--system-prompt",
         system_prompt,
         "--output-format",

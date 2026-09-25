@@ -109,6 +109,9 @@ pub struct ConfirmConfig {
     pub model: String,
     /// Also ask this question; a write then fails unless both answers are yes.
     pub second: Option<Second>,
+    /// Only log the second question's answer: a write fails on the first
+    /// answer alone.
+    pub second_shadow: bool,
     /// A write fails when an answer's probability of a yes is below this.
     pub threshold: f64,
     /// Refuse a write the judge fails; otherwise only log the judgment.
@@ -946,10 +949,17 @@ impl<'a, W: Write> Engine<'a, W> {
         let asked = Instant::now();
         let (proposal, customer) = confirm::exchange(episode);
         let first = confirm::request(&cc.model, &proposal, &customer, call);
-        let mut questions = vec![("p_yes", "key", confirm::QUESTION, first.clone())];
+        // Each question, and whether its answer counts towards the judgment.
+        let mut questions = vec![("p_yes", "key", confirm::QUESTION, first.clone(), true)];
         if let Some(second) = cc.second {
             let request = confirm::second_request(&first, second);
-            questions.push(("p_second", "second_key", second.id(), request));
+            questions.push((
+                "p_second",
+                "second_key",
+                second.id(),
+                request,
+                !cc.second_shadow,
+            ));
         }
         let mut entry = json!({
             "tool": call.name,
@@ -957,12 +967,15 @@ impl<'a, W: Write> Engine<'a, W> {
             "word_list": word_list,
             "enforced": cc.enforce,
         });
+        if cc.second_shadow {
+            entry["second_shadow"] = json!(true);
+        }
         let (mut fails, mut unknown) = (Vec::new(), false);
-        for (field, key_field, id, request) in &questions {
+        for (field, key_field, id, request, counts) in &questions {
             entry[*key_field] = json!(request_key(request));
             if self.confirm_questions >= cc.max_questions {
                 entry["skipped"] = json!("the session's question budget is spent");
-                unknown = true;
+                unknown |= *counts;
                 break;
             }
             self.confirm_questions += 1;
@@ -970,24 +983,24 @@ impl<'a, W: Write> Engine<'a, W> {
                 Ok(response) => match confirm::yes(&response, id) {
                     Some(p) => {
                         entry[*field] = json!(p);
-                        if p < cc.threshold {
+                        if p < cc.threshold && *counts {
                             fails.push(format!("{field} {p:.2}"));
                         }
                     }
                     None => {
                         entry["error"] = json!(format!("no yes/no answer to {id}"));
-                        unknown = true;
+                        unknown |= *counts;
                     }
                 },
                 Err(e) => {
                     eprintln!("stretto-proxy: the confirmation judge could not answer: {e:#}");
                     entry["error"] = json!(format!("{e:#}"));
-                    unknown = true;
+                    unknown |= *counts;
                 }
             }
         }
-        // An answer that fails is enough; a judge that could not answer
-        // refuses nothing.
+        // An answer that counts and fails is enough; a judge that could not
+        // answer refuses nothing.
         entry["fails"] = json!(!fails.is_empty());
         entry["unknown"] = json!(fails.is_empty() && unknown);
         entry["ms"] = json!(asked.elapsed().as_millis() as u64);

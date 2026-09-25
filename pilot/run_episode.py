@@ -27,15 +27,30 @@ The habit arm (`--arm habit`) is the flows arm with the flow deciding on the
 habit's prediction alone (`--decider habit`): it never asks the System-One
 model.
 
+`--confirm-judge log|enforce` adds the confirmation judge to the guards arm:
+the proxy puts each write the guards check for a confirmation to Jev as
+well, and in `enforce` refuses the writes it fails. The proxy runs under the
+agent's process, so the harness hands it Jev's key in a file only it opens
+(`TYPESAFE_API_KEY_FILE`, mode 0600, outside the episode directory, deleted
+when the agent exits); the agent's process gets the file's path, never the
+key. `--label` names the arm's directory, so two judge settings can share
+`--out`.
+
+`--agent-cli claude` runs the agent on a Claude model instead
+(`claude-agent.sh`, with `--model`), and `--customer-cli claude
+--customer-model M` the customer.
+
     python run_episode.py --task-id 90 --out runs/pilot
     python run_episode.py --task-id 90 --out runs/pilot --arm flows \
         --oracle-cache ../.oracle-cache
 """
 
 import argparse
+import atexit
 import json
 import os
 import subprocess
+import tempfile
 import threading
 import time
 import uuid
@@ -52,7 +67,8 @@ from tau2.user.user_simulator import UserSimulator
 from tau2.user.user_simulator_base import OUT_OF_SCOPE, STOP, TRANSFER
 
 HERE = Path(__file__).resolve().parent
-WRAPPER = HERE / "glm-claude.sh"
+# The wrapper each agent CLI runs through: GLM on Z.ai, or a Claude model.
+WRAPPERS = customer.WRAPPERS
 PROXY = HERE.parent / "target" / "release" / "stretto-proxy"
 STRETTO = HERE.parent / "target" / "release" / "stretto"
 TAU2 = Path(os.environ.get("TAU2_DIR", HERE.parent.parent / "sierra-research" / "tau2-bench"))
@@ -116,7 +132,14 @@ def main() -> None:
     parser.add_argument("--task-id", required=True)
     parser.add_argument("--arm", default="baseline", choices=["baseline", "flows", "habit", "guards"])
     parser.add_argument("--out", type=Path, default=Path("runs/pilot"))
-    parser.add_argument("--model", default="glm-5.3")
+    parser.add_argument("--model", default="glm-5.3", help="the agent's model")
+    parser.add_argument(
+        "--agent-cli", default="glm", choices=sorted(WRAPPERS),
+        help="the agent's Claude Code: `glm` (glm-claude.sh, Z.ai) or `claude` (claude-agent.sh)",
+    )
+    parser.add_argument("--customer-cli", default="glm", choices=sorted(WRAPPERS), help="the customer's, likewise")
+    parser.add_argument("--customer-model", help="the customer's model (default: PILOT_CUSTOMER_MODEL, else glm-5.3)")
+    parser.add_argument("--label", help="the arm's directory under --out (default: the arm's name)")
     parser.add_argument("--max-calls", type=int, default=60)
     parser.add_argument("--max-turns", type=int, default=30)
     parser.add_argument("--tau2", type=Path, default=TAU2, help="τ²-bench checkout (flows arm)")
@@ -133,6 +156,20 @@ def main() -> None:
         "train a flow with `stretto learn`",
     )
     parser.add_argument(
+        "--confirm-judge", choices=["log", "enforce"],
+        help="guards arm: put each write the guards check for a confirmation to the System-One model "
+        "too (stretto-proxy --confirm-judge); needs --oracle-cache",
+    )
+    parser.add_argument("--confirm-second", choices=["proposed", "described"], help="and ask the second question")
+    parser.add_argument(
+        "--confirm-second-shadow", action="store_true",
+        help="only log the second question's answer (stretto-proxy --confirm-second-shadow)",
+    )
+    parser.add_argument(
+        "--judge-oracle", default="jev", choices=["jev", "replay", "mock"],
+        help="who answers the judge's questions (mock: plumbing checks only)",
+    )
+    parser.add_argument(
         "--read-only-hints", action="store_true",
         help="mark τ²-bench's read tools readOnlyHint: true (writes false) in tools/list, as a real "
         "server would, so `stretto learn` needs no --manifest (off in the pilots)",
@@ -140,13 +177,23 @@ def main() -> None:
     args = parser.parse_args()
     if args.arm in FLOW_ARMS and not args.oracle_cache:
         parser.error(f"the {args.arm} arm needs --oracle-cache")
+    if args.confirm_judge and (args.arm != "guards" or not args.oracle_cache):
+        parser.error("--confirm-judge needs --arm guards and --oracle-cache")
+    if args.confirm_second and not args.confirm_judge:
+        parser.error("--confirm-second needs --confirm-judge")
+    if args.confirm_second_shadow and not args.confirm_second:
+        parser.error("--confirm-second-shadow needs --confirm-second")
+    if (args.agent_cli == "claude") == args.model.startswith("glm"):
+        parser.error(f"--model {args.model} does not run on --agent-cli {args.agent_cli}")
+    if args.customer_cli == "claude" and not args.customer_model:
+        parser.error("--customer-cli claude needs --customer-model")
     args.flow_decider = FLOW_ARMS.get(args.arm, "arbiter")
 
     task = next(
         t for t in registry.get_tasks_loader(args.domain)() if str(t.id) == args.task_id
     )
     env = registry.get_env_constructor(args.domain)()
-    episode = (args.out / args.arm / f"task-{args.task_id}").resolve()
+    episode = (args.out / (args.label or args.arm) / f"task-{args.task_id}").resolve()
     episode.mkdir(parents=True, exist_ok=True)
     for stale in ("trajectory.jsonl", "events.jsonl", "tools-state.json", "flow.jsonl", "context.jsonl"):
         (episode / stale).unlink(missing_ok=True)
@@ -170,7 +217,10 @@ def main() -> None:
     sim_prompt = UserSimulator(
         llm="unused", instructions=str(task.user_scenario)
     ).system_prompt
-    first, usage = customer.reply(sim_prompt, [("agent", GREETING)])
+    def customer_reply(dialogue: list[tuple[str, str]]) -> tuple[str, dict]:
+        return customer.reply(sim_prompt, dialogue, cli=args.customer_cli, model=args.customer_model)
+
+    first, usage = customer_reply([("agent", GREETING)])
     dialogue = [("agent", GREETING), ("customer", first)]
     customer_usage = [usage]
     record(
@@ -181,6 +231,25 @@ def main() -> None:
     say("user", first)
 
     python = Path(subprocess.check_output(["which", "python"], text=True).strip())
+    judge, server_env = [], {}
+    if args.confirm_judge:
+        judge = [
+            "--confirm-judge", args.confirm_judge,
+            "--oracle", args.judge_oracle, "--oracle-cache", str(args.oracle_cache.resolve()),
+        ] + (["--confirm-second", args.confirm_second] if args.confirm_second else []) + (
+            ["--confirm-second-shadow"] if args.confirm_second_shadow else []
+        )
+    key_file = None
+    if args.confirm_judge and args.judge_oracle == "jev":
+        key = os.environ.get("TYPESAFE_API_KEY")
+        if not key:
+            raise SystemExit("--confirm-judge with --judge-oracle jev needs TYPESAFE_API_KEY")
+        # mkstemp makes the file 0600; it lives outside the episode directory.
+        fd, key_file = tempfile.mkstemp(prefix="stretto-jev-")
+        with os.fdopen(fd, "w") as f:
+            f.write(key)
+        atexit.register(lambda: Path(key_file).unlink(missing_ok=True))
+        server_env["TYPESAFE_API_KEY_FILE"] = key_file
     config = {
         "mcpServers": {
             "tau2": {
@@ -190,7 +259,8 @@ def main() -> None:
                     "--domain", args.domain,
                     "--agent-model", args.model,
                 ] + (["--guards"] if args.arm == "guards" else [])
-                + (["--context", str(context)] if args.arm == "guards" or args.record_context else []) + [
+                + (["--context", str(context)] if args.arm == "guards" or args.record_context else [])
+                + judge + [
                     "--",
                     str(python), str(HERE / "tau2_mcp.py"),
                     "--domain", args.domain,
@@ -199,7 +269,7 @@ def main() -> None:
                     "--max-calls", str(args.max_calls),
                 ] + (["--read-only-hints"] if args.read_only_hints else [])
                 + (["--flow-address", flow_address] if serve else []),
-            }
+            } | ({"env": server_env} if server_env else {})
         }
     }
     (episode / "mcp.json").write_text(json.dumps(config, indent=1))
@@ -208,7 +278,7 @@ def main() -> None:
     )
     agent = subprocess.Popen(
         [
-            str(WRAPPER), "-p", "--bare", "--tools", "",
+            str(WRAPPERS[args.agent_cli]), "-p", "--bare", "--tools", "",
             "--strict-mcp-config", "--mcp-config", str(episode / "mcp.json"),
             "--allowedTools", "mcp__tau2", "--model", args.model,
             "--system-prompt", system,
@@ -264,7 +334,7 @@ def main() -> None:
         if transferred():
             ending = "transfer"
             break
-        reply, usage = customer.reply(sim_prompt, dialogue)
+        reply, usage = customer_reply(dialogue)
         customer_usage.append(usage)
         dialogue.append(("customer", reply))
         record(UserMessage(role="user", content=reply))
@@ -280,6 +350,8 @@ def main() -> None:
         agent.wait(timeout=120)
     except subprocess.TimeoutExpired:
         agent.kill()
+    if key_file:
+        Path(key_file).unlink(missing_ok=True)
     events.close()
     if serve:
         serve.terminate()
@@ -324,11 +396,15 @@ def main() -> None:
             key = message.get("id") or str(len(responses))
             responses[key] = responses.get(key, 0) + calls
         elif event.get("type") == "result":
-            results.append({k: event.get(k) for k in ("num_turns", "usage", "is_error")})
+            results.append({k: event.get(k) for k in ("num_turns", "usage", "is_error", "modelUsage")})
     tools = json.loads((episode / "tools-state.json").read_text())
     # The proxy's refusals, from its session log (guards arm).
     refusals = []
+    judgments = []
     for log in sorted((episode / "log").glob("*.jsonl")):
+        if log.name.endswith(".confirm.jsonl"):
+            judgments += [json.loads(line) for line in log.read_text().splitlines()]
+            continue
         if log.name.endswith(".flow.jsonl"):
             continue
         calls = {}
@@ -348,7 +424,15 @@ def main() -> None:
     result = {
         "task_id": str(task.id),
         "arm": args.arm,
+        "label": args.label or args.arm,
         "model": args.model,
+        "agent_cli": args.agent_cli,
+        "customer_cli": args.customer_cli,
+        "customer_model": args.customer_model or customer.MODEL,
+        "judge": {
+            "mode": args.confirm_judge, "second": args.confirm_second,
+            "second_shadow": args.confirm_second_shadow, "oracle": args.judge_oracle,
+        } if args.confirm_judge else None,
         "reward": reward.reward,
         "termination": termination.value,
         "llm_turns": len(responses),
@@ -362,6 +446,10 @@ def main() -> None:
             for action in ("lookup", "hand_back")
         },
         "refusals": refusals,
+        "judgments": [
+            {k: j.get(k) for k in ("tool", "p_yes", "p_second", "fails", "unknown", "enforced", "error") if k in j}
+            for j in judgments
+        ],
         "customer_turns": len(customer_usage),
         "agent_results": results,
         "customer_usage": customer_usage,

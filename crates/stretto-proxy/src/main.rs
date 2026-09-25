@@ -105,6 +105,10 @@ struct Cli {
         requires = "confirm_judge"
     )]
     confirm_second: Option<SecondArg>,
+    /// Ask the second question but only log its answer (shadow mode): a
+    /// write then fails on the first answer alone.
+    #[arg(help_heading = "Writes", long, requires = "confirm_second")]
+    confirm_second_shadow: bool,
     /// A write fails when an answer's probability of a yes is below this.
     #[arg(
         help_heading = "Writes",
@@ -327,6 +331,7 @@ fn active(cli: &Cli) -> Result<Active> {
                     SecondArg::Proposed => Second::Proposed,
                     SecondArg::Described => Second::Described,
                 }),
+                second_shadow: cli.confirm_second_shadow,
                 threshold: cli.confirm_threshold,
                 enforce: matches!(mode, JudgeArg::Enforce),
                 max_questions: cli.confirm_questions,

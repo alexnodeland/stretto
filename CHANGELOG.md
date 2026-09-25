@@ -27,7 +27,8 @@ Everything so far: the first design of [RFC-001](docs/rfc/001-habit-compiler.md)
 ### `stretto-proxy`
 
 - A stdio MCP proxy that forwards byte for byte and records sessions (`stretto_mcp_log: 2`). `--upstream URL` wraps a Streamable HTTP server instead of a command, with headers from the environment that are never logged.
-- Active mode: `--flow` runs a flow behind the agent's calls and appends its lookups to the result. `--guards` refuses writes a policy check fails. `--confirm-judge log|enforce` adds the confirmation judge. `--commit` adds a tool for confirmed writes in one call. `--context` reads the conversation the host writes.
+- Active mode: `--flow` runs a flow behind the agent's calls and appends its lookups to the result. `--guards` refuses writes a policy check fails. `--confirm-judge log|enforce` adds the confirmation judge, and `--confirm-second-shadow` asks its second question but only logs the answer. `--commit` adds a tool for confirmed writes in one call. `--context` reads the conversation the host writes.
+- Jev's key can come from a file: `TYPESAFE_API_KEY_FILE` names it when `TYPESAFE_API_KEY` is not set.
 - `stretto-mcp-demo`, a tiny server for trying it.
 - `--retain-days N` deletes, at start, the logs and cached answers older than N days.
 - Each run of a flow after one of the agent's calls is a fugue program ([`program.rs`](crates/stretto-report/src/program.rs), RFC-001 §3.2):
@@ -44,6 +45,7 @@ Everything so far: the first design of [RFC-001](docs/rfc/001-habit-compiler.md)
 
 ### Live runs
 
+- The pilot harness runs a Claude model as the agent or the customer (`run_episode.py --agent-cli claude`, `--customer-cli claude --customer-model`, through `pilot/claude-agent.sh`), and Z.ai credits count the GLM side only. The guards arm takes the confirmation judge (`--confirm-judge`, `--confirm-second`, `--confirm-second-shadow`), with Jev's key handed to the proxy in a file, and `--label` names an arm's directory.
 - `pilot/run_paired.py` runs every test task of a domain in both arms, reusing a pilot's pairs, under a Z.ai credit budget that it checks against a ledger before each episode. `pilot/analyze_paired.py` reports on the result: paired pass rates with a bootstrap interval and McNemar's test, turns and tokens saved, detours and their token cost, and a pooled estimate across domains ([the paired run](docs/results/paired-2026-09-25.md)). Its `arms` command compares any arms run on the same tasks ([the cold start, live](docs/results/cold-start-live-2026-09-25.md)).
 
 ### Documentation

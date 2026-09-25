@@ -79,7 +79,14 @@ def episode_summary(directory: Path) -> dict:
     refusals = r.get("refusals", [])
     sim = json.loads((directory / "simulation.json").read_text())
     agent = [a["usage"] for a in r["agent_results"] if a.get("usage")]
-    standard = sum(map(credits, agent)) + sum(map(credits, r["customer_usage"]))
+    # Z.ai bills the GLM side of an episode only: a Claude agent or customer
+    # (`claude-agent.sh`) is not on its plan, and is counted in tokens instead.
+    sides = [(r.get("agent_cli", "glm"), agent), (r.get("customer_cli", "glm"), r["customer_usage"])]
+    standard = sum(credits(u) for cli, usage in sides if cli == "glm" for u in usage)
+    claude_tokens = sum(
+        u.get(k, 0) for cli, usage in sides if cli == "claude" for u in usage
+        for k in ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens", "output_tokens")
+    )
     cheap = off_peak(sim["start_time"])
     return {
         "reward": r["reward"],
@@ -98,6 +105,7 @@ def episode_summary(directory: Path) -> dict:
         "customer_turns": r["customer_turns"],
         "credits_standard": round(standard, 2),
         "credits_billed": round(standard / 2 if cheap else standard, 2),
+        "claude_tokens": claude_tokens,
         "duration_s": r["duration_s"],
     }
 

@@ -881,6 +881,117 @@ fn the_confirmation_judge_refuses_writes_the_customer_did_not_confirm() {
     fs::remove_dir_all(&dir).unwrap();
 }
 
+#[test]
+fn a_shadowed_second_question_is_logged_but_refuses_nothing() {
+    use stretto_oracle::{Answer, ReplayCache, Response};
+    use stretto_report::confirm::{self, Second};
+
+    let dir = std::env::temp_dir().join(format!("stretto-judge2-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    let cache = dir.join("cache");
+    let offer = "I can cancel order #W7a because you no longer need it. Shall I go ahead?";
+    let yes = "Yes, please go ahead.";
+    // The customer confirmed (0.92), but the judge doubts the agent had
+    // proposed this exact change (0.10).
+    let call = ToolCall {
+        id: "pending".to_string(),
+        name: "cancel_pending_order".to_string(),
+        arguments: json!({"order_id": "#W7a", "reason": "no longer needed"}),
+    };
+    let first = confirm::request("jev-latest", offer, yes, &call);
+    let second = confirm::second_request(&first, Second::Proposed);
+    for (request, id, p) in [
+        (&first, confirm::QUESTION, 0.92),
+        (&second, Second::Proposed.id(), 0.10),
+    ] {
+        let response = Response {
+            model: "jev-test".to_string(),
+            answers: BTreeMap::from([(id.to_string(), Answer::Noul { noul: p })]),
+            usage: Default::default(),
+        };
+        ReplayCache::<MockOracle>::new(&cache, None)
+            .insert(&stretto_oracle::request_key(request), &response)
+            .unwrap();
+    }
+
+    for shadow in [false, true] {
+        let logs = dir.join(format!("logs-{shadow}"));
+        let context = dir.join(format!("context-{shadow}.jsonl"));
+        let mut args = vec![
+            "--record",
+            logs.to_str().unwrap(),
+            "--domain",
+            "retail",
+            "--guards",
+            "--context",
+            context.to_str().unwrap(),
+            "--confirm-judge",
+            "enforce",
+            "--confirm-second",
+            "proposed",
+            "--oracle",
+            "replay",
+            "--oracle-cache",
+            cache.to_str().unwrap(),
+        ];
+        if shadow {
+            args.push("--confirm-second-shadow");
+        }
+        args.extend(["--", DEMO, "--world", "retail"]);
+        let mut host = Host::start_without(&args, &["TYPESAFE_DEFAULT_MODEL"]);
+        open_session(&mut host);
+        say_to(
+            &context,
+            "Hi, I'm c7@example.com and I want to cancel an order.",
+        );
+        host.call(
+            3,
+            "find_user_id_by_email",
+            json!({"email": "c7@example.com"}),
+        );
+        host.call(4, "get_order_details", json!({"order_id": "#W7a"}));
+        agent_says(&context, offer);
+        say_to(&context, yes);
+        let result = host.call(
+            5,
+            "cancel_pending_order",
+            json!({"order_id": "#W7a", "reason": "no longer needed"}),
+        );
+        // Counted, the second answer refuses the write; shadowed, it does not.
+        assert_eq!(result["isError"], !shadow, "{result}");
+        if !shadow {
+            let why = &texts(&result)[0];
+            assert!(why.contains("confirmation judge: p_second 0.10"), "{why}");
+        }
+        assert_eq!(host.finish(), 0);
+
+        let judged: Vec<Value> = fs::read_dir(&logs)
+            .unwrap()
+            .map(|e| e.unwrap().path())
+            .filter(|p| p.to_string_lossy().ends_with(".confirm.jsonl"))
+            .flat_map(|p| {
+                fs::read_to_string(p)
+                    .unwrap()
+                    .lines()
+                    .map(|l| serde_json::from_str(l).unwrap())
+                    .collect::<Vec<Value>>()
+            })
+            .collect();
+        assert_eq!(judged.len(), 1, "{judged:?}");
+        // Both answers are logged either way.
+        assert_eq!(judged[0]["p_yes"], 0.92);
+        assert_eq!(judged[0]["p_second"], 0.1);
+        assert_eq!(judged[0]["fails"], !shadow);
+        assert_eq!(judged[0]["unknown"], false);
+        assert_eq!(
+            judged[0]["second_shadow"].as_bool().unwrap_or(false),
+            shadow
+        );
+    }
+    fs::remove_dir_all(&dir).unwrap();
+}
+
 /// Shadow mode: the flow decides and logs, the agent gets the server's
 /// results unchanged, and `stretto promote` scores the logged session.
 #[test]
