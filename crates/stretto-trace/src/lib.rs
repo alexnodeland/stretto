@@ -7,6 +7,7 @@
 //! and the [`mcp`] module converts logs recorded by `stretto-proxy`.
 
 pub mod mcp;
+pub mod redact;
 pub mod tau2;
 
 use serde::{Deserialize, Serialize};

@@ -29,10 +29,17 @@ Everything so far: the first design of [RFC-001](docs/rfc/001-habit-compiler.md)
 - A stdio MCP proxy that forwards byte for byte and records sessions (`stretto_mcp_log: 2`). `--upstream URL` wraps a Streamable HTTP server instead of a command, with headers from the environment that are never logged.
 - Active mode: `--flow` runs a flow behind the agent's calls and appends its lookups to the result. `--guards` refuses writes a policy check fails. `--confirm-judge log|enforce` adds the confirmation judge. `--commit` adds a tool for confirmed writes in one call. `--context` reads the conversation the host writes.
 - `stretto-mcp-demo`, a tiny server for trying it.
+- `--retain-days N` deletes, at start, the logs and cached answers older than N days.
+
+### Privacy
+
+- `stretto redact` writes a pseudonymized copy of recorded sessions: a value fewer than `--keep-shared` sessions contain becomes a salted hash, the same wherever it appears, and `--hash-field` hashes named fields however many sessions share them. A flow learned from the copy matches one learned from the originals, on synthetic sessions, 40 real ones and 5 with their conversation ([privacy](docs/privacy.md)).
+- `stretto learn --sessions` and `redact` skip the confirmation logs the proxy writes beside the sessions; they failed on them before.
 
 ### Documentation
 
 - [The walkthrough](docs/walkthrough.md) runs the whole loop on the official MCP filesystem server, and CI runs it.
 - [Reviewing flows](docs/review.md), with example diffs of real flows that a test keeps current.
+- [Privacy](docs/privacy.md): what each file holds, what is sent to the System-One model, retention and redaction.
 - [The file formats](docs/formats.md), [the CLI reference](docs/cli.md) (generated from the code, kept current by CI), [the design](docs/design.md) and [the roadmap](docs/roadmap.md).
 - The working paper, published at [alexnodeland.github.io/stretto](https://alexnodeland.github.io/stretto/).

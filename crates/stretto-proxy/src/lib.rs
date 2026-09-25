@@ -301,6 +301,43 @@ where
     status
 }
 
+/// Delete the `.jsonl` and `.json` files under `dir` (session logs, flow and
+/// confirmation logs, cached answers) last modified more than `days` days
+/// ago, and return how many. A missing directory holds nothing to delete.
+pub fn prune(dir: &std::path::Path, days: u64) -> Result<usize> {
+    let cutoff = SystemTime::now()
+        .checked_sub(std::time::Duration::from_secs(days.saturating_mul(86_400)))
+        .unwrap_or(UNIX_EPOCH);
+    let mut deleted = 0;
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let entries = match std::fs::read_dir(&dir) {
+            Ok(entries) => entries,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
+            Err(e) => return Err(e).with_context(|| format!("listing {}", dir.display())),
+        };
+        for entry in entries {
+            let entry = entry?;
+            let kind = entry.file_type()?;
+            let path = entry.path();
+            if kind.is_dir() {
+                stack.push(path);
+            } else if kind.is_file()
+                && matches!(
+                    path.extension().and_then(|e| e.to_str()),
+                    Some("jsonl" | "json")
+                )
+                && entry.metadata()?.modified()? < cutoff
+            {
+                std::fs::remove_file(&path)
+                    .with_context(|| format!("deleting {}", path.display()))?;
+                deleted += 1;
+            }
+        }
+    }
+    Ok(deleted)
+}
+
 /// `path` with a leading `~` replaced by the home directory, as a shell would
 /// do. MCP hosts start servers without a shell, so without this,
 /// `--record ~/.stretto/logs` would create a directory named `~`.
@@ -389,6 +426,34 @@ fn exit_code(status: ExitStatus) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn prunes_what_is_older_than_the_retention() {
+        let dir = std::env::temp_dir().join(format!("stretto-prune-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("ab")).unwrap();
+        let old = SystemTime::now() - std::time::Duration::from_secs(10 * 86_400);
+        for (name, age) in [
+            ("s1.jsonl", Some(old)),
+            ("s1.flow.jsonl", Some(old)),
+            ("ab/key.json", Some(old)),
+            ("s2.jsonl", None),
+            ("notes.txt", Some(old)),
+        ] {
+            let file = std::fs::File::create(dir.join(name)).unwrap();
+            if let Some(t) = age {
+                file.set_modified(t).unwrap();
+            }
+        }
+        assert_eq!(prune(&dir, 7).unwrap(), 3);
+        let left: Vec<bool> = ["s2.jsonl", "notes.txt", "s1.jsonl", "ab/key.json"]
+            .iter()
+            .map(|n| dir.join(n).exists())
+            .collect();
+        assert_eq!(left, [true, true, false, false]);
+        assert_eq!(prune(&dir.join("missing"), 7).unwrap(), 0);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 
     #[test]
     fn expands_a_leading_tilde() {

@@ -12,7 +12,9 @@ use std::sync::mpsc::{self, Receiver};
 use std::thread;
 use std::time::Duration;
 use stretto_oracle::MockOracle;
-use stretto_report::phase0::{compile_flow_from_episodes, Config};
+use stretto_report::phase0::{
+    compile_flow_from_episodes, compile_habit_flow_from_episodes, Config,
+};
 use stretto_report::shadow::{OracleKind, QuestionSet, ShadowConfig};
 use stretto_trace::mcp::{episode, read_log};
 use stretto_trace::{Episode, Event, ToolCall, ToolKind, ToolManifest};
@@ -526,6 +528,43 @@ fn sessions_recorded_through_the_proxy_teach_the_flow_it_serves() {
     assert!(episodes
         .iter()
         .all(|ep| matches!(&ep.events[0], Event::User { text } if text.starts_with("Hi, I'm"))));
+
+    // Redacted, the sessions teach the same flow. Every value only one
+    // session holds (an email, a user id, an order) becomes a salted hash,
+    // the same wherever it appears, so the sites and bindings do not change.
+    let redacted = stretto_trace::redact::redact(&sessions, "a secret salt", 3, &[]);
+    let all = |logs: &[stretto_trace::mcp::McpLog]| -> String {
+        logs.iter().map(|l| l.to_jsonl()).collect()
+    };
+    let text = all(&redacted);
+    for private in ["c7@example.com", "user_7", "#W7a", "credit_card_7"] {
+        assert!(!text.contains(private), "{private} survived redaction");
+    }
+    for shared in ["no longer needed", "pending", "get_user_details"] {
+        assert!(text.contains(shared), "{shared} was redacted");
+    }
+    let learn = |logs: &[stretto_trace::mcp::McpLog]| {
+        let episodes: Vec<Episode> = logs
+            .iter()
+            .map(|log| {
+                let mut ep = episode(log);
+                ep.reward = 1.0;
+                ep
+            })
+            .collect();
+        let mut config = Config::new(PathBuf::new());
+        config.alpha_samples = 0;
+        let manifest = stretto_trace::mcp::manifest_of(logs, "retail");
+        compile_habit_flow_from_episodes(&config, &episodes, &manifest).unwrap()
+    };
+    let (raw, pseudonymous) = (learn(&sessions), learn(&redacted));
+    assert_eq!(
+        stretto_report::review::show(&raw, 0.3),
+        stretto_report::review::show(&pseudonymous, 0.3)
+    );
+    assert!(stretto_report::review::diff(&raw, &pseudonymous, 0.0, 0.3)
+        .needs_review
+        .is_empty());
     let mut config = Config::new(PathBuf::new());
     config.alpha_samples = 0;
     let mut sc = ShadowConfig::new(OracleKind::Mock);

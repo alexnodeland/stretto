@@ -114,6 +114,18 @@ pub struct McpLog {
 }
 
 impl McpLog {
+    /// The log as `stretto-proxy` writes it: the header, then one entry per
+    /// line.
+    pub fn to_jsonl(&self) -> String {
+        let mut out = serde_json::to_string(&self.header).unwrap_or_default();
+        out.push('\n');
+        for entry in &self.entries {
+            out.push_str(&serde_json::to_string(entry).unwrap_or_default());
+            out.push('\n');
+        }
+        out
+    }
+
     /// Every JSON-RPC message with its sender, in log order. Batches are
     /// flattened and raw lines skipped.
     pub fn messages(&self) -> impl Iterator<Item = (Peer, &Value)> {
@@ -135,14 +147,19 @@ pub fn read_log(path: &Path) -> Result<McpLog> {
     parse_log(&text).with_context(|| format!("parsing {}", path.display()))
 }
 
-/// Every session log in `dir` (`*.jsonl`, but not the proxy's flow logs,
-/// `*.flow.jsonl`), in session order.
+/// Whether `path` is a session log: `*.jsonl`, but not one of the logs the
+/// proxy writes beside it (`*.flow.jsonl`, `*.confirm.jsonl`).
+pub fn is_session_log(path: &Path) -> bool {
+    let name = path.to_string_lossy();
+    name.ends_with(".jsonl") && !name.ends_with(".flow.jsonl") && !name.ends_with(".confirm.jsonl")
+}
+
+/// Every session log in `dir` (see [`is_session_log`]), in session order.
 pub fn read_sessions(dir: &Path) -> Result<Vec<McpLog>> {
     let mut logs = Vec::new();
     for entry in std::fs::read_dir(dir).with_context(|| format!("listing {}", dir.display()))? {
         let path = entry?.path();
-        let name = path.to_string_lossy();
-        if name.ends_with(".jsonl") && !name.ends_with(".flow.jsonl") {
+        if is_session_log(&path) {
             logs.push(read_log(&path)?);
         }
     }
@@ -601,6 +618,15 @@ mod tests {
         assert_eq!(log.entries[1].from, Server);
         assert_eq!(log.entries[1].raw.as_deref(), Some("server starting"));
         assert_eq!(log.messages().count(), 1);
+    }
+
+    #[test]
+    fn tells_session_logs_from_the_logs_beside_them() {
+        let kinds: Vec<bool> = ["s.jsonl", "s.flow.jsonl", "s.confirm.jsonl", "s.json"]
+            .iter()
+            .map(|n| is_session_log(Path::new(n)))
+            .collect();
+        assert_eq!(kinds, [true, false, false, false]);
     }
 
     #[test]

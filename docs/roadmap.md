@@ -47,7 +47,7 @@ These cost Jev dollars, CPU time or people's time, and no LLM runs.
 | [#21](https://github.com/alexnodeland/stretto/issues/21) | Streamable HTTP for the proxy | Done: `stretto-proxy --upstream URL` |
 | [#22](https://github.com/alexnodeland/stretto/issues/22) | Learn from several servers' logs of one session | One proxy wraps one server |
 | [#23](https://github.com/alexnodeland/stretto/issues/23) | Learn from OpenTelemetry GenAI spans | RFC-001 §3.9's `stretto-trace` |
-| [#24](https://github.com/alexnodeland/stretto/issues/24) | Privacy for recorded sessions | RFC-001 question 5 |
+| [#24](https://github.com/alexnodeland/stretto/issues/24) | Privacy for recorded sessions | Done: [an inventory](privacy.md), `stretto redact` and `stretto-proxy --retain-days`. Leaving fields out of the questions' state is still open |
 | [#25](https://github.com/alexnodeland/stretto/issues/25) | Flow search with fugue-evo | RFC-001's Phase 3 |
 
 ## Fixes and tooling

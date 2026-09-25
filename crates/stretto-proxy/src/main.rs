@@ -3,7 +3,7 @@ use clap::{Parser, ValueEnum};
 use std::ffi::OsString;
 use std::path::PathBuf;
 use stretto_proxy::{
-    expand_home, run, run_active, Active, Config, ConfirmConfig, FlowConfig, Upstream,
+    expand_home, prune, run, run_active, Active, Config, ConfirmConfig, FlowConfig, Upstream,
     FAILURE_EXIT_CODE,
 };
 use stretto_report::confirm::Second;
@@ -35,6 +35,11 @@ struct Cli {
     /// Model that drives the agent, for the log header.
     #[arg(help_heading = "Recording", long, value_name = "MODEL")]
     agent_model: Option<String>,
+    /// On start, delete what is older than this many days: the session
+    /// logs in --record with the flow and confirmation logs beside them,
+    /// and the answers in --oracle-cache.
+    #[arg(help_heading = "Recording", long, value_name = "DAYS")]
+    retain_days: Option<u64>,
     /// Run this flow (from `stretto compile` or `stretto learn`) after each
     /// of the agent's calls, and append its lookups to the result.
     #[arg(help_heading = "Flows", long, value_name = "FILE")]
@@ -189,6 +194,9 @@ enum SecondArg {
 
 fn main() {
     let cli = Cli::parse();
+    if let Some(days) = cli.retain_days {
+        retain(&cli, days);
+    }
     let result = active(&cli).and_then(|active| {
         let config = Config {
             command: cli.command.clone(),
@@ -208,6 +216,25 @@ fn main() {
         Err(e) => {
             eprintln!("stretto-proxy: {e:#}");
             std::process::exit(FAILURE_EXIT_CODE);
+        }
+    }
+}
+
+/// Delete what is older than `days` in the log directory and the answer
+/// cache, before the session starts.
+fn retain(cli: &Cli, days: u64) {
+    let dirs = [
+        cli.record.clone().map(expand_home),
+        Some(expand_home(cli.oracle_cache.clone())),
+    ];
+    for dir in dirs.into_iter().flatten() {
+        match prune(&dir, days) {
+            Ok(0) => {}
+            Ok(n) => eprintln!(
+                "stretto-proxy: deleted {n} files older than {days} days from {}",
+                dir.display()
+            ),
+            Err(e) => eprintln!("stretto-proxy: pruning {}: {e:#}", dir.display()),
         }
     }
 }

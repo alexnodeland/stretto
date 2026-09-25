@@ -158,6 +158,8 @@ Each `tools/call` becomes a `ToolCall`, and each response to one becomes a `Tool
 
 ## Privacy
 
-Logs hold every tool call and result verbatim: personal data, documents, whatever the tools read or return. Treat them like the data the tools touch, and never commit them.
+Logs hold every tool call and result verbatim: personal data, documents, whatever the tools read or return. Treat them like the data the tools touch, and never commit them. [docs/privacy.md](../../docs/privacy.md) lists what each file holds and what is sent to the System-One model.
+
+`--retain-days N` deletes, when the proxy starts, what is older than N days in `--record` and `--oracle-cache`. `stretto redact` writes a pseudonymized copy of sessions to share, from which `stretto learn` learns the same flow.
 
 The header's `server_command` is the command after `--`, with the values of credential-looking arguments replaced by `<redacted>` (`--api-key X`, `--token=X`, `GITHUB_TOKEN=X`, `Authorization: Bearer X`). That is best effort, so pass credentials to servers through `env`: the proxy never records its environment.

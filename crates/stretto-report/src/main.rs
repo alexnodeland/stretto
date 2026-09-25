@@ -553,6 +553,33 @@ enum Command {
         #[arg(help_heading = "Output", value_name = "FILE", long)]
         report: Option<PathBuf>,
     },
+    /// Pseudonymize recorded sessions. A value that fewer than
+    /// --keep-shared sessions contain becomes a salted hash, the same
+    /// wherever it appears; a value more sessions share is kept, unless its
+    /// field is named with --hash-field. A flow learned from the redacted
+    /// logs matches one learned from the originals (docs/privacy.md).
+    Redact {
+        /// Sessions recorded by stretto-proxy (a directory of `*.jsonl`).
+        #[arg(value_name = "DIR", long)]
+        sessions: PathBuf,
+        /// Write the redacted logs here, one per session.
+        #[arg(value_name = "DIR", long)]
+        out: PathBuf,
+        /// The environment variable holding the salt. Keep the salt secret,
+        /// and the same for logs whose hashes should match.
+        #[arg(value_name = "VAR", long, default_value = "STRETTO_REDACT_SALT")]
+        salt_env: String,
+        /// Keep a value that at least this many sessions share.
+        #[arg(value_name = "N", long, default_value_t = 3)]
+        keep_shared: usize,
+        /// Hash every value of this field (a JSON key, at any depth of the
+        /// arguments and results), and each word of it, wherever it
+        /// appears, however many sessions share it: for the ids and names
+        /// that a returning customer shares among their own sessions.
+        /// Repeatable, or comma-separated.
+        #[arg(value_name = "NAME", long = "hash-field", value_delimiter = ',')]
+        hash_fields: Vec<String>,
+    },
     /// Check that Jev is reachable with TYPESAFE_API_KEY: ask one small
     /// question (uncached) and print the answer, model version and latency.
     JevCheck,
@@ -1398,6 +1425,63 @@ fn main() -> Result<()> {
                     Ok(())
                 }
             }
+        }
+        Command::Redact {
+            sessions,
+            out,
+            salt_env,
+            keep_shared,
+            hash_fields,
+        } => {
+            let salt = std::env::var(&salt_env).unwrap_or_default();
+            if salt.is_empty() {
+                anyhow::bail!(
+                    "set {salt_env} to a secret salt: without one, anyone could hash guesses and match them"
+                );
+            }
+            if out.canonicalize().ok() == Some(sessions.canonicalize()?) {
+                anyhow::bail!(
+                    "--out must be another directory: redact leaves the originals as they are"
+                );
+            }
+            let logs = stretto_trace::mcp::read_sessions(&sessions)?;
+            if logs.is_empty() {
+                anyhow::bail!("no session logs in {}", sessions.display());
+            }
+            let redacted = stretto_trace::redact::redact(&logs, &salt, keep_shared, &hash_fields);
+            std::fs::create_dir_all(&out).with_context(|| format!("creating {}", out.display()))?;
+            let mut names = std::collections::HashSet::new();
+            for log in &redacted {
+                // The session id names the file, so it must not name a path.
+                let name: String = log
+                    .header
+                    .session
+                    .chars()
+                    .map(|c| {
+                        if c.is_ascii_alphanumeric() || "_-".contains(c) {
+                            c
+                        } else {
+                            '_'
+                        }
+                    })
+                    .collect();
+                if !names.insert(name.clone()) {
+                    anyhow::bail!(
+                        "two logs in {} share the session id {name}",
+                        sessions.display()
+                    );
+                }
+                write(
+                    &out.join(format!("{name}.jsonl")),
+                    log.to_jsonl().as_bytes(),
+                )?;
+            }
+            eprintln!(
+                "stretto: redacted {} sessions into {}; values fewer than {keep_shared} of them share are hashed",
+                redacted.len(),
+                out.display()
+            );
+            Ok(())
         }
         Command::JevCheck => jev_check(),
         Command::ExportArbiter { flow, out } => {

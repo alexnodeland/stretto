@@ -988,7 +988,7 @@ What this changes:
 2. ~~**Models and budget.**~~ Resolved: transfer first, run by GLM and MiniMax, at minimum cost (§3.11).
 3. ~~**The repo.**~~ Resolved: [stretto](https://github.com/alexnodeland/stretto), public, MIT.
 4. **How are compiled flows reviewed?** Probably as code, with the flow IR diffed in pull requests. Partly answered (§3.15): the IR is versioned JSON that records its provenance, and `stretto audit` scores a flow on new sessions before it is trusted. *Amended:* answered. `stretto flow-show` renders a flow as a reviewer reads it, and `stretto flow-diff` lists what changed between two flows; it exits with 1 when the new flow may call a tool, make a lookup, bind an argument from a source or ask a model it did not before ([reviewing flows](../review.md)).
-5. **Privacy for non-benchmark workloads.** Traces contain user data. The store should keep hashes and state slices, with retention limits.
+5. **Privacy for non-benchmark workloads.** Traces contain user data. The store should keep hashes and state slices, with retention limits. *Amended:* partly answered. [docs/privacy.md](../privacy.md) lists what each file holds and what a question sends. `stretto redact` keeps salted hashes of every value that few sessions contain, and of the fields named as identifying, and a flow learned from them matches one learned from the originals. `stretto-proxy --retain-days` limits retention. Leaving fields out of the questions' state slices is open.
 6. **What should a System-One decision be scored against?**
    - Agreement with the agent undercounts valid alternatives, such as looking up two orders in either order.
    - Replayed outcomes can't settle this, so only live pass^1 can.

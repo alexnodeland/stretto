@@ -24,6 +24,7 @@ Compile an agent's recorded behavior into flows, serve them, and measure them ag
 | [`flow-show`](#stretto-flow-show) | Show a flow as a reviewer reads it (Markdown). |
 | [`flow-diff`](#stretto-flow-diff) | What changed from one flow to another, as a change list for a pull request (Markdown). |
 | [`promote`](#stretto-promote) | Promote a flow's sites (RFC-001 §3.7). |
+| [`redact`](#stretto-redact) | Pseudonymize recorded sessions. |
 | [`jev-check`](#stretto-jev-check) | Check that Jev is reachable with TYPESAFE_API_KEY. |
 | [`export-arbiter`](#stretto-export-arbiter) | Write a flow's arbiter to its own file, to ship. |
 | [`fit-arbiter`](#stretto-fit-arbiter) | Fit one arbiter, to ship, on the held-out decisions of one or more compiles. |
@@ -414,6 +415,22 @@ Usage: stretto promote [OPTIONS] --flow <FILE> --out <FILE>
 - `--out <FILE>` (required): Write the promoted flow here.
 - `--report <FILE>`: Write each site's record here, as Markdown (default: stdout).
 
+### `stretto redact`
+
+Pseudonymize recorded sessions. A value that fewer than --keep-shared sessions contain becomes a salted hash, the same wherever it appears; a value more sessions share is kept, unless its field is named with --hash-field. A flow learned from the redacted logs matches one learned from the originals (docs/privacy.md).
+
+```text
+Usage: stretto redact [OPTIONS] --sessions <DIR> --out <DIR>
+```
+
+**Options**
+
+- `--sessions <DIR>` (required): Sessions recorded by stretto-proxy (a directory of `*.jsonl`).
+- `--out <DIR>` (required): Write the redacted logs here, one per session.
+- `--salt-env <VAR>` (default `STRETTO_REDACT_SALT`): The environment variable holding the salt. Keep the salt secret, and the same for logs whose hashes should match.
+- `--keep-shared <N>` (default `3`): Keep a value that at least this many sessions share.
+- `--hash-field <NAME>` (repeatable): Hash every value of this field (a JSON key, at any depth of the arguments and results), and each word of it, wherever it appears, however many sessions share it: for the ids and names that a returning customer shares among their own sessions. Repeatable, or comma-separated.
+
 ### `stretto jev-check`
 
 Check that Jev is reachable with TYPESAFE_API_KEY: ask one small question (uncached) and print the answer, model version and latency.
@@ -509,6 +526,7 @@ Usage: stretto-proxy [OPTIONS] [-- <SERVER_COMMAND>...]
 - `--record <DIR>`: Write a session log (JSONL) into this directory, created if missing. A leading `~` is expanded, since hosts start servers without a shell.
 - `--domain <NAME>`: Domain for the log header, e.g. `retail`; --guards uses its rules.
 - `--agent-model <MODEL>`: Model that drives the agent, for the log header.
+- `--retain-days <DAYS>`: On start, delete what is older than this many days: the session logs in --record with the flow and confirmation logs beside them, and the answers in --oracle-cache.
 
 **Flows**
 
