@@ -27,4 +27,4 @@ Does refusing policy-breaking writes raise the pass rate? The guards arm (RFC-00
 
 Eight pairs cannot bound a pass-rate effect. They answer the pilot's question for this agent: on these tasks, GLM-5.3 gives the guards nothing to catch.
 
-`pilot-guards-2026-09-24.json` holds the per-episode numbers. The episodes themselves are not published.
+`pilot-guards-2026-09-24.json` holds the per-episode numbers. The episodes themselves, with the conversation each proxy was given, are in [pilot-guards-2026-09-24-episodes.tar.gz](pilot-guards-2026-09-24-episodes.tar.gz); see [the episodes page](episodes-2026-09-24.md).

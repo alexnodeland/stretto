@@ -148,13 +148,13 @@ python check_flow.py --domain retail --flow ../flows/cold-retail-5.flow.json --t
 
 with `--flow-decider habit` for the habit-only flows. Every question the replays ask is in the bundles, so none needs a key.
 
-The live flow itself is published: [cold-start-2026-09-24-live.flow.json](cold-start-2026-09-24-live.flow.json). It holds the habit's counts, the sites, the bindings and the arbiter, and no transcript. `pilot/check_flow.py --flow` replays it, and `pilot/run_episode.py --arm flows --flow` serves it. Learning it again needs the five sessions' proxy logs. Like the pilots' transcripts, they are not published. With them, the command was:
+The live flow itself is published: [cold-start-2026-09-24-live.flow.json](cold-start-2026-09-24-live.flow.json). It holds the habit's counts, the sites, the bindings and the arbiter, and no transcript. `pilot/check_flow.py --flow` replays it, and `pilot/run_episode.py --arm flows --flow` serves it. Learning it again needs the five sessions' proxy logs. They are published with the three live episodes in [cold-start-2026-09-24-episodes.tar.gz](cold-start-2026-09-24-episodes.tar.gz), with the manifest and rewards files below; [the episodes page](episodes-2026-09-24.md) shows the steps. The command was:
 
 ```sh
 stretto learn --sessions sessions/ --domain retail --manifest retail-manifest.json --rewards rewards.json \
   --predicates data/predicates-v2.json --oracle jev --out cold-live.flow.json
 ```
 
-`pilot/run_episode.py --record-context` records such sessions. `tau2_mcp.py` does not mark its tools read-only, so the manifest comes from τ²-bench's `tools.py`, as any compiled flow's does.
+`pilot/run_episode.py --record-context` records such sessions. `tau2_mcp.py` does not mark its tools read-only, so the manifest comes from τ²-bench's `tools.py`, as any compiled flow's does. Run from the published sessions with `--oracle replay`, it gives back the published flow, identical in every field but its compile time.
 
 Every answer these read is in [this round's answer bundle](answers-2026-09-24-cold-manifest-match.md). Per-episode rows for every replay, and the live pairs, are in [cold-start-2026-09-24.json](cold-start-2026-09-24.json).

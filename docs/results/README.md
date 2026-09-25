@@ -35,6 +35,6 @@ The [working paper](https://alexnodeland.github.io/stretto/) puts them together,
 | [Shipped arbiters across domains](arbiter-transfer-2026-09-24.md) | An arbiter fitted on one domain's published decisions, served with a habit from the other, does what that domain's own arbiter does, within about a point of turns saved |
 | [Answers: shipped arbiters](answers-2026-09-24-arbiter-transfer.md) | The answer bundle for the page above |
 
-## Not published yet
+## Recorded episodes
 
-The pilots' recorded episodes (conversations, simulation files and proxy logs) are not in the repository yet; see [#29](https://github.com/alexnodeland/stretto/issues/29).
+[Every live episode behind the pilot pages](episodes-2026-09-24.md), 76 in all, is published as one archive per pilot: the conversations, τ²-bench's simulation files, the proxy's session logs and the flows' decisions. `pilot/rescore.py` reproduces every recorded reward from them.

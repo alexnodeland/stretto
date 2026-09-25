@@ -41,6 +41,8 @@ The episode directory (`runs/pilot/baseline/task-90/`) holds everything:
 - `result.json`, which records the reward, LLM turns, tool calls, parallel-call turns and token usage (and, in the flows arm, the flow's lookups and queries);
 - in the flows arm, every flow answer (`flow.jsonl`) and `flow-serve`'s log.
 
+`rescore.py` scores recorded episodes again with τ²-bench's evaluator. By default it uses the database check, as the pilots did, and it can apply τ²-bench's communication check or each task's full reward basis (`--scoring communicate`, `--scoring basis`). The published pilots' episodes are in `docs/results/*-episodes.tar.gz` ([the episodes page](../docs/results/episodes-2026-09-24.md)), and `rescore.py` reproduces every recorded reward from them.
+
 ## Results so far
 
 **Replay check, no LLM.** Before any flows episode, `check_flow.py` replayed GLM-5's recorded retail test episodes (trial 0, 40 tasks) through the live flow. It used real Jev answers:

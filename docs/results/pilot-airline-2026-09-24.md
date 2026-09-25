@@ -37,4 +37,4 @@ The second paired live run of stretto's read-only flow (RFC-001's arm D0), set u
 
 Ten pairs show that the mechanism works live in a second domain and give a first effect size. They cannot bound a one-point loss of pass^1, which needs a much larger run.
 
-`pilot-airline-2026-09-24.json` holds the per-task numbers. The episodes themselves (conversations, event streams, proxy logs, flow answers) are not published.
+`pilot-airline-2026-09-24.json` holds the per-task numbers. The episodes themselves (conversations, proxy logs and flow answers) are in [pilot-airline-2026-09-24-episodes.tar.gz](pilot-airline-2026-09-24-episodes.tar.gz); see [the episodes page](episodes-2026-09-24.md).

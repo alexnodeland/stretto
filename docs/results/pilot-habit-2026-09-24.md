@@ -23,4 +23,4 @@ Replayed on recorded episodes, a flow that decides on the habit alone saves as m
 
 So the finding of the replays holds live. For the savings, a read-only flow needs its habit, not a System-One model. The runs were made at different times on the same day, so model drift between them cannot be ruled out, and ten tasks cannot bound a pass-rate effect.
 
-`pilot-habit-2026-09-24.json` holds the per-episode numbers of all three arms. The episodes themselves are not published.
+`pilot-habit-2026-09-24.json` holds the per-episode numbers of all three arms. The habit arm's episodes are in [pilot-habit-2026-09-24-episodes.tar.gz](pilot-habit-2026-09-24-episodes.tar.gz), and the other two arms' in the retail pilot's archive; see [the episodes page](episodes-2026-09-24.md).
