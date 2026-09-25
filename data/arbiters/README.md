@@ -20,7 +20,9 @@ stretto learn --sessions ~/.stretto/logs --domain orders --arbiter-from data/arb
 
 ## Which to use
 
-[Tested across domains](../../docs/results/arbiter-transfer-2026-09-24.md), each did in the other's domain what that domain's own arbiter did, within about a point of turns saved. With a retail habit from five sessions, the airline arbiter matched the habit alone on random draws and lifted a narrow draw from 2.7% to 10.6% of turns. With an airline habit, the retail arbiter saved 1 to 3 points less than the habit alone and made far fewer unneeded lookups, as airline's own does. For a domain of your own, either serves; `retail.json` was fitted on twice the decisions.
+[Tested across domains](../../docs/results/arbiter-transfer-2026-09-24.md), each did in the other's domain what that domain's own arbiter did, within about a point of turns saved. With a retail habit from five sessions, the airline arbiter matched the habit alone on random draws and lifted a narrow draw from 2.7% to 10.6% of turns. With an airline habit, the retail arbiter saved 1 to 3 points less than the habit alone and made far fewer unneeded lookups, as airline's own does. For a domain like these, either serves; `retail.json` was fitted on twice the decisions.
+
+Neither carries to a domain unlike both. [In telecom](../../docs/results/telecom-2026-09-25.md), where agents look things up at most decisions and Jev agrees with them half the time, both handed back too often: at its held-out decisions they made 43–50% of the agent's lookups, against 66% for the habit alone and 75% for telecom's own arbiter. An arbiter fitted on retail and airline together (`stretto fit-arbiter`) did no better, so it does not ship. In a new kind of domain, start on the habit alone (`learn --habit-only`) and fit the domain's own arbiter as its sessions accumulate.
 
 ## Rebuild them
 

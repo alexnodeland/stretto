@@ -23,6 +23,7 @@ Compile an agent's recorded behavior into flows, serve them, and measure them ag
 | [`audit`](#stretto-audit) | Audit a flow against recorded episodes. |
 | [`jev-check`](#stretto-jev-check) | Check that Jev is reachable with TYPESAFE_API_KEY. |
 | [`export-arbiter`](#stretto-export-arbiter) | Write a flow's arbiter to its own file, to ship. |
+| [`fit-arbiter`](#stretto-fit-arbiter) | Fit one arbiter, to ship, on the held-out decisions of one or more compiles. |
 | [`export-answers`](#stretto-export-answers) | Write every cached oracle answer to stdout as JSON lines (`{"key", "response"}`). |
 | [`ask`](#stretto-ask) | Ask a System-One model questions of your own. |
 | [`import-answers`](#stretto-import-answers) | Read JSON lines from `export-answers` on stdin into a replay cache. |
@@ -359,6 +360,22 @@ Usage: stretto export-arbiter --flow <FILE> --out <FILE>
 **Options**
 
 - `--flow <FILE>` (required): The flow whose arbiter to write.
+- `--out <FILE>` (required): Where to write it.
+
+### `stretto fit-arbiter`
+
+Fit one arbiter, to ship, on the held-out decisions of one or more compiles: each `--log` is a decision log from `compile --oracle-log` asked with the same predicates. With logs of several domains, the arbiter is fitted on all of them at once.
+
+```text
+Usage: stretto fit-arbiter [OPTIONS] --log <FILE> --predicates <FILE> --domain <NAME> --out <FILE>
+```
+
+**Options**
+
+- `--log <FILE>` (required; repeatable): A decision log (repeatable).
+- `--predicates <FILE>` (required): The predicates the logs' questions weighed (see `data/predicates-v2.json`).
+- `--domain <NAME>` (required): The name to give its domain, such as `retail+airline`.
+- `--model <MODEL>` (default `jev-latest`): The System-One model id it asks.
 - `--out <FILE>` (required): Where to write it.
 
 ### `stretto export-answers`

@@ -112,3 +112,41 @@ fn the_published_examples_load() {
         assert_eq!(arbiter.domain(), domain);
     }
 }
+
+#[test]
+fn an_arbiter_fitted_on_logged_cases_saves_and_loads() {
+    use stretto_report::arbitrate::Case;
+    // Two options (a lookup, handing back) with the habit's column and
+    // three more; the agent took the lookup when the habit favoured it.
+    let case = |habit: f64, actual: usize| Case {
+        group: 0,
+        site: "get_order_details".to_string(),
+        features: vec![vec![habit, 0.0, 0.0, 0.0], vec![-habit, 0.0, 0.0, 1.0]],
+        pick: 0,
+        actual: Some(actual),
+        fit: true,
+    };
+    let cases: Vec<Case> = (0..40)
+        .map(|i| case(if i % 4 == 0 { -1.0 } else { 1.0 }, usize::from(i % 4 == 0)))
+        .collect();
+    let arbiter = Arbiter::fit(
+        "a+b",
+        vec!["m".to_string()],
+        &cases,
+        Vec::new(),
+        Vec::new(),
+        "jev-latest".to_string(),
+    );
+    assert_eq!(arbiter.provenance().arbiter_cases, 40);
+    let dir = std::env::temp_dir().join(format!("stretto-fit-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("a+b.json");
+    arbiter.save(&path).unwrap();
+    let loaded = Arbiter::load(&path).unwrap();
+    assert_eq!(loaded.domain(), "a+b");
+    assert_eq!(
+        serde_json::to_value(&loaded).unwrap()["fitted"],
+        serde_json::to_value(stretto_report::arbitrate::fit_pooled(&cases)).unwrap()
+    );
+    std::fs::remove_dir_all(&dir).unwrap();
+}

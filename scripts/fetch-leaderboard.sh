@@ -4,11 +4,12 @@
 # leaderboard submissions in a public bucket (see web/leaderboard in the
 # τ²-bench repo).
 #
-# Usage: scripts/fetch-leaderboard.sh [-d dest] [model ...]
+# Usage: scripts/fetch-leaderboard.sh [-d dest] [-t] [model ...]
 #   dest defaults to .data/tau2-targets; models default to glm-5.
+#   -t also fetches each model's telecom run, named as its retail run is.
 #   Models: glm-5 qwen3.5 qwen3-max gpt-5.2 gpt-5.2-none claude-opus-4.5
 #           claude-sonnet-4.5 gemini-3-pro gemini-3-flash, or "all".
-# Prints one label=path pair per file (retail, then airline), ready to pass
+# Prints one label=path pair per file (retail, airline, then telecom), ready to pass
 # to `stretto phase0 --source` or `--target`.
 set -euo pipefail
 
@@ -16,6 +17,11 @@ dest=".data/tau2-targets"
 if [ "${1:-}" = "-d" ]; then
   dest="$2"
   shift 2
+fi
+telecom=""
+if [ "${1:-}" = "-t" ]; then
+  telecom=1
+  shift
 fi
 models=("$@")
 if [ ${#models[@]} -eq 0 ]; then
@@ -70,6 +76,9 @@ for model in "${models[@]}"; do
       echo "fetch-leaderboard: unknown model '$model'" >&2
       exit 2 ;;
   esac
+  if [ -n "$telecom" ]; then
+    files+=("${files[0]/retail/telecom}")
+  fi
   for f in "${files[@]}"; do
     fetch "$model" "$dir" "$f"
   done

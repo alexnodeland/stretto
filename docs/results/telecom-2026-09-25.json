@@ -1,0 +1,102 @@
+{
+ "habit alone": {
+  "0.3": {
+   "decisions": 5721,
+   "agent_lookups": 3677,
+   "lookups": 3982,
+   "right": 2410,
+   "detours": 1572,
+   "agreement": 0.6125,
+   "share_of_agent_lookups": 0.6554
+  },
+  "0.5": {
+   "decisions": 5721,
+   "agent_lookups": 3677,
+   "lookups": 2443,
+   "right": 1626,
+   "detours": 817,
+   "agreement": 0.5461,
+   "share_of_agent_lookups": 0.4422
+  }
+ },
+ "own arbiter (cross-fitted)": {
+  "0.3": {
+   "decisions": 5721,
+   "agent_lookups": 3677,
+   "lookups": 4547,
+   "right": 2747,
+   "detours": 1800,
+   "agreement": 0.6424,
+   "share_of_agent_lookups": 0.7471
+  },
+  "0.5": {
+   "decisions": 5721,
+   "agent_lookups": 3677,
+   "lookups": 2728,
+   "right": 1866,
+   "detours": 862,
+   "agreement": 0.5761,
+   "share_of_agent_lookups": 0.5075
+  }
+ },
+ "retail arbiter": {
+  "0.3": {
+   "decisions": 5721,
+   "agent_lookups": 3677,
+   "lookups": 2489,
+   "right": 1599,
+   "detours": 890,
+   "agreement": 0.5433,
+   "share_of_agent_lookups": 0.4349
+  },
+  "0.5": {
+   "decisions": 5721,
+   "agent_lookups": 3677,
+   "lookups": 1370,
+   "right": 1041,
+   "detours": 329,
+   "agreement": 0.5008,
+   "share_of_agent_lookups": 0.2831
+  }
+ },
+ "airline arbiter": {
+  "0.3": {
+   "decisions": 5721,
+   "agent_lookups": 3677,
+   "lookups": 3071,
+   "right": 1828,
+   "detours": 1243,
+   "agreement": 0.5417,
+   "share_of_agent_lookups": 0.4971
+  },
+  "0.5": {
+   "decisions": 5721,
+   "agent_lookups": 3677,
+   "lookups": 2409,
+   "right": 1552,
+   "detours": 857,
+   "agreement": 0.5361,
+   "share_of_agent_lookups": 0.4221
+  }
+ },
+ "retail+airline arbiter": {
+  "0.3": {
+   "decisions": 5721,
+   "agent_lookups": 3677,
+   "lookups": 2589,
+   "right": 1638,
+   "detours": 951,
+   "agreement": 0.5434,
+   "share_of_agent_lookups": 0.4455
+  },
+  "0.5": {
+   "decisions": 5721,
+   "agent_lookups": 3677,
+   "lookups": 1719,
+   "right": 1177,
+   "detours": 542,
+   "agreement": 0.5057,
+   "share_of_agent_lookups": 0.3201
+  }
+ }
+}

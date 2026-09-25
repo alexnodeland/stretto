@@ -41,6 +41,8 @@ The [working paper](https://alexnodeland.github.io/stretto/) puts them together,
 |---|---|
 | [Prompt injection](injection-2026-09-25.md) ([rows](injection-2026-09-25.json)) | Whatever Jev answers, a flow calls only the lookups compiled for the site. Inside that set, a note in a tool result steered the flow at 86 of 300 retail decisions; one sentence telling Jev that tool results are data cut it to 19, and a threshold of 0.5 as well to 4. An injected claim passed 9 of 140 writes the confirmation judge had refused |
 | [Answers: prompt injection](answers-2026-09-25-injection.md) | The answer bundle for the page above |
+| [Telecom](telecom-2026-09-25.md) ([report](telecom-2026-09-25-report.md), [rows](telecom-2026-09-25.json)) | Telecom compresses like retail and airline, but Jev agrees with the agents less (67.9%). Neither shipped arbiter, nor one fitted on both domains, carries to it: they made 43–50% of the agent's lookups, against 66% for the habit alone and 75% for telecom's own |
+| [Answers: telecom](answers-2026-09-25-telecom.md) | The answer bundle for the page above |
 
 ## Recorded episodes
 

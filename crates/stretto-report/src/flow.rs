@@ -72,6 +72,37 @@ pub struct Arbiter {
 }
 
 impl Arbiter {
+    /// One arbiter fitted on `cases`, such as the held-out decisions of
+    /// several compiles' decision logs (`--oracle-log`), for a domain none of
+    /// them is. `sources` label where the cases came from; `weighed` are the
+    /// predicates their features hold, in order.
+    pub fn fit(
+        domain: &str,
+        sources: Vec<String>,
+        cases: &[crate::arbitrate::Case],
+        predicates: Vec<Predicate>,
+        weighed: Vec<Predicate>,
+        model: String,
+    ) -> Self {
+        Arbiter {
+            stretto_arbiter: ARBITER_VERSION,
+            domain: domain.to_string(),
+            provenance: Provenance {
+                stretto: env!("CARGO_PKG_VERSION").to_string(),
+                sources,
+                habit_episodes: 0,
+                arbiter_cases: cases.iter().filter(|c| c.fit).count(),
+                compiled_unix_ms: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_or(0, |d| d.as_millis() as u64),
+            },
+            predicates,
+            weighed,
+            fitted: crate::arbitrate::fit_pooled(cases),
+            model,
+        }
+    }
+
     /// The domain whose decisions it was fitted on.
     pub fn domain(&self) -> &str {
         &self.domain

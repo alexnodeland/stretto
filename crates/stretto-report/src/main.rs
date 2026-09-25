@@ -445,6 +445,28 @@ enum Command {
         #[arg(value_name = "FILE", long)]
         out: PathBuf,
     },
+    /// Fit one arbiter, to ship, on the held-out decisions of one or more
+    /// compiles: each `--log` is a decision log from `compile --oracle-log`
+    /// asked with the same predicates. With logs of several domains, the
+    /// arbiter is fitted on all of them at once.
+    FitArbiter {
+        /// A decision log (repeatable).
+        #[arg(long = "log", value_name = "FILE", required = true)]
+        logs: Vec<PathBuf>,
+        /// The predicates the logs' questions weighed (see
+        /// `data/predicates-v2.json`).
+        #[arg(long, value_name = "FILE")]
+        predicates: PathBuf,
+        /// The name to give its domain, such as `retail+airline`.
+        #[arg(long, value_name = "NAME")]
+        domain: String,
+        /// The System-One model id it asks.
+        #[arg(long, value_name = "MODEL", default_value = "jev-latest")]
+        model: String,
+        /// Where to write it.
+        #[arg(long, value_name = "FILE")]
+        out: PathBuf,
+    },
     /// Write every cached oracle answer to stdout as JSON lines
     /// (`{"key", "response"}`). Answers carry no benchmark text, so the
     /// bundle can be shared to replay Phase 0b without a key.
@@ -1169,6 +1191,76 @@ fn main() -> Result<()> {
             eprintln!(
                 "stretto: wrote the {} arbiter, fitted on {} held-out decisions, to {}",
                 arbiter.domain(),
+                arbiter.provenance().arbiter_cases,
+                out.display()
+            );
+            Ok(())
+        }
+        Command::FitArbiter {
+            logs,
+            predicates,
+            domain,
+            model,
+            out,
+        } => {
+            let text = std::fs::read_to_string(&predicates)
+                .with_context(|| format!("reading {}", predicates.display()))?;
+            let weighed = serde_json::from_str::<PredicateFile>(&text)
+                .with_context(|| format!("parsing {}", predicates.display()))?
+                .predicates;
+            let mut cases = Vec::new();
+            let mut sources = std::collections::BTreeSet::new();
+            for path in &logs {
+                let text = std::fs::read_to_string(path)
+                    .with_context(|| format!("reading {}", path.display()))?;
+                for line in text.lines().filter(|l| !l.trim().is_empty()) {
+                    let d: serde_json::Value = serde_json::from_str(line)
+                        .with_context(|| format!("{}: not a decision log", path.display()))?;
+                    let Some(case) = d.get("case").filter(|c| !c.is_null()) else {
+                        continue;
+                    };
+                    let options: Vec<String> = serde_json::from_value(case["options"].clone())?;
+                    let features: Vec<Vec<f64>> = serde_json::from_value(case["features"].clone())?;
+                    if features.first().map_or(0, Vec::len) != 4 + weighed.len() {
+                        anyhow::bail!(
+                            "{}: the cases weigh {} predicates, not the {} in {}",
+                            path.display(),
+                            features.first().map_or(0, Vec::len).saturating_sub(4),
+                            weighed.len(),
+                            predicates.display()
+                        );
+                    }
+                    let target = d["target"].as_bool().unwrap_or(false);
+                    if !target {
+                        if let Some(m) = d["model"].as_str() {
+                            sources.insert(m.to_string());
+                        }
+                    }
+                    let actual = d["actual"].as_str().unwrap_or_default();
+                    cases.push(stretto_report::arbitrate::Case {
+                        group: 0,
+                        site: case["site"].as_str().unwrap_or_default().to_string(),
+                        features,
+                        pick: case["pick"].as_u64().unwrap_or(0) as usize,
+                        actual: options.iter().position(|o| o == actual),
+                        fit: !target,
+                    });
+                }
+            }
+            if cases.is_empty() {
+                anyhow::bail!("no v2 decisions in the logs: compile with --oracle-log");
+            }
+            let arbiter = Arbiter::fit(
+                &domain,
+                sources.into_iter().collect(),
+                &cases,
+                weighed.clone(),
+                weighed,
+                model,
+            );
+            arbiter.save(&out)?;
+            eprintln!(
+                "stretto: wrote the {domain} arbiter, fitted on {} held-out decisions, to {}",
                 arbiter.provenance().arbiter_cases,
                 out.display()
             );
