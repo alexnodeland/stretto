@@ -78,7 +78,7 @@ Answers are cached in `.oracle-cache/`, so each distinct question is paid for on
 
 The published answers replay without a key: see [the v1 bundle](docs/results/phase0b-2026-09-23-answers.md), [the v2 bundle](docs/results/phase0b-v2-2026-09-23-answers.md) and [the goal-free supplement](docs/results/phase0b-v2-goal-free-2026-09-24-summary.md#answers).
 
-First results, with their interpretation, are in [docs/results/phase0-2026-09-23.md](docs/results/phase0-2026-09-23.md). The headlines for airline and retail:
+[docs/results](docs/results/README.md) indexes every results page. First results, with their interpretation, are in [docs/results/phase0-2026-09-23.md](docs/results/phase0-2026-09-23.md). The headlines for airline and retail:
 
 - **Macro-tool headroom.** About a quarter of LLM turns are spent inside runs of consecutive tool calls that a macro-tool could perform in one call.
 - **Arguments can mostly be bound.** Identifiers, items, payment methods and flights in write calls almost always appear verbatim in an earlier tool output or user message, so flows can bind them instead of generating them. The values agents actually generate are mostly closed-set choices (a cancellation reason, a flight type), which suit a Jev `Choice`, and arithmetic, which belongs in code.
@@ -138,13 +138,15 @@ First results, with their interpretation, are in [docs/results/phase0-2026-09-23
 
 ## Roadmap
 
+What is left is tracked in [issue #1](https://github.com/alexnodeland/stretto/issues/1) and grouped, with context, in [docs/roadmap.md](docs/roadmap.md).
+
 | Phase | What | Needs |
 |---|---|---|
 | 0a | Predictability, headroom and provenance on published trajectories | Nothing (done) |
 | 0b | Replayed shadow mode: ask Jev at every decision a flow would hand it (next step, closed-set arguments), score agreement and calibration, and re-run the projection with its answers. Done: v1 questions, then v2's narrower questions and Bayesian arbitration; Jev as a confirmation judge, with a second question; matching descriptions to records (no better than the agents) | `TYPESAFE_API_KEY` (set) |
 | 1 | Rust MCP proxy that records traffic; rule checks compiled from policy and tested against traces. Done: `stretto-proxy`, `stretto guards` | — |
-| 2 | Flow compiler; arbitration runtime; macro-tools; live τ²-bench arms. Done: the flow IR (`compile`, `learn`, `serve`); read-only flows live in the proxy (arm D0) and in the pilot harness, with paired pilots in retail and airline on GLM-5.3; guards and `stretto_commit` in the proxy. Measured: arm C (a flow that hands every branch back) saves 0–1.7% of turns; the habit alone saves as much as the arbiter, live too, and from a deployment's first five sessions it saves more than an arbiter fitted on them; and naming a flow could add at most 2% of turns in retail and 8% in airline, so `plan_*` is not built. A flow learned from five recorded sessions ran live. Next: a paired run large enough to bound pass^1, more agent models, the cold start live on more tasks, and the confirmation judge enforced | GLM (Z.ai coding plan, set); MiniMax |
-| 3 | Predicate refinement, per-decision counterfactual evaluation, flow search with fugue-evo, then American frontier models | — |
+| 2 | Flow compiler; arbitration runtime; macro-tools; live τ²-bench arms. Done: the flow IR (`compile`, `learn`, `serve`); read-only flows live in the proxy (arm D0) and in the pilot harness, with paired pilots in retail and airline on GLM-5.3; guards and `stretto_commit` in the proxy. Measured: arm C (a flow that hands every branch back) saves 0–1.7% of turns; the habit alone saves as much as the arbiter, live too, and from a deployment's first five sessions it saves more than an arbiter fitted on them; and naming a flow could add at most 2% of turns in retail and 8% in airline, so `plan_*` is not built. A flow learned from five recorded sessions ran live. Next: a paired run large enough to bound pass^1 ([#2](https://github.com/alexnodeland/stretto/issues/2)), more agent models ([#5](https://github.com/alexnodeland/stretto/issues/5)), the cold start live on more tasks ([#3](https://github.com/alexnodeland/stretto/issues/3)), and the confirmation judge enforced ([#6](https://github.com/alexnodeland/stretto/issues/6)) | GLM (Z.ai coding plan, set); MiniMax |
+| 3 | Predicate refinement ([#16](https://github.com/alexnodeland/stretto/issues/16)), per-decision counterfactual evaluation ([#15](https://github.com/alexnodeland/stretto/issues/15)), flow search with fugue-evo ([#25](https://github.com/alexnodeland/stretto/issues/25)), then American frontier models ([#5](https://github.com/alexnodeland/stretto/issues/5)) | — |
 
 ## Development
 

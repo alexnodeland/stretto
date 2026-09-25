@@ -1,0 +1,40 @@
+# Results
+
+Every result so far, in the order it was found. Each page says how to reproduce it. The JSON files beside the pages hold per-episode or per-decision rows. The answer bundles hold every System-One answer the pages read, so they replay without a key.
+
+The [working paper](https://alexnodeland.github.io/stretto/) puts them together, and fugue's [RFC-001](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md) records what each round changed in the design, amendment by amendment. What is still open is in the [roadmap](../roadmap.md).
+
+## 2026-09-23: measuring before building
+
+| Page | What it found |
+|---|---|
+| [Phase 0](phase0-2026-09-23.md) | About a quarter of LLM turns sit inside runs of tool calls a flow could make. Most write arguments appear verbatim in an earlier tool output or customer message, so a flow can bind them. A habit that sees only the tool sequence takes 6–8% of decisions at 80% confidence. Behavior transfers across models |
+| [Phase 0b](phase0b-2026-09-23-summary.md) ([report](phase0b-2026-09-23-report.md), [re-asked](phase0b-2026-09-23-reasked-report.md), [answers](phase0b-2026-09-23-answers.md)) | Zero-shot, Jev agrees with the agent's next step 72% of the time and is well calibrated (ECE 0.06). Trusted at p ≥ 0.9, flows save only 3.9–4.7% of LLM turns, with a risky call in 6–13% of episodes |
+| [Phase 0b v2](phase0b-v2-2026-09-23-summary.md) ([report](phase0b-v2-2026-09-23-report.md), [nine targets](phase0b-v2-2026-09-23-targets-report.md), [sharpened](phase0b-v2-2026-09-23-sharpened-report.md), [answers](phase0b-v2-2026-09-23-answers.md)) | Read-only flows turn a wrong pick into a detour. Jev's answers, weighed with the habit and three predicates, agree 80.5% of the time in retail and 78.9% in airline. Taking the likeliest lookup saves 15–17% of turns in retail and 10–13% in airline |
+
+## 2026-09-24: live pilots, the built system, and what a System-One model is for
+
+| Page | What it found |
+|---|---|
+| [v2 without a goal](phase0b-v2-goal-free-2026-09-24-summary.md) ([report](phase0b-v2-goal-free-2026-09-24-report.md)) | Nobody needs to name the goal: flows save 17.3% of retail turns and 12.6% of airline turns offline |
+| [Retail pilot](pilot-2026-09-24.md) | GLM-5.3 in Claude Code, ten paired tasks: 23.6% fewer LLM turns with the flow (2.6 per episode, 95% interval 1.0 to 4.2). 8 of 10 passed in each arm |
+| [Airline pilot](pilot-airline-2026-09-24.md) | 17.3% fewer LLM turns (2.2 per episode, 0.5 to 3.9). 8 of 10 passed without the flow and 9 of 10 with it |
+| [Policy guards](guards-2026-09-24.md) | On published airline runs, the enforced rules would refuse a write the tool accepted in 38% of failed episodes and 1% of successful ones |
+| [Guards pilot](pilot-guards-2026-09-24.md) | On the airline tasks where those writes concentrate, GLM-5.3 made none: 4 of 4 passed in both arms |
+| [Flow audit](audit-2026-09-24.md) | Run as a fugue program, the retail flow picks the agent's own step 85.9% of the time and the airline flow 64.5% |
+| [Arms C and D0](arms-2026-09-24.md) | A flow that hands every branch back saves 0–1.7% of turns. The habit alone saves as many turns as the arbiter, which buys fewer detours. Naming a flow could add at most 1.9% of turns in retail and 7.9% in airline |
+| [Habit-only pilot](pilot-habit-2026-09-24.md) | On the retail pilot's ten tasks, the habit alone took 79 LLM turns, against 110 with no flow and 84 with D0, and passed 9 of 10 |
+| [Fewer traces](sweep-2026-09-24.md) | With three retail training tasks, the arbiter saved 20.4% of turns and the habit alone 1.8%. Its samples turned out to be clustered by task id (see its correction and the cold start) |
+| [Confirmation](confirm-2026-09-24.md) ([report](confirm-2026-09-24-report.md), [labels](confirm-2026-09-24-labels.json)) | Where Jev and the guards' word list disagree on whether the customer confirmed a write, hand labels side with Jev 30 times in 40 |
+| [Answers: arms, fewer traces, confirmation](answers-2026-09-24-arms-sweep-confirm.md) | The answer bundle for the three pages above |
+| [Cold start](cold-start-2026-09-24.md) | From five of an agent's own random sessions, the habit alone saved 11.8–18.9% of retail turns. An arbiter fitted on those sessions trailed it until about twenty sessions. A clustered draw saved 2.7%, and another flow's arbiter lifted it to 11.1% |
+| [Options from the manifest](manifest-options-2026-09-24.md) | Offering every read-only tool gains nothing in retail and adds detours in airline. Only traces teach a flow how to bind a lookup's arguments |
+| [A second confirmation question](confirm-second-2026-09-24.md) ([report](confirm-second-2026-09-24-report.md), [labels](confirm-second-2026-09-24-labels.json)) | "Had the agent proposed this change?" catches calls that differ from what the customer agreed to. 16 of 30 writes it newly fails are real lapses |
+| [Matching descriptions to records](matching-2026-09-24.md) ([report](matching-2026-09-24-report.md)) | From the customer's words alone, Jev picked the expected record 81.6% of the time, against 89.9% for the agents, so it is not a check on writes |
+| [Answers: cold start, manifest, confirmation, matching](answers-2026-09-24-cold-manifest-match.md) | The answer bundle for the four pages above |
+| [Shipped arbiters across domains](arbiter-transfer-2026-09-24.md) | An arbiter fitted on one domain's published decisions, served with a habit from the other, does what that domain's own arbiter does, within about a point of turns saved |
+| [Answers: shipped arbiters](answers-2026-09-24-arbiter-transfer.md) | The answer bundle for the page above |
+
+## Not published yet
+
+The pilots' recorded episodes (conversations, simulation files and proxy logs) are not in the repository yet; see [#29](https://github.com/alexnodeland/stretto/issues/29).

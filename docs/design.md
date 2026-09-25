@@ -7,7 +7,7 @@ The full rationale, prior work and risks are in fugue's [RFC-001](https://github
 | Question | Decision |
 |---|---|
 | What v1 is for | Compile and run flows, measured first |
-| Workload | τ²-bench: airline and retail together; telecom later |
+| Workload | τ²-bench: airline and retail together; telecom later ([#10](https://github.com/alexnodeland/stretto/issues/10)) |
 | Where the harness sits | A Rust MCP proxy. Compiled flows are served to the agent as macro-tools |
 | Pausing a flow | Resumable: `plan_*`, `resume_*(token, choice)`, `commit_*(token)` |
 | Writes | Plan/commit pairs. The agent gets the user's explicit "yes" between them, as τ²-bench requires |
@@ -89,21 +89,23 @@ stretto-proxy session logs ─┼─► stretto-trace (Episode) ─► stretto-m
 | Flow IR: compile from τ²-bench, learn from sessions, serve | Built | `stretto compile`, `learn`, `serve`; `flow.rs` |
 | Read-only flows live (arm D0) | Built; paired pilots in retail and airline | `stretto-proxy --flow`; the pilot harness (`pilot/`) |
 | Policy guards (arms B and E) | Built, audited against τ²-bench; arm B live in airline (GLM-5.3 gave them nothing to refuse) | `guards.rs`; `stretto guards`; `stretto-proxy --guards`; `pilot/run_episode.py --arm guards` |
-| Confirmed writes in one call | Built | `stretto-proxy --commit` (`stretto_commit`) |
+| Confirmed writes in one call | Built; no live run has used it yet ([#7](https://github.com/alexnodeland/stretto/issues/7)) | `stretto-proxy --commit` (`stretto_commit`) |
 | The conversation for flows and guards | Built | `stretto-proxy --context` |
 | Record, learn, serve from any MCP server | Built, tested end to end | `crates/stretto-proxy/tests/active.rs` |
 | A flow as a fugue program: score and simulate | Built | `stretto audit`; `audit.rs` |
 | `plan_*` / `resume_*` macro-tools the LLM names (arms C and D) | Not built, by decision: naming could add at most 0–1.9% of turns in retail and 0.9–7.9% in airline | Phase 0's *Lookups inside runs* |
 | Arm C and the habit alone, as flows behind the tools | Built; replayed against D0 on GLM-5's test episodes ([arms](results/arms-2026-09-24.md)); the habit alone live in retail ([pilot](results/pilot-habit-2026-09-24.md)) | `--flow-decider habit` in `stretto-proxy`, `serve`, `flow-serve` and `pilot/check_flow.py`; `pilot/run_episode.py --arm habit` |
 | Fewer traces | Built, and replayed: the habit trains on a fixed, nested share of the training tasks. With 3 retail tasks, the arbiter saves 20.4% of turns and the habit alone 1.8% ([sweep](results/sweep-2026-09-24.md)). Those samples were clustered by task id, so the order is now mixed before sampling (see the sweep's correction) | `--train-fraction` on `phase0`, `compile` and `learn` |
-| Judging a confirmation with Jev | Built, measured offline against the word list and hand labels ([results](results/confirm-2026-09-24.md)); not enforced | `stretto confirm`; `confirm.rs` |
+| Judging a confirmation with Jev | Built, measured offline against the word list and hand labels ([results](results/confirm-2026-09-24.md)); not enforced, and not yet in the proxy ([#14](https://github.com/alexnodeland/stretto/issues/14), [#6](https://github.com/alexnodeland/stretto/issues/6)) | `stretto confirm`; `confirm.rs` |
 | A second confirmation question | Built, measured: "had the agent proposed this change?" flags lapses the first question passes, such as a call that differs from what the customer agreed to. Half its flags are real lapses ([results](results/confirm-second-2026-09-24.md)); not enforced | `stretto confirm --second-question` |
 | Matching descriptions to records | Built, measured: Jev picked the expected record less often than the agents did (82% against 90%), so it is not used as a check ([results](results/matching-2026-09-24.md)) | `stretto match`; `matching.rs` |
 | A flow from a deployment's first sessions | Built, measured offline on GLM-5's own sessions (random draws of 5 to 40 tasks) and live on five sessions GLM-5.3 recorded through the proxy ([cold start](results/cold-start-2026-09-24.md)). The habit alone is the steadier start; `--refit-habit` did not help reliably; another flow's arbiter (`--arbiter-from`) lifted a narrow draw | `stretto learn --results`, `--habit-only`, `--refit-habit`, `--arbiter-from`; `pilot/run_episode.py --record-context` |
 | A shipped arbiter | Built, measured across domains: `data/arbiters/` holds retail and airline arbiters fitted on four agents' published decisions. Served with a habit learned in the other domain, each did what that domain's own arbiter did, within about a point ([results](results/arbiter-transfer-2026-09-24.md)) | `compile --pooled-arbiter`, `stretto export-arbiter`, `learn --arbiter-from` |
 | Options from the tool manifest | Built, measured on the sweep's one- and three-task samples: nothing gained in retail, and detours in airline, where a lookup no trace showed is bound by argument name and gets the wrong values ([results](results/manifest-options-2026-09-24.md)); off by default | `--manifest-options` on `phase0`, `compile` and `learn` |
-| Counterfactual evaluation from logged propensities | Not built; the proxy logs every decision's probabilities | — |
-| Predicate refinement (§3.4) | Not built; three hand-proposed predicates | `data/predicates-v2.json` |
-| Streamable HTTP transport | Not supported; stdio only | — |
+| Counterfactual evaluation from logged propensities | Not built ([#15](https://github.com/alexnodeland/stretto/issues/15)). The proxy logs every decision's probabilities, but flows act deterministically, so estimates need a little exploration first | — |
+| Predicate refinement (§3.4) | Not built ([#16](https://github.com/alexnodeland/stretto/issues/16)); three hand-proposed predicates | `data/predicates-v2.json` |
+| Streamable HTTP transport | Not supported; stdio only ([#21](https://github.com/alexnodeland/stretto/issues/21)) | — |
+
+Everything else not built yet, and the experiments still to run, are grouped in the [roadmap](roadmap.md).
 
 Flows only read, so a flow's wrong pick costs a lookup, not an action. Writes stay with the LLM: one at a time, or several confirmed ones in one `stretto_commit`. The guards check both before the server sees them.
