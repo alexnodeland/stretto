@@ -28,7 +28,7 @@ PATH=~/.venvs/tau2/bin:$PATH python run_episode.py --task-id 90 --out runs/pilot
   --arm flows --oracle-cache ../.oracle-cache
 ```
 
-`--record-context` hands the proxy the conversation, as the guards arm does, so the session log in `log/` can train a flow with `stretto learn` (see the cold start below). `--flow` serves a compiled or learned flow instead of compiling one per episode.
+`--record-context` hands the proxy the conversation, as the guards arm does, so the session log in `log/` can train a flow with `stretto learn` (see the cold start below). `--read-only-hints` makes `tau2_mcp.py` mark τ²-bench's read tools `readOnlyHint: true` and its writes `false` in `tools/list`, as a real server would, so `stretto learn --sessions` takes the tools' kinds from the log and needs no `--manifest`. The pilots ran without it, so their agents all saw the same tool list. `--flow` serves a compiled or learned flow instead of compiling one per episode.
 
 The flows arm needs `cargo build --release -p stretto-report` and a replay cache holding the goal-free v2 answers. `--arm habit` runs the same flow on the habit alone; it still compiles from the cache, but asks Jev nothing live. Fill it with `stretto phase0 --oracle jev --questions v2 --predicates data/predicates-v2.json --no-intent`, or import the published bundles (the v2 bundle and its goal-free supplement, in `docs/results/`). Pilot tasks come from the test split, so the habit never trained on them. Each task is judged by the arbiter of its own fold, which never saw it.
 

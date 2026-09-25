@@ -7,6 +7,12 @@ the episode's `trajectory.jsonl` in τ²-bench's own message format, where
 can score the episode afterwards. A call budget guards against runaway
 episodes.
 
+With `--read-only-hints`, `tools/list` marks each tool as a real server
+would: `readOnlyHint: true` for τ²-bench's read tools and `false` for its
+writes (its other tools get no hint). `stretto learn --sessions` then takes
+the tools' kinds from the recorded session, with no `--manifest`. It is off
+by default, so the pilots' agents saw the same tool list throughout.
+
 With `--flow-address`, a read-only flow runs after each of the agent's calls
 (the flows arm): the server asks `stretto flow-serve` what to do next, makes
 the lookup it names, records it like any other call, and asks again, until
@@ -17,7 +23,7 @@ it no turns.
 Usage (normally started by the agent, behind `stretto-proxy`):
 
     python tau2_mcp.py --domain retail --task-id 0 --episode-dir DIR \
-        [--flow-address HOST:PORT]
+        [--read-only-hints] [--flow-address HOST:PORT]
 """
 
 import argparse
@@ -33,6 +39,7 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 
 from tau2.data_model.message import AssistantMessage, ToolCall
+from tau2.environment.toolkit import ToolType
 from tau2.registry import registry
 
 
@@ -55,6 +62,7 @@ class Episode:
         flow_address: str | None = None,
         flow_max: int = 8,
         flow_budget: int = 40,
+        read_only_hints: bool = False,
     ):
         self.dir = directory
         self.task_id = str(task_id)
@@ -68,6 +76,7 @@ class Episode:
                 message_history=init.message_history or [],
             )
         self.tools = {t.name: t for t in self.env.get_tools()}
+        self.read_only_hints = read_only_hints
         self.calls = 0
         self.max_calls = max_calls
         self.flow_address = flow_address
@@ -95,6 +104,16 @@ class Episode:
             )
         )
 
+    def hint(self, name: str) -> types.ToolAnnotations | None:
+        """`readOnlyHint` from τ²-bench's tool type: true for a read, false for
+        a write, and no hint for the rest (`calculate`, a transfer)."""
+        kind = self.env.tools.tool_type(name)
+        if kind == ToolType.READ:
+            return types.ToolAnnotations(readOnlyHint=True)
+        if kind == ToolType.WRITE:
+            return types.ToolAnnotations(readOnlyHint=False)
+        return None
+
     def list_tools(self) -> list[types.Tool]:
         out = []
         for name, tool in self.tools.items():
@@ -104,6 +123,7 @@ class Episode:
                     name=name,
                     description=fn.get("description", ""),
                     inputSchema=fn.get("parameters", {"type": "object"}),
+                    annotations=self.hint(name) if self.read_only_hints else None,
                 )
             )
         return out
@@ -204,6 +224,10 @@ def main() -> None:
     parser.add_argument("--flow-address", help="stretto flow-serve's HOST:PORT (flows arm)")
     parser.add_argument("--flow-max", type=int, default=8, help="flow lookups per agent call")
     parser.add_argument("--flow-budget", type=int, default=40, help="flow lookups per episode")
+    parser.add_argument(
+        "--read-only-hints", action="store_true",
+        help="mark read tools readOnlyHint: true and writes false in tools/list",
+    )
     args = parser.parse_args()
     episode = Episode(
         args.domain,
@@ -213,6 +237,7 @@ def main() -> None:
         args.flow_address,
         args.flow_max,
         args.flow_budget,
+        args.read_only_hints,
     )
     episode.save_state()
     asyncio.run(serve(episode))

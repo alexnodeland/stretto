@@ -132,6 +132,11 @@ def main() -> None:
         help="hand the proxy the conversation (as the guards arm does), so its session log can "
         "train a flow with `stretto learn`",
     )
+    parser.add_argument(
+        "--read-only-hints", action="store_true",
+        help="mark τ²-bench's read tools readOnlyHint: true (writes false) in tools/list, as a real "
+        "server would, so `stretto learn` needs no --manifest (off in the pilots)",
+    )
     args = parser.parse_args()
     if args.arm in FLOW_ARMS and not args.oracle_cache:
         parser.error(f"the {args.arm} arm needs --oracle-cache")
@@ -192,7 +197,8 @@ def main() -> None:
                     "--task-id", args.task_id,
                     "--episode-dir", str(episode),
                     "--max-calls", str(args.max_calls),
-                ] + (["--flow-address", flow_address] if serve else []),
+                ] + (["--read-only-hints"] if args.read_only_hints else [])
+                + (["--flow-address", flow_address] if serve else []),
             }
         }
     }

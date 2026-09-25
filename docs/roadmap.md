@@ -55,7 +55,7 @@ These cost Jev dollars, CPU time or people's time, and no LLM runs.
 | Issue | What |
 |---|---|
 | [#26](https://github.com/alexnodeland/stretto/issues/26) | Done: `learn` and `phase0` refuse options they would ignore, such as `--manifest-options` with `--habit-only` or `--arbiter-from` |
-| [#27](https://github.com/alexnodeland/stretto/issues/27) | Mark τ²-bench's read-only tools in `pilot/tau2_mcp.py`, so pilot recordings learn without `--manifest` |
+| [#27](https://github.com/alexnodeland/stretto/issues/27) | Done: `run_episode.py --read-only-hints` marks τ²-bench's read-only tools in `tools/list`, so pilot recordings learn without `--manifest` |
 | [#28](https://github.com/alexnodeland/stretto/issues/28) | Done: `check_flow.py --in-process --jobs N` makes the tools' calls in one process and replays in parallel; `replay_study.py` runs a resumable list of replays |
 | [#29](https://github.com/alexnodeland/stretto/issues/29) | Done: the pilots' recorded episodes are [published](results/episodes-2026-09-24.md) |
 | [#30](https://github.com/alexnodeland/stretto/issues/30) | A first release, 0.1.0 |

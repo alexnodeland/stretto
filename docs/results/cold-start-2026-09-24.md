@@ -157,6 +157,6 @@ stretto learn --sessions sessions/ --domain retail --manifest retail-manifest.js
   --predicates data/predicates-v2.json --oracle jev --out cold-live.flow.json
 ```
 
-`pilot/run_episode.py --record-context` records such sessions. `tau2_mcp.py` does not mark its tools read-only, so the manifest comes from τ²-bench's `tools.py`, as any compiled flow's does. Run from the published sessions with `--oracle replay`, it gives back the published flow, identical in every field but its compile time.
+`pilot/run_episode.py --record-context` records such sessions. When these were recorded, `tau2_mcp.py` did not mark its tools read-only, so the manifest comes from τ²-bench's `tools.py`, as any compiled flow's does. Sessions recorded with `--read-only-hints` as well carry the hints, and `learn` takes the same kinds from them with no `--manifest` ([#27](https://github.com/alexnodeland/stretto/issues/27)). Run from the published sessions with `--oracle replay`, it gives back the published flow, identical in every field but its compile time.
 
 Every answer these read is in [this round's answer bundle](answers-2026-09-24-cold-manifest-match.md). Per-episode rows for every replay, and the live pairs, are in [cold-start-2026-09-24.json](cold-start-2026-09-24.json).
