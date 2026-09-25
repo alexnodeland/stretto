@@ -88,7 +88,13 @@ With any of `--flow`, `--guards`, `--commit` or `--context`, the proxy reads wha
   - `--flow-threshold` (0.3) is the probability the lookup must reach: the tool's, times how often its arguments' binding matched the agent in training.
   - `--flow-decider` says where the tool's probability comes from: `arbiter` (the default: the habit, the System-One model's answers and the predicates, combined) or `habit` (the habit alone). The habit alone asks no one, so it needs no key and adds no latency. Replayed on GLM-5's and Claude 3.7 Sonnet's recorded test episodes, it saved as many turns as the arbiter, with more detours, mostly in airline ([results](../../docs/results/arms-2026-09-24.md)).
   - `--flow-per-call` (8), `--flow-per-session` (40) and `--flow-questions` (300) cap lookups per result, lookups per session and questions per session.
-  - Each decision is appended to `--flow-log`, by default `<session>.flow.jsonl` next to the session log.
+  - Each decision is appended to `--flow-log`, by default `<session>.flow.jsonl` next to the session log, with its site in the flow's run (`address`, such as `decide#0`). The run is the fugue program the flow holds ([formats](../../docs/formats.md#program)).
+  - After each run's decisions comes one line for the run itself, `run`:
+    - the program's data: `call`, `failed` and `max_lookups`;
+    - each site as `[address, value, logp]`;
+    - `surprise`: how unexpected the server's answers were under the flow's statistics, in nats.
+
+    Given the data, the flow's program scores the run again with fugue's `ScoreGivenTrace`.
   - `--flow-shadow` runs the flow in shadow mode (RFC-001 §3.7): it decides after each call and logs what it would look up, with `"shadow": true`, but makes no lookups, so the agent gets the server's results unchanged. `stretto promote --sessions` then makes the same decisions again from the answers the proxy cached (pass its `--oracle-cache`), scores them against what the agent did, and writes a flow that acts only where its lookups were the agent's own ([promotion](../../docs/results/promotion-2026-09-25.md)).
   - A promoted flow hands back after a call whose site was not promoted, with the reason `the site is not promoted`.
   - `--task-id` picks the flow's fold; by default it is the session.

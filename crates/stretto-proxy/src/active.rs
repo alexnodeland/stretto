@@ -5,16 +5,16 @@
 //! one thread. Anything it does not act on is still forwarded byte for byte.
 //!
 //! - **Flows.** When the server answers one of the agent's `tools/call`s,
-//!   the proxy holds the response and runs the flow: its run is a fugue
-//!   program ([`stretto_report::program`]) with a decision site before each
-//!   lookup and an outcome site after it, interpreted with fugue's
-//!   `run_async`. At a decision site the flow's arbiter decides what comes
-//!   next ([`Flow::next_with`]). While it proposes lookups (tools that the
-//!   flow reads as read-only and the server does not mark otherwise), the
-//!   proxy makes them itself, as requests with ids `stretto-<n>`, and the
-//!   outcome site takes the server's answer. When the flow hands back, the
-//!   agent gets its own result with the flow's results appended as one more
-//!   text item under [`APPENDIX`]. The agent's prompt and tools are
+//!   the proxy holds the response and runs the flow: its run is the fugue
+//!   program the flow holds ([`stretto_report::program`]), with a decision
+//!   site before each lookup and an outcome site after it, interpreted with
+//!   fugue's `run_async`. At a decision site the flow's arbiter decides what
+//!   comes next ([`Flow::next_with`]). While it proposes lookups (tools that
+//!   the flow reads as read-only and the server does not mark otherwise),
+//!   the proxy makes them itself, as requests with ids `stretto-<n>`, and
+//!   the outcome site takes the server's answer. When the flow hands back,
+//!   the agent gets its own result with the flow's results appended as one
+//!   more text item under [`APPENDIX`]. The agent's prompt and tools are
 //!   unchanged (arm D0). One flow runs at a time; a response that arrives
 //!   while one runs is forwarded as it is.
 //! - **Guards.** Before one of the agent's calls reaches the server, the
@@ -38,8 +38,9 @@
 //! Everything the proxy sends on its own is logged as a `proxy` entry.
 
 use crate::record::Tap;
+use fugue::program::Value as RunValue;
 use fugue::{
-    run_async, Address, AsyncHandler, Categorical, ChoiceValue, Distribution, Model, Trace,
+    run_async, Address, AsyncHandler, Categorical, Choice, ChoiceValue, Distribution, Trace,
     WithMeta,
 };
 use serde_json::{json, Value};
@@ -52,7 +53,6 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
-use std::sync::Arc;
 use std::task::{Context, Poll, Waker};
 use std::time::{Duration, Instant};
 use stretto_model::{Action, Outcome as StepOutcome};
@@ -60,7 +60,7 @@ use stretto_oracle::{request_key, Oracle};
 use stretto_report::confirm::{self, Second};
 use stretto_report::flow::{Decider, Flow, Proposal};
 use stretto_report::guards::Guards;
-use stretto_report::program::{self, DecideSite, RunModel, HAND_BACK};
+use stretto_report::program::{DecideSite, FlowProgram, HAND_BACK};
 use stretto_trace::mcp::{self, LogEntry, LogHeader, McpLog, Peer};
 use stretto_trace::{Episode, ToolCall, ToolKind};
 
@@ -218,28 +218,40 @@ enum Work {
     },
 }
 
-/// A flow's run as `run_async` interprets it: the lookups made, each with
-/// whether it succeeded, and the run's trace.
-type RunFuture = Pin<Box<dyn Future<Output = (Vec<(String, bool)>, Trace)>>>;
+/// A flow's run as `run_async` interprets it: the program's value, and the
+/// run's trace.
+type RunFuture = Pin<Box<dyn Future<Output = (RunValue, Trace)>>>;
 
-/// A flow's run in progress: its program, interpreted with `run_async` by a
-/// [`LiveRun`] that hands each site to the engine through `mailbox`, and the
-/// lookup its last decision chose, until the outcome site makes it.
+/// A flow's run in progress: its program's data, the program, interpreted
+/// with `run_async` by a [`LiveRun`] that hands each site to the engine
+/// through `mailbox`, and the lookup its last decision chose, until the
+/// outcome site makes it.
 struct Run {
+    data: RunData,
     future: RunFuture,
     mailbox: Rc<RefCell<Mailbox>>,
     pending: Option<(String, Value)>,
 }
 
+/// What a run starts from: the call that just returned, whether it failed,
+/// and the most lookups to make.
+struct RunData {
+    call: String,
+    failed: bool,
+    max_lookups: usize,
+}
+
 impl Run {
-    fn new(program: Model<Vec<(String, bool)>>) -> Self {
+    fn new(data: RunData, program: &FlowProgram) -> Self {
+        let model = program.run(&data.call, data.failed, data.max_lookups);
         let mailbox = Rc::new(RefCell::new(Mailbox::default()));
         let handler = LiveRun {
             mailbox: mailbox.clone(),
             trace: Trace::default(),
         };
         Self {
-            future: Box::pin(run_async(handler, program)),
+            data,
+            future: Box::pin(run_async(handler, model)),
             mailbox,
             pending: None,
         }
@@ -270,7 +282,10 @@ enum Answer {
 /// The handler that executes a flow's run: the engine answers each site.
 /// A decision is the arbiter's, and deterministic, so its propensity is 1
 /// (`logp` 0). An outcome is the server's answer, scored under the
-/// program's distribution like an observation, in the likelihood.
+/// program's distribution like an observation, in the likelihood. A
+/// program's own observations and factors are scored as any handler scores
+/// them. The flow's distributions (`Decide`, `Outcome`) are the only ones a
+/// program can use, so it has no site of another type.
 struct LiveRun {
     mailbox: Rc<RefCell<Mailbox>>,
     trace: Trace,
@@ -289,17 +304,22 @@ impl LiveRun {
 
 impl AsyncHandler for LiveRun {
     async fn on_sample_usize(&mut self, addr: &Address, dist: &dyn Distribution<usize>) -> usize {
+        // A site with no options, such as one whose distribution the program
+        // could not build, hands back.
         let site = dist
             .downcast_ref::<WithMeta<Categorical, DecideSite>>()
-            .map(|d| d.meta().clone())
-            .expect("a flow's decision sites carry their site");
-        let choice = match self
-            .ask(Ask::Decide {
-                address: addr.to_string(),
-                site,
-            })
-            .await
-        {
+            .map(|d| d.meta().clone());
+        let answer = match site {
+            Some(site) => {
+                self.ask(Ask::Decide {
+                    address: addr.to_string(),
+                    site,
+                })
+                .await
+            }
+            None => Answer::Option(HAND_BACK),
+        };
+        let choice = match answer {
             Answer::Option(i) => i,
             Answer::Failed(_) => HAND_BACK,
         };
@@ -328,24 +348,29 @@ impl AsyncHandler for LiveRun {
         unreachable!("a flow's program has no u64 site ({addr})")
     }
 
-    async fn on_observe_f64(&mut self, addr: &Address, _: &dyn Distribution<f64>, _: f64) {
-        unreachable!("a flow's program observes nothing ({addr})")
+    async fn on_observe_f64(&mut self, _: &Address, dist: &dyn Distribution<f64>, value: f64) {
+        self.trace.log_likelihood += dist.log_prob(&value);
     }
 
-    async fn on_observe_bool(&mut self, addr: &Address, _: &dyn Distribution<bool>, _: bool) {
-        unreachable!("a flow's program observes nothing ({addr})")
+    async fn on_observe_bool(&mut self, _: &Address, dist: &dyn Distribution<bool>, value: bool) {
+        self.trace.log_likelihood += dist.log_prob(&value);
     }
 
-    async fn on_observe_u64(&mut self, addr: &Address, _: &dyn Distribution<u64>, _: u64) {
-        unreachable!("a flow's program observes nothing ({addr})")
+    async fn on_observe_u64(&mut self, _: &Address, dist: &dyn Distribution<u64>, value: u64) {
+        self.trace.log_likelihood += dist.log_prob(&value);
     }
 
-    async fn on_observe_usize(&mut self, addr: &Address, _: &dyn Distribution<usize>, _: usize) {
-        unreachable!("a flow's program observes nothing ({addr})")
+    async fn on_observe_usize(
+        &mut self,
+        _: &Address,
+        dist: &dyn Distribution<usize>,
+        value: usize,
+    ) {
+        self.trace.log_likelihood += dist.log_prob(&value);
     }
 
-    async fn on_factor(&mut self, _: f64) {
-        unreachable!("a flow's program has no factor")
+    async fn on_factor(&mut self, logw: f64) {
+        self.trace.log_factors += logw;
     }
 
     async fn finish(self) -> Trace {
@@ -393,8 +418,8 @@ pub(crate) struct Engine<'a, W: Write> {
     flow_log: Option<File>,
     confirm_log: Option<File>,
     confirm_questions: usize,
-    /// The flow's statistics, which its runs' programs draw on.
-    run_model: Option<Arc<RunModel>>,
+    /// The flow's program, which each of its runs interprets.
+    program: Option<FlowProgram>,
 }
 
 impl<'a, W: Write> Engine<'a, W> {
@@ -441,10 +466,12 @@ impl<'a, W: Write> Engine<'a, W> {
             flow_log,
             confirm_log,
             confirm_questions: 0,
-            run_model: active
-                .flow
-                .as_ref()
-                .map(|fc| Arc::new(RunModel::new(&fc.flow))),
+            // A flow from a file was checked when it loaded.
+            program: active.flow.as_ref().and_then(|fc| {
+                FlowProgram::new(&fc.flow)
+                    .map_err(|e| eprintln!("stretto-proxy: {e:#}; the flow will not run"))
+                    .ok()
+            }),
         }
     }
 
@@ -656,20 +683,19 @@ impl<'a, W: Write> Engine<'a, W> {
     /// not a tool call, so there is no site to start from.
     fn flow_run(&self) -> Option<Run> {
         let fc = self.active.flow.as_ref()?;
-        let model = self.run_model.clone()?;
+        let program = self.program.as_ref()?;
         let episode = self.episode();
         let steps = stretto_model::steps(&episode);
         let last = steps.last()?;
         let Action::Tool(tool) = &last.action else {
             return None;
         };
-        let failed = last.outcome == StepOutcome::Err;
-        Some(Run::new(program::run(
-            model,
-            tool.clone(),
-            failed,
-            fc.per_call,
-        )))
+        let data = RunData {
+            call: tool.clone(),
+            failed: last.outcome == StepOutcome::Err,
+            max_lookups: fc.per_call,
+        };
+        Some(Run::new(data, program))
     }
 
     /// Run the job's flow until it waits on the server or ends: each
@@ -681,7 +707,9 @@ impl<'a, W: Write> Engine<'a, W> {
             let Work::Flow { run, .. } = &mut job.work else {
                 unreachable!("only flow jobs have a run")
             };
-            if run.future.as_mut().poll(&mut cx).is_ready() {
+            if let Poll::Ready((_, trace)) = run.future.as_mut().poll(&mut cx) {
+                let entry = run_entry(&job.client_id, &run.data, &trace);
+                self.log_flow(&entry);
                 return self.finish(job);
             }
             let mailbox = run.mailbox.clone();
@@ -736,16 +764,14 @@ impl<'a, W: Write> Engine<'a, W> {
             }
         };
         self.questions += usize::from(next.key.is_some());
-        if let Some(f) = self.flow_log.as_mut() {
-            let mut entry = serde_json::to_value(&next).unwrap_or(Value::Null);
-            entry["after"] = job.client_id.clone();
-            entry["address"] = json!(address);
-            entry["ms"] = json!(asked.elapsed().as_millis() as u64);
-            if fc.shadow {
-                entry["shadow"] = json!(true);
-            }
-            let _ = writeln!(f, "{entry}");
+        let mut entry = serde_json::to_value(&next).unwrap_or(Value::Null);
+        entry["after"] = job.client_id.clone();
+        entry["address"] = json!(address);
+        entry["ms"] = json!(asked.elapsed().as_millis() as u64);
+        if fc.shadow {
+            entry["shadow"] = json!(true);
         }
+        self.log_flow(&entry);
         match next.proposal {
             // In shadow mode the decision is only logged, and the agent gets
             // its result as the server sent it.
@@ -988,6 +1014,13 @@ impl<'a, W: Write> Engine<'a, W> {
         ));
     }
 
+    /// Append an entry to the flow log.
+    fn log_flow(&mut self, entry: &Value) {
+        if let Some(f) = self.flow_log.as_mut() {
+            let _ = writeln!(f, "{entry}");
+        }
+    }
+
     /// Whether the flow may call `tool`: the flow reads it as a lookup, and
     /// the server, once it has listed its tools, has it and does not mark it
     /// as a write.
@@ -1172,6 +1205,47 @@ fn result_text(response: &Value) -> (String, bool) {
         .join("\n");
     let error = result.get("isError").and_then(Value::as_bool) == Some(true);
     (text, error)
+}
+
+/// A flow's run, for the flow log: its program's data, each site with its
+/// value and log-probability in the order the standard program visits them,
+/// and the surprise of the server's answers, `-ln p` of the outcomes under
+/// the flow's statistics, in nats. Given the data, the flow's program can
+/// score the run again with `ScoreGivenTrace`.
+fn run_entry(after: &Value, data: &RunData, trace: &Trace) -> Value {
+    let mut sites: Vec<(&Address, &Choice)> = trace.choices.iter().collect();
+    // `decide#i` before `outcome#i`, and step 2 before step 10.
+    let step = |a: &Address| {
+        let name = a.to_string();
+        let i = name
+            .rsplit_once('#')
+            .and_then(|(_, i)| i.parse::<usize>().ok());
+        (i, name)
+    };
+    sites.sort_by_key(|(a, _)| step(a));
+    let sites: Vec<Value> = sites
+        .into_iter()
+        .map(|(a, c)| {
+            let value = match &c.value {
+                ChoiceValue::Usize(v) => json!(v),
+                ChoiceValue::Bool(v) => json!(v),
+                ChoiceValue::U64(v) => json!(v),
+                ChoiceValue::I64(v) => json!(v),
+                ChoiceValue::F64(v) => json!(v),
+            };
+            json!([a.to_string(), value, c.logp])
+        })
+        .collect();
+    json!({
+        "after": after,
+        "run": {
+            "call": data.call,
+            "failed": data.failed,
+            "max_lookups": data.max_lookups,
+            "sites": sites,
+            "surprise": -trace.log_likelihood,
+        },
+    })
 }
 
 /// The agent's result with the flow's lookups appended, as the pilot

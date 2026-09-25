@@ -26,12 +26,17 @@ const DATA_MAPS: &[&str] = &[
     "bindings.agreed",
 ];
 
+/// Fields holding another project's format, which that project documents:
+/// the flow's program is in fugue's program format.
+const OTHER_FORMATS: &[&str] = &["program"];
+
 /// Paths whose string values are the names of kinds, which the page names too.
 const KIND_VALUES: &[&str] = &["manifest.tools.{}", "predicates.*.favors"];
 
 /// Fields the examples do not show: written only when set, or only in flows
 /// with code features.
 const NOT_IN_EXAMPLES: &[&str] = &[
+    "program",
     "every_read",
     "Scalar",
     "Len",
@@ -65,7 +70,9 @@ fn names(v: &Value, path: &str, out: &mut BTreeSet<String>) {
         Value::Object(map) => {
             for (k, v) in map {
                 out.insert(k.clone());
-                names(v, &at(k), out);
+                if !OTHER_FORMATS.contains(&at(k).as_str()) {
+                    names(v, &at(k), out);
+                }
             }
         }
         Value::Array(items) => {

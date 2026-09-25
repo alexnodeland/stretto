@@ -79,7 +79,7 @@ RFC-001 §3.9 asks six additive changes of `fugue-ppl`. They are tracked in [fug
 - vector-valued sites ([#66](https://github.com/alexnodeland/fugue/issues/66));
 - a how-to for sample-or-observe sites ([#67](https://github.com/alexnodeland/fugue/issues/67)).
 
-Async interpretation, site metadata and the program format would let a live flow run as a fugue program. Today stretto uses fugue only offline: for the audit and for the habit's concentration.
+All six are built. A live flow now runs as a fugue program: the flow IR holds its run in fugue's program format, and the proxy runs it with `run_async`. stretto depends on fugue by git revision until fugue's next release.
 
 ## A suggested order
 

@@ -249,11 +249,13 @@ dependencies = [
 [[package]]
 name = "fugue-ppl"
 version = "0.2.3"
-source = "git+https://github.com/alexnodeland/fugue?rev=ac6f61fda219411bdb9e3963d8dc329f0265ea83#ac6f61fda219411bdb9e3963d8dc329f0265ea83"
+source = "git+https://github.com/alexnodeland/fugue?rev=3d65f3db3ce489d61125c217041a6cf980492f08#3d65f3db3ce489d61125c217041a6cf980492f08"
 dependencies = [
  "libm",
  "rand 0.8.8",
  "rand_distr",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

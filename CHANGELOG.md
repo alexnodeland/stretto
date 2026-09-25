@@ -30,7 +30,12 @@ Everything so far: the first design of [RFC-001](docs/rfc/001-habit-compiler.md)
 - Active mode: `--flow` runs a flow behind the agent's calls and appends its lookups to the result. `--guards` refuses writes a policy check fails. `--confirm-judge log|enforce` adds the confirmation judge. `--commit` adds a tool for confirmed writes in one call. `--context` reads the conversation the host writes.
 - `stretto-mcp-demo`, a tiny server for trying it.
 - `--retain-days N` deletes, at start, the logs and cached answers older than N days.
-- Each run of a flow after one of the agent's calls is a fugue program ([`program.rs`](crates/stretto-report/src/program.rs), RFC-001 §3.2): a decision site `decide#i` before each lookup, which the flow's arbiter decides, and an outcome site `outcome#i` after it, which takes the server's answer and scores it. The proxy interprets it with fugue's `run_async`. The sites carry their site as metadata (`WithMeta`), and their distributions are the flow's own statistics: a flat Dirichlet's predictive over what the agent did next there, and a flat Beta's over how often the tool succeeded, from fugue's conjugate helpers. Flow-log lines carry the decision's `address`. The same program simulates a flow with `PriorHandler` and scores a recorded run with `ScoreGivenTrace`.
+- Each run of a flow after one of the agent's calls is a fugue program ([`program.rs`](crates/stretto-report/src/program.rs), RFC-001 §3.2):
+  - **The sites.** A decision site `decide#i` comes before each lookup, and the flow's arbiter decides it. An outcome site `outcome#i` comes after, and takes the server's answer and scores it.
+  - **The program is in the flow.** The flow IR holds it as `program`, in fugue's serializable program format (RFC-001 §3.5), and it is checked when the flow loads. A flow written without one runs the standard run, which draws exactly what the Rust it replaced drew. `flow-show` prints the program, and `flow-diff` lists a change to it as needing review.
+  - **Its distributions.** The flow registers two, `Decide` and `Outcome`, from its own statistics: a flat Dirichlet's predictive over what the agent did next at a site, and a flat Beta's over how often a tool succeeded, from fugue's conjugate helpers. They carry their site as metadata (`WithMeta`).
+  - **Three interpreters.** The proxy runs the program with fugue's `run_async`. `PriorHandler` simulates a flow with it, and `ScoreGivenTrace` scores a recorded run.
+  - **The flow log.** Decision lines carry their `address`, and each run ends with a `run` line holding its trace and its surprise.
 
 ### Privacy
 

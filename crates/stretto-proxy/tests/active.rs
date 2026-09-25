@@ -2,6 +2,8 @@
 //! proxy, with a flow learned from synthetic sessions, the retail guards,
 //! the commit tool and a conversation file.
 
+use fugue::runtime::handler::run as interpret;
+use fugue::{addr, ChoiceValue, ScoreGivenTrace, Trace};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::fs;
@@ -12,9 +14,11 @@ use std::sync::mpsc::{self, Receiver};
 use std::thread;
 use std::time::Duration;
 use stretto_oracle::MockOracle;
+use stretto_report::flow::Flow;
 use stretto_report::phase0::{
     compile_flow_from_episodes, compile_habit_flow_from_episodes, Config,
 };
+use stretto_report::program::FlowProgram;
 use stretto_report::shadow::{OracleKind, QuestionSet, ShadowConfig};
 use stretto_trace::mcp::{episode, read_log};
 use stretto_trace::{Episode, Event, ToolCall, ToolKind, ToolManifest};
@@ -370,22 +374,72 @@ fn flows_guards_and_commit_through_the_proxy() {
         .partition(|p| p.to_string_lossy().ends_with(".flow.jsonl"));
     assert_eq!(session_logs.len(), 1);
     assert_eq!(flow_logs.len(), 1);
-    assert!(!fs::read_to_string(&flow_logs[0]).unwrap().is_empty());
-    // Each run of the flow after one of the agent's calls is a fugue
-    // program, and its decisions are that program's sites, in order.
-    let mut runs: Vec<(Value, Vec<String>)> = Vec::new();
-    for line in fs::read_to_string(&flow_logs[0]).unwrap().lines() {
-        let d: Value = serde_json::from_str(line).unwrap();
-        let address = d["address"].as_str().unwrap().to_string();
-        match runs.last_mut() {
-            Some((after, sites)) if *after == d["after"] => sites.push(address),
-            _ => runs.push((d["after"].clone(), vec![address])),
+    // Each run of the flow after one of the agent's calls is the flow's
+    // fugue program: its decisions are the program's decision sites, in
+    // order, and the run's own entry holds its trace.
+    let entries: Vec<Value> = fs::read_to_string(&flow_logs[0])
+        .unwrap()
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    let (runs, decisions): (Vec<&Value>, Vec<&Value>) =
+        entries.iter().partition(|e| e.get("run").is_some());
+    assert!(!runs.is_empty());
+    let program = FlowProgram::new(&Flow::load(&flow).unwrap()).unwrap();
+    let mut outcomes = 0;
+    for entry in &runs {
+        let run = &entry["run"];
+        let decided: Vec<&str> = decisions
+            .iter()
+            .filter(|d| d["after"] == entry["after"])
+            .map(|d| d["address"].as_str().unwrap())
+            .collect();
+        let expected: Vec<String> = (0..decided.len()).map(|i| format!("decide#{i}")).collect();
+        assert_eq!(decided, expected);
+        let mut trace = Trace::default();
+        for site in run["sites"].as_array().unwrap() {
+            let (name, i) = site[0].as_str().unwrap().split_once('#').unwrap();
+            let value = match &site[1] {
+                Value::Bool(ok) => ChoiceValue::Bool(*ok),
+                v => ChoiceValue::Usize(v.as_u64().unwrap() as usize),
+            };
+            let address = addr!(name, i.parse::<usize>().unwrap());
+            trace.insert_choice(address, value, site[2].as_f64().unwrap());
         }
+        let sites: Vec<String> = run["sites"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| s[0].as_str().unwrap().to_string())
+            .filter(|a| a.starts_with("decide#"))
+            .collect();
+        assert_eq!(sites, decided);
+        // Audited under the flow's program with the run's data, each
+        // outcome scores as the proxy scored the server's answer, and the
+        // surprise is theirs.
+        let (_, audited) = interpret(
+            ScoreGivenTrace {
+                base: trace.clone(),
+                trace: Trace::default(),
+            },
+            program.run(
+                run["call"].as_str().unwrap(),
+                run["failed"].as_bool().unwrap(),
+                run["max_lookups"].as_u64().unwrap() as usize,
+            ),
+        );
+        assert_eq!(audited.choices.len(), trace.choices.len());
+        let mut surprise = 0.0;
+        for (address, choice) in &trace.choices {
+            if address.to_string().starts_with("outcome#") {
+                assert!((audited.choices[address].logp - choice.logp).abs() < 1e-12);
+                surprise -= choice.logp;
+                outcomes += 1;
+            }
+        }
+        assert!((run["surprise"].as_f64().unwrap() - surprise).abs() < 1e-12);
     }
-    for (_, sites) in &runs {
-        let expected: Vec<String> = (0..sites.len()).map(|i| format!("decide#{i}")).collect();
-        assert_eq!(*sites, expected);
-    }
+    assert!(outcomes > 0, "{runs:?}");
     let log = read_log(&session_logs[0]).unwrap();
     let ep = episode(&log);
     let said: Vec<&str> = ep

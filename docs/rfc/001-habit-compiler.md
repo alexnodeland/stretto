@@ -237,7 +237,7 @@ The loop:
   - The agent shows the proposal to the user and obtains an explicit "yes", as τ²-bench's policies require.
   - `commit_<flow>(token)` then executes exactly what was planned, by replaying the planned trace up to the confirmation site and continuing into the write sites.
   - *Amended (§3.13):* flows propose no writes. `plan_*` only reads. `commit_*` executes the write calls the LLM specified after the user's confirmation, and decides nothing itself.
-- **Output is a serializable flow IR** (sites, questions, bindings, guards). It is interpreted into a fugue `Model` at load time. fugue-wasm's `dsl.rs` already interprets a `prob!` subset into real `Model`s at runtime; the flow IR generalizes that.
+- **Output is a serializable flow IR** (sites, questions, bindings, guards). It is interpreted into a fugue `Model` at load time. fugue-wasm's `dsl.rs` already interprets a `prob!` subset into real `Model`s at runtime; the flow IR generalizes that. *Amended (§3.9):* built. The flow IR holds the flow's run as a program in fugue's program format, which generalizes `dsl.rs` (fugue#65). It is checked against the flow's distributions when the flow loads, and interpreted into a fugue `Model` for each run.
 - **Macro-tools as options.** The proxy serves each flow as a pair of MCP tools. In options-framework terms:
   - the initiation set is the applicability predicate;
   - the intra-option policy is the flow;
@@ -357,7 +357,20 @@ The spike surfaced six changes to `fugue-ppl`. All are additive, and they will g
 
 *Moved (2026-09-25):* the six changes are tracked in [fugue#61](https://github.com/alexnodeland/fugue/issues/61), as #62–#67 there. [Fugue's copy of this RFC](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md) keeps this section, the mapping in §3.2 and the spike.
 
-*Amended (2026-09-25):* built in fugue. `AsyncHandler` and `run_async` (fugue#62), `Distribution::as_any` and `WithMeta` (fugue#63), `Delegate` and `Overrides` (fugue#64), the conjugate helpers and `sample_dirichlet` (fugue#66), and a how-to for sample-or-observe sites (fugue#67). A flow's live run is now a fugue program, as §3.2 maps it: `stretto-proxy` interprets it with `run_async`, deciding at each `decide#i` site with the arbiter and making each lookup at its `outcome#i` site. stretto depends on fugue by git revision until fugue's next release.
+*Amended (2026-09-25):* all six are built in fugue:
+- `AsyncHandler` and `run_async` (fugue#62);
+- `Distribution::as_any` and `WithMeta` (fugue#63);
+- `Delegate` and `Overrides` (fugue#64);
+- a serializable program format, `fugue::program` (fugue#65);
+- the conjugate helpers and `sample_dirichlet` (fugue#66);
+- a how-to for sample-or-observe sites (fugue#67).
+
+A flow's live run is now a fugue program, as §3.2 maps it, and the flow IR holds it, as §3.5 asks:
+- **Stored and checked.** The program is stored with the flow in fugue's format, and checked when the flow loads. The flow's own statistics are registered as its only distributions, `Decide` and `Outcome`.
+- **Executed.** `stretto-proxy` runs it with `run_async`. It decides at each `decide#i` site with the arbiter and makes each lookup at its `outcome#i` site.
+- **Audited.** The proxy logs each run's trace, and `ScoreGivenTrace` scores it again under the same program.
+
+stretto depends on fugue by git revision until fugue's next release.
 
 ### 3.10 Phased plan
 

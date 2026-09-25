@@ -295,6 +295,17 @@ pub fn show(flow: &Flow, threshold: f64) -> String {
             let _ = writeln!(md, "- **{label}:** {}", tools.join(", "));
         }
     }
+    let _ = writeln!(md, "\n## Run\n");
+    let _ = writeln!(
+        md,
+        "What the flow does after each call, as a fugue program (`program`): `Decide` is a decision between handing back (0) and the lookups offered after the call just made, and `Outcome` whether a lookup succeeds. The proxy decides with the arbiter and takes each outcome from the server. {}\n",
+        if flow.program == crate::program::standard() {
+            "This is the standard run: decide, look up, and decide again, until the flow hands back or has made `max_lookups` lookups (`--flow-per-call`)."
+        } else {
+            "**This is not the standard run.** Review it as code the flow runs."
+        }
+    );
+    let _ = writeln!(md, "~~~text\n{}\n~~~", flow.program);
     let _ = writeln!(md, "\n## Sites\n");
     if flow.sites.offers_every_read() {
         let _ = writeln!(
@@ -449,9 +460,9 @@ fn binding_rows(md: &mut String, b: &LookupBinding) {
 pub struct FlowDiff {
     /// The change list (Markdown).
     pub markdown: String,
-    /// The changes a reviewer must look at: the flow may call a tool, make
-    /// a lookup, bind an argument from a source, or ask a model or a
-    /// question it did not before.
+    /// The changes a reviewer must look at: the flow runs another program,
+    /// or may call a tool, make a lookup, bind an argument from a source, or
+    /// ask a model or a question it did not before.
     pub needs_review: Vec<String>,
 }
 
@@ -481,6 +492,24 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
         }
     }
     sections.push(("Tools".to_string(), tools));
+
+    // The run: the program, line by line.
+    let mut run = Vec::new();
+    if old.program != new.program {
+        let (a, b) = (old.program.to_string(), new.program.to_string());
+        let (la, lb): (Vec<&str>, Vec<&str>) = (a.lines().collect(), b.lines().collect());
+        for line in la.iter().filter(|l| !lb.contains(l)) {
+            run.push(format!("no longer runs `{}`", line.trim()));
+        }
+        for line in lb.iter().filter(|l| !la.contains(l)) {
+            run.push(format!("now runs `{}`", line.trim()));
+        }
+        if run.is_empty() {
+            run.push("runs the same lines in another order".to_string());
+        }
+        review.push("the flow's run changed: its program is not the one it was".to_string());
+    }
+    sections.push(("Run".to_string(), run));
 
     // Sites and the lookups offered there.
     let mut sites = Vec::new();
@@ -751,7 +780,7 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
 
     let mut md = format!("# Flow diff: {}\n\n", new.domain());
     if review.is_empty() {
-        md.push_str("Nothing needs review: the flow calls no tool, makes no lookup, binds no argument and asks no model or question it did not before.\n");
+        md.push_str("Nothing needs review: the flow runs the same program, and calls no tool, makes no lookup, binds no argument and asks no model or question it did not before.\n");
     } else {
         md.push_str("**Needs review:**\n\n");
         for r in &review {
@@ -769,5 +798,39 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
     FlowDiff {
         markdown: md,
         needs_review: review,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn example(name: &str) -> Flow {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(format!("../../docs/examples/{name}.flow.json"));
+        Flow::load(&path).unwrap()
+    }
+
+    #[test]
+    fn a_changed_program_needs_review() {
+        let old = example("retail-5-sessions");
+        let mut new = old.clone();
+        assert!(diff(&old, &new, 0.05, 0.3).needs_review.is_empty());
+        assert!(show(&old, 0.3).contains("This is the standard run"));
+        new.program = fugue::program::Program::parse(
+            &crate::program::PROGRAM.replace("0..max_lookups", "0..1"),
+        )
+        .unwrap();
+        let d = diff(&old, &new, 0.05, 0.3);
+        assert_eq!(d.needs_review.len(), 1, "{:?}", d.needs_review);
+        assert!(
+            d.markdown.contains("- now runs `for i in 0..1 {`"),
+            "{}",
+            d.markdown
+        );
+        assert!(d
+            .markdown
+            .contains("- no longer runs `for i in 0..max_lookups {`"));
+        assert!(show(&new, 0.3).contains("**This is not the standard run.**"));
     }
 }

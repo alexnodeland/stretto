@@ -171,6 +171,11 @@ pub struct Flow {
     pub(crate) bindings: Bindings,
     /// The System-One model id to request.
     pub(crate) model: String,
+    /// The flow's run after each call, as a fugue program
+    /// ([`crate::program`]). A flow written before flows held their program
+    /// runs the standard one.
+    #[serde(default = "crate::program::standard")]
+    pub(crate) program: fugue::program::Program,
     /// Where the flow may act, once promoted (`stretto promote`). Absent, it
     /// acts after any call where a lookup clears the threshold.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -424,7 +429,8 @@ impl Flow {
         Self::from_json(&text)
     }
 
-    /// Parse a flow IR.
+    /// Parse a flow IR, and check its program against the flow's
+    /// distributions ([`crate::program::FlowProgram`]).
     pub fn from_json(text: &str) -> Result<Self> {
         #[derive(Deserialize)]
         struct Version {
@@ -438,7 +444,14 @@ impl Flow {
                 v.stretto_flow
             );
         }
-        Ok(serde_json::from_str(text)?)
+        let flow: Self = serde_json::from_str(text)?;
+        crate::program::FlowProgram::new(&flow)?;
+        Ok(flow)
+    }
+
+    /// The flow's run after each call, as a fugue program.
+    pub fn program(&self) -> &fugue::program::Program {
+        &self.program
     }
 
     /// How often each lookup's binding agreed with the agent in training
@@ -1523,6 +1536,7 @@ mod tests {
             weighed: Vec::new(),
             model: "jev-test".to_string(),
             manifest,
+            program: crate::program::standard(),
             promoted: None,
         }
     }

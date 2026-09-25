@@ -35,6 +35,7 @@ A flow makes read-only calls on the agent's behalf, so a review asks what it may
 | `folds` | The arbiter's fitted weights and Jev's record, one per fold of tasks |
 | `bindings` | Where each lookup's arguments came from in training, and how often binding them that way matched the agent |
 | `model` | The System-One model the flow asks |
+| `program` | The flow's run after each call, as a fugue program |
 | `promoted` | Where the flow may act, once promoted; absent until `stretto promote` writes it |
 
 ### `provenance`
@@ -123,6 +124,34 @@ How the flow fills a lookup's arguments, learned from the agent's own lookups in
 ### `model`
 
 The System-One model id the flow requests, `jev-latest` by default. It is part of each question's cache key. Empty in a flow with no arbiter.
+
+### `program`
+
+The flow's run after each of the agent's calls, as a program in fugue's serializable format (`fugue::program`; [RFC-001 §3.5](rfc/001-habit-compiler.md#35-compiling-flows)). It is a JSON object: the format's version, `fugue_program` (1), then the program's `body` and `ret`, whose nodes fugue documents. `stretto compile` and `stretto learn` write the standard run, which `stretto flow-show` prints as text:
+
+```text
+let prev = call;
+let failed = call_failed;
+for i in 0..max_lookups {
+    let d <- sample(addr!("decide", i), Decide(prev, failed));
+    if d == 0 {
+        break;
+    }
+    let ok <- sample(addr!("outcome", i), Outcome(d));
+    prev = d;
+    failed = !ok;
+}
+pure(prev)
+```
+
+- **Tools by number.** 0 is handing back (`respond`), then come `sites.reads` in order, then the manifest's other tools. A decision's value is the number of the lookup it makes.
+- **Data.** `call` is the number of the tool whose call just returned, and `call_failed` whether it failed. `max_lookups` is the proxy's `--flow-per-call`.
+- **Distributions.** `Decide(prev, failed)` is the decision after a call to tool `prev`. Handing back and the lookups `sites.next` offers there get a flat Dirichlet's posterior predictive, given what the agent did next in training; the other lookups get 0. `Outcome(d)` is whether a call to tool `d` succeeds, a flat Beta's posterior predictive given how often its calls did. These two are the only distributions a flow's program can use.
+- **Checked on load.** A program that uses another name, or gives `Decide` or `Outcome` the wrong number of arguments, does not load. A flow written without `program` runs the standard one.
+
+The proxy decides at each `decide#i` with the arbiter, and takes each `outcome#i` from the server.
+
+Check: any program other than the standard run is code the proxy runs. `stretto flow-diff` lists a change to it as needing review.
 
 ### `promoted`
 

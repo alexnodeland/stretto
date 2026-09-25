@@ -148,7 +148,7 @@ Delta owner: Priya.
  "probs": {"read_text_file": 0.43, "respond": 0.57}, "reason": "read_text_file: nothing left to pass as `path`"}
 ```
 
-Each entry has the site, each option's probability, the lookup's probability (`prob`) and its binding's chance (`binding`), and the lookup made (`tool`, `arguments`) or the reason for handing back. `address` is the decision's site in the flow's run as a fugue program ([design](design.md)): the third decision after that call. `--flow-per-call` (8) and `--flow-per-session` (40) cap the lookups.
+Each entry has the site, each option's probability, the lookup's probability (`prob`) and its binding's chance (`binding`), and the lookup made (`tool`, `arguments`) or the reason for handing back. `address` is the decision's site in the flow's run as a fugue program ([the flow's `program`](formats.md#program)): the third decision after that call. The run's own line, `run`, comes after its decisions. It holds the run's trace: each site's value and log-probability, and `surprise`, how unexpected the reads' results were to the flow. `--flow-per-call` (8) and `--flow-per-session` (40) cap the lookups.
 
 ## 6. Learn again, and review what changed
 
@@ -162,7 +162,7 @@ stretto flow-diff notes.flow.json notes-2.flow.json
 ```markdown
 # Flow diff: notes
 
-Nothing needs review: the flow calls no tool, makes no lookup, binds no argument and asks no model or question it did not before.
+Nothing needs review: the flow runs the same program, and calls no tool, makes no lookup, binds no argument and asks no model or question it did not before.
 
 ## What the agent did next in training
 

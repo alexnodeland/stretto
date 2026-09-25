@@ -26,6 +26,25 @@ Written by stretto 0.0.1 from openai/glm-5-fp8. The habit learned from 3 success
 - **Write, never called:** `cancel_pending_order`, `exchange_delivered_order_items`, `modify_pending_order_address`, `modify_pending_order_items`, `modify_pending_order_payment`, `modify_user_address`, `return_delivered_order_items`
 - **Neither, never called:** `calculate`, `transfer_to_human_agents`
 
+## Run
+
+What the flow does after each call, as a fugue program (`program`): `Decide` is a decision between handing back (0) and the lookups offered after the call just made, and `Outcome` whether a lookup succeeds. The proxy decides with the arbiter and takes each outcome from the server. This is the standard run: decide, look up, and decide again, until the flow hands back or has made `max_lookups` lookups (`--flow-per-call`).
+
+~~~text
+let prev = call;
+let failed = call_failed;
+for i in 0..max_lookups {
+    let d <- sample(addr!("decide", i), Decide(prev, failed));
+    if d == 0 {
+        break;
+    }
+    let ok <- sample(addr!("outcome", i), Outcome(d));
+    prev = d;
+    failed = !ok;
+}
+pure(prev)
+~~~
+
 ## Sites
 
 After each call: the lookups the flow may make next, what the agent did next in training, and what the flow does there with the habit alone at a threshold of 0.3, which is the likeliest lookup's share times the chance its bound arguments are the agent's. The share pools over the calls before and the code features, so a live decision near the threshold can go either way.
