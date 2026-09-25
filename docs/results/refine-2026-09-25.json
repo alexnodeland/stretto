@@ -1,0 +1,371 @@
+{
+  "folds": 5,
+  "penalty": 3.8074026823555367,
+  "base": {
+    "loglik": -1325.471429925897,
+    "scored": 2028,
+    "decisions": 2042,
+    "agreed": 1527,
+    "weights": [
+      0.2485134803957589,
+      0.20721256947963168,
+      0.13172340331664417,
+      0.27191652029229063,
+      1.253035647908793,
+      -0.03609742244037029,
+      0.7950487677365328,
+      0.6270898766936002
+    ],
+    "sites": {
+      "calculate": [
+        80,
+        -2.6404867260939326,
+        79
+      ],
+      "calculate (error)": [
+        1,
+        -1.502552011822509,
+        0
+      ],
+      "cancel_reservation": [
+        91,
+        -19.71014501339853,
+        80
+      ],
+      "get_flight_status": [
+        189,
+        -194.4641212218521,
+        128
+      ],
+      "get_reservation_details": [
+        739,
+        -472.90876057028385,
+        565
+      ],
+      "get_user_details": [
+        253,
+        -145.8792150090813,
+        177
+      ],
+      "list_all_airports": [
+        5,
+        -2.4259035845443866,
+        5
+      ],
+      "search_direct_flight": [
+        615,
+        -447.3509224239987,
+        437
+      ],
+      "search_onestop_flight": [
+        47,
+        -35.94910835143665,
+        38
+      ],
+      "update_reservation_flights (error)": [
+        22,
+        -2.6402150133859164,
+        18
+      ]
+    },
+    "target": [
+      -398.2519412560844,
+      552,
+      556,
+      404
+    ]
+  },
+  "candidates": [
+    {
+      "id": "change_confirmed",
+      "favors": "hand_back",
+      "question": "Has the customer confirmed a specific change (a cancellation, a booking, a flight or cabin change, or a bag or passenger update), and has the agent already looked up everything it needs to make it?",
+      "answered": 2042,
+      "mean_yes": 0.18363858961802207,
+      "gain_alone": -3.313465813524772,
+      "weight_alone": 0.04997399687338384,
+      "agreement_alone": 0.7482859941234085,
+      "target_gain_alone": -0.48924747851617667,
+      "kept": false
+    },
+    {
+      "id": "answer_in_hand",
+      "favors": "hand_back",
+      "question": "Do the results so far already hold what the customer's latest message asks for, so the agent can reply without looking anything else up?",
+      "answered": 2042,
+      "mean_yes": 0.3606464250734579,
+      "gain_alone": 45.42037772919366,
+      "weight_alone": 0.46402637714383543,
+      "agreement_alone": 0.7693437806072478,
+      "target_gain_alone": 0.7594865443841741,
+      "kept": true
+    },
+    {
+      "id": "waiting_on_customer",
+      "favors": "hand_back",
+      "question": "Is the agent waiting for the customer to answer something it asked, such as which reservation, which option, or whether to go ahead?",
+      "answered": 2042,
+      "mean_yes": 0.22876591576885394,
+      "gain_alone": -5.19765141531866,
+      "weight_alone": -0.06275719970771398,
+      "agreement_alone": 0.7414299706170421,
+      "target_gain_alone": 0.46024793500129135,
+      "kept": false
+    },
+    {
+      "id": "needs_fares",
+      "favors": {
+        "lookup": "search_direct_flight"
+      },
+      "question": "Does the customer's request need available flights or fares that the agent has not searched for yet, to book a trip, change flights or dates, or price a cabin change?",
+      "answered": 2042,
+      "mean_yes": 0.624368266405487,
+      "gain_alone": -3.48557225467016,
+      "weight_alone": 0.148564633053515,
+      "agreement_alone": 0.7443682664054848,
+      "target_gain_alone": -2.4060428072324953,
+      "kept": false
+    },
+    {
+      "id": "onestop_needed",
+      "favors": {
+        "lookup": "search_onestop_flight"
+      },
+      "question": "Has a search for direct flights come back without a flight that suits the request, so that connecting flights have to be searched?",
+      "answered": 2042,
+      "mean_yes": 0.11868266405484906,
+      "gain_alone": 10.608745781252082,
+      "weight_alone": 0.4770112412286969,
+      "agreement_alone": 0.7419196865817825,
+      "target_gain_alone": -1.195933771086061,
+      "kept": true
+    },
+    {
+      "id": "needs_profile",
+      "favors": {
+        "lookup": "get_user_details"
+      },
+      "question": "Does the agent need the customer's profile (their list of reservations, payment methods, membership or saved passengers) without having looked it up yet?",
+      "answered": 2042,
+      "mean_yes": 0.23090597453476988,
+      "gain_alone": -16.922481342602396,
+      "weight_alone": 0.33523681245406933,
+      "agreement_alone": 0.7409402546523016,
+      "target_gain_alone": -2.5556816405498353,
+      "kept": false
+    },
+    {
+      "id": "reservation_unread",
+      "favors": {
+        "lookup": "get_reservation_details"
+      },
+      "question": "Is there a reservation the customer's request involves whose details the agent has not looked up yet?",
+      "answered": 2042,
+      "mean_yes": 0.45396669931440004,
+      "gain_alone": 3.841745196158172,
+      "weight_alone": -0.17481950558995485,
+      "agreement_alone": 0.7443682664054848,
+      "target_gain_alone": -7.029770366825801,
+      "kept": false
+    },
+    {
+      "id": "needs_status",
+      "favors": {
+        "lookup": "get_flight_status"
+      },
+      "question": "Does the request depend on a flight's status (delayed, cancelled or already flown) that the agent has not checked yet?",
+      "answered": 2042,
+      "mean_yes": 0.33213026444662147,
+      "gain_alone": -27.735272408687706,
+      "weight_alone": -0.12632083322809157,
+      "agreement_alone": 0.7384916748285995,
+      "target_gain_alone": -13.016421722968744,
+      "kept": false
+    }
+  ],
+  "rounds": [
+    {
+      "id": "answer_in_hand",
+      "loglik": -1280.0510521967033,
+      "gain": 45.42037772919366,
+      "kept": true,
+      "target_gain": 0.7594865443841741
+    },
+    {
+      "id": "onestop_needed",
+      "loglik": -1264.7761679340572,
+      "gain": 15.274884262646083,
+      "kept": true,
+      "target_gain": -2.2657716333961844
+    },
+    {
+      "id": "needs_fares",
+      "loglik": -1261.4654691692,
+      "gain": 3.3106987648570794,
+      "kept": false,
+      "target_gain": -1.278501663917325
+    }
+  ],
+  "kept": [
+    "answer_in_hand",
+    "onestop_needed"
+  ],
+  "refined": {
+    "loglik": -1264.7761679340572,
+    "scored": 2028,
+    "decisions": 2042,
+    "agreed": 1567,
+    "weights": [
+      0.2990553416300282,
+      0.21972613540075947,
+      0.03823092758409338,
+      0.28198869946952543,
+      1.0974056134217764,
+      -0.13405826909197827,
+      0.6460755471219997,
+      0.49977753092596783,
+      0.5307695130372997,
+      0.5818471918794327
+    ],
+    "sites": {
+      "calculate": [
+        80,
+        -3.1164472017412703,
+        79
+      ],
+      "calculate (error)": [
+        1,
+        -1.6985531492715724,
+        0
+      ],
+      "cancel_reservation": [
+        91,
+        -18.39029004603452,
+        81
+      ],
+      "get_flight_status": [
+        189,
+        -178.9723726439144,
+        133
+      ],
+      "get_reservation_details": [
+        739,
+        -460.22848354464355,
+        576
+      ],
+      "get_user_details": [
+        253,
+        -145.2611228179498,
+        188
+      ],
+      "list_all_airports": [
+        5,
+        -1.949381158285265,
+        5
+      ],
+      "search_direct_flight": [
+        615,
+        -418.8488995272218,
+        452
+      ],
+      "search_onestop_flight": [
+        47,
+        -34.71507079300022,
+        36
+      ],
+      "update_reservation_flights (error)": [
+        22,
+        -1.5955470519947923,
+        17
+      ]
+    },
+    "target": [
+      -399.75822634509643,
+      552,
+      556,
+      406
+    ]
+  },
+  "sites": [
+    {
+      "site": "get_reservation_details",
+      "decisions": 739,
+      "base_loglik": -472.90876057028385,
+      "refined_loglik": -460.22848354464355,
+      "base_agreement": 0.7645466847090663,
+      "refined_agreement": 0.7794316644113667
+    },
+    {
+      "site": "search_direct_flight",
+      "decisions": 615,
+      "base_loglik": -447.3509224239987,
+      "refined_loglik": -418.8488995272218,
+      "base_agreement": 0.7105691056910569,
+      "refined_agreement": 0.734959349593496
+    },
+    {
+      "site": "get_user_details",
+      "decisions": 253,
+      "base_loglik": -145.8792150090813,
+      "refined_loglik": -145.2611228179498,
+      "base_agreement": 0.6996047430830039,
+      "refined_agreement": 0.7430830039525692
+    },
+    {
+      "site": "get_flight_status",
+      "decisions": 189,
+      "base_loglik": -194.4641212218521,
+      "refined_loglik": -178.9723726439144,
+      "base_agreement": 0.6772486772486772,
+      "refined_agreement": 0.7037037037037037
+    },
+    {
+      "site": "cancel_reservation",
+      "decisions": 91,
+      "base_loglik": -19.71014501339853,
+      "refined_loglik": -18.39029004603452,
+      "base_agreement": 0.8791208791208791,
+      "refined_agreement": 0.8901098901098901
+    },
+    {
+      "site": "calculate",
+      "decisions": 80,
+      "base_loglik": -2.6404867260939326,
+      "refined_loglik": -3.1164472017412703,
+      "base_agreement": 0.9875,
+      "refined_agreement": 0.9875
+    },
+    {
+      "site": "search_onestop_flight",
+      "decisions": 47,
+      "base_loglik": -35.94910835143665,
+      "refined_loglik": -34.71507079300022,
+      "base_agreement": 0.8085106382978723,
+      "refined_agreement": 0.7659574468085106
+    },
+    {
+      "site": "update_reservation_flights (error)",
+      "decisions": 22,
+      "base_loglik": -2.6402150133859164,
+      "refined_loglik": -1.5955470519947923,
+      "base_agreement": 0.8181818181818182,
+      "refined_agreement": 0.7727272727272727
+    },
+    {
+      "site": "list_all_airports",
+      "decisions": 5,
+      "base_loglik": -2.4259035845443866,
+      "refined_loglik": -1.949381158285265,
+      "base_agreement": 1.0,
+      "refined_agreement": 1.0
+    },
+    {
+      "site": "calculate (error)",
+      "decisions": 1,
+      "base_loglik": -1.502552011822509,
+      "refined_loglik": -1.6985531492715724,
+      "base_agreement": 0.0,
+      "refined_agreement": 0.0
+    }
+  ]
+}

@@ -41,7 +41,7 @@ These cost Jev dollars, CPU time or people's time, and no LLM runs.
 |---|---|---|
 | [#14](https://github.com/alexnodeland/stretto/issues/14) | The confirmation judge in the proxy's guards, logged or enforced | Done: `stretto-proxy --confirm-judge log\|enforce` |
 | [#15](https://github.com/alexnodeland/stretto/issues/15) | Counterfactual evaluation from logged decisions | Done: `--flow-explore` and `stretto evaluate`. On replays, the estimates match a rule's own replay for changes that keep a flow's chains, and miss a changed decider's detours ([results](results/evaluate-2026-09-25.md)) |
-| [#16](https://github.com/alexnodeland/stretto/issues/16) | Predicate refinement | RFC-001 §3.4; the three predicates were written by hand |
+| [#16](https://github.com/alexnodeland/stretto/issues/16) | Predicate refinement | Done: `phase0 --candidates` and `stretto refine`. One round in airline kept two of eight candidates, which fitted the agents the proposer read but not GLM-5, and did not move the savings; the three hand-written predicates stay ([results](results/refine-2026-09-25.md)) |
 | [#17](https://github.com/alexnodeland/stretto/issues/17) | Hand back when a session surprises the flow | RFC-001 §3.6; surprise is measured only after the fact |
 | [#18](https://github.com/alexnodeland/stretto/issues/18) | Drift alarms | RFC-001 §3.3 and §4: change-point alarms and forgetting |
 | [#19](https://github.com/alexnodeland/stretto/issues/19) | Shadow mode and per-site promotion | Done: `stretto-proxy --flow-shadow` and `stretto promote`; replayed, promotion halved D0's detours for 6% of its retail savings ([results](results/promotion-2026-09-25.md)) |
@@ -100,5 +100,5 @@ All six are built. A live flow now runs as a fugue program: the flow IR holds it
 4. **Live runs, as budgets are approved.** The paired run (#2), the cold start live in both domains (#3), Claude models as the agent and the customer (#4, #5) and the confirmation judge enforced (#6) are done. The paired run puts the pass-rate change between −7.5 and +6.25 points, not within one. Next come flows and guards serving a smaller agent (#8).
 5. **Phase 3 features** as the evidence calls for them:
    - counterfactual evaluation (#15), done;
-   - predicate refinement (#16);
+   - predicate refinement (#16), done;
    - flow search (#25).

@@ -1,0 +1,61 @@
+{
+  "about": "Candidate predicates for airline, proposed for stretto refine (RFC-001 §3.4, #16) from examples at the five sites where the Phase 0b v2 arbiter was most surprised by the agents' steps: after reading a reservation, after a direct-flight search, after a flight status, after the customer's profile, and after a one-stop search. The proposer was Claude, the model running the analysis. Each is asked alone at every asked next-step decision.",
+  "predicates": [
+    {
+      "id": "change_confirmed",
+      "favors": "hand_back",
+      "question": "Has the customer confirmed a specific change (a cancellation, a booking, a flight or cabin change, or a bag or passenger update), and has the agent already looked up everything it needs to make it?",
+      "yes": "The customer has said yes to a specific change, and the results so far hold the records and prices it needs, so the agent's next step is to make it.",
+      "no": "No change has been confirmed yet, or the agent still has to look something up before it can make it."
+    },
+    {
+      "id": "answer_in_hand",
+      "favors": "hand_back",
+      "question": "Do the results so far already hold what the customer's latest message asks for, so the agent can reply without looking anything else up?",
+      "yes": "The latest results answer the customer's question, or show what the agent said it would check, and the agent should now tell the customer.",
+      "no": "Something the customer asked about is not in the results yet."
+    },
+    {
+      "id": "waiting_on_customer",
+      "favors": "hand_back",
+      "question": "Is the agent waiting for the customer to answer something it asked, such as which reservation, which option, or whether to go ahead?",
+      "yes": "The agent's last message asked the customer something that the customer's latest message does not answer yet.",
+      "no": "The customer has answered what the agent asked, or the agent asked nothing."
+    },
+    {
+      "id": "needs_fares",
+      "favors": {"lookup": "search_direct_flight"},
+      "question": "Does the customer's request need available flights or fares that the agent has not searched for yet, to book a trip, change flights or dates, or price a cabin change?",
+      "yes": "The agent must search flights on a route and date it has not searched yet before it can go on.",
+      "no": "No flight search is needed, or every route and date the request needs has been searched."
+    },
+    {
+      "id": "onestop_needed",
+      "favors": {"lookup": "search_onestop_flight"},
+      "question": "Has a search for direct flights come back without a flight that suits the request, so that connecting flights have to be searched?",
+      "yes": "The direct-flight results are empty or none of them fits what the customer wants, and one-stop flights have not been searched for that route and date.",
+      "no": "A direct flight fits, no flight search is involved, or one-stop flights have been searched already."
+    },
+    {
+      "id": "needs_profile",
+      "favors": {"lookup": "get_user_details"},
+      "question": "Does the agent need the customer's profile (their list of reservations, payment methods, membership or saved passengers) without having looked it up yet?",
+      "yes": "The customer's user id is known, the profile has not been looked up, and the request needs something from it.",
+      "no": "The profile has been looked up already, or the request needs nothing from it."
+    },
+    {
+      "id": "reservation_unread",
+      "favors": {"lookup": "get_reservation_details"},
+      "question": "Is there a reservation the customer's request involves whose details the agent has not looked up yet?",
+      "yes": "The request concerns a reservation (named by the customer, or one of theirs that must be checked) that the agent has not read.",
+      "no": "The agent has read every reservation the request involves, or none is involved."
+    },
+    {
+      "id": "needs_status",
+      "favors": {"lookup": "get_flight_status"},
+      "question": "Does the request depend on a flight's status (delayed, cancelled or already flown) that the agent has not checked yet?",
+      "yes": "The agent must check a flight's status to answer the customer or to know what the customer may do, such as compensation or whether a flight can still be changed.",
+      "no": "No flight's status matters here, or it has been checked."
+    }
+  ]
+}

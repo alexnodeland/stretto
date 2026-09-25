@@ -1,6 +1,6 @@
 # RFC-001: Habit compiler — compiling agent behavior into System-One flows
 
-- **Status:** Accepted (2026-09-23, [fugue#51](https://github.com/alexnodeland/fugue/pull/51)). Amended the same day with what Phase 0 found (§3.12, [fugue#52](https://github.com/alexnodeland/fugue/pull/52)) and with Phase 0b v2's read-only flows and arbitration (§3.13, [fugue#53](https://github.com/alexnodeland/fugue/pull/53)), and on 2026-09-24 with the first live form and pilot (§3.14, [fugue#54](https://github.com/alexnodeland/fugue/pull/54)), with the built implementation, the airline pilot, policy guards and the flow audit (§3.15, [fugue#55](https://github.com/alexnodeland/fugue/pull/55)), with the arms measured before building macro-tools (§3.16, [fugue#56](https://github.com/alexnodeland/fugue/pull/56)), with the habit alone live, fewer traces and Jev as a confirmation judge (§3.17, [fugue#58](https://github.com/alexnodeland/fugue/pull/58)), with a cold start from an agent's own sessions, options from the manifest, a second confirmation question and matching descriptions to records (§3.18, [fugue#59](https://github.com/alexnodeland/fugue/pull/59)), and with an arbiter shipped with the compiler (§3.19, [fugue#60](https://github.com/alexnodeland/fugue/pull/60)). On 2026-09-25 it was amended here with the paired run on every test task (§3.20), the cold start live (§3.21), and counterfactual evaluation, the confirmation judge enforced, the cold start in airline and Claude models (§3.22). The design was iterated with @alexnodeland on 2026-09-23; the decisions are in §3.11. On 2026-09-25 it moved from fugue's decision log to stretto ([fugue#68](https://github.com/alexnodeland/fugue/pull/68)), where it is amended from now on. [Fugue's copy](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md) keeps fugue's side of it: the mapping onto fugue (§3.2), what fugue decided about its own scope and the six changes to `fugue-ppl` (§3.9), and the spike (Appendix A).
+- **Status:** Accepted (2026-09-23, [fugue#51](https://github.com/alexnodeland/fugue/pull/51)). Amended the same day with what Phase 0 found (§3.12, [fugue#52](https://github.com/alexnodeland/fugue/pull/52)) and with Phase 0b v2's read-only flows and arbitration (§3.13, [fugue#53](https://github.com/alexnodeland/fugue/pull/53)), and on 2026-09-24 with the first live form and pilot (§3.14, [fugue#54](https://github.com/alexnodeland/fugue/pull/54)), with the built implementation, the airline pilot, policy guards and the flow audit (§3.15, [fugue#55](https://github.com/alexnodeland/fugue/pull/55)), with the arms measured before building macro-tools (§3.16, [fugue#56](https://github.com/alexnodeland/fugue/pull/56)), with the habit alone live, fewer traces and Jev as a confirmation judge (§3.17, [fugue#58](https://github.com/alexnodeland/fugue/pull/58)), with a cold start from an agent's own sessions, options from the manifest, a second confirmation question and matching descriptions to records (§3.18, [fugue#59](https://github.com/alexnodeland/fugue/pull/59)), and with an arbiter shipped with the compiler (§3.19, [fugue#60](https://github.com/alexnodeland/fugue/pull/60)). On 2026-09-25 it was amended here with the paired run on every test task (§3.20), the cold start live (§3.21), and counterfactual evaluation, the confirmation judge enforced, the cold start in airline and Claude models (§3.22), and with one round of predicate refinement (§3.23). The design was iterated with @alexnodeland on 2026-09-23; the decisions are in §3.11. On 2026-09-25 it moved from fugue's decision log to stretto ([fugue#68](https://github.com/alexnodeland/fugue/pull/68)), where it is amended from now on. [Fugue's copy](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md) keeps fugue's side of it: the mapping onto fugue (§3.2), what fugue decided about its own scope and the six changes to `fugue-ppl` (§3.9), and the spike (Appendix A).
 - **Authors:** @alexnodeland (drafted with Claude Code)
 - **Created:** 2026-09-23
 - **Updated:** 2026-09-25
@@ -32,6 +32,7 @@
     - [`docs/results/judge-live-2026-09-25.md`](../results/judge-live-2026-09-25.md) (the confirmation judge, enforced live);
     - [`docs/results/cold-start-live-airline-2026-09-25.md`](../results/cold-start-live-airline-2026-09-25.md) (the cold start, live, in airline);
     - [`docs/results/claude-models-2026-09-25.md`](../results/claude-models-2026-09-25.md) (Claude models as the agent and the customer);
+    - [`docs/results/refine-2026-09-25.md`](../results/refine-2026-09-25.md) (predicate refinement, in airline);
     - the working paper, [alexnodeland.github.io/stretto](https://alexnodeland.github.io/stretto/);
   - TypeSafe AI's Jev (released 2026-09-15).
 
@@ -210,6 +211,8 @@ The loop:
 2. **Propose predicates.** An LLM reads examples from the aliased context and proposes `Noul`/`Choice` questions about the raw state, for example "Do the logs name a specific file?". This is TypeSafe's own "autoresearch feature discovery" cookbook pattern, pointed at the world model instead of at a regressor.
 3. **Evaluate cheaply.** Jev answers each candidate question over the stored traces. At Jev's pricing that costs cents per thousand traces.
 4. **Keep what explains the data.** Keep a predicate if it raises the marginal likelihood of the trace corpus under the world model. This is closed form for the Dirichlet model and SMC evidence for latent-variable variants. Bayesian model selection supplies the Occam penalty.
+
+*Amended (§3.23):* built for the arbiter's predicates (`stretto refine`), and run once in airline. Two of eight candidates raised the held-out likelihood of the agents the proposer read, and neither raised GLM-5's, which the proposer never saw. So the likelihood a predicate is kept on should come from agents, or tasks, that the proposer did not read.
 
 ### 3.5 Compiling flows
 
@@ -1064,6 +1067,35 @@ What this changes:
 - **The live savings carry to other agents and to another customer,** on small samples. The pilots' limitation, a customer played by the agent's own model, did not inflate them on five tasks.
 - **Next:** Phase 3's predicate refinement and flow search.
 
+### 3.23 Amendment 12: predicate refinement, one round in airline (2026-09-25)
+
+§3.4's loop is built, and it ran once in airline, where the arbiter is weakest: the audit found the airline flow picking the agent's step 64.5% of the time (§3.15).
+
+- **Details:** stretto's [predicate refinement](../results/refine-2026-09-25.md), and the [working paper](https://alexnodeland.github.io/stretto/)'s §5.20.
+- **What was built.**
+  - `stretto refine --examples` ranks the sites by the held-out surprise of the agents' steps, fitting the arbiter by cross-validation over tasks. At the worst sites it writes out the decisions the arbiter got most wrong, with the state Jev saw.
+  - `phase0 --candidates` asks each candidate alone, with the next-step question's state, so no other answer changes.
+  - `stretto refine` keeps candidates greedily while one raises the held-out log-likelihood of the agents' steps by more than BIC's charge for a parameter.
+  - It scores a transfer target alongside: an agent whose decisions are never fitted on and never shown to the proposer.
+  - A predicate can now bear on one named lookup (`{"lookup": TOOL}`), besides the same lookup again, every lookup, or handing back.
+- **The round.** The proposer was Claude, the model running the analysis. It read examples from five sites and proposed eight candidates. Two were kept: `answer_in_hand` (do the results already answer the customer's latest message?) and `onestop_needed` (did a direct-flight search come back without a fit?).
+
+| | Four 2025 agents, 2,042 held-out decisions | GLM-5, 556 decisions never fitted on or shown |
+|---|---|---|
+| Nats per decision, three predicates → with the kept pair | 0.654 → 0.624 | 0.722 → 0.724 |
+| Agreement | 74.8% → 76.7% | 72.7% → 73.0% |
+| LLM turns saved, lookup first at p ≥ 0.3 | 12.6% → 12.5% | 7.1% → 6.5% |
+
+- **Five candidates made the held-out fit worse,** among them the two about the customer's profile and a flight's status.
+- **The kept pair fitted the agents the proposer read, and nothing more.** Its examples came from 17 of the 20 test tasks, so cross-validation over tasks could not catch that. At GLM-5's decisions, the pair explained nothing, and the savings did not move.
+- **One round cannot separate two causes:** the proposer fitting what it saw, and predicates tracking the source agents' own habits (when to report back) rather than the state.
+
+What this changes:
+
+- **§3.4, step 4,** keeps a predicate on held-out likelihood. Held out by task is not enough when the proposer has read those tasks. The likelihood should be an agent's, or a set of tasks, the proposer never saw. `refine` scores a transfer target for that.
+- **The three hand-written predicates stay** (`data/predicates-v2.json`).
+- **Next:** flow search (§3.10, Phase 3). A second refinement round is worth running only with the proposer shown one set of agents and the candidates kept on another.
+
 ---
 
 ## 4. Drawbacks
@@ -1139,6 +1171,7 @@ What this changes:
    - With few traces, on §3.17's clustered samples and an arbiter fitted on thousands of other agents' decisions, they carried the savings. From a deployment's own first sessions they did not: the habit alone saved more than an arbiter fitted on those sessions until about twenty (§3.18). An arbiter fitted elsewhere lifted a narrow start.
    - Judging a confirmation before a write: where Jev and the word list disagree, hand labels side with Jev on 30 of 40. A second question catches calls that differ from what the customer agreed to, and half its flags are false (§3.18). Enforced live, the first question refused nothing in 40 episodes. Logged, it would have stopped 2 real lapses for 2 false alarms, so the recommended setting enforces it. The second question's flags were 7 false in 8, so it stays logged (§3.22).
    - Matching a description to a record: no. Jev picked the expected record less often than the agents did (§3.18).
+   - New predicates about the state, proposed where the arbiter is weakest: not yet. One round fitted the agents the proposer read, and not GLM-5 (§3.23).
    - An arbiter fitted once, on public traces, serves a domain it never saw as well as that domain's own arbiter does (§3.19). Live, on ten retail tasks, the airline arbiter cut a five-session habit's detours from 6 to 2, at no cost in turns (§3.21). In airline, the retail arbiter cut them from 8 to 1 (§3.22).
 
 ---
