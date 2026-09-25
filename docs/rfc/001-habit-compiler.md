@@ -1,6 +1,6 @@
 # RFC-001: Habit compiler — compiling agent behavior into System-One flows
 
-- **Status:** Accepted (2026-09-23, [fugue#51](https://github.com/alexnodeland/fugue/pull/51)). Amended the same day with what Phase 0 found (§3.12, [fugue#52](https://github.com/alexnodeland/fugue/pull/52)) and with Phase 0b v2's read-only flows and arbitration (§3.13, [fugue#53](https://github.com/alexnodeland/fugue/pull/53)), and on 2026-09-24 with the first live form and pilot (§3.14, [fugue#54](https://github.com/alexnodeland/fugue/pull/54)), with the built implementation, the airline pilot, policy guards and the flow audit (§3.15, [fugue#55](https://github.com/alexnodeland/fugue/pull/55)), with the arms measured before building macro-tools (§3.16, [fugue#56](https://github.com/alexnodeland/fugue/pull/56)), with the habit alone live, fewer traces and Jev as a confirmation judge (§3.17, [fugue#58](https://github.com/alexnodeland/fugue/pull/58)), with a cold start from an agent's own sessions, options from the manifest, a second confirmation question and matching descriptions to records (§3.18, [fugue#59](https://github.com/alexnodeland/fugue/pull/59)), and with an arbiter shipped with the compiler (§3.19, [fugue#60](https://github.com/alexnodeland/fugue/pull/60)). On 2026-09-25 it was amended here with the paired run on every test task (§3.20) and the cold start live (§3.21). The design was iterated with @alexnodeland on 2026-09-23; the decisions are in §3.11. On 2026-09-25 it moved from fugue's decision log to stretto ([fugue#68](https://github.com/alexnodeland/fugue/pull/68)), where it is amended from now on. [Fugue's copy](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md) keeps fugue's side of it: the mapping onto fugue (§3.2), what fugue decided about its own scope and the six changes to `fugue-ppl` (§3.9), and the spike (Appendix A).
+- **Status:** Accepted (2026-09-23, [fugue#51](https://github.com/alexnodeland/fugue/pull/51)). Amended the same day with what Phase 0 found (§3.12, [fugue#52](https://github.com/alexnodeland/fugue/pull/52)) and with Phase 0b v2's read-only flows and arbitration (§3.13, [fugue#53](https://github.com/alexnodeland/fugue/pull/53)), and on 2026-09-24 with the first live form and pilot (§3.14, [fugue#54](https://github.com/alexnodeland/fugue/pull/54)), with the built implementation, the airline pilot, policy guards and the flow audit (§3.15, [fugue#55](https://github.com/alexnodeland/fugue/pull/55)), with the arms measured before building macro-tools (§3.16, [fugue#56](https://github.com/alexnodeland/fugue/pull/56)), with the habit alone live, fewer traces and Jev as a confirmation judge (§3.17, [fugue#58](https://github.com/alexnodeland/fugue/pull/58)), with a cold start from an agent's own sessions, options from the manifest, a second confirmation question and matching descriptions to records (§3.18, [fugue#59](https://github.com/alexnodeland/fugue/pull/59)), and with an arbiter shipped with the compiler (§3.19, [fugue#60](https://github.com/alexnodeland/fugue/pull/60)). On 2026-09-25 it was amended here with the paired run on every test task (§3.20), the cold start live (§3.21), and counterfactual evaluation, the confirmation judge enforced, the cold start in airline and Claude models (§3.22). The design was iterated with @alexnodeland on 2026-09-23; the decisions are in §3.11. On 2026-09-25 it moved from fugue's decision log to stretto ([fugue#68](https://github.com/alexnodeland/fugue/pull/68)), where it is amended from now on. [Fugue's copy](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md) keeps fugue's side of it: the mapping onto fugue (§3.2), what fugue decided about its own scope and the six changes to `fugue-ppl` (§3.9), and the spike (Appendix A).
 - **Authors:** @alexnodeland (drafted with Claude Code)
 - **Created:** 2026-09-23
 - **Updated:** 2026-09-25
@@ -28,6 +28,10 @@
     - [`docs/results/arbiter-transfer-2026-09-24.md`](../results/arbiter-transfer-2026-09-24.md) (shipped arbiters across domains);
     - [`docs/results/paired-2026-09-25.md`](../results/paired-2026-09-25.md) (the paired run on every test task);
     - [`docs/results/cold-start-live-2026-09-25.md`](../results/cold-start-live-2026-09-25.md) (the cold start, live);
+    - [`docs/results/evaluate-2026-09-25.md`](../results/evaluate-2026-09-25.md) (counterfactual evaluation);
+    - [`docs/results/judge-live-2026-09-25.md`](../results/judge-live-2026-09-25.md) (the confirmation judge, enforced live);
+    - [`docs/results/cold-start-live-airline-2026-09-25.md`](../results/cold-start-live-airline-2026-09-25.md) (the cold start, live, in airline);
+    - [`docs/results/claude-models-2026-09-25.md`](../results/claude-models-2026-09-25.md) (Claude models as the agent and the customer);
     - the working paper, [alexnodeland.github.io/stretto](https://alexnodeland.github.io/stretto/);
   - TypeSafe AI's Jev (released 2026-09-15).
 
@@ -295,6 +299,8 @@ The runtime also:
   - A greedy target was overestimated at 0.996, against a true 0.945.
   - So prefer per-site (contextual-bandit) estimates and doubly-robust estimators that use the world model as the direct method.
   - Counterfactual evaluation needs exploration. Keep a small sampling rate on reversible, low-stakes sites only.
+
+  *Amended (§3.22):* built and validated on replays. `--flow-explore ε` logs every option and its propensity, and `stretto evaluate` gives direct, IPS, self-normalized IPS and doubly robust estimates per site. They rank changes that keep a flow's chains, such as another threshold on the same decider. They cannot price a changed decider's detours, nor turns saved: most of a flow's lookups follow its own previous lookup, where another rule's log never went.
 - **Simulation ranks; it does not certify.** Simulated success is optimistic whenever the abstraction aliases hidden state: in the spike, 0.999 believed against 0.945 real. Use simulation to:
   - prune candidate flows;
   - run statistical model checking of safety properties, for example "P(destructive call without a preceding passing check) < 10⁻³".
@@ -1001,6 +1007,63 @@ What this changes:
 - **A deployment's first flow (§3.6)** is confirmed live in retail. It is the habit from its first five sessions, which needs no key, with a shipped arbiter where detours matter.
 - **Next:** the same in airline, where offline the habit alone saves less and the arbiter trades savings for fewer detours.
 
+### 3.22 Amendment 11: counterfactual evaluation, the judge enforced, the cold start in airline, and Claude models (2026-09-25)
+
+Four follow-ups to §3.20–3.21. Offline, `--flow-explore` and `stretto evaluate` build §3.7's counterfactual evaluation. Live, the confirmation judge ran enforced against logged, the cold start ran in airline, and Claude models played the agent and the customer.
+
+- **Details:** stretto's [counterfactual evaluation](../results/evaluate-2026-09-25.md), [the judge, live](../results/judge-live-2026-09-25.md), [the cold start in airline](../results/cold-start-live-airline-2026-09-25.md) and [Claude models, live](../results/claude-models-2026-09-25.md), and the [working paper](https://alexnodeland.github.io/stretto/)'s §5.11, §5.12, §5.18 and §5.19.
+
+**Counterfactual evaluation (§3.7).**
+
+- **Built.** `--flow-explore ε` takes another lookup that binds with probability ε, drawn by the decider's probabilities, and logs every option with the chance of what it took. `stretto evaluate` estimates another rule from such logs, per site and in total: direct, IPS, self-normalized IPS and doubly robust. It refuses an estimate whose effective sample size is too small.
+- **The weights are right.** D0 replayed exploring at ε = 0.1 and 0.2 on GLM-5's test episodes. For D0 itself and for the arbiter at 0.5, the four estimates agree with each rule's own replay within about a standard error.
+- **Detours do not carry over.** About two-thirds of a flow's lookups follow its own previous lookup, where another rule's log never went. So every estimate from D0's logs put the habit alone level with D0, where in airline its replay makes 50 detours to D0's 26. Turn credit overstates the turns a rule saves by up to 75%.
+- **Exploring costs little.** At ε = 0.1, D0 saved 281 retail turns against 294, with 129 detours against 58.
+
+**The confirmation judge, enforced (§3.18).** GLM-5.3 ran ten tasks per domain behind the guards, with the judge's first question logged in one arm and enforced in the other. The second question was logged in both.
+
+| | Retail, logged | Retail, enforced | Airline, logged | Airline, enforced |
+|---|---|---|---|---|
+| Passed | 8 of 10 | 8 of 10 | 7 of 10 | 6 of 10 |
+| LLM turns | 104 | 113 | 157 | 165 |
+| Writes judged | 18 | 18 | 20 | 22 |
+| First question fails | 3 | 0 | 1 | 0 |
+| Second question fails, logged | 2 | 0 | 6 | 0 |
+
+- **Enforced, the first question refused none of 40 writes.** Logged, it failed 4 of 38: 2 real lapses, both in episodes that passed, and 2 false alarms. The gap between the arms is within chance (Fisher's p = 0.05 by write, 0.11 by episode).
+- **The second question failed 8 of 38 writes,** and 7 of them were false alarms.
+
+**The cold start in airline (§3.21).** GLM-5.3 recorded five airline training sessions, and two flows learned from them ran on the airline pilot's ten tasks.
+
+| | No flow | D0 | Habit, five sessions | With the shipped retail arbiter |
+|---|---|---|---|---|
+| LLM turns, ten tasks | 127 | 105 | 102 | 102 |
+| Passed | 8 | 9 | 7 | 8 |
+| Detours | | 1 | 8 | 1 |
+
+- **Both saved 19.7% of turns,** the habit alone with a 95% interval of −3.3% to 39.9%, and with the arbiter 7.6% to 32.0%. No failure came from a flow decision.
+
+**Claude models (§3.14; §6, question 8).** Claude Haiku 4.5 and Claude Sonnet 5 played the agent, with GLM-5.3 as the customer. Claude Sonnet 5 played the customer, with GLM-5.3 as the agent. The flow was D0, compiled from four other agents' 2025 episodes.
+
+| | Agent | Customer | Tasks | LLM turns, no flow and D0 | Fewer (95% interval) | Passed, no flow and D0 |
+|---|---|---|---|---|---|---|
+| The pilot | GLM-5.3 | GLM-5.3 | 10 | 110 and 84 | 23.6% (14.3% to 32.8%) | 8 and 8 |
+| | Claude Haiku 4.5 | GLM-5.3 | 10 | 97 and 79 | 18.6% (10.1% to 27.4%) | 6 and 7 |
+| | Claude Sonnet 5 | GLM-5.3 | 3 | 29 and 22 | 24.1% (0% to 44.4%) | 2 and 3 |
+| The pilot, same five tasks | GLM-5.3 | GLM-5.3 | 5 | 62 and 46 | 25.8% (16.4% to 38.6%) | 5 and 5 |
+| | GLM-5.3 | Claude Sonnet 5 | 5 | 65 and 50 | 23.1% (13.8% to 32.1%) | 5 and 5 |
+
+- **D0 served agents it never saw.** 28 of its 30 lookups for Haiku, and all 7 for Sonnet, were the agent's own. Haiku makes more calls at once than GLM-5.3 (1.37 per tool turn against 1.05) and gained less, as calling style predicted offline.
+- **A Claude customer left the savings where they were,** with the same lookups on four of the five tasks.
+
+What this changes:
+
+- **Counterfactual evaluation (§3.7)** can rank changes that keep a flow's chains, such as another threshold on the same decider. A changed decider, or anything priced in turns, still needs a replay and then a paired run. Flow search (§3.10, Phase 3) can screen candidates with it and must confirm them by replay.
+- **The judge (§3.18):** the recommended setting enforces the first question and logs the second (`--confirm-judge enforce --confirm-second proposed --confirm-second-shadow`). It runs only when asked for, since it needs a Jev key.
+- **A deployment's first flow (§3.6)** is confirmed live in both domains: the habit from its first five sessions, with a shipped arbiter from the other domain for precision.
+- **The live savings carry to other agents and to another customer,** on small samples. The pilots' limitation, a customer played by the agent's own model, did not inflate them on five tasks.
+- **Next:** Phase 3's predicate refinement and flow search.
+
 ---
 
 ## 4. Drawbacks
@@ -1063,18 +1126,20 @@ What this changes:
    - First live evidence (§3.14): 8 of 10 episodes passed the database check without the flow and 8 of 10 with it. That is too few to bound a one-point loss.
    - Airline (§3.15): 8 of 10 without the flow and 9 of 10 with it, and no failure came from a flow decision. Twenty pairs are still too few.
    - Every test task (§3.20): 71 of 80 pairs passed without the flow and 70 with it, −1.25 points (95% interval −7.5 to +6.25). In one of the nine pairs that disagree, the flow's reads plausibly led the agent astray. The 17 detours in 259 lookups cost no pass that the page can trace. A one-point bound would take about 4,300 pairs.
+   - Claude Haiku 4.5 (§3.22): in one of its failures with the flow, the flow's only two detours came just before the agent's error. GLM-5.3 had made the same error in both of the pilot's arms, with no detour, so one episode cannot say whether the reads tipped it.
 7. ~~**Can System-One questions reach roughly 99% agreement on the decisions flows need?**~~ Answered for now (§3.13):
    - No. The best combination reaches 79–81%, and at least 0.99 sure only on 11–25% of decisions.
    - Read-only flows don't need it: acting on weaker picks costs detours, not risk.
 8. ~~**Which agent model runs the first live pilot?**~~ Resolved (§3.14): GLM-5.3, the model the Z.ai coding-plan key serves.
+   - Claude Haiku 4.5 and Claude Sonnet 5 have since run live on the retail pilot's tasks, and a Claude model played the customer (§3.22).
    - Offline, Qwen3.5 clears the gate in both domains, and Qwen3-Max does too (airline with lookup first). They are next once a key for them is at hand.
    - GLM-5 clears it in retail only, with the state predicates, with or without the goal.
 9. **Where does a System-One model earn its place?** (§3.16, §3.17, §3.18, §3.19)
    - For read-only flows with enough traces, the habit alone saves as many turns, live too. Jev's weighed answers buy precision: half to two-thirds fewer detours in airline.
    - With few traces, on §3.17's clustered samples and an arbiter fitted on thousands of other agents' decisions, they carried the savings. From a deployment's own first sessions they did not: the habit alone saved more than an arbiter fitted on those sessions until about twenty (§3.18). An arbiter fitted elsewhere lifted a narrow start.
-   - Judging a confirmation before a write: where Jev and the word list disagree, hand labels side with Jev on 30 of 40. A second question catches calls that differ from what the customer agreed to, and half its flags are false (§3.18). Enforcing it is untested.
+   - Judging a confirmation before a write: where Jev and the word list disagree, hand labels side with Jev on 30 of 40. A second question catches calls that differ from what the customer agreed to, and half its flags are false (§3.18). Enforced live, the first question refused nothing in 40 episodes. Logged, it would have stopped 2 real lapses for 2 false alarms, so the recommended setting enforces it. The second question's flags were 7 false in 8, so it stays logged (§3.22).
    - Matching a description to a record: no. Jev picked the expected record less often than the agents did (§3.18).
-   - An arbiter fitted once, on public traces, serves a domain it never saw as well as that domain's own arbiter does (§3.19). Live, on ten retail tasks, the airline arbiter cut a five-session habit's detours from 6 to 2, at no cost in turns (§3.21).
+   - An arbiter fitted once, on public traces, serves a domain it never saw as well as that domain's own arbiter does (§3.19). Live, on ten retail tasks, the airline arbiter cut a five-session habit's detours from 6 to 2, at no cost in turns (§3.21). In airline, the retail arbiter cut them from 8 to 1 (§3.22).
 
 ---
 

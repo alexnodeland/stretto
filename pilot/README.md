@@ -93,6 +93,25 @@ In the flows arm, the agent's first call found the user. The flow then looked up
 - The habit alone took 79 LLM turns, against 110 without a flow. It made exactly the lookups the habit from four other agents made.
 - With the arbiter it took 70 turns, with 2 detours where the habit alone made 6. Both passed 8 of 10.
 
+**Cold start, live, airline.** GLM-5.3 recorded five airline training sessions (`--arm baseline --record-context --read-only-hints`), and two flows learned from them ran on the airline pilot's ten tasks. See [the summary](../docs/results/cold-start-live-airline-2026-09-25.md):
+
+- The habit alone took 102 LLM turns, against 127 without a flow and 105 with D0, with 8 detours, all reservation reads.
+- With the shipped retail arbiter it took 102 turns too, with 1 detour. It passed 8 of 10, and the habit alone 7.
+- 332 Z.ai credits.
+
+**The confirmation judge, live.** The guards arm with `--confirm-judge log` against `--confirm-judge enforce`, the second question logged in both (`--confirm-second proposed --confirm-second-shadow`), on ten tasks per domain. See [the summary](../docs/results/judge-live-2026-09-25.md):
+
+- Enforced, the judge refused none of 40 writes. Logged, it would have refused 4 of 38: 2 real lapses and 2 false alarms.
+- Passes did not move: 8 and 8 of 10 in retail, 7 and 6 in airline, where the one difference failed with nothing refused.
+- 782 Z.ai credits, and Jev's 156 answers cost under a cent.
+
+**Claude models.** `--agent-cli claude --model M` and `--customer-cli claude --customer-model M`, on retail. See [the summary](../docs/results/claude-models-2026-09-25.md):
+
+- Claude Haiku 4.5 as the agent, on the pilot's ten tasks: 79 LLM turns with D0 against 97 without a flow, 18.6% fewer; 7 and 6 of 10 passed.
+- Claude Sonnet 5 as the agent, on three: 22 turns against 29.
+- Claude Sonnet 5 as the customer to GLM-5.3, on five: D0 saved 23.1% of turns, against 25.8% with GLM-5.3 as the customer, and all 20 episodes passed.
+- 2.32 million Claude tokens, most of them cache reads, and 178 Z.ai credits for the GLM side.
+
 **Guards pilot, airline.** The guards arm (`run_episode.py --arm guards`) runs the tools behind `stretto-proxy --guards`, which refuses a write an enforced policy rule fails. It ran on the four airline test tasks where the guard audit finds the 2025 agents' refused writes concentrated (35, 45, 32, 48), plus four harm checks against the airline pilot's baselines. See [the summary](../docs/results/pilot-guards-2026-09-24.md):
 
 - GLM-5.3 passed all four main tasks in both arms, and the guards refused nothing. It never tried the cancellations the policy forbids.

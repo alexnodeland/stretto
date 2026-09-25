@@ -4,21 +4,22 @@ Every piece of the first design is built: the flow compiler, the MCP proxy, the 
 
 - offline replays on τ²-bench's published trajectories;
 - live pilots of ten paired tasks per domain, with GLM-5.3 in Claude Code as the agent;
+- live runs with Claude models as the agent and as the customer, on ten retail tasks and fewer ([results](results/claude-models-2026-09-25.md));
 - a paired run on every retail and airline test task: 80 pairs, with 25.5% fewer LLM turns and the pass rate within −7.5 to +6.25 points ([results](results/paired-2026-09-25.md)).
 
 What is left is tracked in GitHub issues, all of them sub-issues of [#1](https://github.com/alexnodeland/stretto/issues/1). This page groups them and says why each matters. The changes RFC-001 §3.9 asks of fugue itself are tracked in fugue's [#61](https://github.com/alexnodeland/fugue/issues/61).
 
 ## Evidence from live runs
 
-Each of these spends the Z.ai coding-plan key, so each needs an approved credit budget before it starts. A pilot episode has cost about 12 credits in retail and 17 in airline.
+Each of these spends the Z.ai coding-plan key, or Claude tokens where a Claude model plays a part, so each needs an approved budget before it starts. A pilot episode has cost about 12 credits in retail and 17 in airline.
 
 | Issue | What | Why | Cost |
 |---|---|---|---|
 | [#2](https://github.com/alexnodeland/stretto/issues/2) | A paired run on every test task | Done: 80 pairs. The flow saved 25.5% of LLM turns (95% interval 20.5% to 30.4%), and the pass rate moved −1.25 points (−7.5 to +6.25) ([results](results/paired-2026-09-25.md)). A one-point bound would take about 4,300 pairs | 1,897 credits |
-| [#3](https://github.com/alexnodeland/stretto/issues/3) | The cold start live: the habit alone against the habit with a shipped arbiter | Done in retail. On the pilot's ten tasks, the habit from five sessions took 79 LLM turns against 110 with no flow, making exactly the lookups the four-agent habit made. With the shipped airline arbiter it took 70, with fewer detours ([results](results/cold-start-live-2026-09-25.md)). Airline is left | 205 credits for retail; airline would add about 420 |
-| [#4](https://github.com/alexnodeland/stretto/issues/4) | A simulated customer that is not the agent's own model | In every pilot, GLM-5.3 played both parts | A key for the customer's model |
-| [#5](https://github.com/alexnodeland/stretto/issues/5) | More agent models live | Every live result is one model; offline, savings follow calling style | A key and a budget per model |
-| [#6](https://github.com/alexnodeland/stretto/issues/6) | The confirmation judge enforced | Enforced, it would refuse 5–11% of the writes accepted in successful episodes; whether that costs passes or turns is untested. The proxy can enforce it since #14 | About 240 credits for retail, 340 for airline |
+| [#3](https://github.com/alexnodeland/stretto/issues/3) | The cold start live: the habit alone against the habit with a shipped arbiter | Done in both domains. In retail, the habit from five sessions took 79 LLM turns against 110 with no flow, and with the shipped airline arbiter 70, with fewer detours ([results](results/cold-start-live-2026-09-25.md)). In airline, both took 102 against 127, and the shipped retail arbiter cut the habit's detours from 8 to 1 ([results](results/cold-start-live-airline-2026-09-25.md)) | 205 credits for retail, 332 for airline |
+| [#4](https://github.com/alexnodeland/stretto/issues/4) | A simulated customer that is not the agent's own model | Done: with Claude Sonnet 5 as the customer to GLM-5.3, on five retail tasks, the flow saved 23.1% of turns, against 25.8% with GLM-5.3 as the customer, and made the same lookups on four ([results](results/claude-models-2026-09-25.md)) | 110,016 Claude tokens and 112 credits |
+| [#5](https://github.com/alexnodeland/stretto/issues/5) | More agent models live | Done for two Claude models. On the retail pilot's ten tasks, D0 saved Claude Haiku 4.5 18.6% of turns, less than GLM-5.3's 23.6%, as its more parallel calling predicts; on three tasks it saved Claude Sonnet 5 24.1% ([results](results/claude-models-2026-09-25.md)). Qwen3.5, the strongest candidate offline, waits on a key | 2.15M Claude tokens and 66 credits |
+| [#6](https://github.com/alexnodeland/stretto/issues/6) | The confirmation judge enforced | Done: enforced on 20 episodes, it refused none of 40 writes; logged on 20 more, it would have stopped 2 real lapses for 2 false alarms, and passes did not move. The recommended setting enforces the first question and logs the second ([results](results/judge-live-2026-09-25.md)) | 782 credits |
 | [#7](https://github.com/alexnodeland/stretto/issues/7) | `stretto_commit` live | Done offline: it could save at most 0.2–3.5% of LLM turns, too little for a ten-task pilot to see, so no live run for now ([results](results/commit-bound-2026-09-25.md)) | Free |
 | [#8](https://github.com/alexnodeland/stretto/issues/8) | Flows and guards from frontier traces, serving a smaller agent | Guards bit in 38% of failed airline episodes on published runs, and never with GLM-5.3 | Priced by a smoke episode first |
 
@@ -39,7 +40,7 @@ These cost Jev dollars, CPU time or people's time, and no LLM runs.
 | Issue | What | Where the design asks for it |
 |---|---|---|
 | [#14](https://github.com/alexnodeland/stretto/issues/14) | The confirmation judge in the proxy's guards, logged or enforced | Done: `stretto-proxy --confirm-judge log\|enforce` |
-| [#15](https://github.com/alexnodeland/stretto/issues/15) | Counterfactual evaluation from logged decisions | RFC-001 §3.7. Flows act deterministically, so it needs a little exploration first |
+| [#15](https://github.com/alexnodeland/stretto/issues/15) | Counterfactual evaluation from logged decisions | Done: `--flow-explore` and `stretto evaluate`. On replays, the estimates match a rule's own replay for changes that keep a flow's chains, and miss a changed decider's detours ([results](results/evaluate-2026-09-25.md)) |
 | [#16](https://github.com/alexnodeland/stretto/issues/16) | Predicate refinement | RFC-001 §3.4; the three predicates were written by hand |
 | [#17](https://github.com/alexnodeland/stretto/issues/17) | Hand back when a session surprises the flow | RFC-001 §3.6; surprise is measured only after the fact |
 | [#18](https://github.com/alexnodeland/stretto/issues/18) | Drift alarms | RFC-001 §3.3 and §4: change-point alarms and forgetting |
@@ -96,8 +97,8 @@ All six are built. A live flow now runs as a fugue program: the flow IR holds it
    - telecom (#10);
    - the cold start's other agents and draws (#9);
    - independent labels (#11).
-4. **Live runs, as budgets are approved.** The paired run (#2) and the cold start live in retail (#3) are done. The paired run puts the pass-rate change between −7.5 and +6.25 points, not within one. Next comes the confirmation judge enforced (#6).
+4. **Live runs, as budgets are approved.** The paired run (#2), the cold start live in both domains (#3), Claude models as the agent and the customer (#4, #5) and the confirmation judge enforced (#6) are done. The paired run puts the pass-rate change between −7.5 and +6.25 points, not within one. Next come flows and guards serving a smaller agent (#8).
 5. **Phase 3 features** as the evidence calls for them:
-   - counterfactual evaluation (#15);
+   - counterfactual evaluation (#15), done;
    - predicate refinement (#16);
    - flow search (#25).

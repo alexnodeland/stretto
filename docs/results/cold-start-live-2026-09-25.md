@@ -12,7 +12,7 @@ This round takes both live, on all ten of the retail pilot's tasks ([#3](https:/
   - the habit alone (`stretto learn --habit-only`);
   - the same habit with the airline arbiter that ships in `data/arbiters/` (`--arbiter-from data/arbiters/airline.json`). That arbiter was fitted on four agents' airline decisions, so no retail decision went into it.
 - **Tasks:** the retail pilot's ten test tasks, one episode per flow. Each is paired with that pilot's episodes without a flow and with D0, and with the habit-only pilot's episodes. D0 and the habit-only pilot's flow were compiled from four other agents' 2025 episodes.
-- **Agent, customer, tools and reward:** as in [the pilots](pilot-2026-09-24.md).
+- **Agent and customer:** GLM-5.3, both. Tools and reward as in [the pilots](pilot-2026-09-24.md).
 
 ## Offline first
 

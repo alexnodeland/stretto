@@ -2,7 +2,7 @@
 
 Replayed on recorded episodes, a flow that decides on the habit alone saves as many turns as D0's arbiter, which weighs the habit against Jev's answers and the predicates ([arms](arms-2026-09-24.md)). This pilot checks that live.
 
-- **Setup:** GLM-5.3 in Claude Code, and the same ten retail test tasks as [the retail pilot](pilot-2026-09-24.md).
+- **Setup:** GLM-5.3 in Claude Code as the agent, GLM-5.3 as the customer, and the same ten retail test tasks as [the retail pilot](pilot-2026-09-24.md).
 - **The habit arm:** the flow runs behind the tools as in D0, but decides with `--decider habit`, so it never asks Jev.
 - **Comparisons:** the no-flow runs and the D0 runs on these tasks are the retail pilot's own, recorded earlier the same day. Only the habit arm ran now, one episode per task.
 

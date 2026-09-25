@@ -1,0 +1,958 @@
+{
+ "date": "2026-09-25",
+ "domain": "retail",
+ "flow": "D0, the retail pilot's flow",
+ "reward": "database check",
+ "agents": {
+  "claude-haiku-4-5": {
+   "customer": "glm-5.3",
+   "tasks": [
+    "17",
+    "18",
+    "27",
+    "36",
+    "51",
+    "60",
+    "64",
+    "68",
+    "77",
+    "101"
+   ],
+   "arms": {
+    "Haiku 4.5, no flow": {
+     "passed": 6,
+     "failed_tasks": [
+      "18",
+      "64",
+      "77",
+      "101"
+     ],
+     "turns": 97,
+     "input_tokens": 847723,
+     "credits": 26.8,
+     "agent_calls": 67,
+     "flow_lookups": 0,
+     "repeats": 0,
+     "own": 0,
+     "detours": 0,
+     "turns_saved_share": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "turn_difference_per_episode": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "input_tokens_saved_share": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "fewer_turns": 0,
+     "more_turns": 0,
+     "passed_only_here": 0,
+     "passed_only_in_base": 0,
+     "per_task": {
+      "17": {
+       "reward": 1.0,
+       "llm_turns": 9,
+       "agent_input_tokens": 66224,
+       "flow_lookups": 0,
+       "repeats": 0,
+       "credits_billed": 2.2
+      },
+      "18": {
+       "reward": 0.0,
+       "llm_turns": 9,
+       "agent_input_tokens": 74850,
+       "flow_lookups": 0,
+       "repeats": 0,
+       "credits_billed": 1.93
+      },
+      "27": {
+       "reward": 1.0,
+       "llm_turns": 9,
+       "agent_input_tokens": 83782,
+       "flow_lookups": 0,
+       "repeats": 0,
+       "credits_billed": 2.1
+      },
+      "36": {
+       "reward": 1.0,
+       "llm_turns": 12,
+       "agent_input_tokens": 119100,
+       "flow_lookups": 0,
+       "repeats": 0,
+       "credits_billed": 1.56
+      },
+      "51": {
+       "reward": 1.0,
+       "llm_turns": 8,
+       "agent_input_tokens": 65083,
+       "flow_lookups": 0,
+       "repeats": 0,
+       "credits_billed": 2.17
+      },
+      "60": {
+       "reward": 1.0,
+       "llm_turns": 7,
+       "agent_input_tokens": 56571,
+       "flow_lookups": 0,
+       "repeats": 0,
+       "credits_billed": 2.21
+      },
+      "64": {
+       "reward": 0.0,
+       "llm_turns": 9,
+       "agent_input_tokens": 78094,
+       "flow_lookups": 0,
+       "repeats": 0,
+       "credits_billed": 2.59
+      },
+      "68": {
+       "reward": 1.0,
+       "llm_turns": 9,
+       "agent_input_tokens": 69165,
+       "flow_lookups": 0,
+       "repeats": 0,
+       "credits_billed": 3.57
+      },
+      "77": {
+       "reward": 0.0,
+       "llm_turns": 8,
+       "agent_input_tokens": 60500,
+       "flow_lookups": 0,
+       "repeats": 0,
+       "credits_billed": 1.2
+      },
+      "101": {
+       "reward": 0.0,
+       "llm_turns": 17,
+       "agent_input_tokens": 174354,
+       "flow_lookups": 0,
+       "repeats": 0,
+       "credits_billed": 7.31
+      }
+     }
+    },
+    "Haiku 4.5, D0": {
+     "passed": 7,
+     "failed_tasks": [
+      "27",
+      "36",
+      "64"
+     ],
+     "turns": 79,
+     "input_tokens": 734903,
+     "credits": 25.2,
+     "agent_calls": 41,
+     "flow_lookups": 30,
+     "repeats": 3,
+     "own": 28,
+     "detours": 2,
+     "turns_saved_share": [
+      0.1856,
+      0.101,
+      0.2743
+     ],
+     "turn_difference_per_episode": [
+      -1.8,
+      -2.7,
+      -0.9
+     ],
+     "input_tokens_saved_share": [
+      0.1331,
+      -0.0033,
+      0.2657
+     ],
+     "fewer_turns": 7,
+     "more_turns": 0,
+     "passed_only_here": 3,
+     "passed_only_in_base": 2,
+     "per_task": {
+      "17": {
+       "reward": 1.0,
+       "llm_turns": 6,
+       "agent_input_tokens": 42497,
+       "flow_lookups": 0,
+       "repeats": 0,
+       "credits_billed": 1.35
+      },
+      "18": {
+       "reward": 1.0,
+       "llm_turns": 8,
+       "agent_input_tokens": 66350,
+       "flow_lookups": 2,
+       "repeats": 0,
+       "credits_billed": 2.79
+      },
+      "27": {
+       "reward": 0.0,
+       "llm_turns": 7,
+       "agent_input_tokens": 74283,
+       "flow_lookups": 7,
+       "repeats": 0,
+       "credits_billed": 1.93
+      },
+      "36": {
+       "reward": 0.0,
+       "llm_turns": 12,
+       "agent_input_tokens": 142606,
+       "flow_lookups": 5,
+       "repeats": 3,
+       "credits_billed": 2.79
+      },
+      "51": {
+       "reward": 1.0,
+       "llm_turns": 6,
+       "agent_input_tokens": 47843,
+       "flow_lookups": 2,
+       "repeats": 0,
+       "credits_billed": 1.92
+      },
+      "60": {
+       "reward": 1.0,
+       "llm_turns": 7,
+       "agent_input_tokens": 59065,
+       "flow_lookups": 1,
+       "repeats": 0,
+       "credits_billed": 1.52
+      },
+      "64": {
+       "reward": 0.0,
+       "llm_turns": 7,
+       "agent_input_tokens": 58547,
+       "flow_lookups": 3,
+       "repeats": 0,
+       "credits_billed": 2.05
+      },
+      "68": {
+       "reward": 1.0,
+       "llm_turns": 5,
+       "agent_input_tokens": 34278,
+       "flow_lookups": 4,
+       "repeats": 0,
+       "credits_billed": 1.42
+      },
+      "77": {
+       "reward": 1.0,
+       "llm_turns": 8,
+       "agent_input_tokens": 70246,
+       "flow_lookups": 3,
+       "repeats": 0,
+       "credits_billed": 4.67
+      },
+      "101": {
+       "reward": 1.0,
+       "llm_turns": 13,
+       "agent_input_tokens": 139188,
+       "flow_lookups": 3,
+       "repeats": 0,
+       "credits_billed": 4.76
+      }
+     }
+    }
+   },
+   "claude_tokens": 1649698
+  },
+  "claude-sonnet-5": {
+   "customer": "glm-5.3",
+   "tasks": [
+    "51",
+    "60",
+    "101"
+   ],
+   "task_draw": "random.Random(5).sample(ten pilot tasks, 3)",
+   "arms": {
+    "Sonnet 5, no flow": {
+     "passed": 2,
+     "failed_tasks": [
+      "60"
+     ],
+     "turns": 29,
+     "input_tokens": 279200,
+     "credits": 7.4,
+     "agent_calls": 21,
+     "flow_lookups": 0,
+     "repeats": 0,
+     "own": 0,
+     "detours": 0,
+     "turns_saved_share": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "turn_difference_per_episode": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "input_tokens_saved_share": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "fewer_turns": 0,
+     "more_turns": 0,
+     "passed_only_here": 0,
+     "passed_only_in_base": 0,
+     "per_task": {
+      "51": {
+       "reward": 1.0,
+       "llm_turns": 9,
+       "agent_input_tokens": 79167,
+       "flow_lookups": 0,
+       "repeats": 0,
+       "credits_billed": 1.49
+      },
+      "60": {
+       "reward": 0.0,
+       "llm_turns": 6,
+       "agent_input_tokens": 52199,
+       "flow_lookups": 0,
+       "repeats": 0,
+       "credits_billed": 1.13
+      },
+      "101": {
+       "reward": 1.0,
+       "llm_turns": 14,
+       "agent_input_tokens": 147834,
+       "flow_lookups": 0,
+       "repeats": 0,
+       "credits_billed": 4.78
+      }
+     }
+    },
+    "Sonnet 5, D0": {
+     "passed": 3,
+     "failed_tasks": [],
+     "turns": 22,
+     "input_tokens": 214063,
+     "credits": 6.3,
+     "agent_calls": 11,
+     "flow_lookups": 7,
+     "repeats": 0,
+     "own": 7,
+     "detours": 0,
+     "turns_saved_share": [
+      0.2414,
+      0.0,
+      0.4444
+     ],
+     "turn_difference_per_episode": [
+      -2.3333,
+      -4.0,
+      0.0
+     ],
+     "input_tokens_saved_share": [
+      0.2333,
+      -0.0439,
+      0.4919
+     ],
+     "fewer_turns": 2,
+     "more_turns": 0,
+     "passed_only_here": 1,
+     "passed_only_in_base": 0,
+     "per_task": {
+      "51": {
+       "reward": 1.0,
+       "llm_turns": 5,
+       "agent_input_tokens": 40227,
+       "flow_lookups": 2,
+       "repeats": 0,
+       "credits_billed": 1.7
+      },
+      "60": {
+       "reward": 1.0,
+       "llm_turns": 6,
+       "agent_input_tokens": 54493,
+       "flow_lookups": 1,
+       "repeats": 0,
+       "credits_billed": 1.38
+      },
+      "101": {
+       "reward": 1.0,
+       "llm_turns": 11,
+       "agent_input_tokens": 119343,
+       "flow_lookups": 4,
+       "repeats": 0,
+       "credits_billed": 3.22
+      }
+     }
+    },
+    "GLM-5.3, no flow": {
+     "passed": 3,
+     "failed_tasks": [],
+     "turns": 35,
+     "input_tokens": 231496,
+     "credits": 37.5,
+     "agent_calls": 21,
+     "flow_lookups": 0,
+     "repeats": 0,
+     "own": 0,
+     "detours": 0,
+     "turns_saved_share": [
+      -0.2069,
+      -0.3571,
+      0.0
+     ],
+     "turn_difference_per_episode": [
+      2.0,
+      0.0,
+      5.0
+     ],
+     "input_tokens_saved_share": [
+      0.1709,
+      0.0581,
+      0.3372
+     ],
+     "fewer_turns": 0,
+     "more_turns": 2,
+     "passed_only_here": 1,
+     "passed_only_in_base": 0,
+     "per_task": {
+      "51": {
+       "reward": 1.0,
+       "llm_turns": 10,
+       "agent_input_tokens": 57658,
+       "flow_lookups": 0,
+       "repeats": 0,
+       "credits_billed": 8.49
+      },
+      "60": {
+       "reward": 1.0,
+       "llm_turns": 6,
+       "agent_input_tokens": 34600,
+       "flow_lookups": 0,
+       "repeats": 0,
+       "credits_billed": 7.05
+      },
+      "101": {
+       "reward": 1.0,
+       "llm_turns": 19,
+       "agent_input_tokens": 139238,
+       "flow_lookups": 0,
+       "repeats": 0,
+       "credits_billed": 22.0
+      }
+     }
+    },
+    "GLM-5.3, D0": {
+     "passed": 3,
+     "failed_tasks": [],
+     "turns": 26,
+     "input_tokens": 188267,
+     "credits": 33.2,
+     "agent_calls": 14,
+     "flow_lookups": 6,
+     "repeats": 2,
+     "own": 6,
+     "detours": 0,
+     "turns_saved_share": [
+      0.1034,
+      -0.1429,
+      0.4444
+     ],
+     "turn_difference_per_episode": [
+      -1.0,
+      -4.0,
+      2.0
+     ],
+     "input_tokens_saved_share": [
+      0.3257,
+      0.1021,
+      0.67
+     ],
+     "fewer_turns": 2,
+     "more_turns": 1,
+     "passed_only_here": 1,
+     "passed_only_in_base": 0,
+     "per_task": {
+      "51": {
+       "reward": 1.0,
+       "llm_turns": 5,
+       "agent_input_tokens": 26123,
+       "flow_lookups": 2,
+       "repeats": 0,
+       "credits_billed": 5.27
+      },
+      "60": {
+       "reward": 1.0,
+       "llm_turns": 5,
+       "agent_input_tokens": 29410,
+       "flow_lookups": 1,
+       "repeats": 0,
+       "credits_billed": 6.73
+      },
+      "101": {
+       "reward": 1.0,
+       "llm_turns": 16,
+       "agent_input_tokens": 132734,
+       "flow_lookups": 3,
+       "repeats": 2,
+       "credits_billed": 21.17
+      }
+     }
+    }
+   },
+   "claude_tokens": 502568
+  }
+ },
+ "customer": {
+  "agent": "glm-5.3",
+  "customer": "claude-sonnet-5",
+  "tasks": [
+   "18",
+   "36",
+   "51",
+   "60",
+   "101"
+  ],
+  "task_draw": "random.Random(4).sample(ten pilot tasks, 5)",
+  "against_glm_customer_no_flow": {
+   "GLM customer, no flow": {
+    "passed": 5,
+    "failed_tasks": [],
+    "turns": 62,
+    "input_tokens": 430365,
+    "credits": 71.8,
+    "agent_calls": 38,
+    "flow_lookups": 0,
+    "repeats": 0,
+    "own": 0,
+    "detours": 0,
+    "turns_saved_share": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turn_difference_per_episode": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "input_tokens_saved_share": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fewer_turns": 0,
+    "more_turns": 0,
+    "passed_only_here": 0,
+    "passed_only_in_base": 0,
+    "per_task": {
+     "18": {
+      "reward": 1.0,
+      "llm_turns": 11,
+      "agent_input_tokens": 73304,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 12.51
+     },
+     "36": {
+      "reward": 1.0,
+      "llm_turns": 16,
+      "agent_input_tokens": 125565,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 21.73
+     },
+     "51": {
+      "reward": 1.0,
+      "llm_turns": 10,
+      "agent_input_tokens": 57658,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 8.49
+     },
+     "60": {
+      "reward": 1.0,
+      "llm_turns": 6,
+      "agent_input_tokens": 34600,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 7.05
+     },
+     "101": {
+      "reward": 1.0,
+      "llm_turns": 19,
+      "agent_input_tokens": 139238,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 22.0
+     }
+    }
+   },
+   "GLM customer, D0": {
+    "passed": 5,
+    "failed_tasks": [],
+    "turns": 46,
+    "input_tokens": 331457,
+    "credits": 59.6,
+    "agent_calls": 24,
+    "flow_lookups": 12,
+    "repeats": 2,
+    "own": 12,
+    "detours": 0,
+    "turns_saved_share": [
+     0.2581,
+     0.1639,
+     0.386
+    ],
+    "turn_difference_per_episode": [
+     -3.2,
+     -4.6,
+     -1.8
+    ],
+    "input_tokens_saved_share": [
+     0.2298,
+     0.0902,
+     0.4042
+    ],
+    "fewer_turns": 5,
+    "more_turns": 0,
+    "passed_only_here": 0,
+    "passed_only_in_base": 0,
+    "per_task": {
+     "18": {
+      "reward": 1.0,
+      "llm_turns": 9,
+      "agent_input_tokens": 58737,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 10.34
+     },
+     "36": {
+      "reward": 1.0,
+      "llm_turns": 11,
+      "agent_input_tokens": 84453,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 16.06
+     },
+     "51": {
+      "reward": 1.0,
+      "llm_turns": 5,
+      "agent_input_tokens": 26123,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 5.27
+     },
+     "60": {
+      "reward": 1.0,
+      "llm_turns": 5,
+      "agent_input_tokens": 29410,
+      "flow_lookups": 1,
+      "repeats": 0,
+      "credits_billed": 6.73
+     },
+     "101": {
+      "reward": 1.0,
+      "llm_turns": 16,
+      "agent_input_tokens": 132734,
+      "flow_lookups": 3,
+      "repeats": 2,
+      "credits_billed": 21.17
+     }
+    }
+   },
+   "Sonnet customer, no flow": {
+    "passed": 5,
+    "failed_tasks": [],
+    "turns": 65,
+    "input_tokens": 448614,
+    "credits": 61.0,
+    "agent_calls": 38,
+    "flow_lookups": 0,
+    "repeats": 0,
+    "own": 0,
+    "detours": 0,
+    "turns_saved_share": [
+     -0.0484,
+     -0.0943,
+     -0.0141
+    ],
+    "turn_difference_per_episode": [
+     0.6,
+     0.2,
+     1.0
+    ],
+    "input_tokens_saved_share": [
+     -0.0424,
+     -0.1087,
+     0.0147
+    ],
+    "fewer_turns": 0,
+    "more_turns": 3,
+    "passed_only_here": 0,
+    "passed_only_in_base": 0,
+    "per_task": {
+     "18": {
+      "reward": 1.0,
+      "llm_turns": 12,
+      "agent_input_tokens": 75469,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 11.11
+     },
+     "36": {
+      "reward": 1.0,
+      "llm_turns": 16,
+      "agent_input_tokens": 121281,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 17.33
+     },
+     "51": {
+      "reward": 1.0,
+      "llm_turns": 10,
+      "agent_input_tokens": 57629,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 6.95
+     },
+     "60": {
+      "reward": 1.0,
+      "llm_turns": 7,
+      "agent_input_tokens": 42392,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 6.6
+     },
+     "101": {
+      "reward": 1.0,
+      "llm_turns": 20,
+      "agent_input_tokens": 151843,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 19.06
+     }
+    }
+   },
+   "Sonnet customer, D0": {
+    "passed": 5,
+    "failed_tasks": [],
+    "turns": 50,
+    "input_tokens": 354296,
+    "credits": 50.8,
+    "agent_calls": 28,
+    "flow_lookups": 12,
+    "repeats": 2,
+    "own": 12,
+    "detours": 0,
+    "turns_saved_share": [
+     0.1935,
+     0.0536,
+     0.3077
+    ],
+    "turn_difference_per_episode": [
+     -2.4,
+     -4.2,
+     -0.6
+    ],
+    "input_tokens_saved_share": [
+     0.1768,
+     0.0304,
+     0.3048
+    ],
+    "fewer_turns": 4,
+    "more_turns": 1,
+    "passed_only_here": 0,
+    "passed_only_in_base": 0,
+    "per_task": {
+     "18": {
+      "reward": 1.0,
+      "llm_turns": 10,
+      "agent_input_tokens": 65833,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 9.32
+     },
+     "36": {
+      "reward": 1.0,
+      "llm_turns": 11,
+      "agent_input_tokens": 82887,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 13.87
+     },
+     "51": {
+      "reward": 1.0,
+      "llm_turns": 6,
+      "agent_input_tokens": 37056,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 5.55
+     },
+     "60": {
+      "reward": 1.0,
+      "llm_turns": 7,
+      "agent_input_tokens": 42982,
+      "flow_lookups": 1,
+      "repeats": 0,
+      "credits_billed": 6.17
+     },
+     "101": {
+      "reward": 1.0,
+      "llm_turns": 16,
+      "agent_input_tokens": 125538,
+      "flow_lookups": 3,
+      "repeats": 2,
+      "credits_billed": 15.88
+     }
+    }
+   }
+  },
+  "against_sonnet_customer_no_flow": {
+   "Sonnet customer, no flow": {
+    "passed": 5,
+    "failed_tasks": [],
+    "turns": 65,
+    "input_tokens": 448614,
+    "credits": 61.0,
+    "agent_calls": 38,
+    "flow_lookups": 0,
+    "repeats": 0,
+    "own": 0,
+    "detours": 0,
+    "turns_saved_share": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turn_difference_per_episode": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "input_tokens_saved_share": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fewer_turns": 0,
+    "more_turns": 0,
+    "passed_only_here": 0,
+    "passed_only_in_base": 0,
+    "per_task": {
+     "18": {
+      "reward": 1.0,
+      "llm_turns": 12,
+      "agent_input_tokens": 75469,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 11.11
+     },
+     "36": {
+      "reward": 1.0,
+      "llm_turns": 16,
+      "agent_input_tokens": 121281,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 17.33
+     },
+     "51": {
+      "reward": 1.0,
+      "llm_turns": 10,
+      "agent_input_tokens": 57629,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 6.95
+     },
+     "60": {
+      "reward": 1.0,
+      "llm_turns": 7,
+      "agent_input_tokens": 42392,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 6.6
+     },
+     "101": {
+      "reward": 1.0,
+      "llm_turns": 20,
+      "agent_input_tokens": 151843,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 19.06
+     }
+    }
+   },
+   "Sonnet customer, D0": {
+    "passed": 5,
+    "failed_tasks": [],
+    "turns": 50,
+    "input_tokens": 354296,
+    "credits": 50.8,
+    "agent_calls": 28,
+    "flow_lookups": 12,
+    "repeats": 2,
+    "own": 12,
+    "detours": 0,
+    "turns_saved_share": [
+     0.2308,
+     0.1379,
+     0.3208
+    ],
+    "turn_difference_per_episode": [
+     -3.0,
+     -4.4,
+     -1.4
+    ],
+    "input_tokens_saved_share": [
+     0.2102,
+     0.1146,
+     0.2957
+    ],
+    "fewer_turns": 4,
+    "more_turns": 0,
+    "passed_only_here": 0,
+    "passed_only_in_base": 0,
+    "per_task": {
+     "18": {
+      "reward": 1.0,
+      "llm_turns": 10,
+      "agent_input_tokens": 65833,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 9.32
+     },
+     "36": {
+      "reward": 1.0,
+      "llm_turns": 11,
+      "agent_input_tokens": 82887,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 13.87
+     },
+     "51": {
+      "reward": 1.0,
+      "llm_turns": 6,
+      "agent_input_tokens": 37056,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 5.55
+     },
+     "60": {
+      "reward": 1.0,
+      "llm_turns": 7,
+      "agent_input_tokens": 42982,
+      "flow_lookups": 1,
+      "repeats": 0,
+      "credits_billed": 6.17
+     },
+     "101": {
+      "reward": 1.0,
+      "llm_turns": 16,
+      "agent_input_tokens": 125538,
+      "flow_lookups": 3,
+      "repeats": 2,
+      "credits_billed": 15.88
+     }
+    }
+   }
+  },
+  "claude_tokens": 110016
+ }
+}
