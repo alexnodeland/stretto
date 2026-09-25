@@ -1,6 +1,6 @@
 # Shipped arbiters
 
-A flow's arbiter decides each branch by weighing the habit's prediction against Jev's answers ([RFC-001 §3.6](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md)). With a deployment's first few sessions there are too few decisions to fit one: [the cold start](../../docs/results/cold-start-2026-09-24.md) found an arbiter fitted on 3 to 11 of them did worse than the habit alone. These two were fitted in advance, where decisions are plentiful, to serve with a habit learned from new sessions:
+A flow's arbiter decides each branch by weighing the habit's prediction against Jev's answers ([RFC-001 §3.6](../../docs/rfc/001-habit-compiler.md#36-execution-arbitration-not-pooling)). With a deployment's first few sessions there are too few decisions to fit one: [the cold start](../../docs/results/cold-start-2026-09-24.md) found an arbiter fitted on 3 to 11 of them did worse than the habit alone. These two were fitted in advance, where decisions are plentiful, to serve with a habit learned from new sessions:
 
 ```sh
 stretto learn --sessions ~/.stretto/logs --domain orders --arbiter-from data/arbiters/retail.json \

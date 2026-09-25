@@ -1,6 +1,6 @@
 # Design summary
 
-The full rationale, prior work and risks are in fugue's [RFC-001](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md). This page records what we decided and how the pieces fit.
+The full rationale, prior work and risks are in [RFC-001](rfc/001-habit-compiler.md), which began in fugue's decision log and moved here on 2026-09-25. This page records what we decided and how the pieces fit.
 
 ## Decisions (2026-09-23)
 

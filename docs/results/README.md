@@ -2,7 +2,7 @@
 
 Every result so far, in the order it was found. Each page says how to reproduce it. The JSON files beside the pages hold per-episode or per-decision rows. The answer bundles hold every System-One answer the pages read, so they replay without a key.
 
-The [working paper](https://alexnodeland.github.io/stretto/) puts them together, and fugue's [RFC-001](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md) records what each round changed in the design, amendment by amendment. What is still open is in the [roadmap](../roadmap.md).
+The [working paper](https://alexnodeland.github.io/stretto/) puts them together, and [RFC-001](../rfc/001-habit-compiler.md) records what each round changed in the design, amendment by amendment. What is still open is in the [roadmap](../roadmap.md).
 
 ## 2026-09-23: measuring before building
 

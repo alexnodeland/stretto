@@ -11,7 +11,7 @@ In a fugue, a *stretto* is where entries of the subject overlap and compress. st
 
 Flows are [fugue](https://github.com/alexnodeland/fugue) programs. The same flow can be simulated, executed, audited against recorded traces and evaluated counterfactually, just by swapping its interpreter.
 
-The design is fugue's [RFC-001](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md), and the decisions are summarized in [docs/design.md](docs/design.md). The working paper, with every result so far, is at [alexnodeland.github.io/stretto](https://alexnodeland.github.io/stretto/) (source: [`site/`](site/index.html)).
+The design is [RFC-001](docs/rfc/001-habit-compiler.md), first accepted in fugue's decision log, and the decisions are summarized in [docs/design.md](docs/design.md). The working paper, with every result so far, is at [alexnodeland.github.io/stretto](https://alexnodeland.github.io/stretto/) (source: [`site/`](site/index.html)).
 
 ## Status
 

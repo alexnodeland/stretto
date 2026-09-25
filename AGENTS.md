@@ -1,6 +1,6 @@
 # Agent context: stretto
 
-stretto compiles LLM agent behavior into typed probabilistic flows. It learns a Bayesian model of an agent's tool calls, and resolves each branch point with a learned habit, a System-One model (TypeSafe's Jev), the LLM or a person. The design is fugue's RFC-001; the decisions are summarized in `docs/design.md`.
+stretto compiles LLM agent behavior into typed probabilistic flows. It learns a Bayesian model of an agent's tool calls, and resolves each branch point with a learned habit, a System-One model (TypeSafe's Jev), the LLM or a person. The design is RFC-001 (`docs/rfc/001-habit-compiler.md`); the decisions are summarized in `docs/design.md`.
 
 ## Layout
 
