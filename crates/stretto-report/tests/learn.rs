@@ -257,6 +257,13 @@ fn a_habit_only_flow_learns_from_every_session_and_has_no_arbiter() {
     );
     // It has nothing to arbitrate with.
     assert!(flow.next(&live, &MOCK, 0.3).is_err());
+    // The audit judges it by its habit, and asks nothing.
+    let new: Vec<Episode> = (100..105).map(session).collect();
+    let a = stretto_report::audit::audit(&flow, &new, &MOCK);
+    assert_eq!(a.decider, "habit");
+    assert!(a.decisions >= 15, "{}", a.decisions);
+    assert_eq!(a.unanswered, 0);
+    assert!(a.agreement > 0.8, "{}", a.agreement);
 }
 
 #[test]

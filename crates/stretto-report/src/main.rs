@@ -416,6 +416,12 @@ enum Command {
             default_value = ".oracle-cache"
         )]
         oracle_cache: PathBuf,
+        /// How the flow decides: `arbiter` (weighing the System-One model's
+        /// answers) or `habit` (the habit alone, asking nothing). Default:
+        /// the arbiter, or the habit for a flow without one (`learn
+        /// --habit-only`).
+        #[arg(help_heading = "The System-One model", long, value_enum)]
+        decider: Option<DeciderArg>,
         /// Write the Markdown report here (default: stdout).
         #[arg(help_heading = "Output", value_name = "FILE", long)]
         out: Option<PathBuf>,
@@ -1065,6 +1071,7 @@ fn main() -> Result<()> {
             tau2,
             oracle,
             oracle_cache,
+            decider,
             out,
             json,
         } => {
@@ -1105,7 +1112,12 @@ fn main() -> Result<()> {
             sc.cache_dir = oracle_cache;
             let oracle = sc.build()?;
             let started = Instant::now();
-            let audit = stretto_report::audit::audit(&flow, &episodes, oracle.as_ref());
+            let decider = decider.map_or(flow.default_decider(), Decider::from);
+            if decider == Decider::Arbiter && !flow.has_arbiter() {
+                anyhow::bail!("the flow has no arbiter: audit it with --decider habit");
+            }
+            let audit =
+                stretto_report::audit::audit_with(&flow, &episodes, oracle.as_ref(), decider);
             eprintln!(
                 "stretto: audited {} decisions in {} episodes in {:.1} s",
                 audit.decisions,

@@ -20,7 +20,7 @@
 //! stand out. That is the check to run on new sessions before trusting a
 //! flow compiled from older ones.
 
-use crate::flow::Flow;
+use crate::flow::{Decider, Flow};
 use crate::shadow::RESPOND;
 use fugue::runtime::handler::run;
 use fugue::{
@@ -65,8 +65,21 @@ impl Decision {
 
 /// Every decision `flow` would make in `episode`, with the agent's own step
 /// at each, and how many decisions the oracle could not answer (a replay
-/// cache without the question, say), which are left out.
+/// cache without the question, say), which are left out. The flow decides
+/// as it does by default ([`Flow::default_decider`]).
 pub fn decisions(flow: &Flow, episode: &Episode, oracle: &dyn Oracle) -> (Vec<Decision>, usize) {
+    decisions_with(flow, episode, oracle, flow.default_decider())
+}
+
+/// [`decisions`], with the flow deciding by `decider`. The habit alone asks
+/// `oracle` nothing, and counts every step it cannot take as handing back,
+/// a lookup it does not offer there included.
+pub fn decisions_with(
+    flow: &Flow,
+    episode: &Episode,
+    oracle: &dyn Oracle,
+    decider: Decider,
+) -> (Vec<Decision>, usize) {
     let mut out = Vec::new();
     let mut unanswered = 0;
     let events = &episode.events;
@@ -85,7 +98,7 @@ pub fn decisions(flow: &Flow, episode: &Episode, oracle: &dyn Oracle) -> (Vec<De
         };
         // Only the arbiter's probabilities are wanted, so no threshold is met
         // and no arguments are bound.
-        let Ok(next) = flow.next(&prefix, oracle, f64::INFINITY) else {
+        let Ok(next) = flow.next_with(&prefix, oracle, f64::INFINITY, decider) else {
             unanswered += 1;
             continue;
         };
@@ -102,7 +115,9 @@ pub fn decisions(flow: &Flow, episode: &Episode, oracle: &dyn Oracle) -> (Vec<De
                 let tool = &calls[0].name;
                 if next.probs.contains_key(tool) {
                     tool.clone()
-                } else if flow.manifest().tools.get(tool) == Some(&ToolKind::Read) {
+                } else if decider == Decider::Arbiter
+                    && flow.manifest().tools.get(tool) == Some(&ToolKind::Read)
+                {
                     OTHER.to_string()
                 } else {
                     // A write, or a tool that is neither: the flow hands back.
@@ -229,6 +244,8 @@ pub struct CalibrationBin {
 pub struct Audit {
     /// The flow's domain.
     pub domain: String,
+    /// How the flow decided: `arbiter` or `habit`.
+    pub decider: String,
     /// Episodes read.
     pub episodes: usize,
     /// Decisions scored.
@@ -256,10 +273,26 @@ pub struct Audit {
     pub surprising: Vec<EpisodeSurprise>,
 }
 
-/// Audit `flow` against `episodes`, asking `oracle` its questions.
+/// Audit `flow` against `episodes`, asking `oracle` its questions. The flow
+/// decides as it does by default ([`Flow::default_decider`]).
 pub fn audit(flow: &Flow, episodes: &[Episode], oracle: &dyn Oracle) -> Audit {
+    audit_with(flow, episodes, oracle, flow.default_decider())
+}
+
+/// [`audit`], with the flow deciding by `decider`.
+pub fn audit_with(
+    flow: &Flow,
+    episodes: &[Episode],
+    oracle: &dyn Oracle,
+    decider: Decider,
+) -> Audit {
     let mut out = Audit {
         domain: flow.domain().to_string(),
+        decider: match decider {
+            Decider::Arbiter => "arbiter",
+            Decider::Habit => "habit",
+        }
+        .to_string(),
         episodes: episodes.len(),
         ..Default::default()
     };
@@ -269,7 +302,7 @@ pub fn audit(flow: &Flow, episodes: &[Episode], oracle: &dyn Oracle) -> Audit {
     let mut agreed = 0;
     let mut expected = 0.0;
     for ep in episodes {
-        let (ds, unanswered) = decisions(flow, ep, oracle);
+        let (ds, unanswered) = decisions_with(flow, ep, oracle, decider);
         out.unanswered += unanswered;
         if ds.is_empty() {
             continue;
@@ -347,13 +380,19 @@ pub fn markdown(a: &Audit) -> String {
     let pct = |x: f64| format!("{:.1}%", 100.0 * x);
     let mut md = format!(
         "# Flow audit: {}\n\n\
-         {} episodes, {} decisions scored ({} left out: no answer from the oracle).\n\n\
+         The flow decides with {}. {} episodes, {} decisions scored ({} left out: no answer \
+         from the oracle).\n\n\
          - **Agreement:** the flow's likeliest option was the agent's step at {} of decisions \
          ({} expected if it picked at random from its own probabilities).\n\
          - **Surprise:** {:.3} nats per decision (the agent's path has log-probability {:.1} under \
          the flow, scored by fugue's `ScoreGivenTrace`).\n\
          - **Calibration:** expected calibration error {:.3}.\n",
         a.domain,
+        if a.decider == "habit" {
+            "the habit alone"
+        } else {
+            "its arbiter"
+        },
         a.episodes,
         a.decisions,
         a.unanswered,

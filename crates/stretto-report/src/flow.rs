@@ -221,6 +221,16 @@ impl Flow {
         !self.folds.is_empty()
     }
 
+    /// How the flow decides unless told otherwise: with its arbiter, or with
+    /// the habit alone if it has none.
+    pub fn default_decider(&self) -> Decider {
+        if self.has_arbiter() {
+            Decider::Arbiter
+        } else {
+            Decider::Habit
+        }
+    }
+
     /// This flow's habit, sites and bindings, with the arbiter of `other`: a
     /// flow learned from a few sessions without a System-One model can take
     /// the arbiter fitted where decisions are plentiful, such as a flow
@@ -867,8 +877,27 @@ impl Bindings {
 }
 
 /// A tool result as JSON, or as one string if it is not JSON.
+/// A tool output as JSON. Text that is not JSON is one string, or, when it
+/// has several non-empty lines, the list of them: many servers list paths or
+/// ids one per line, and a lookup can then bind one of them (at `$[*]`).
 fn parse(content: &str) -> Value {
-    serde_json::from_str(content).unwrap_or_else(|_| Value::String(content.to_string()))
+    serde_json::from_str(content).unwrap_or_else(|_| {
+        let lines: Vec<&str> = content
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty())
+            .collect();
+        if lines.len() > 1 {
+            Value::Array(
+                lines
+                    .into_iter()
+                    .map(|l| Value::String(l.to_string()))
+                    .collect(),
+            )
+        } else {
+            Value::String(content.to_string())
+        }
+    })
 }
 
 fn value_text(v: &Value) -> String {
@@ -1129,6 +1158,66 @@ mod tests {
         assert!((chance - 7.0 / 8.0).abs() < 1e-9, "{chance}");
         // A user id comes from the customer, never from an output: no rule.
         assert!(b.bind("get_user_details", &live(vec![])).is_err());
+    }
+
+    #[test]
+    fn binds_each_line_of_a_text_listing() {
+        let manifest = ToolManifest {
+            domain: "files".to_string(),
+            tools: BTreeMap::from([
+                ("search_files".to_string(), ToolKind::Read),
+                ("read_text_file".to_string(), ToolKind::Read),
+            ]),
+            docs: BTreeMap::new(),
+        };
+        let text = |id: &str, name: &str, content: &str| Event::ToolResult {
+            call_id: id.to_string(),
+            name: name.to_string(),
+            error: false,
+            content: content.to_string(),
+        };
+        let read = |id: &str, path: &str| call(id, "read_text_file", json!({"path": path}));
+        let training: Vec<Episode> = ["alpha", "beta"]
+            .iter()
+            .map(|dir| {
+                let (a, b) = (format!("/n/{dir}/a.md"), format!("/n/{dir}/b.md"));
+                episode(vec![
+                    call(
+                        "s",
+                        "search_files",
+                        json!({"path": "/n", "pattern": "*.md"}),
+                    ),
+                    text("s", "search_files", &format!("{a}\n{b}\n")),
+                    read("r1", &a),
+                    text("r1", "read_text_file", "# A"),
+                    read("r2", &b),
+                    text("r2", "read_text_file", "# B"),
+                ])
+            })
+            .collect();
+        let b = Bindings::learn(&training, &manifest);
+        let live = |extra: Vec<Event>| {
+            let mut events = vec![
+                call(
+                    "s",
+                    "search_files",
+                    json!({"path": "/n", "pattern": "*.md"}),
+                ),
+                text("s", "search_files", "/n/gamma/c.md\n/n/gamma/d.md"),
+            ];
+            events.extend(extra);
+            episode(events)
+        };
+        let path = |e: &Episode| b.bind("read_text_file", e).map(|(v, _)| v);
+        assert_eq!(path(&live(vec![])), Ok(json!({"path": "/n/gamma/c.md"})));
+        let after_one = live(vec![
+            read("r1", "/n/gamma/c.md"),
+            text("r1", "read_text_file", "# C"),
+        ]);
+        assert_eq!(path(&after_one), Ok(json!({"path": "/n/gamma/d.md"})));
+        // One line stays one value, as before.
+        assert_eq!(parse("/n/only.md"), json!("/n/only.md"));
+        assert_eq!(parse("{\"a\": 1}"), json!({"a": 1}));
     }
 
     #[test]

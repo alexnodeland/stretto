@@ -332,6 +332,7 @@ Usage: stretto audit [OPTIONS] --flow <FILE>
 
 - `--oracle <ORACLE>` (one of `jev`, `replay`, `mock`; default `replay`): Who answers the flow's questions: `replay` (the cache only; decisions it cannot answer are left out), `jev` (needs TYPESAFE_API_KEY; about $0.0001 per decision) or `mock`.
 - `--oracle-cache <DIR>` (default `.oracle-cache`): Replay cache for oracle answers.
+- `--decider <DECIDER>` (one of `arbiter`, `habit`): How the flow decides: `arbiter` (weighing the System-One model's answers) or `habit` (the habit alone, asking nothing). Default: the arbiter, or the habit for a flow without one (`learn --habit-only`).
 
 **Output**
 
