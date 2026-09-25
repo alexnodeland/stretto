@@ -43,7 +43,7 @@ These cost Jev dollars, CPU time or people's time, and no LLM runs.
 | [#17](https://github.com/alexnodeland/stretto/issues/17) | Hand back when a session surprises the flow | RFC-001 §3.6; surprise is measured only after the fact |
 | [#18](https://github.com/alexnodeland/stretto/issues/18) | Drift alarms | RFC-001 §3.3 and §4: change-point alarms and forgetting |
 | [#19](https://github.com/alexnodeland/stretto/issues/19) | Shadow mode and per-site promotion | RFC-001 §3.7; today one threshold serves every site |
-| [#20](https://github.com/alexnodeland/stretto/issues/20) | `stretto flow show` and `flow diff` | RFC-001 question 4: review flows as code |
+| [#20](https://github.com/alexnodeland/stretto/issues/20) | `stretto flow show` and `flow diff` | Done: `stretto flow-show` and `stretto flow-diff` ([reviewing flows](review.md)) |
 | [#21](https://github.com/alexnodeland/stretto/issues/21) | Streamable HTTP for the proxy | The proxy speaks stdio only |
 | [#22](https://github.com/alexnodeland/stretto/issues/22) | Learn from several servers' logs of one session | One proxy wraps one server |
 | [#23](https://github.com/alexnodeland/stretto/issues/23) | Learn from OpenTelemetry GenAI spans | RFC-001 §3.9's `stretto-trace` |

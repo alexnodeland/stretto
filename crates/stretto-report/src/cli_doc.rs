@@ -195,7 +195,7 @@ fn first_sentence(text: &str) -> String {
 
 /// Compare `section` with the part of the page at `path` between
 /// `<!-- begin NAME -->` and `<!-- end NAME -->`. With [`BLESS`] set, write
-/// it there instead.
+/// it there instead. `docs/review.md`'s examples are checked the same way.
 pub fn check_page(path: &Path, name: &str, section: &str) -> Result<(), String> {
     let page = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let (begin, end) = (
@@ -215,7 +215,7 @@ pub fn check_page(path: &Path, name: &str, section: &str) -> Result<(), String> 
         return std::fs::write(path, page).map_err(|e| format!("{}: {e}", path.display()));
     }
     Err(format!(
-        "{} is out of date for `{name}`: run `{BLESS}=1 cargo test --bins` and commit it",
+        "{} is out of date for `{name}`: run `{BLESS}=1 cargo test` and commit it",
         path.display()
     ))
 }

@@ -591,6 +591,55 @@ pub struct Bindings {
     agreed: BTreeMap<String, [(usize, usize); 2]>,
 }
 
+/// How one lookup's arguments are bound, for review ([`Bindings::review`]).
+#[derive(Clone, Debug, PartialEq)]
+pub struct LookupBinding {
+    /// The lookup.
+    pub tool: String,
+    /// The agent's calls to it in training.
+    pub calls: usize,
+    /// Each required argument, and where the flow binds it from.
+    pub arguments: Vec<ArgumentBinding>,
+    /// At the agent's own calls in training, `(agreed, tried)`: how often
+    /// the binding gave the agent's arguments, when the customer had not
+    /// mentioned the values picked and when they had.
+    pub agreed: [(usize, usize); 2],
+}
+
+/// Where one required argument of a lookup comes from, for review.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ArgumentBinding {
+    /// The argument.
+    pub name: String,
+    /// How many string values it took in training.
+    pub values: usize,
+    /// The sources the flow binds it from: `(tool, path, values found
+    /// there)`.
+    pub sources: Vec<(String, String, usize)>,
+}
+
+impl LookupBinding {
+    /// Whether every required argument has a source. A lookup with an
+    /// argument that has none, such as an email only the customer knows, is
+    /// never made by the flow.
+    pub fn bindable(&self) -> bool {
+        self.arguments.iter().all(|a| !a.sources.is_empty())
+    }
+
+    /// The chance that the bound arguments are the agent's own, as
+    /// [`Bindings::bind`] gives it: when the customer had not mentioned the
+    /// values picked, when they had, and over both. 1 for a lookup without
+    /// arguments.
+    pub fn chance(&self) -> [f64; 3] {
+        if self.arguments.is_empty() {
+            return [1.0; 3];
+        }
+        let smoothed = |(agreed, n): (usize, usize)| (agreed as f64 + 1.0) / (n as f64 + 2.0);
+        let [a, b] = self.agreed;
+        [smoothed(a), smoothed(b), smoothed((a.0 + b.0, a.1 + b.1))]
+    }
+}
+
 /// Where one lookup argument's values came from in training.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 struct Traced {
@@ -603,6 +652,46 @@ struct Traced {
 }
 
 impl Bindings {
+    /// Every lookup's binding: its required arguments, the sources the flow
+    /// binds them from, and the binding's chance of matching the agent.
+    pub fn review(&self) -> Vec<LookupBinding> {
+        self.args
+            .iter()
+            .map(|(tool, (calls, args))| {
+                let arguments = args
+                    .iter()
+                    .filter(|(_, &n)| n as f64 >= REQUIRED_SHARE * *calls as f64)
+                    .map(|(arg, _)| {
+                        let traced = self.sources.get(&(tool.clone(), arg.clone()));
+                        let values = traced.map_or(0, |t| t.values);
+                        let sources = traced
+                            .map(|t| {
+                                t.found
+                                    .iter()
+                                    .filter(|(_, &n)| {
+                                        n >= 2 && n as f64 >= MIN_SOURCE_SHARE * values as f64
+                                    })
+                                    .map(|((from, path), &n)| (from.clone(), path.clone(), n))
+                                    .collect()
+                            })
+                            .unwrap_or_default();
+                        ArgumentBinding {
+                            name: arg.clone(),
+                            values,
+                            sources,
+                        }
+                    })
+                    .collect();
+                LookupBinding {
+                    tool: tool.clone(),
+                    calls: *calls,
+                    arguments,
+                    agreed: self.agreed.get(tool).copied().unwrap_or_default(),
+                }
+            })
+            .collect()
+    }
+
     /// Learn from training episodes: each string argument of each lookup is
     /// traced to the most recent successful output that holds it as a value.
     /// Then, at each of the agent's lookups, the binding is tried on what

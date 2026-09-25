@@ -244,6 +244,17 @@ impl FeatureMap {
         ))
     }
 
+    /// The output fields read, for each tool that has any.
+    pub fn fields(&self) -> &BTreeMap<String, Vec<Field>> {
+        &self.fields
+    }
+
+    /// How many combinations of `tool`'s field values have an id: values
+    /// copied from training outputs.
+    pub fn combinations(&self, tool: &str) -> usize {
+        self.ids.keys().filter(|(t, _)| t == tool).count()
+    }
+
     /// What feature `id` of `tool` stands for, as `field=value` pairs.
     pub fn describe(&self, tool: &str, id: u32) -> Option<String> {
         let (_, values) = self.ids.iter().find(|((t, _), &i)| t == tool && i == id)?.0;

@@ -437,3 +437,205 @@ fn a_flow_never_proposes_a_tool_outside_its_compiled_set() {
     }
     assert!(decided >= 9, "{decided}");
 }
+
+// Reviewing flows as code (`stretto flow-show`, `stretto flow-diff`).
+
+/// Session `i`, where the agent also reads the account's rewards before
+/// its orders.
+fn session_with_rewards(i: usize) -> Episode {
+    let mut ep = session(i);
+    let account = format!("acct_{i}");
+    ep.events.splice(
+        5..5,
+        [
+            call("r", "get_rewards", json!({"account_id": account})),
+            result(
+                "r",
+                "get_rewards",
+                &json!({"account_id": account, "points": 10}).to_string(),
+            ),
+        ],
+    );
+    ep
+}
+
+fn habit_flow(episodes: &[Episode], manifest: &ToolManifest) -> stretto_report::flow::Flow {
+    let mut config = Config::new(PathBuf::new());
+    config.alpha_samples = 0;
+    compile_habit_flow_from_episodes(&config, episodes, manifest).unwrap()
+}
+
+#[test]
+fn a_flow_shows_what_it_may_call_and_where_its_arguments_come_from() {
+    let episodes: Vec<Episode> = (0..60).map(session).collect();
+    let md = stretto_report::review::show(&habit_flow(&episodes, &manifest()), 0.3);
+    for line in [
+        "- **Read, the only tools it may call:** `find_account`, `get_account`, `get_order`",
+        "- **Write, never called:** `close_order`",
+        // After finding the account the agent always read it, and the flow
+        // binds the account's id from what the search returned.
+        "| `find_account` | `get_account` (60) | get_account 100% (of 60) | looks up `get_account` 1.00 × 0.98 = 0.98 |",
+        "| `get_account` | `account_id` | `find_account` at `$` (60 of 60) | 0.98 (60/60), 0.50 (0/0) |",
+        // After an order, the agent read the next one half the time.
+        "| `get_order` | `get_order` (60) | get_order 50%, respond 50% (of 120) | looks up `get_order` 0.50 × 0.99 = 0.50 |",
+        "| `get_order` | `order_id` | `get_account` at `$.orders[*]` (120 of 120) |",
+        // Only the customer knows their email.
+        "| `find_account` | `email` | nothing: the flow never makes this lookup | — |",
+        "It has no arbiter: it decides with the habit alone and asks no one.",
+    ] {
+        assert!(md.contains(line), "missing {line:?} in\n{md}");
+    }
+    // Served at a higher threshold, it hands back after an order.
+    let strict = stretto_report::review::show(&habit_flow(&episodes, &manifest()), 0.6);
+    assert!(
+        strict.contains("hands back: `get_order` 0.50 × 0.99 = 0.50"),
+        "{strict}"
+    );
+    // A flow with an arbiter shows its weights and the model's record.
+    let md = stretto_report::review::show(&learned_flow(), 0.3);
+    for line in [
+        "asks `jev-latest`",
+        "One fit, which judges every session.",
+        "| ln the habit's probability |",
+        "| the model's record at the site, on its pick |",
+        "The System-One model's record, at the held-out decisions of 3 sites",
+    ] {
+        assert!(md.contains(line), "missing {line:?} in\n{md}");
+    }
+}
+
+#[test]
+fn a_diff_flags_a_new_read_tool_its_lookups_and_its_binding() {
+    let old = habit_flow(&(0..60).map(session).collect::<Vec<_>>(), &manifest());
+    let mut with_rewards = manifest();
+    with_rewards
+        .tools
+        .insert("get_rewards".to_string(), ToolKind::Read);
+    let new = habit_flow(
+        &(0..60).map(session_with_rewards).collect::<Vec<_>>(),
+        &with_rewards,
+    );
+    let d = stretto_report::review::diff(&old, &new, 0.05, 0.3);
+    assert_eq!(
+        d.needs_review,
+        [
+            "`get_rewards` is now marked read-only, so the flow may call it",
+            "a new lookup: `get_rewards` after `get_account`",
+            "a new lookup: `get_order` after `get_rewards`",
+            "a new binding: `get_rewards`'s `account_id` from `get_account` at `$.account_id`",
+        ]
+    );
+    for line in [
+        "- `get_rewards`: absent → read",
+        "- after `get_account`: no longer looks up `get_order`",
+        "- after `get_account`: looks up `get_rewards` 1.00 × 0.98 = 0.98 (was: looks up `get_order` 1.00 × 0.99 = 0.99)",
+        "- after `get_account`: get_rewards 0% → 100%",
+    ] {
+        assert!(d.markdown.contains(line), "missing {line:?} in\n{}", d.markdown);
+    }
+}
+
+#[test]
+fn more_sessions_of_the_same_kind_need_no_review() {
+    let fewer = habit_flow(&(0..30).map(session).collect::<Vec<_>>(), &manifest());
+    let more = habit_flow(&(0..60).map(session).collect::<Vec<_>>(), &manifest());
+    let d = stretto_report::review::diff(&fewer, &more, 0.05, 0.3);
+    assert!(d.needs_review.is_empty(), "{:?}", d.needs_review);
+    assert!(
+        d.markdown.contains("Nothing needs review"),
+        "{}",
+        d.markdown
+    );
+    assert!(
+        d.markdown
+            .contains("the habit learned from 30 → 60 successful sessions or episodes"),
+        "{}",
+        d.markdown
+    );
+    assert!(stretto_report::review::diff(&more, &more, 0.05, 0.3)
+        .needs_review
+        .is_empty());
+}
+
+#[test]
+fn a_diff_flags_a_flow_that_starts_asking_a_system_one_model() {
+    let episodes: Vec<Episode> = (0..60).map(session).collect();
+    let habit = habit_flow(&episodes, &manifest());
+    let asking = habit.clone().with_arbiter_of(learned_flow()).unwrap();
+    let d = stretto_report::review::diff(&habit, &asking, 0.05, 0.3);
+    assert_eq!(
+        d.needs_review,
+        ["the flow now asks `jev-latest` at each decision"]
+    );
+    // Dropping the arbiter only takes a question away.
+    assert!(stretto_report::review::diff(&asking, &habit, 0.05, 0.3)
+        .needs_review
+        .is_empty());
+    // A predicate asked with each question is sent to the model too, so a
+    // new or reworded one needs review.
+    let mut v = serde_json::to_value(&asking).unwrap();
+    v["predicates"] = json!([{
+        "id": "must_ask",
+        "favors": "hand_back",
+        "question": "Does the agent need something only the customer can give?",
+        "yes": "It must ask first.",
+        "no": "It can look something up."
+    }]);
+    let asking_more = stretto_report::flow::Flow::from_json(&v.to_string()).unwrap();
+    assert_eq!(
+        stretto_report::review::diff(&asking, &asking_more, 0.05, 0.3).needs_review,
+        ["the flow asks new or reworded predicates: `must_ask`"]
+    );
+    assert!(stretto_report::review::show(&asking_more, 0.3).contains(
+        "- `must_ask` (asked, not weighed): Does the agent need something only the customer can give?"
+    ));
+    assert!(
+        stretto_report::review::diff(&asking_more, &asking, 0.05, 0.3)
+            .markdown
+            .contains("- no longer asks `must_ask`")
+    );
+}
+
+#[test]
+fn flow_diff_exits_with_1_when_a_change_needs_review() {
+    let dir = std::env::temp_dir().join(format!("stretto-review-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let (old, new) = (dir.join("old.flow.json"), dir.join("new.flow.json"));
+    habit_flow(&(0..60).map(session).collect::<Vec<_>>(), &manifest())
+        .save(&old)
+        .unwrap();
+    let mut with_rewards = manifest();
+    with_rewards
+        .tools
+        .insert("get_rewards".to_string(), ToolKind::Read);
+    habit_flow(
+        &(0..60).map(session_with_rewards).collect::<Vec<_>>(),
+        &with_rewards,
+    )
+    .save(&new)
+    .unwrap();
+    let stretto = env!("CARGO_BIN_EXE_stretto");
+    let run = |args: &[&std::path::Path]| {
+        std::process::Command::new(stretto)
+            .arg("flow-diff")
+            .args(args)
+            .output()
+            .unwrap()
+    };
+    let changed = run(&[&old, &new]);
+    assert_eq!(changed.status.code(), Some(1), "{changed:?}");
+    assert!(String::from_utf8_lossy(&changed.stdout).contains("**Needs review:**"));
+    assert_eq!(run(&[&old, &old]).status.code(), Some(0));
+    assert_eq!(
+        run(&[&old, &dir.join("missing.json")]).status.code(),
+        Some(2)
+    );
+    let shown = std::process::Command::new(stretto)
+        .arg("flow-show")
+        .arg(&new)
+        .output()
+        .unwrap();
+    assert!(shown.status.success(), "{shown:?}");
+    assert!(String::from_utf8_lossy(&shown.stdout).starts_with("# Flow: shop\n"));
+    std::fs::remove_dir_all(&dir).ok();
+}

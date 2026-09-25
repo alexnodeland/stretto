@@ -150,3 +150,31 @@ fn an_arbiter_fitted_on_logged_cases_saves_and_loads() {
     );
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[test]
+fn the_review_page_shows_what_flow_show_and_flow_diff_print() {
+    let page = repo("docs/review.md");
+    let example =
+        |name: &str| Flow::load(&repo(&format!("docs/examples/{name}.flow.json"))).unwrap();
+    let fenced = |md: &str| format!("```markdown\n{md}```\n");
+    let mut sections = vec![(
+        "show-5",
+        stretto_report::review::show(&example("retail-5-sessions"), 0.3),
+    )];
+    for (name, old, new) in [
+        ("diff-5-10", "retail-5-sessions", "retail-10-sessions"),
+        (
+            "diff-shipped",
+            "retail-5-sessions",
+            "retail-5-sessions-shipped-arbiter",
+        ),
+    ] {
+        let d = stretto_report::review::diff(&example(old), &example(new), 0.05, 0.3);
+        sections.push((name, d.markdown));
+    }
+    for (name, md) in sections {
+        if let Err(e) = stretto_report::cli_doc::check_page(&page, name, &fenced(&md)) {
+            panic!("{e}");
+        }
+    }
+}

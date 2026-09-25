@@ -20,7 +20,7 @@
 //! options there), clears the threshold.
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 /// Pseudo-decisions that pull a site's rates toward the overall ones.
 const SHRINK: f64 = 10.0;
@@ -79,6 +79,20 @@ impl Fitted {
             weights: fit(&data, features + 1),
             rates,
         }
+    }
+
+    /// The model's record: its agreement and coverage over every site, and
+    /// each site's `(decisions, agreed, covered)`.
+    pub fn record(&self) -> (f64, f64, BTreeMap<String, (f64, f64, f64)>) {
+        (
+            self.rates.agree,
+            self.rates.cover,
+            self.rates
+                .sites
+                .iter()
+                .map(|(s, v)| (s.clone(), *v))
+                .collect(),
+        )
     }
 
     /// The arbiter's answer to `case` (its `actual` and `fit` are not read).

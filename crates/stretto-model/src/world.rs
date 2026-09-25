@@ -204,6 +204,25 @@ impl BackoffModel {
         p
     }
 
+    /// What followed the steps `step` accepts in training: the one-step
+    /// context counts of every such symbol, summed by action, and their
+    /// total. Whatever came before the step is ignored.
+    pub fn followed(&self, step: impl Fn(Symbol) -> bool) -> (HashMap<u32, f64>, f64) {
+        let mut by_action: HashMap<u32, f64> = HashMap::new();
+        let mut total = 0.0;
+        if let Some(level) = self.levels.get(1) {
+            for (context, c) in &level.0 {
+                if context.len() == 1 && step(context[0]) {
+                    for (a, n) in &c.by_action {
+                        *by_action.entry(*a).or_insert(0.0) += n;
+                    }
+                    total += c.total;
+                }
+            }
+        }
+        (by_action, total)
+    }
+
     /// How many training observations share the full-length context of
     /// `history`: the evidence a top-level prediction rests on.
     pub fn evidence(&self, history: &[Symbol]) -> f64 {
@@ -268,6 +287,11 @@ impl GroupedModel {
             }
         }
         Self { base, beta, top }
+    }
+
+    /// The shared model under the group layer.
+    pub fn base(&self) -> &BackoffModel {
+        &self.base
     }
 
     fn layer(&self, ep: &EncodedEpisode, t: usize) -> Option<&Counts> {

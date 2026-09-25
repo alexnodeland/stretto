@@ -490,6 +490,12 @@ impl Sites {
         self.every_read
     }
 
+    /// Each site, `(tool, failed)`, with the lookups made next there in
+    /// training and how often.
+    pub fn next(&self) -> &BTreeMap<(String, bool), BTreeMap<String, usize>> {
+        &self.next
+    }
+
     /// Learn which write arguments each lookup's results supply, from
     /// argument dataflow: every value (of three characters or more) passed to
     /// a write is traced to the most recent successful tool output that

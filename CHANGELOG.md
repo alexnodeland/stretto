@@ -16,6 +16,7 @@ Everything so far: the first design of [RFC-001](docs/rfc/001-habit-compiler.md)
 - `stretto compile` writes a flow (the flow IR, `stretto_flow: 1`) from τ²-bench results. `stretto learn` learns one from sessions the proxy recorded: with the habit alone (`--habit-only`), with an arbiter fitted on held-out sessions, or with a shipped arbiter (`--arbiter-from`). A flow's lookups bind their arguments from earlier results, including results that list values one per line.
 - `stretto serve` and `stretto flow-serve` answer a flow's decisions over a local port. `stretto export-arbiter` writes a flow's arbiter to its own file (`stretto_arbiter: 1`), and `stretto fit-arbiter` fits one on the decision logs of several compiles. `data/arbiters/` ships two, fitted on four agents' retail and airline decisions; they carry between those two domains, not to one unlike both.
 - `stretto audit` scores recorded sessions under a flow, run as a fugue program: agreement, calibration and surprise per site. A flow without an arbiter is audited with its habit.
+- `stretto flow-show` renders a flow for review: the tools it may call, the lookups it may make after each call and where their arguments come from, and how it decides. `stretto flow-diff` lists what changed between two flows for a pull request, and exits with 1 when a change needs review ([reviewing flows](docs/review.md)).
 
 ### Checks on writes
 
@@ -31,5 +32,6 @@ Everything so far: the first design of [RFC-001](docs/rfc/001-habit-compiler.md)
 ### Documentation
 
 - [The walkthrough](docs/walkthrough.md) runs the whole loop on the official MCP filesystem server, and CI runs it.
+- [Reviewing flows](docs/review.md), with example diffs of real flows that a test keeps current.
 - [The file formats](docs/formats.md), [the CLI reference](docs/cli.md) (generated from the code, kept current by CI), [the design](docs/design.md) and [the roadmap](docs/roadmap.md).
 - The working paper, published at [alexnodeland.github.io/stretto](https://alexnodeland.github.io/stretto/).

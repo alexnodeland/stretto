@@ -429,6 +429,46 @@ enum Command {
         #[arg(help_heading = "Output", value_name = "FILE", long)]
         json: Option<PathBuf>,
     },
+    /// Show a flow as a reviewer reads it (Markdown): the tools it may call,
+    /// the lookups it may make after each call and where their arguments
+    /// come from, what it does there with the habit alone, and how its
+    /// arbiter weighs the System-One model's answers.
+    FlowShow {
+        /// The flow IR.
+        #[arg(value_name = "FILE")]
+        flow: PathBuf,
+        /// The threshold the flow will be served with (`stretto-proxy
+        /// --flow-threshold`).
+        #[arg(value_name = "P", long, default_value_t = 0.3)]
+        threshold: f64,
+        /// Write the Markdown here (default: stdout).
+        #[arg(value_name = "FILE", long)]
+        out: Option<PathBuf>,
+    },
+    /// What changed from one flow to another, as a change list for a pull
+    /// request (Markdown). Exits with 1 when a change needs review (the flow
+    /// may call a tool, make a lookup, bind an argument from a source, or
+    /// ask a model or a question it did not before), 2 on an error, and 0
+    /// otherwise.
+    FlowDiff {
+        /// The flow before.
+        #[arg(value_name = "OLD")]
+        old: PathBuf,
+        /// The flow after.
+        #[arg(value_name = "NEW")]
+        new: PathBuf,
+        /// Leave out shares, chances and weights that moved by less than
+        /// this.
+        #[arg(value_name = "X", long, default_value_t = 0.05)]
+        tolerance: f64,
+        /// The threshold the flow will be served with (`stretto-proxy
+        /// --flow-threshold`).
+        #[arg(value_name = "P", long, default_value_t = 0.3)]
+        threshold: f64,
+        /// Write the Markdown here (default: stdout).
+        #[arg(value_name = "FILE", long)]
+        out: Option<PathBuf>,
+    },
     /// Check that Jev is reachable with TYPESAFE_API_KEY: ask one small
     /// question (uncached) and print the answer, model version and latency.
     JevCheck,
@@ -1183,6 +1223,53 @@ fn main() -> Result<()> {
                 write(&path, &serde_json::to_vec_pretty(&audit)?)?;
             }
             Ok(())
+        }
+        Command::FlowShow {
+            flow,
+            threshold,
+            out,
+        } => {
+            let flow = stretto_report::flow::Flow::load(&flow)?;
+            let md = stretto_report::review::show(&flow, threshold);
+            match out {
+                Some(path) => write(&path, md.as_bytes()),
+                None => {
+                    print!("{md}");
+                    Ok(())
+                }
+            }
+        }
+        Command::FlowDiff {
+            old,
+            new,
+            tolerance,
+            threshold,
+            out,
+        } => {
+            // Like diff(1): 1 means "look at this", 2 means trouble.
+            let run = || -> Result<bool> {
+                let (a, b) = (
+                    stretto_report::flow::Flow::load(&old)?,
+                    stretto_report::flow::Flow::load(&new)?,
+                );
+                let d = stretto_report::review::diff(&a, &b, tolerance, threshold);
+                match out {
+                    Some(path) => write(&path, d.markdown.as_bytes())?,
+                    None => print!("{}", d.markdown),
+                }
+                if !d.needs_review.is_empty() {
+                    eprintln!("stretto: {} change(s) need review", d.needs_review.len());
+                }
+                Ok(!d.needs_review.is_empty())
+            };
+            match run() {
+                Ok(false) => Ok(()),
+                Ok(true) => std::process::exit(1),
+                Err(e) => {
+                    eprintln!("stretto: {e:#}");
+                    std::process::exit(2)
+                }
+            }
         }
         Command::JevCheck => jev_check(),
         Command::ExportArbiter { flow, out } => {

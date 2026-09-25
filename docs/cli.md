@@ -21,6 +21,8 @@ Compile an agent's recorded behavior into flows, serve them, and measure them ag
 | [`confirm`](#stretto-confirm) | Judge the customer's confirmation before each write with a System-One model, next to the guards' word list, on τ²-bench's published trajectories. |
 | [`match`](#stretto-match) | Match descriptions to records (RFC-001). |
 | [`audit`](#stretto-audit) | Audit a flow against recorded episodes. |
+| [`flow-show`](#stretto-flow-show) | Show a flow as a reviewer reads it (Markdown). |
+| [`flow-diff`](#stretto-flow-diff) | What changed from one flow to another, as a change list for a pull request (Markdown). |
 | [`jev-check`](#stretto-jev-check) | Check that Jev is reachable with TYPESAFE_API_KEY. |
 | [`export-arbiter`](#stretto-export-arbiter) | Write a flow's arbiter to its own file, to ship. |
 | [`fit-arbiter`](#stretto-fit-arbiter) | Fit one arbiter, to ship, on the held-out decisions of one or more compiles. |
@@ -340,6 +342,42 @@ Usage: stretto audit [OPTIONS] --flow <FILE>
 
 - `--out <FILE>`: Write the Markdown report here (default: stdout).
 - `--json <FILE>`: Also write the audit as JSON here.
+
+### `stretto flow-show`
+
+Show a flow as a reviewer reads it (Markdown): the tools it may call, the lookups it may make after each call and where their arguments come from, what it does there with the habit alone, and how its arbiter weighs the System-One model's answers.
+
+```text
+Usage: stretto flow-show [OPTIONS] <FILE>
+```
+
+**Arguments**
+
+- `<FILE>` (required): The flow IR.
+
+**Options**
+
+- `--threshold <P>` (default `0.3`): The threshold the flow will be served with (`stretto-proxy --flow-threshold`).
+- `--out <FILE>`: Write the Markdown here (default: stdout).
+
+### `stretto flow-diff`
+
+What changed from one flow to another, as a change list for a pull request (Markdown). Exits with 1 when a change needs review (the flow may call a tool, make a lookup, bind an argument from a source, or ask a model or a question it did not before), 2 on an error, and 0 otherwise.
+
+```text
+Usage: stretto flow-diff [OPTIONS] <OLD> <NEW>
+```
+
+**Arguments**
+
+- `<OLD>` (required): The flow before.
+- `<NEW>` (required): The flow after.
+
+**Options**
+
+- `--tolerance <X>` (default `0.05`): Leave out shares, chances and weights that moved by less than this.
+- `--threshold <P>` (default `0.3`): The threshold the flow will be served with (`stretto-proxy --flow-threshold`).
+- `--out <FILE>`: Write the Markdown here (default: stdout).
 
 ### `stretto jev-check`
 

@@ -11,7 +11,7 @@ Flows are written on one line. `jq . some.flow.json` prints one for reading. Map
 
 ## Reviewing a flow
 
-A flow makes read-only calls on the agent's behalf, so a review asks what it may call, when, and with what:
+A flow makes read-only calls on the agent's behalf, so a review asks what it may call, when, and with what. `stretto flow-show` renders these fields for a reviewer, and `stretto flow-diff` lists what changed between two flows ([reviewing flows](review.md)). In the file:
 
 1. **`manifest.tools`.** The flow calls only tools marked `read`. A tool that writes but is marked `read` is the one mistake that matters here. Kinds come from the server's `readOnlyHint` annotations or a `--manifest` file, so check them against what the tools do.
 2. **`sites.next`.** After each call, these are the lookups the flow may make next, with how often the agent made each in training. A lookup seen once or twice is a thin basis.

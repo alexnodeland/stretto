@@ -1,6 +1,6 @@
 # Walkthrough: a flow for your own MCP server
 
-Every result so far comes from τ²-bench's tools. This page runs the whole loop on a server stretto was never built around, [the official MCP filesystem server](https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem), serving a folder of notes. The loop has five steps: record sessions, learn a flow with no key, audit it on sessions it never saw, serve it, and read what it did.
+Every result so far comes from τ²-bench's tools. This page runs the whole loop on a server stretto was never built around, [the official MCP filesystem server](https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem), serving a folder of notes. The loop: record sessions, learn a flow with no key and review it, audit it on sessions it never saw, serve it and read what it did, then learn it again and review what changed.
 
 A scripted agent stands in for an LLM: it searches the notes for what the customer asks about and reads what it finds. [`scripts/walkthrough.py`](../scripts/walkthrough.py) runs every step below and checks the outcomes. It needs Node 18 or later, Python 3 and the two binaries, and no key. CI runs it, so this page cannot drift from the code:
 
@@ -44,7 +44,7 @@ Use the agent as usual. The walkthrough records eight sessions, such as "What's 
 
 **What the logs hold:** every message the proxy forwarded (`client` and `server`), the conversation (`context`), and the proxy's own requests (`proxy`), with timestamps. Here that is every file the agent read, verbatim ([the log format](../crates/stretto-proxy/README.md#log-format)). Treat the logs like the data the tools touch.
 
-## 3. Learn a flow, with no key
+## 3. Learn a flow, with no key, and review it
 
 ```sh
 stretto learn --sessions ~/.stretto/notes --domain notes --habit-only --out notes.flow.json
@@ -56,11 +56,38 @@ stretto: learned the notes flow from 8 sessions (14 tools) and wrote notes.flow.
 
 `--habit-only` asks no System-One model. Every session trains the habit, and the flow has no arbiter, so it is served with `--flow-decider habit`. From a deployment's first sessions this is the steadier start: in the cold start results, the habit alone saved more than an arbiter fitted on those same sessions. `--arbiter-from data/arbiters/retail.json` instead adds [a shipped arbiter](../data/arbiters/README.md), fitted on four agents' τ²-bench decisions. It asks Jev at each decision when the flow serves, so it needs `TYPESAFE_API_KEY`.
 
-The flow is a JSON file to review before serving it ([every field](formats.md)). Three parts say what it will do:
+The flow is a JSON file ([every field](formats.md)). Review it before serving it; `stretto flow-show` says what it will do ([reviewing flows](review.md)):
 
-- **`manifest.tools`**: the 10 read tools, taken from the annotations. They are the only tools the flow will ever call.
-- **`sites.next`**: after `search_files`, the agent read a file 7 times; after `read_text_file`, it read another 7 times. Those are the only lookups this flow can make.
-- **`bindings.sources`**: `read_text_file`'s `path` came from `search_files`' result 14 times. Three came from the whole result (`$`), a search that found one file. Eleven came from one line of it (`$[*]`), a search that listed several. A result that is not JSON is read as its lines, so a lookup can bind one line at a time. The binding picked the agent's own path at 12 of its 14 reads. It missed twice, where the agent read the files the customer named ("beta and gamma") and the binding would have read the list in order. A value counts as mentioned only when the customer's words contain all of it, an id or an email, not part of a path.
+```sh
+stretto flow-show notes.flow.json
+```
+
+```markdown
+## Tools
+
+- **Read, the only tools it may call:** `directory_tree`, `get_file_info`, `list_allowed_directories`, `list_directory`, `list_directory_with_sizes`, `read_file`, `read_media_file`, `read_multiple_files`, `read_text_file`, `search_files`
+- **Write, never called:** `create_directory`, `edit_file`, `move_file`, `write_file`
+
+## Sites
+
+| After | Lookups it may make next (times seen) | What the agent did next in training | With the habit alone |
+|---|---|---|---|
+| `read_text_file` | `read_text_file` (7) | read_text_file 50%, respond 50% (of 14) | looks up `read_text_file` 0.50 × 0.81 = 0.41 |
+| `search_files` | `read_text_file` (7) | read_text_file 100% (of 7) | looks up `read_text_file` 1.00 × 0.81 = 0.81 |
+
+## Bindings
+
+| Lookup | Argument | Bound from (values found there, of the values it took) | Chance it is the agent's (right/tried): not mentioned, mentioned |
+|---|---|---|---|
+| `list_directory` | `path` | nothing: the flow never makes this lookup | — |
+| `read_text_file` | `path` | `search_files` at `$` (3 of 14); `search_files` at `$[*]` (11 of 14) | 0.81 (12/14), 0.50 (0/0) |
+| `search_files` | `path` | nothing: the flow never makes this lookup | — |
+| `search_files` | `pattern` | nothing: the flow never makes this lookup | — |
+```
+
+- **Tools**: the 10 read tools, taken from the annotations. They are the only tools the flow will ever call.
+- **Sites**: after `search_files`, the agent read a file 7 times; after `read_text_file`, it read another 7 times. Those are the only lookups this flow can make. With the habit alone, it takes both at the proxy's default threshold, 0.3.
+- **Bindings**: `read_text_file`'s `path` came from `search_files`' result 14 times. Three came from the whole result (`$`), a search that found one file. Eleven came from one line of it (`$[*]`), a search that listed several. A result that is not JSON is read as its lines, so a lookup can bind one line at a time. The binding picked the agent's own path at 12 of its 14 reads. It missed twice, where the agent read the files the customer named ("beta and gamma") and the binding would have read the list in order. A value counts as mentioned only when the customer's words contain all of it, an id or an email, not part of a path.
 
 `search_files`' own `path` and `pattern` were never found in an earlier output, since they come from the agent. So the flow never searches; it reads what a search found.
 
@@ -122,6 +149,35 @@ Delta owner: Priya.
 ```
 
 Each entry has the site, each option's probability, the lookup's probability (`prob`) and its binding's chance (`binding`), and the lookup made (`tool`, `arguments`) or the reason for handing back. `--flow-per-call` (8) and `--flow-per-session` (40) cap the lookups.
+
+## 6. Learn again, and review what changed
+
+The three sessions recorded for the audit are new training data. Learn from all eleven, and compare the new flow with the one being served:
+
+```sh
+stretto learn --sessions ~/.stretto/notes-all --domain notes --habit-only --out notes-2.flow.json
+stretto flow-diff notes.flow.json notes-2.flow.json
+```
+
+```markdown
+# Flow diff: notes
+
+Nothing needs review: the flow calls no tool, makes no lookup, binds no argument and asks no model or question it did not before.
+
+## What the agent did next in training
+
+- after `read_text_file`: read_text_file 50% → 55%
+
+## Bindings
+
+- `read_text_file`'s chance (not mentioned): 0.81 → 0.86
+
+## Provenance
+
+- the habit learned from 8 → 11 successful sessions or episodes
+```
+
+`flow-diff` exited with 0. The new sessions sharpened the habit and the binding, and the flow can do nothing it could not before, so it can replace the one being served. Had they taught it a new lookup or a new source for an argument, it would have listed them under **Needs review** and exited with 1. Keep flows in version control and run `flow-diff` on every change, as [reviewing flows](review.md) shows.
 
 ## Privacy and limits
 

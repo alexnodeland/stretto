@@ -1,14 +1,16 @@
-"""docs/walkthrough.md as a script: record, learn, audit and serve a flow on
-the official MCP filesystem server, with a scripted agent standing in for an
-LLM host.
+"""docs/walkthrough.md as a script: record, learn, review, audit and serve a
+flow on the official MCP filesystem server, with a scripted agent standing in
+for an LLM host.
 
     python3 scripts/walkthrough.py [--bin target/debug] [--work DIR] [--server CMD]
 
 It builds a small notes folder, records sessions through stretto-proxy,
-learns a flow with no key (`stretto learn --habit-only`), audits it on
-sessions it never saw, and serves it. It prints what each step shows and
-exits non-zero if a step does not do what the walkthrough says. CI runs it,
-so the walkthrough cannot drift from the code.
+learns a flow with no key (`stretto learn --habit-only`), shows it for review
+(`stretto flow-show`), audits it on sessions it never saw, serves it, then
+learns it again from every session and reviews the change (`stretto
+flow-diff`). It prints what each step shows and exits non-zero if a step
+does not do what the walkthrough says. CI runs it, so the walkthrough cannot
+drift from the code.
 """
 
 import argparse
@@ -216,6 +218,16 @@ def main() -> None:
     print(f"   read_text_file's path came from: {found}")
     if [["search_files", "$[*]"]] != [f[0] for f in found if f[0][1] == "$[*]"]:
         fail("the flow did not learn to read the files a search lists")
+    out = subprocess.run([stretto, "flow-show", str(flow_path)], capture_output=True, text=True)
+    if out.returncode:
+        fail(f"stretto flow-show: {out.stderr}")
+    shown = out.stdout
+    (work / "notes.flow.md").write_text(shown)
+    for line in shown.splitlines():
+        if line.startswith("| `"):
+            print(f"   flow-show: {line}")
+    if "| `search_files` | `read_text_file` (7) |" not in shown or "looks up `read_text_file`" not in shown:
+        fail("flow-show does not show the flow reading what a search found")
 
     # 4. Audit it on sessions it never saw.
     new_logs = work / "logs-new"
@@ -244,6 +256,25 @@ def main() -> None:
         print(f"   flow log: {json.dumps(d)[:160]}")
     if counts[0]["flow"] < 2:
         fail("the flow did not read the October meetings")
+
+    # 6. Learn again, and review what changed.
+    both = work / "logs-all"
+    both.mkdir()
+    for log in [*logs.glob("*.jsonl"), *new_logs.glob("*.jsonl")]:
+        shutil.copy(log, both / log.name)
+    again = work / "notes-2.flow.json"
+    out = subprocess.run([stretto, "learn", "--sessions", str(both), "--domain", "notes", "--habit-only",
+                          "--out", str(again)], capture_output=True, text=True)
+    if out.returncode:
+        fail(f"stretto learn: {out.stderr}")
+    out = subprocess.run([stretto, "flow-diff", str(flow_path), str(again)], capture_output=True, text=True)
+    (work / "flow-diff.md").write_text(out.stdout)
+    print(f"6. flow-diff exited with {out.returncode}:")
+    for line in out.stdout.splitlines():
+        if line.strip():
+            print(f"   {line}")
+    if out.returncode != 0 or "Nothing needs review" not in out.stdout:
+        fail("learning from the new sessions changed what the flow may do")
     print(f"done: everything is in {work}")
 
 
