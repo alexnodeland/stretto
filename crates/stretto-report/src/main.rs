@@ -453,6 +453,34 @@ enum Command {
         #[arg(value_name = "DIR", long, default_value = ".oracle-cache")]
         oracle_cache: PathBuf,
     },
+    /// Ask a System-One model questions of your own: JSON lines of requests
+    /// (bare, or `{"key", "request"}` as `--oracle-dump` writes them),
+    /// answered through the replay cache and written as `{"key",
+    /// "response"}` lines, as `export-answers` writes them. For experiments
+    /// that change the questions, such as text injected into their state.
+    Ask {
+        /// The requests (JSON lines).
+        #[arg(long, value_name = "FILE")]
+        requests: PathBuf,
+        /// Who answers: `replay` (the cache only), `jev` (needs
+        /// TYPESAFE_API_KEY; pays once per distinct question) or `mock`.
+        #[arg(long, value_enum, default_value_t = OracleArg::Replay)]
+        oracle: OracleArg,
+        /// Replay cache for oracle answers.
+        #[arg(long, value_name = "DIR", default_value = ".oracle-cache")]
+        oracle_cache: PathBuf,
+        /// Refuse to start if uncached questions could cost more than this
+        /// many dollars.
+        #[arg(long, value_name = "DOLLARS", default_value_t = 1.0)]
+        oracle_budget: f64,
+        /// Requests in flight at once.
+        #[arg(long, value_name = "N", default_value_t = 8)]
+        oracle_concurrency: usize,
+        /// Where to write the answers (JSON lines; a request that failed
+        /// gets `"error"` in place of `"response"`).
+        #[arg(long, value_name = "FILE")]
+        out: PathBuf,
+    },
     /// Read JSON lines from `export-answers` on stdin into a replay cache.
     ImportAnswers {
         /// Replay cache to fill.
@@ -640,8 +668,8 @@ struct Phase0Args {
     )]
     oracle_dump: Option<PathBuf>,
     /// Write every decision, with the agent's option and the oracle's
-    /// pick, to this file (JSON lines; the domain is added to the file
-    /// name).
+    /// pick (with v2, also the features the arbiter weighs), to this file
+    /// (JSON lines; the domain is added to the file name).
     #[arg(
         help_heading = "Phase 0b: the System-One model",
         value_name = "FILE",
@@ -1158,6 +1186,21 @@ fn main() -> Result<()> {
             }
             Ok(())
         }
+        Command::Ask {
+            requests,
+            oracle,
+            oracle_cache,
+            oracle_budget,
+            oracle_concurrency,
+            out,
+        } => ask(
+            &requests,
+            oracle,
+            oracle_cache,
+            oracle_budget,
+            oracle_concurrency,
+            &out,
+        ),
         Command::ImportAnswers { oracle_cache } => {
             let cache: ReplayCache<MockOracle> = ReplayCache::new(oracle_cache, None);
             let mut n = 0;
@@ -1295,6 +1338,89 @@ fn phase0_config(data: Phase0Args) -> Result<phase0::Config> {
         sc
     });
     Ok(config)
+}
+
+/// `stretto ask`: answer every request in `requests`, `concurrency` at a
+/// time, and write the answers to `out` in the order asked.
+fn ask(
+    requests: &Path,
+    oracle: OracleArg,
+    oracle_cache: PathBuf,
+    budget: f64,
+    concurrency: usize,
+    out: &Path,
+) -> Result<()> {
+    let text = std::fs::read_to_string(requests)
+        .with_context(|| format!("reading {}", requests.display()))?;
+    let mut todo: Vec<(String, Request)> = Vec::new();
+    for (n, line) in text
+        .lines()
+        .enumerate()
+        .filter(|(_, l)| !l.trim().is_empty())
+    {
+        let value: serde_json::Value = serde_json::from_str(line)
+            .with_context(|| format!("{} line {}", requests.display(), n + 1))?;
+        let request: Request = match value.get("request") {
+            Some(r) => serde_json::from_value(r.clone()),
+            None => serde_json::from_value(value),
+        }
+        .with_context(|| format!("{} line {}: not a request", requests.display(), n + 1))?;
+        todo.push((stretto_oracle::request_key(&request), request));
+    }
+    let tokens: u64 = todo
+        .iter()
+        .map(|(_, r)| stretto_report::shadow::estimate_tokens(r))
+        .sum();
+    let dollars = tokens as f64 / 1e6 * stretto_report::shadow::PRICE_PER_MTOK;
+    eprintln!(
+        "stretto: {} questions, about {:.2}M input tokens, at most ${dollars:.2} at Jev's price \
+         before cache hits",
+        todo.len(),
+        tokens as f64 / 1e6
+    );
+    if matches!(oracle, OracleArg::Jev) && dollars > budget {
+        anyhow::bail!(
+            "estimated cost ${dollars:.2} exceeds the budget of ${budget:.2}; raise --oracle-budget"
+        );
+    }
+    let mut sc = ShadowConfig::new(oracle_kind(oracle));
+    sc.cache_dir = oracle_cache;
+    let oracle = sc.build()?;
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let slots: Vec<std::sync::Mutex<Option<Result<stretto_oracle::Response>>>> =
+        todo.iter().map(|_| std::sync::Mutex::new(None)).collect();
+    std::thread::scope(|scope| {
+        for _ in 0..concurrency.max(1) {
+            scope.spawn(|| loop {
+                let i = next.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                let Some((_, request)) = todo.get(i) else {
+                    break;
+                };
+                let answer = oracle.ask(request);
+                *slots[i].lock().expect("no thread panics holding a slot") = Some(answer);
+            });
+        }
+    });
+    let (mut lines, mut failed) = (String::new(), 0);
+    for ((key, _), slot) in todo.iter().zip(slots) {
+        let line = match slot.into_inner().expect("no thread panics holding a slot") {
+            Some(Ok(response)) => serde_json::json!({"key": key, "response": response}),
+            Some(Err(e)) => {
+                failed += 1;
+                serde_json::json!({"key": key, "error": format!("{e:#}")})
+            }
+            None => unreachable!("every request is asked"),
+        };
+        lines.push_str(&line.to_string());
+        lines.push('\n');
+    }
+    write(&out.to_path_buf(), lines.as_bytes())?;
+    eprintln!(
+        "stretto: answered {} of {} questions",
+        todo.len() - failed,
+        todo.len()
+    );
+    Ok(())
 }
 
 fn oracle_kind(kind: OracleArg) -> OracleKind {

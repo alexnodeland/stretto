@@ -24,6 +24,7 @@ Compile an agent's recorded behavior into flows, serve them, and measure them ag
 | [`jev-check`](#stretto-jev-check) | Check that Jev is reachable with TYPESAFE_API_KEY. |
 | [`export-arbiter`](#stretto-export-arbiter) | Write a flow's arbiter to its own file, to ship. |
 | [`export-answers`](#stretto-export-answers) | Write every cached oracle answer to stdout as JSON lines (`{"key", "response"}`). |
+| [`ask`](#stretto-ask) | Ask a System-One model questions of your own. |
 | [`import-answers`](#stretto-import-answers) | Read JSON lines from `export-answers` on stdin into a replay cache. |
 
 ### `stretto phase0`
@@ -69,7 +70,7 @@ Usage: stretto phase0 [OPTIONS] --tau2 <DIR>
 - `--oracle-budget <DOLLARS>` (default `5`): Refuse to start if uncached questions could cost more than this many dollars.
 - `--oracle-model <MODEL>`: Model id to request (default: TYPESAFE_DEFAULT_MODEL, else jev-latest).
 - `--oracle-dump <FILE>`: Write every distinct oracle request to this file (JSON lines; the domain is added to the file name).
-- `--oracle-log <FILE>`: Write every decision, with the agent's option and the oracle's pick, to this file (JSON lines; the domain is added to the file name).
+- `--oracle-log <FILE>`: Write every decision, with the agent's option and the oracle's pick (with v2, also the features the arbiter weighs), to this file (JSON lines; the domain is added to the file name).
 
 **Output**
 
@@ -119,7 +120,7 @@ Usage: stretto flow-serve [OPTIONS] --tau2 <DIR>
 - `--oracle-budget <DOLLARS>` (default `5`): Refuse to start if uncached questions could cost more than this many dollars.
 - `--oracle-model <MODEL>`: Model id to request (default: TYPESAFE_DEFAULT_MODEL, else jev-latest).
 - `--oracle-dump <FILE>`: Write every distinct oracle request to this file (JSON lines; the domain is added to the file name).
-- `--oracle-log <FILE>`: Write every decision, with the agent's option and the oracle's pick, to this file (JSON lines; the domain is added to the file name).
+- `--oracle-log <FILE>`: Write every decision, with the agent's option and the oracle's pick (with v2, also the features the arbiter weighs), to this file (JSON lines; the domain is added to the file name).
 
 **Serving**
 
@@ -172,7 +173,7 @@ Usage: stretto compile [OPTIONS] --tau2 <DIR> --out <FILE>
 - `--oracle-budget <DOLLARS>` (default `5`): Refuse to start if uncached questions could cost more than this many dollars.
 - `--oracle-model <MODEL>`: Model id to request (default: TYPESAFE_DEFAULT_MODEL, else jev-latest).
 - `--oracle-dump <FILE>`: Write every distinct oracle request to this file (JSON lines; the domain is added to the file name).
-- `--oracle-log <FILE>`: Write every decision, with the agent's option and the oracle's pick, to this file (JSON lines; the domain is added to the file name).
+- `--oracle-log <FILE>`: Write every decision, with the agent's option and the oracle's pick (with v2, also the features the arbiter weighs), to this file (JSON lines; the domain is added to the file name).
 
 **Output**
 
@@ -371,6 +372,23 @@ Usage: stretto export-answers [OPTIONS]
 **Options**
 
 - `--oracle-cache <DIR>` (default `.oracle-cache`): Replay cache to read.
+
+### `stretto ask`
+
+Ask a System-One model questions of your own: JSON lines of requests (bare, or `{"key", "request"}` as `--oracle-dump` writes them), answered through the replay cache and written as `{"key", "response"}` lines, as `export-answers` writes them. For experiments that change the questions, such as text injected into their state.
+
+```text
+Usage: stretto ask [OPTIONS] --requests <FILE> --out <FILE>
+```
+
+**Options**
+
+- `--requests <FILE>` (required): The requests (JSON lines).
+- `--oracle <ORACLE>` (one of `jev`, `replay`, `mock`; default `replay`): Who answers: `replay` (the cache only), `jev` (needs TYPESAFE_API_KEY; pays once per distinct question) or `mock`.
+- `--oracle-cache <DIR>` (default `.oracle-cache`): Replay cache for oracle answers.
+- `--oracle-budget <DOLLARS>` (default `1`): Refuse to start if uncached questions could cost more than this many dollars.
+- `--oracle-concurrency <N>` (default `8`): Requests in flight at once.
+- `--out <FILE>` (required): Where to write the answers (JSON lines; a request that failed gets `"error"` in place of `"response"`).
 
 ### `stretto import-answers`
 

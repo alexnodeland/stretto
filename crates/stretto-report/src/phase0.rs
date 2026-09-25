@@ -1561,8 +1561,8 @@ fn shadow_run(
         .iter()
         .map(|d| shadow::predicate_answers(d, &asked))
         .collect();
-    let (combined, weights, folds, pooled, cases) = if v2 {
-        let (c, w, f, p, n) = combine(
+    let (combined, weights, folds, pooled, cases, arbitrated) = if v2 {
+        let (c, w, f, p, n, a) = combine(
             &decisions,
             &scored,
             &split,
@@ -1576,9 +1576,9 @@ fn shadow_run(
             habit,
             vocab,
         );
-        (Some(c), w, f, Some(p), n)
+        (Some(c), w, f, Some(p), n, a)
     } else {
-        (None, Vec::new(), Vec::new(), None, 0)
+        (None, Vec::new(), Vec::new(), None, 0, Vec::new())
     };
     // The most likely lookup, wherever there is one.
     let lookup_first: Option<Vec<Option<Scored>>> = combined.as_ref().map(|c| {
@@ -1626,6 +1626,7 @@ fn shadow_run(
                 "split": pick(&split[i]),
                 "combined": combined.as_ref().and_then(|c| pick(&c[i])),
                 "predicates": predicates[i],
+                "case": arbitrated.get(i).cloned().flatten(),
             });
             lines.push_str(&line.to_string());
             lines.push('\n');
@@ -1769,6 +1770,7 @@ type Combined = (
     Vec<Fitted>,
     Fitted,
     usize,
+    Vec<Option<serde_json::Value>>,
 );
 
 /// v2: combine each asked next-step answer with the habit (see
@@ -1788,6 +1790,8 @@ fn combine(
 ) -> Combined {
     let mut cases: Vec<Case> = Vec::new();
     let mut at: Vec<usize> = Vec::new();
+    // Each case as the arbiter sees it, for the decision log.
+    let mut logged: Vec<Option<serde_json::Value>> = vec![None; decisions.len()];
     for (i, d) in decisions.iter().enumerate() {
         if d.kind != Kind::Next || d.request.is_none() {
             continue;
@@ -1819,6 +1823,12 @@ fn combine(
         };
         case.actual = options.iter().position(|o| *o == d.actual);
         case.fit = !p.target;
+        logged[i] = Some(serde_json::json!({
+            "site": case.site,
+            "options": options,
+            "features": case.features,
+            "pick": case.pick,
+        }));
         cases.push(case);
         at.push(i);
     }
@@ -1845,7 +1855,7 @@ fn combine(
         out[i] = Some(Scored::of(probs, options[a.top].clone(), &d.actual));
     }
     let fitted_on = cases.iter().filter(|c| c.fit).count();
-    (out, weights, folds, pooled, fitted_on)
+    (out, weights, folds, pooled, fitted_on, logged)
 }
 
 /// The habit's prediction `predicted` as a read-only flow would act on it,

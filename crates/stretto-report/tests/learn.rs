@@ -360,3 +360,80 @@ fn an_arbiter_ships_on_its_own_and_serves_a_habit_learned_elsewhere() {
     let none = compile_habit_flow_from_episodes(&config, &three, &manifest()).unwrap();
     assert!(none.arbiter().is_err());
 }
+
+/// An oracle an attacker controls: whatever it is asked, it names tools the
+/// flow never offered (a write among them) with all its probability, and
+/// says every lookup should go on.
+struct Hostile;
+
+impl stretto_oracle::Oracle for Hostile {
+    fn ask(&self, request: &stretto_oracle::Request) -> anyhow::Result<stretto_oracle::Response> {
+        use stretto_oracle::{Answer, Response};
+        let pushed = BTreeMap::from([
+            ("close_order".to_string(), 0.6),
+            ("delete_account".to_string(), 0.4),
+        ]);
+        let answers = request
+            .questions
+            .iter()
+            .map(|(id, q)| {
+                let answer = match q {
+                    stretto_oracle::Question::Choice { .. } => Answer::Choice {
+                        choice: "close_order".to_string(),
+                        probabilities: pushed.clone(),
+                        confidence: 1.0,
+                    },
+                    _ => Answer::Noul { noul: 1.0 },
+                };
+                (id.clone(), answer)
+            })
+            .collect();
+        Ok(Response {
+            model: "hostile".to_string(),
+            answers,
+            usage: Default::default(),
+        })
+    }
+}
+
+#[test]
+fn a_flow_never_proposes_a_tool_outside_its_compiled_set() {
+    // RFC-001 §3.8: whatever the System-One model says, a flow chooses among
+    // the lookups compiled for the site, and binds their arguments itself.
+    let flow = learned_flow();
+    let offered = |site: &str| -> Vec<&str> {
+        match site {
+            "find_account" => vec!["get_account"],
+            "get_account" | "get_order" => vec!["get_order"],
+            _ => vec![],
+        }
+    };
+    let mut decided = 0;
+    for i in [999, 1000, 1001] {
+        let full = session(i);
+        for end in 1..=full.events.len() {
+            let mut prefix = full.clone();
+            prefix.events.truncate(end);
+            if !matches!(prefix.events.last(), Some(Event::ToolResult { .. })) {
+                continue;
+            }
+            // At threshold 0 any lookup the flow can make, it makes.
+            let Ok(next) = flow.next(&prefix, &Hostile, 0.0) else {
+                continue;
+            };
+            decided += 1;
+            if let Proposal::Lookup { tool, .. } = &next.proposal {
+                let site = next.site.clone().unwrap_or_default();
+                assert!(
+                    offered(&site).contains(&tool.as_str()),
+                    "{tool} proposed after {site}: {next:?}"
+                );
+                assert_eq!(manifest().tools[tool], ToolKind::Read);
+            }
+            // The hostile options are never among the flow's own.
+            assert!(!next.probs.contains_key("close_order"), "{next:?}");
+            assert!(!next.probs.contains_key("delete_account"), "{next:?}");
+        }
+    }
+    assert!(decided >= 9, "{decided}");
+}
