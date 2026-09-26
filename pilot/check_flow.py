@@ -83,7 +83,7 @@ async def replay(task_id: str, messages: list, episode: Path, address: str, args
 
         server = tau2_mcp.Episode(
             args.domain, task_id, episode, MAX_CALLS, address, FLOW_MAX, FLOW_BUDGET,
-            record_answers=exploring(args),
+            record_answers=exploring(args), solo=getattr(args, "solo", False),
         )
         server.save_state()
 
@@ -99,7 +99,7 @@ async def replay(task_id: str, messages: list, episode: Path, address: str, args
             "--task-id", task_id,
             "--episode-dir", str(episode),
             "--flow-address", address,
-        ] + (["--record-answers"] if exploring(args) else []),
+        ] + (["--record-answers"] if exploring(args) else []) + (["--solo"] if getattr(args, "solo", False) else []),
     )
     with open(episode / "server.stderr", "w") as errlog:
         async with stdio_client(params, errlog=errlog) as (read, write):
@@ -270,6 +270,10 @@ def main() -> None:
     parser.add_argument("--task-ids", nargs="*", help="with --results (default: the test split)")
     parser.add_argument("--trials", type=int, nargs="*", default=[0], help="with --results")
     parser.add_argument("--domain", default="retail")
+    parser.add_argument(
+        "--solo", action="store_true",
+        help="τ²-bench's no-user mode: the agent also calls the customer's tools (telecom's phone)",
+    )
     parser.add_argument("--out", type=Path, default=Path("runs/check"))
     parser.add_argument("--tau2", type=Path, default=run_episode.TAU2)
     parser.add_argument("--oracle-cache", type=Path, required=True)

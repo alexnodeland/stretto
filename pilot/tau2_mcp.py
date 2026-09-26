@@ -64,11 +64,14 @@ class Episode:
         flow_budget: int = 40,
         read_only_hints: bool = False,
         record_answers: bool = False,
+        solo: bool = False,
     ):
         self.dir = directory
         self.task_id = str(task_id)
         self.task = load_task(domain, task_id)
-        self.env = registry.get_env_constructor(domain)()
+        # Solo (τ²-bench's no-user mode): the agent also has the customer's
+        # tools, telecom's phone, and there is no customer.
+        self.env = registry.get_env_constructor(domain)(solo_mode=True) if solo else registry.get_env_constructor(domain)()
         if self.task.initial_state is not None:
             init = self.task.initial_state
             self.env.set_state(
@@ -77,6 +80,8 @@ class Episode:
                 message_history=init.message_history or [],
             )
         self.tools = {t.name: t for t in self.env.get_tools()}
+        if solo:
+            self.tools.update({t.name: t for t in self.env.get_user_tools()})
         self.read_only_hints = read_only_hints
         self.calls = 0
         self.max_calls = max_calls
@@ -110,7 +115,8 @@ class Episode:
     def hint(self, name: str) -> types.ToolAnnotations | None:
         """`readOnlyHint` from τ²-bench's tool type: true for a read, false for
         a write, and no hint for the rest (`calculate`, a transfer)."""
-        kind = self.env.tools.tool_type(name)
+        toolkit = self.env.tools if self.env.tools.has_tool(name) else self.env.user_tools
+        kind = toolkit.tool_type(name)
         if kind == ToolType.READ:
             return types.ToolAnnotations(readOnlyHint=True)
         if kind == ToolType.WRITE:
@@ -238,6 +244,10 @@ def main() -> None:
         "--record-answers", action="store_true",
         help="append each flow answer to flow-answers.jsonl in the episode directory",
     )
+    parser.add_argument(
+        "--solo", action="store_true",
+        help="τ²-bench's no-user mode: the agent also has the customer's tools (telecom's phone)",
+    )
     args = parser.parse_args()
     episode = Episode(
         args.domain,
@@ -249,6 +259,7 @@ def main() -> None:
         args.flow_budget,
         args.read_only_hints,
         args.record_answers,
+        args.solo,
     )
     episode.save_state()
     asyncio.run(serve(episode))

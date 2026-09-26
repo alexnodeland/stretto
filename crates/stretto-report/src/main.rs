@@ -2036,7 +2036,7 @@ fn tau2_sessions(
     trials: &[u32],
 ) -> Result<(Vec<stretto_trace::Episode>, stretto_trace::ToolManifest)> {
     use stretto_trace::tau2::{load_manifest, load_results, load_split};
-    let manifest = load_manifest(
+    let mut manifest = load_manifest(
         domain,
         &tau2.join(format!("src/tau2/domains/{domain}/tools.py")),
     )?;
@@ -2056,6 +2056,22 @@ fn tau2_sessions(
     }
     if episodes.is_empty() {
         anyhow::bail!("the results have no episodes on the sampled training tasks");
+    }
+    // In a solo run (τ²-bench's `no-user` mode) the agent itself calls the
+    // customer's tools, telecom's phone: they are the agent's tools then.
+    let user_tools = tau2.join(format!("src/tau2/domains/{domain}/user_tools.py"));
+    if user_tools.exists() {
+        let user = load_manifest(domain, &user_tools)?;
+        let solo = episodes.iter().flat_map(|e| &e.events).any(|e| match e {
+            stretto_trace::Event::Assistant { calls, .. } => {
+                calls.iter().any(|c| user.tools.contains_key(&c.name))
+            }
+            _ => false,
+        });
+        if solo {
+            manifest.tools.extend(user.tools);
+            manifest.docs.extend(user.docs);
+        }
     }
     Ok((episodes, manifest))
 }

@@ -31,6 +31,17 @@ The flow learned habit-only from τ²-bench's four 2025 telecom runs (Claude 3.7
 
 Every agent gained. The spread afterwards is the agents' own habits: GLM-5, for one, reads a customer's lines in parallel, where the 2025 agents read them one at a time. D0's arbiter for telecom, fitted on the same four runs with Jev's answers, did no better than the habit alone on GLM-5: 59 turns saved and 46 detours, against 67 and 50. It asked Jev 910 questions no cache held, about $0.08 ([the answers](answers-2026-09-26-telecom-flows.md)). A flow learned from GLM-5's own telecom runs saved 108 turns with 162 detours. Most of those detours read data usage the customer's problem did not need, a choice that follows from what the customer said.
 
+## When the agent holds the phone
+
+In τ²-bench's solo mode the agent calls the phone's tools itself, and reads after a tool are 52–60% of its turns ([the anatomy](telecom-anatomy-2026-09-26.md)). `learn --results` now takes such runs: when the agent called the customer's tools, they join the flow's tools, read-only or not as τ²-bench marks them. `check_flow.py --solo` and `tau2_mcp.py --solo` serve them. A flow learned habit-only from GPT-4.1's and o4-mini's solo training episodes (the manual policy), served at 0.3 and replayed on their 160 test-task episodes each:
+
+| Agent | LLM turns | Turns saved | Detours · episodes with one |
+|---|---|---|---|
+| GPT-4.1 | 2,386 | 776 (32.5%) | 387 · 160 |
+| o4-mini | 2,354 | 633 (26.9%) | 430 · 152 |
+
+A third of the turns, the most any flow has saved in replay, against 12.8% when the customer holds the phone. Most detours here are an extra diagnostic check, a status bar or a network status read the agent did not make. The fixes stay with the agent: this flow only reads. [The compiled workflow](telecom-workflow-2026-09-26.md) makes the fixes too, with no model, where a check of the ticket's outcome says when to hand back.
+
 ## Retail and airline: unchanged
 
 D0, compiled again with this build from the same traces and cached answers, replays exactly as before at 0.3 on GLM-5's and Claude Sonnet 4.5's test episodes: 55 turns saved and 6 detours in airline and 307 and 33 in retail for GLM-5, and 130 and 63, 412 and 82 for Sonnet. Retail's bindings agree with the agents exactly as often as before. Airline's flight search binds better (22 of 112 unmentioned picks agreed, from 12), with no change in the replays.
@@ -50,4 +61,4 @@ for f in $(scripts/fetch-leaderboard.sh -t all | grep telecom | cut -d= -f2); do
 done
 ```
 
-*Before* is the same flow with `bindings.site_sources` removed.
+*Before* is the same flow with `bindings.site_sources` removed. The solo flow comes from the two `telecom_no-user` runs, replayed with `--solo`.
