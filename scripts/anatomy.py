@@ -42,6 +42,7 @@ usage: anatomy.py RESULTS.json... [--json OUT] [--successful]
 import argparse
 import collections
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -55,7 +56,20 @@ READ = {
         "get_user_details", "get_reservation_details", "get_flight_status",
         "search_direct_flight", "search_onestop_flight", "list_all_airports",
     },
+    # The agent's reads, then the phone's (the customer's in τ²'s dual control,
+    # the agent's own in its solo mode), as τ²-bench annotates them.
+    "telecom": {
+        "get_customer_by_phone", "get_customer_by_id", "get_customer_by_name",
+        "get_details_by_id", "get_bills_for_customer", "get_data_usage",
+        "check_status_bar", "check_network_status", "check_network_mode_preference",
+        "run_speed_test", "check_sim_status", "check_data_restriction_status",
+        "check_apn_settings", "check_wifi_status", "check_wifi_calling_status",
+        "check_vpn_status", "check_installed_apps", "check_app_status",
+        "check_app_permissions", "can_send_mms", "check_payment_request",
+    },
 }
+# The telecom domain with the troubleshooting manual rewritten as a workflow.
+READ["telecom-workflow"] = READ["telecom"]
 PURE = {"calculate", "think"}
 HANDOFF = {"transfer_to_human_agents"}
 CLASSES = ["copy, unique", "copy, select", "customer", "constant", "generated"]
@@ -110,6 +124,28 @@ def goal(messages, writes):
     return "+".join(sorted({c["name"] for m in messages for c in m.get("tool_calls") or [] if c["name"] in writes})) or "none"
 
 
+def text_features(text):
+    """Features of a result in text, as a phone's checks print them: each
+    `Key: value` line's value, or each of its `|`-separated parts, and each
+    short line of its own. Parts with digits (a battery level, a speed) are
+    left out, as ids are from JSON results."""
+    f = {}
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        key, sep, value = line.partition(": ")
+        if not sep:
+            if len(line) <= 60 and not re.search(r"\d", line):
+                f[f"says {norm(line)}"] = True
+            continue
+        for part in value.split("|"):
+            part = part.strip()
+            if part and not re.search(r"\d", part):
+                f[f"{norm(key)}={norm(part)}"] = True
+    return f
+
+
 def features(state):
     """Structured features of the tool results so far, for decision mining."""
     f = {}
@@ -132,12 +168,103 @@ def features(state):
                                 f[f"{k}.*.status={norm(item['status'])}"] = True
         elif isinstance(value, list):
             f["len($)"] = "0" if not value else "1" if len(value) == 1 else "2+"
+        elif isinstance(value, str):
+            f.update(text_features(value))
     # Records listed earlier and not yet read: what iterating over them needs.
     used = state["used"]
     for (tool, pat), values in state["lists"].items():
         if len(values) > 1:
             f[f"unread {tool}:{pat}"] = any(v not in used for v in values)
     return f
+
+
+def whole_state(state):
+    """Every tool's last result so far, as features named by the tool, and
+    which tools the agent has called: the state a workflow branches on."""
+    out = set()
+    for tool, fs in state["latest"].items():
+        for k, v in fs.items():
+            out.add(f"{tool}:{k}" if v is True else f"{tool}:{k}={v}")
+    out |= {f"called {t}" for t in state["done"]}
+    return frozenset(out)
+
+
+def entropy(counts):
+    n = sum(counts.values())
+    return -sum(k / n * math.log2(k / n) for k in counts.values() if k)
+
+
+def tree(train, with_goal, max_depth=6, min_leaf=5):
+    """Per site, a decision tree over the whole state: decision mining at a
+    gateway, many features deep, as C4.5 does in process mining. Each split
+    takes the feature with the most information gain among those at least
+    `min_leaf` cases have and lack (ID3), and each site's depth, up to
+    `max_depth`, is chosen by two-fold cross-validation over the training
+    tasks, as the single feature is."""
+
+    def feats(d):
+        return d["state"] | {f"goal has {w}" for w in d["goal"].split("+")} if with_goal else d["state"]
+
+    def grow(cases, depth):
+        """A leaf (action, share, cases), or (feature, yes, no, leaf)."""
+        counts = collections.Counter(d["action"] for d in cases)
+        action, k = counts.most_common(1)[0]
+        n = len(cases)
+        leaf = (action, k / n, n)
+        if depth == 0 or k == n or n < 2 * min_leaf:
+            return leaf
+        by_feature = collections.defaultdict(collections.Counter)
+        for d in cases:
+            for f in feats(d):
+                by_feature[f][d["action"]] += 1
+        h = entropy(counts)
+        best = None
+        for f in sorted(by_feature):
+            has = by_feature[f]
+            m = sum(has.values())
+            if m < min_leaf or n - m < min_leaf:
+                continue
+            gain = h - m / n * entropy(has) - (n - m) / n * entropy(counts - has)
+            if best is None or gain > best[0] + 1e-12:
+                best = (gain, f)
+        if best is None or best[0] <= 1e-9:
+            return leaf
+        f = best[1]
+        yes = [d for d in cases if f in feats(d)]
+        no = [d for d in cases if f not in feats(d)]
+        return (f, grow(yes, depth - 1), grow(no, depth - 1), leaf)
+
+    def down(node, d, depth):
+        while depth > 0 and len(node) == 4:
+            f, yes, no, _ = node
+            node = yes if f in feats(d) else no
+            depth -= 1
+        return node[3] if len(node) == 4 else node
+
+    sites = collections.defaultdict(list)
+    for d in train:
+        sites[d["site"]].append(d)
+    roots = {}
+    for site, cases in sites.items():
+        depth = 0
+        a, b = halves(cases)
+        if a and b:
+            ta, tb = grow(a, max_depth), grow(b, max_depth)
+            scores = [
+                sum(down(ta, d, k)[0] == d["action"] for d in b) + sum(down(tb, d, k)[0] == d["action"] for d in a)
+                for k in range(max_depth + 1)
+            ]
+            depth = max(range(max_depth + 1), key=lambda k: (scores[k], -k))
+        roots[site] = (grow(cases, depth), depth)
+    fallback = fit(train, lambda d: None)
+
+    def predict(d):
+        if d["site"] not in roots:
+            return fallback(d)
+        root, depth = roots[d["site"]]
+        return down(root, d, depth)
+
+    return predict
 
 
 def walk(sim, domain, writes):
@@ -147,18 +274,28 @@ def walk(sim, domain, writes):
     produced = collections.defaultdict(list)  # value -> [(call index, path pattern)]
     width = collections.Counter()  # (call index, path pattern) -> values there
     members = collections.defaultdict(set)  # (call index, path pattern) -> the values
-    state = {"last": None, "used": set(), "lists": collections.defaultdict(set)}
+    state = {"last": None, "used": set(), "lists": collections.defaultdict(set), "latest": {}, "done": set()}
     calls, turns, decisions = [], [], []
     pending = {}
+    order = collections.deque()  # calls not yet answered, in order: (who, id)
     ncall = 0
     g = goal(messages, writes)
     for i, m in enumerate(messages):
         role = m["role"]
         if role == "user":
             customer += "\n" + (m.get("content") or "").lower()
+            # The customer's own calls (on their phone, in telecom) answer too.
+            order.extend(("customer", c.get("id")) for c in m.get("tool_calls") or [])
             continue
         if role == "tool":
+            # Results name their call by id; some trajectories (Gemini 3
+            # Flash's telecom run) leave ids out, and then results follow
+            # their calls in order.
             cid = m.get("id")
+            if cid is None and order:
+                cid = order.popleft()[1]
+            else:
+                order = collections.deque(x for x in order if x[1] != cid)
             if cid not in pending:
                 continue
             idx, tool = pending.pop(cid)
@@ -178,6 +315,7 @@ def walk(sim, domain, writes):
             except (ValueError, TypeError):
                 value = text
             state["last"] = (tool, error, value)
+            state["latest"][tool] = features({"last": (tool, error, value), "used": set(), "lists": {}})
             # The agent's next move after the last result of a turn is a decision.
             nxt = messages[i + 1] if i + 1 < len(messages) else None
             if nxt is not None and nxt["role"] == "assistant":
@@ -186,6 +324,7 @@ def walk(sim, domain, writes):
                     "site": tool + ("!" if error else ""),
                     "action": action,
                     "features": features(state),
+                    "state": whole_state(state),
                     "goal": g,
                 })
             continue
@@ -203,6 +342,7 @@ def walk(sim, domain, writes):
         turn_calls = []
         for c in tcs:
             name = c["name"]
+            state["done"].add(name)
             kind = "read" if name in READ[domain] else "pure" if name in PURE else "handoff" if name in HANDOFF else "write" if name in writes else "other"
             args = []
             for path, v in leaves(c.get("arguments") or {}):
@@ -227,7 +367,9 @@ def walk(sim, domain, writes):
             call = {"tool": name, "kind": kind, "trigger": trigger, "args": args}
             calls.append(call)
             turn_calls.append(call)
-            pending[c.get("id")] = (ncall, name)
+            key = c.get("id") or f"call {ncall}"
+            pending[key] = (ncall, name)
+            order.append(("agent", key))
             ncall += 1
         turns.append({"kind": "tools", "trigger": trigger, "calls": turn_calls})
     # A selected value is part of an iteration when, by the episode's end, the
@@ -384,6 +526,8 @@ def main():
                 "sequence": fit(train, lambda d: None),
                 "structure": one_rule(train, with_goal=False),
                 "structure and goal": one_rule(train, with_goal=True),
+                "state tree": tree(train, with_goal=False),
+                "state tree and goal": tree(train, with_goal=True),
             }
             for d in test:
                 d["right"], d["sure"] = {}, {}
@@ -394,7 +538,7 @@ def main():
                     # in at least 95% of at least 10 training cases.
                     d["sure"][k] = share >= 0.95 and support >= 10
         n = len(decisions)
-        acc = {k: sum(d["right"][k] for d in decisions) for k in ("sequence", "structure", "structure and goal")}
+        acc = {k: sum(d["right"][k] for d in decisions) for k in ("sequence", "structure", "structure and goal", "state tree", "state tree and goal")}
         sure = {}
         for k in acc:
             covered = [d for d in decisions if d["sure"][k]]
