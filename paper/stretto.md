@@ -43,7 +43,7 @@ So a speculator can change an episode's outcome only through the agent's context
 
 **Proposition 2 (ceiling).** A speculator whose arguments are bound from the tool state, and whose reads answer only calls with no write in between, saves at most the turns whose calls are all reads with every argument present in the tool state after a tool response since the last write.
 
-We measure this ceiling on recorded episodes (§4.1). A read can also answer across a write that left its result unchanged, so a replay may save turns outside it: 1.5% of the turns saved in §4.2 are.
+We measure this ceiling on recorded episodes (§4.1). A read can also answer across a write that left its result unchanged, so a replay may save turns outside it: at least 1.5% of the turns the use-before-write speculator saves in §4.2 are, and 0.5% of the next-step speculator's.
 
 ### 2.3 The optimal speculator decomposes
 
@@ -65,7 +65,7 @@ We factor a candidate read's probability of use into its tool and its arguments,
 
 **The tool.** Each step of an episode is abstracted to its tool, its outcome (returned, failed) and a feature of its result; $h$ is the sequence of abstract steps. The *habit* is a hierarchical Dirichlet back-off model of the next step over the last $j \le 2$ steps [MacKay & Peto 1995]:
 $$p_j(t \mid h_j) = \frac{n(h_j, t) + \alpha\, p_{j-1}(t \mid h_{j-1})}{n(h_j) + \alpha}, \qquad p_{-1} \text{ uniform},$$
-whose concentration $\alpha$ has a posterior we sample. It is the posterior predictive of a Dirichlet–multinomial at each context, with the shorter context as its prior mean. The quantity Proposition 3 needs is not the next step but the event $t \in U$. We count it over the same contexts: $m(h_j, t)$ is the number of training steps after $h_j$ from which the agent called $t$ before its next write, and each tool is its own Beta–Bernoulli, backed off the same way,
+whose concentration $\alpha$ has a posterior we sample. It is the posterior predictive of a Dirichlet–multinomial at each context, with the shorter context as its prior mean. (As served, the habit has one more such layer, for an episode-level group; a flow learned without intents puts every session in one group, so the layer weighs the longest context's counts once more. That only sharpens the next-step estimate, which §4.2 finds too low, not too high.) The quantity Proposition 3 needs is not the next step but the event $t \in U$. We count it over the same contexts: $m(h_j, t)$ is the number of training steps after $h_j$ from which the agent called $t$ before its next write, and each tool is its own Beta–Bernoulli, backed off the same way,
 $$r_j(t \mid h_j) = \frac{m(h_j, t) + \alpha\, r_{j-1}(t \mid h_{j-1})}{n(h_j) + \alpha}.$$
 The $r_j(\cdot \mid h_j)$ need not sum to one: after a customer lookup, the agent reads the user and then an order before its next write. The same counts, a different event.
 
@@ -131,7 +131,7 @@ An earlier version of our replay skipped any recorded call already made, the age
 
 ### 4.1 What decides an agent's turns
 
-Over 39,298 LLM turns of nine agents' test episodes (§3), 46.8% reply to the user, 12.2% write and 41.0% only read (Table 1). A speculator that binds arguments from the tool state could have saved at most the reads whose every argument sits in an earlier result, after a tool response since the last write: 29.0% of all turns (retail 34.2%, airline 29.5%, telecom 24.7%), from 16% to 41% by agent. Allowing an argument to be a value the user wrote raises the ceiling by 0.7 points. In 84% of the turns in the ceiling the agent made one call (78% in airline, 87% in telecom); the rest are parallel reads. The rest of the turns, seven in ten, stay with the model: they reply, write, or read what only the user's words can name.
+Over 39,298 LLM turns of nine agents' test episodes (§3), 46.8% reply to the user, 12.2% write and 41.0% only read (Table 1). A speculator that binds arguments from the tool state could have saved at most the reads whose every argument sits in an earlier result, after a tool response since the last write: 29.0% of all turns (retail 34.2%, airline 29.5%, telecom 24.7%), from 16% to 41% by agent and domain. Allowing an argument to be a value the user wrote raises the ceiling by 0.7 points. In 84% of the turns in the ceiling the agent made one call (78% in airline, 87% in telecom); the rest are parallel reads. The rest of the turns, seven in ten, stay with the model: they reply, write, or read what only the user's words can name.
 
 *Table 1. LLM turns of nine agents' test episodes by what they do, and the read-only ceiling (Proposition 2). Pooled over agents, with the range across agents in brackets.*
 
@@ -190,7 +190,7 @@ Over 39,298 LLM turns of nine agents' test episodes (§3), 46.8% reply to the us
 
 ### 4.4 Live
 
-Live, the speculator runs in `stretto-proxy` between the agent and the tools, over MCP: GLM-5.3 in Claude Code on τ²-bench's own prompts, with GLM-5.3 as the user. The earlier flow, which weighs the habit's next-step probability with an LLM's answers about the state [D0], cut LLM turns by 25.5% (95% CI 20.5–30.4%) over 80 paired retail and airline tasks, with 71 passed without it and 70 with it. The speculator of §2.4, deciding on the probability of use before the next write at $\theta = 0.3$, the live-measured $\theta^\star$, and asking no model, ran on 20 retail and 8 airline test tasks drawn at random from those 80, against the same recorded baseline (Table 4). It cut turns by 27.9% (19.1–35.9%) over the 28, where the earlier flow had cut 23.0% on the same tasks, and input tokens by 21.9% (9.9–32.9%); 23 of the 28 took fewer turns.
+Live, the speculator runs in `stretto-proxy` between the agent and the tools, over MCP: GLM-5.3 in Claude Code on τ²-bench's own prompts, with GLM-5.3 as the user. The earlier flow, which weighs the habit's next-step probability with an LLM's answers about the state [D0], cut LLM turns by 25.5% (95% CI 20.5–30.4%) over 80 paired retail and airline tasks, with 71 passed without it and 70 with it. The speculator of §2.4, deciding on the probability of use before the next write at $\theta = 0.3$, the live-measured $\theta^\star$, and asking no model, ran on 20 retail and 8 airline test tasks drawn at random from those 80, against the same recorded baseline (Table 4). It cut turns by 27.9% (19.1–35.9%) over the 28, where the earlier flow had cut 23.0% on the same tasks, and input tokens by 21.9% (9.9–32.9%); 23 of the 28 took fewer turns. The replay's assumption held throughout: of the speculator's 101 lookups, the agent made none again before the next write.
 
 *Table 4. Live, GLM-5.3 as agent and user, against the paired run's recorded baseline (airline: the mean of its two trials; passes: its first). 95% intervals from a bootstrap over tasks.*
 
@@ -235,7 +235,7 @@ The procedure is a file stretto runs: `stretto-procedure` executes it against an
 
 **One benchmark.** Every number is on τ²-bench, whose three domains were built for coverage rather than sampled from traffic; a deployment with a heavy head of common requests should compile more, and one with a long tail less.
 
-**Replay assumes the agent skips what it already has.** The replay counts a call as answered when a lookup made earlier returned the same result, and assumes the agent, seeing that result, does not make the call and otherwise acts as recorded. Live runs test the assumption only on GLM-5.3, in one harness.
+**Replay assumes the agent skips what it already has.** The replay counts a call as answered when a lookup made earlier returned the same result, and assumes the agent, seeing that result, does not make the call and otherwise acts as recorded. Live, GLM-5.3 made none of the speculator's 101 lookups again before the next write; other agents, in other harnesses, are untested.
 
 **Costs are averages, in tokens.** θ* prices a domain's average detour against its average saved turn, in input tokens. A detour early in a long episode costs more than one late in it, prompt caching and output prices change the exchange rate, and latency is another currency. A threshold per decision, from the result's size and the turns left, is the natural refinement, and both are countable.
 

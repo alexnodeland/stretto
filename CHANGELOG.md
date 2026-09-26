@@ -4,6 +4,7 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ## Unreleased
 
+- `scripts/remade.py` checks the replay's assumption on live episodes: whether the agent made a flow's lookup again before the next write. On the reach arm's 28 live episodes, GLM-5.3 made none of the flow's 101 lookups again ([results](docs/results/reach-2026-09-26.md#live)).
 - `stretto flow-show` says when a flow carries the `reach` counts, which `--decider reach` serves.
 - `scripts/costs.py` counts a detour's cost and a saved turn's value in recorded episodes, in each agent's own input tokens, and so the threshold a read-only flow should use, θ* = δ/(β+δ). On τ²-bench's leaderboard episodes it gives 0.30 in retail, what the live paired run measured, and 0.12–0.13 in airline and telecom, whose contexts are longer and results shorter ([results](docs/results/reach-2026-09-26.md#the-threshold-is-a-ratio-of-costs)).
 - `scripts/learning_curve.py` measures how a flow's savings grow with the sessions it learns from. For each seed it orders an agent's training sessions at random, learns a habit-only flow from the first n (or, with `--pool`, from other agents' sessions), and replays it on the agent's own test episodes at `--decider` and `--threshold`: a row per n and seed ([results](docs/results/reach-2026-09-26.md#how-fast-it-learns)).

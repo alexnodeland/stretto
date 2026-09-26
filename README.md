@@ -11,7 +11,7 @@ In a fugue, a *stretto* is where entries of the subject overlap and compress. st
 
 Flows are [fugue](https://github.com/alexnodeland/fugue) programs. The same flow can be simulated, executed, audited against recorded traces and evaluated counterfactually, just by swapping its interpreter.
 
-The design is [RFC-001](docs/rfc/001-habit-compiler.md), first accepted in fugue's decision log, and the decisions are summarized in [docs/design.md](docs/design.md). The working paper, with every result so far, is at [alexnodeland.github.io/stretto](https://alexnodeland.github.io/stretto/) (source: [`site/`](site/index.html)).
+The design is [RFC-001](docs/rfc/001-habit-compiler.md), first accepted in fugue's decision log, and the decisions are summarized in [docs/design.md](docs/design.md). The paper, [*Compile What the Environment Decides*](paper/stretto.md), states the model and the main results: which of an agent's decisions a program learned from traces can take over, why a read-only speculator should decide on the chance of use before the next write at a threshold set by costs, and what a procedure compiled once does where no user speaks. The notebook with every result so far is at [alexnodeland.github.io/stretto](https://alexnodeland.github.io/stretto/) (source: [`site/`](site/index.html)).
 
 ## Status
 
