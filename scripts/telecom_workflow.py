@@ -230,8 +230,11 @@ def gold_passes(task, constructor):
 
     env = constructor(solo_mode=True)
     init = task.initial_state
-    env.set_state(initialization_data=init.initialization_data if init else None,
-                  initialization_actions=init.initialization_actions if init else None, message_history=[])
+    try:
+        env.set_state(initialization_data=init.initialization_data if init else None,
+                      initialization_actions=init.initialization_actions if init else None, message_history=[])
+    except ValueError:
+        return False  # the task's setup does not fit the account (a second overdue bill)
     messages = []
     for i, a in enumerate(task.evaluation_criteria.actions or []):
         call = ToolCall(id=f"gold_{i}", name=a.name, arguments=a.arguments, requestor="assistant")
