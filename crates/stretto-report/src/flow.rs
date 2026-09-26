@@ -1049,20 +1049,45 @@ pub struct Bindings {
     /// customer's lines takes the next line id, not the plan id of the line
     /// it just read. Empty in flows learned before it was counted.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    site_sources: Vec<SiteSource>,
+    pub(crate) site_sources: Vec<SiteSource>,
 }
 
 /// How many values of a lookup's argument the agent took from one source at
 /// one site, in training ([`Bindings::site_sources`]).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-struct SiteSource {
-    tool: String,
-    arg: String,
+pub(crate) struct SiteSource {
+    pub(crate) tool: String,
+    pub(crate) arg: String,
     /// The tool whose result came last before the call.
-    site: String,
+    pub(crate) site: String,
     /// The source: a tool's output, and the path in it.
-    source: (String, String),
-    values: usize,
+    pub(crate) source: (String, String),
+    pub(crate) values: usize,
+}
+
+/// The sources a binding takes an argument from: those found at least twice
+/// that account for at least [`MIN_SOURCE_SHARE`] of its values.
+fn source_rules(traced: &Traced) -> Vec<&(String, String)> {
+    traced
+        .found
+        .iter()
+        .filter(|(_, &n)| n >= 2 && n as f64 >= MIN_SOURCE_SHARE * traced.values as f64)
+        .map(|(s, _)| s)
+        .collect()
+}
+
+/// A lookup argument's sources at one site, most used first
+/// ([`Bindings::site_orders`]).
+#[derive(Clone, Debug, PartialEq)]
+pub struct SiteOrder {
+    /// The lookup.
+    pub tool: String,
+    /// Its argument.
+    pub arg: String,
+    /// The tool whose result came last.
+    pub site: String,
+    /// `((tool, path), values taken from it here)`, most first.
+    pub sources: Vec<((String, String), usize)>,
 }
 
 /// Values a site must have taken from its sources before their order there
@@ -1375,6 +1400,66 @@ impl Bindings {
         !self.site_sources.is_empty()
     }
 
+    /// For review: each lookup argument's sources at each site where the
+    /// binding orders them (at least [`MIN_SITE_VALUES`] values there), as
+    /// `(source tool, path)` with the values taken from it, most used first.
+    pub fn site_orders(&self) -> Vec<SiteOrder> {
+        let sites: BTreeSet<(&str, &str, &str)> = self
+            .site_sources
+            .iter()
+            .map(|s| (s.tool.as_str(), s.arg.as_str(), s.site.as_str()))
+            .collect();
+        sites
+            .into_iter()
+            .filter_map(|(tool, arg, site)| {
+                let traced = self.sources.get(&(tool.to_string(), arg.to_string()))?;
+                let order = self.at_site(tool, arg, Some(site), &source_rules(traced))?;
+                (order.len() > 1).then(|| SiteOrder {
+                    tool: tool.to_string(),
+                    arg: arg.to_string(),
+                    site: site.to_string(),
+                    sources: order.into_iter().map(|(s, n)| (s.clone(), n)).collect(),
+                })
+            })
+            .collect()
+    }
+
+    /// The order the binding tries `rules`, the sources of `tool`'s `arg`,
+    /// at `site`, with the values the agent took from each there: most
+    /// first, if the site has at least [`MIN_SITE_VALUES`] of them; `None`
+    /// to take them by recency.
+    fn at_site<'r>(
+        &self,
+        tool: &str,
+        arg: &str,
+        site: Option<&str>,
+        rules: &[&'r (String, String)],
+    ) -> Option<Vec<(&'r (String, String), usize)>> {
+        let mut counted: Vec<(&(String, String), usize)> = rules
+            .iter()
+            .map(|&r| {
+                let n = self
+                    .site_sources
+                    .iter()
+                    .filter(|s| {
+                        s.tool == tool
+                            && s.arg == arg
+                            && Some(s.site.as_str()) == site
+                            && &s.source == r
+                    })
+                    .map(|s| s.values)
+                    .sum::<usize>();
+                (r, n)
+            })
+            .collect();
+        if counted.iter().map(|(_, n)| n).sum::<usize>() < MIN_SITE_VALUES {
+            return None;
+        }
+        // Stable: equal counts keep the sources' own order.
+        counted.sort_by_key(|&(_, n)| std::cmp::Reverse(n));
+        Some(counted)
+    }
+
     /// Per lookup: how often the binding picked the agent's own arguments in
     /// training, `(agreed, calls)` for unmentioned and mentioned picks.
     pub fn agreement(&self) -> &BTreeMap<String, [(usize, usize); 2]> {
@@ -1556,44 +1641,16 @@ impl Bindings {
         let mut all_mentioned = true;
         let mut other_named = false;
         for arg in required {
-            let Some(Traced {
-                values,
-                found: sources,
-            }) = self.sources.get(&(tool.to_string(), arg.clone()))
-            else {
+            let Some(traced) = self.sources.get(&(tool.to_string(), arg.clone())) else {
                 return Err(format!("`{arg}` never took a string in training"));
             };
-            let rules: Vec<&(String, String)> = sources
-                .iter()
-                .filter(|(_, &n)| n >= 2 && n as f64 >= MIN_SOURCE_SHARE * *values as f64)
-                .map(|(s, _)| s)
-                .collect();
+            let rules = source_rules(traced);
             // Where the agent took this argument at this site, if it did so
             // often enough: its sources in that order, each the most recent
             // output first. Otherwise every source by recency.
             let site = outputs.last().map(|(t, _)| *t);
-            let at_site: Vec<(&(String, String), usize)> = rules
-                .iter()
-                .map(|&r| {
-                    let n = self
-                        .site_sources
-                        .iter()
-                        .filter(|s| {
-                            s.tool == tool
-                                && &s.arg == arg
-                                && Some(s.site.as_str()) == site
-                                && &s.source == r
-                        })
-                        .map(|s| s.values)
-                        .sum::<usize>();
-                    (r, n)
-                })
-                .collect();
             let order: Vec<(&str, &Value, &String)> =
-                if at_site.iter().map(|(_, n)| n).sum::<usize>() >= MIN_SITE_VALUES {
-                    let mut ranked = at_site.clone();
-                    // Stable: equal counts keep the sources' own order.
-                    ranked.sort_by_key(|&(_, n)| std::cmp::Reverse(n));
+                if let Some(ranked) = self.at_site(tool, arg, site, &rules) {
                     ranked
                         .iter()
                         .flat_map(|((t, path), _)| {

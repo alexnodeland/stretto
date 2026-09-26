@@ -403,6 +403,29 @@ pub fn show(flow: &Flow, threshold: f64) -> String {
     for b in bound.values() {
         binding_rows(&mut md, b, named_other);
     }
+    let orders = flow.bindings.site_orders();
+    if !orders.is_empty() {
+        let _ = writeln!(md, "\n## Sources by site\n");
+        let _ = writeln!(
+            md,
+            "Where an argument has more than one source, the order the binding tries them at a site: the sources the agent took its values from there, most used first, each the most recent output first. At other sites, the most recent output first.\n"
+        );
+        for o in &orders {
+            let list: Vec<String> = o
+                .sources
+                .iter()
+                .map(|((t, p), n)| format!("`{t}` `{p}` ({n})"))
+                .collect();
+            let _ = writeln!(
+                md,
+                "- `{}` `{}`, after `{}`: {}",
+                o.tool,
+                o.arg,
+                o.site,
+                list.join(", ")
+            );
+        }
+    }
     let pinned: Vec<(&String, &String)> = flow
         .contracts()
         .iter()
@@ -751,6 +774,33 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
     }
     sections.push(("Bindings".to_string(), binds));
 
+    // The source a binding tries first at each site where it orders them.
+    let first = |f: &Flow| -> BTreeMap<(String, String, String), (String, String)> {
+        f.bindings
+            .site_orders()
+            .into_iter()
+            .map(|o| ((o.tool, o.arg, o.site), o.sources[0].0.clone()))
+            .collect()
+    };
+    let (was, now) = (first(old), first(new));
+    let mut by_site = Vec::new();
+    for k in was.keys().chain(now.keys()).collect::<BTreeSet<_>>() {
+        let (tool, arg, site) = k;
+        match (was.get(k), now.get(k)) {
+            (Some((a, p)), Some((b, q))) if (a, p) != (b, q) => by_site.push(format!(
+                "`{tool}` `{arg}` after `{site}`: first from `{a}` `{p}` → `{b}` `{q}`"
+            )),
+            (None, Some((b, q))) => by_site.push(format!(
+                "`{tool}` `{arg}` after `{site}`: first from `{b}` `{q}` (was: the most recent output)"
+            )),
+            (Some((a, p)), None) => by_site.push(format!(
+                "`{tool}` `{arg}` after `{site}`: the most recent output first (was: `{a}` `{p}`)"
+            )),
+            _ => {}
+        }
+    }
+    sections.push(("Sources by site".to_string(), by_site));
+
     // Pinned input contracts: the server's arguments when each flow learned.
     let mut pinned = Vec::new();
     let tools: BTreeSet<&String> = old
@@ -977,6 +1027,38 @@ mod tests {
         assert!(d
             .markdown
             .contains("- after `get_user_details`: 0.10 (was: the served threshold)"));
+        assert!(d.needs_review.is_empty(), "{:?}", d.needs_review);
+    }
+
+    #[test]
+    fn sources_ordered_by_site_show_and_diff() {
+        let old = example("retail-10-sessions");
+        assert!(!show(&old, 0.3).contains("## Sources by site"));
+        let mut new = old.clone();
+        let source = |from: &str, values| crate::flow::SiteSource {
+            tool: "get_user_details".to_string(),
+            arg: "user_id".to_string(),
+            site: "find_user_id_by_email".to_string(),
+            source: (from.to_string(), "$".to_string()),
+            values,
+        };
+        new.bindings.site_sources = vec![
+            source("find_user_id_by_email", 2),
+            source("find_user_id_by_name_zip", 6),
+        ];
+        let md = show(&new, 0.3);
+        assert!(
+            md.contains("- `get_user_details` `user_id`, after `find_user_id_by_email`: `find_user_id_by_name_zip` `$` (6), `find_user_id_by_email` `$` (2)"),
+            "{md}"
+        );
+        let d = diff(&old, &new, 0.05, 0.3);
+        assert!(
+            d.markdown.contains(
+                "- `get_user_details` `user_id` after `find_user_id_by_email`: first from `find_user_id_by_name_zip` `$` (was: the most recent output)"
+            ),
+            "{}",
+            d.markdown
+        );
         assert!(d.needs_review.is_empty(), "{:?}", d.needs_review);
     }
 
