@@ -380,28 +380,34 @@ pub fn show(flow: &Flow, threshold: f64) -> String {
     }
     let _ = writeln!(md, "\n## Bindings\n");
     let named_other = bound.values().any(|b| b.named_other.is_some());
+    let described = bound.values().any(|b| b.described_read.is_some());
     let _ = writeln!(
         md,
-        "Where each lookup's required arguments come from, and how often binding them that way gave the agent's own arguments in training, when the customer had not mentioned the values and when they had. With nothing tried, the chance is 1/2.{}\n",
+        "Where each lookup's required arguments come from, and how often binding them that way gave the agent's own arguments in training, when the customer had not mentioned the values and when they had. With nothing tried, the chance is 1/2.{}{}\n",
         if named_other {
-            " Where the customer had named another value at the sources, the last column counts the values the binding would pass instead, and how many of them the agent went on to pass: the chance there."
+            " Where the customer had named another value at the sources, a column counts the values the binding would pass instead, and how many of them the agent went on to pass: the chance there."
+        } else {
+            ""
+        },
+        if described {
+            " Where the record the customer described had been read (another of the same list returned a value they gave, such as their phone number), a column counts the same for the next of that list."
         } else {
             ""
         }
     );
+    let mut header = "| Lookup | Argument | Bound from (values found there, of the values it took) | Chance it is the agent's (right/tried): not mentioned, mentioned |".to_string();
+    let mut rule = "|---|---|---|---|".to_string();
     if named_other {
-        let _ = writeln!(
-            md,
-            "| Lookup | Argument | Bound from (values found there, of the values it took) | Chance it is the agent's (right/tried): not mentioned, mentioned | Another named (used/passed) |\n|---|---|---|---|---|"
-        );
-    } else {
-        let _ = writeln!(
-            md,
-            "| Lookup | Argument | Bound from (values found there, of the values it took) | Chance it is the agent's (right/tried): not mentioned, mentioned |\n|---|---|---|---|"
-        );
+        header.push_str(" Another named (used/passed) |");
+        rule.push_str("---|");
     }
+    if described {
+        header.push_str(" The described record read (used/passed) |");
+        rule.push_str("---|");
+    }
+    let _ = writeln!(md, "{header}\n{rule}");
     for b in bound.values() {
-        binding_rows(&mut md, b, named_other);
+        binding_rows(&mut md, b, named_other, described);
     }
     let orders = flow.bindings.site_orders();
     if !orders.is_empty() {
@@ -507,7 +513,7 @@ pub fn show(flow: &Flow, threshold: f64) -> String {
     md
 }
 
-fn binding_rows(md: &mut String, b: &LookupBinding, named_other: bool) {
+fn binding_rows(md: &mut String, b: &LookupBinding, named_other: bool, described: bool) {
     let [not, mentioned, _] = b.chance();
     let [(a, n), (c, m)] = b.agreed;
     let mut chance = if b.bindable() {
@@ -522,6 +528,14 @@ fn binding_rows(md: &mut String, b: &LookupBinding, named_other: bool) {
             _ => "—".to_string(),
         };
         chance = format!("{chance} | {other}");
+    }
+    if described {
+        let read = match (b.bindable(), b.described_read, b.chance_described_read()) {
+            (true, Some((u, k)), Some(p)) => format!("{p:.2} ({u}/{k})"),
+            (true, _, _) => format!("{not:.2}, as not mentioned"),
+            _ => "—".to_string(),
+        };
+        chance = format!("{chance} | {read}");
     }
     if b.arguments.is_empty() {
         let _ = writeln!(md, "| `{}` | none | made once | {chance} |", b.tool);
@@ -769,6 +783,17 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
             if (x.named_other.is_some() || y.named_other.is_some()) && (ox - oy).abs() >= tolerance
             {
                 binds.push(format!("`{l}`'s chance (another named): {ox:.2} → {oy:.2}"));
+            }
+            let (dx, dy) = (
+                x.chance_described_read().unwrap_or(cx[0]),
+                y.chance_described_read().unwrap_or(cy[0]),
+            );
+            if (x.described_read.is_some() || y.described_read.is_some())
+                && (dx - dy).abs() >= tolerance
+            {
+                binds.push(format!(
+                    "`{l}`'s chance (the described record read): {dx:.2} → {dy:.2}"
+                ));
             }
         }
     }

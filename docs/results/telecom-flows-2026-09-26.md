@@ -33,14 +33,18 @@ Every agent gained. The spread afterwards is the agents' own habits: GLM-5, for 
 
 ## When the agent holds the phone
 
-In τ²-bench's solo mode the agent calls the phone's tools itself, and reads after a tool are 52–60% of its turns ([the anatomy](telecom-anatomy-2026-09-26.md)). `learn --results` now takes such runs: when the agent called the customer's tools, they join the flow's tools, read-only or not as τ²-bench marks them. `check_flow.py --solo` and `tau2_mcp.py --solo` serve them. A flow learned habit-only from GPT-4.1's and o4-mini's solo training episodes (the manual policy), served at 0.3 and replayed on their 160 test-task episodes each:
+In τ²-bench's solo mode the agent calls the phone's tools itself, and reads after a tool are 52–60% of its turns ([the anatomy](telecom-anatomy-2026-09-26.md)). `learn --results` now takes such runs: when the agent's calls to the customer's tools returned, they join the flow's tools, read-only or not as τ²-bench marks them. (A call that did not return does not count: when the customer holds the phone, an agent that calls its tools is told they do not exist, as Claude 3.7 Sonnet was 130 times in the 2025 runs.) `check_flow.py --solo` and `tau2_mcp.py --solo` serve them. A flow learned habit-only from GPT-4.1's and o4-mini's solo training episodes (the manual policy), served at 0.3 and replayed on their 160 test-task episodes each:
 
 | Agent | LLM turns | Turns saved | Detours · episodes with one |
 |---|---|---|---|
-| GPT-4.1 | 2,386 | 776 (32.5%) | 387 · 160 |
-| o4-mini | 2,354 | 633 (26.9%) | 430 · 152 |
+| GPT-4.1 | 2,386 | 799 (33.5%) | 203 · 121 |
+| o4-mini | 2,354 | 647 (27.5%) | 231 · 117 |
 
-A third of the turns, the most any flow has saved in replay, against 12.8% when the customer holds the phone. Most detours here are an extra diagnostic check, a status bar or a network status read the agent did not make. The fixes stay with the agent: this flow only reads. [The compiled workflow](telecom-workflow-2026-09-26.md) makes the fixes too, with no model, where a check of the ticket's outcome says when to hand back.
+A third of the turns, the most any flow has saved in replay, against 12.8% when the customer holds the phone. The fixes stay with the agent: this flow only reads.
+
+**The line the ticket names.** As first learned here, the flow saved 776 and 633 turns with 387 and 430 detours. The largest share, 160 and 197, was another of the customer's lines, read after the agent had found the one with the ticket's number and stopped. That is the stop [the detours page](detours-2026-09-26.md#what-is-left-stopping-once-the-record-is-found) found missing in airline, with an exact value in place of a description: the phone number the agent passed to `get_customer_by_phone`, which no result had shown it, is on one line record and not on the other. The binding now counts, per lookup, the picks where the record the customer described had been read (another value of the same list returned a value they gave, and another's did not), and how many of them the agent went on to pass (`bindings.described_read`, format 2). Here that was 7 of 297, so the flow hands back there. Detours fell to 203 and 231, and turns saved rose to 799 and 647: the lookups it no longer makes had led it on to others the agents did not make either, such as the bills of the customer it had just looked up again (100 and 127 detours, now 1 and 17). Most of what is left is an extra check of the phone (143 and 127).
+
+A value the customer gave has a digit and at least four characters, and either the customer wrote it or the agent passed it before any result held it, which is how a ticket reaches an agent working alone. GLM-5 and Claude Sonnet 4.5 replay retail and airline exactly as before with it; in airline it rarely applies, since customers name cities, not a reservation's digits, and that stop is still language. D0's telecom flow, where the customer holds the phone, learns no such count. [The compiled workflow](telecom-workflow-2026-09-26.md) makes the fixes too, with no model, where a check of the ticket's outcome says when to hand back.
 
 ## Retail and airline: unchanged
 
@@ -61,4 +65,4 @@ for f in $(scripts/fetch-leaderboard.sh -t all | grep telecom | cut -d= -f2); do
 done
 ```
 
-*Before* is the same flow with `bindings.site_sources` removed. The solo flow comes from the two `telecom_no-user` runs, replayed with `--solo`.
+*Before* is the same flow with `bindings.site_sources` removed. The solo flow comes from the two `telecom_no-user` runs, replayed with `--solo`; its first numbers are the same flow without `bindings.described_read`.

@@ -523,6 +523,7 @@ impl Flow {
     pub(crate) fn format_version(&self) -> u32 {
         if self.thresholds.is_empty()
             && !self.bindings.scores_named_other()
+            && !self.bindings.scores_described_read()
             && !self.bindings.orders_sources_by_site()
         {
             FLOW_VERSION
@@ -659,11 +660,13 @@ impl Flow {
             anyhow::bail!("a flow with per-site thresholds is format {FLOW_THRESHOLDS_VERSION}");
         }
         if flow.stretto_flow == FLOW_VERSION
-            && (flow.bindings.scores_named_other() || flow.bindings.orders_sources_by_site())
+            && (flow.bindings.scores_named_other()
+                || flow.bindings.scores_described_read()
+                || flow.bindings.orders_sources_by_site())
         {
             anyhow::bail!(
-                "a flow with bindings scored where another value was named, or with sources \
-                 ordered by site, is format {FLOW_THRESHOLDS_VERSION}"
+                "a flow with bindings scored where another value was named or the described \
+                 record read, or with sources ordered by site, is format {FLOW_THRESHOLDS_VERSION}"
             );
         }
         crate::program::FlowProgram::new(&flow)?;
@@ -1040,6 +1043,17 @@ pub struct Bindings {
     /// the chance of an unmentioned one.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     named_other: BTreeMap<String, (usize, usize)>,
+    /// Per lookup, `(used, picks)`: where the binding would pass a value of
+    /// a list another value of which the lookup was already called with,
+    /// and that call's result held a value the customer gave (one with a
+    /// digit, which the customer wrote or the agent passed before any
+    /// result held it, such as the phone number a line record carries),
+    /// how many of the distinct values it would pass there the agent went
+    /// on to pass itself: the record the customer described had been read.
+    /// The chance there is as with `named_other`. Empty in flows learned
+    /// before it was counted, which give such picks the unmentioned chance.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    described_read: BTreeMap<String, (usize, usize)>,
     /// Per lookup argument with more than one source, and per site (the
     /// tool whose result came last before the call): how many of the
     /// argument's values the agent took from each source there. The binding
@@ -1105,6 +1119,11 @@ enum Mention {
     /// Some value picked was not, while another value at its sources was:
     /// the customer named a record, and this is a different one.
     Other,
+    /// Some value picked was not, nor any other value at its sources, but
+    /// the lookup was already called with another value of the same list,
+    /// and that call's result held a value the customer gave: the record
+    /// they described has been read, and this is another.
+    Described,
 }
 
 /// How one lookup's arguments are bound, for review ([`Bindings::review`]).
@@ -1125,6 +1144,10 @@ pub struct LookupBinding {
     /// binding would pass there the agent went on to pass. `None` for a flow
     /// without the count, which gives such picks the unmentioned chance.
     pub named_other: Option<(usize, usize)>,
+    /// Where the record the customer described had been read and the
+    /// binding would pass another of its list, `(used, picks)`, as with
+    /// `named_other`. `None` for a flow without the count.
+    pub described_read: Option<(usize, usize)>,
 }
 
 /// Where one required argument of a lookup comes from, for review.
@@ -1165,6 +1188,14 @@ impl LookupBinding {
     pub fn chance_named_other(&self) -> Option<f64> {
         let unmentioned = self.chance()[0];
         self.named_other
+            .map(|(used, n)| named_other_chance(used, n, unmentioned))
+    }
+
+    /// The chance where the record the customer described had been read,
+    /// if the flow scores it apart (see [`Bindings::bind`]).
+    pub fn chance_described_read(&self) -> Option<f64> {
+        let unmentioned = self.chance()[0];
+        self.described_read
             .map(|(used, n)| named_other_chance(used, n, unmentioned))
     }
 }
@@ -1217,6 +1248,7 @@ impl Bindings {
                     arguments,
                     agreed: self.agreed.get(tool).copied().unwrap_or_default(),
                     named_other: self.named_other.get(tool).copied(),
+                    described_read: self.described_read.get(tool).copied(),
                 }
             })
             .collect()
@@ -1343,18 +1375,20 @@ impl Bindings {
             }
         }
         b.agreed = agreed;
-        b.named_other = b.named_other_use(&episodes);
+        b.named_other = b.stop_use(&episodes, Mention::Other);
+        b.described_read = b.stop_use(&episodes, Mention::Described);
         b
     }
 
     /// Per lookup, `(used, picks)` over the training episodes: after each
     /// successful result, every distinct value the binding would pass where
-    /// the customer had mentioned another value at its sources, and whether
+    /// its pick is `which` (the customer had mentioned another value at its
+    /// sources, or the record they described had been read), and whether
     /// the agent went on to pass it. Scored at the agent's own calls, as
     /// `agreed` is, such picks look right, since an agent that reads a
     /// second record picks it as the binding does; what they miss is that
-    /// the agent mostly reads only the record the customer named.
-    fn named_other_use(&self, episodes: &[&Episode]) -> BTreeMap<String, (usize, usize)> {
+    /// the agent mostly reads only the record the customer meant.
+    fn stop_use(&self, episodes: &[&Episode], which: Mention) -> BTreeMap<String, (usize, usize)> {
         let mut tally: BTreeMap<String, (usize, usize)> = BTreeMap::new();
         for ep in episodes {
             let mut seen: BTreeSet<(String, String)> = BTreeSet::new();
@@ -1363,9 +1397,12 @@ impl Bindings {
                     continue;
                 }
                 for tool in self.args.keys() {
-                    let Ok((args, Mention::Other)) = self.pick(tool, &ep.events[..=i], &[]) else {
+                    let Ok((args, mention)) = self.pick(tool, &ep.events[..=i], &[]) else {
                         continue;
                     };
+                    if mention != which {
+                        continue;
+                    }
                     let text = serde_json::to_string(&args).unwrap_or_default();
                     if !seen.insert((tool.clone(), text)) {
                         continue;
@@ -1392,6 +1429,12 @@ impl Bindings {
     /// apart (`named_other`), as flows learned by this build do.
     pub(crate) fn scores_named_other(&self) -> bool {
         !self.named_other.is_empty()
+    }
+
+    /// Whether picks after the described record was read are scored apart
+    /// (`described_read`), as flows learned by this build do.
+    pub(crate) fn scores_described_read(&self) -> bool {
+        !self.described_read.is_empty()
     }
 
     /// Whether the binding orders an argument's sources by site
@@ -1572,6 +1615,12 @@ impl Bindings {
                     Some(&(used, n)) => named_other_chance(used, n, smoothed(tallies[0])),
                     None => smoothed(tallies[0]),
                 },
+                // Where the record the customer described had been read: how
+                // often the agent went on to read another of its list.
+                Mention::Described => match self.described_read.get(tool) {
+                    Some(&(used, n)) => named_other_chance(used, n, smoothed(tallies[0])),
+                    None => smoothed(tallies[0]),
+                },
             }
         };
         Ok((Value::Object(args), chance))
@@ -1603,6 +1652,12 @@ impl Bindings {
         let mut outputs: Vec<(&str, Value)> = Vec::new();
         let mut customer = String::new();
         let mut made: Vec<&ToolCall> = Vec::new();
+        // Each call's output, by call id; and the values the customer gave
+        // that reached the agent by another way than the conversation: the
+        // ones it passed before any result held them (from a ticket).
+        let mut output_of: BTreeMap<&str, usize> = BTreeMap::new();
+        let mut seen: BTreeSet<String> = BTreeSet::new();
+        let mut given: BTreeSet<String> = BTreeSet::new();
         for e in events {
             match e {
                 Event::User { text } => {
@@ -1610,16 +1665,50 @@ impl Bindings {
                     customer.push('\n');
                 }
                 Event::ToolResult {
+                    call_id,
                     name,
                     content,
                     error: false,
-                    ..
-                } => outputs.push((name.as_str(), parse(content))),
-                Event::Assistant { calls, .. } => made.extend(calls.iter()),
+                } => {
+                    let out = parse(content);
+                    scalars(&out, &mut |v| {
+                        seen.insert(v);
+                    });
+                    output_of.insert(call_id.as_str(), outputs.len());
+                    outputs.push((name.as_str(), out));
+                }
+                Event::Assistant { calls, .. } => {
+                    for c in calls {
+                        scalars(&c.arguments, &mut |v| {
+                            if keyish(&v) && !seen.contains(&v) {
+                                given.insert(v);
+                            }
+                        });
+                    }
+                    made.extend(calls.iter());
+                }
                 _ => {}
             }
         }
         made.extend(also.iter());
+        // What the call to this tool with `value` as `arg` returned, as its
+        // values, if it has returned.
+        let returned = |arg: &str, value: &str| {
+            made.iter()
+                .filter(|c| c.name == tool)
+                .filter(|c| c.arguments.get(arg).map(value_text).as_deref() == Some(value))
+                .find_map(|c| output_of.get(c.id.as_str()))
+                .map(|&i| {
+                    let mut values = BTreeSet::new();
+                    scalars(&outputs[i].1, &mut |v| {
+                        values.insert(v);
+                    });
+                    values
+                })
+        };
+        // A value the customer gave: written in the conversation, or passed
+        // by the agent before any result held it.
+        let gave = |v: &String| keyish(v) && (given.contains(v) || mentions(&customer, v));
         let mut used: BTreeSet<(&str, String)> = BTreeSet::new();
         let mut called = false;
         for c in made.iter().filter(|c| c.name == tool) {
@@ -1640,6 +1729,7 @@ impl Bindings {
         let mut bound = serde_json::Map::new();
         let mut all_mentioned = true;
         let mut other_named = false;
+        let mut described = false;
         for arg in required {
             let Some(traced) = self.sources.get(&(tool.to_string(), arg.clone())) else {
                 return Err(format!("`{arg}` never took a string in training"));
@@ -1673,34 +1763,55 @@ impl Bindings {
                         })
                         .collect()
                 };
-            let mut candidates: Vec<(String, bool)> = Vec::new();
+            // Each candidate with the list it came from (the values at one
+            // source path of one output).
+            let mut candidates: Vec<(String, bool, usize)> = Vec::new();
+            let mut lists: Vec<Vec<String>> = Vec::new();
             // Whether the customer mentioned any value at the sources, one
             // already passed included.
             let mut any_mentioned = false;
             for (_, out, path) in order {
-                for (value, siblings) in at_path(out, path) {
+                let values = at_path(out, path);
+                let list = lists.len();
+                lists.push(values.iter().map(|(v, _)| v.clone()).collect());
+                for (value, siblings) in values {
                     let mentioned = mentions(&customer, &value)
                         || siblings
                             .iter()
                             .any(|s| s.chars().count() >= MIN_MENTION && mentions(&customer, s));
                     any_mentioned |= mentioned;
                     if used.contains(&(arg.as_str(), value.clone()))
-                        || candidates.iter().any(|(v, _)| *v == value)
+                        || candidates.iter().any(|(v, _, _)| *v == value)
                     {
                         continue;
                     }
-                    candidates.push((value, mentioned));
+                    candidates.push((value, mentioned, list));
                 }
             }
             let pick = candidates
                 .iter()
-                .find(|(_, m)| *m)
+                .find(|(_, m, _)| *m)
                 .or(candidates.first())
                 .cloned();
             match pick {
-                Some((v, mentioned)) => {
+                Some((v, mentioned, list)) => {
                     all_mentioned &= mentioned;
                     other_named |= !mentioned && any_mentioned;
+                    // Other values of the same list were passed already, and
+                    // what one returned holds a value the customer gave that
+                    // another's does not: the record they described, not a
+                    // value every record of the list carries (an address).
+                    if !mentioned {
+                        let read: Vec<BTreeSet<String>> = lists[list]
+                            .iter()
+                            .filter(|u| **u != v && used.contains(&(arg.as_str(), (*u).clone())))
+                            .filter_map(|u| returned(arg, u))
+                            .collect();
+                        described |= read.iter().any(|r| {
+                            r.iter()
+                                .any(|k| gave(k) && read.iter().any(|other| !other.contains(k)))
+                        });
+                    }
                     bound.insert(arg.clone(), Value::String(v));
                 }
                 None if rules.is_empty() => {
@@ -1713,10 +1824,29 @@ impl Bindings {
             Mention::Picked
         } else if other_named {
             Mention::Other
+        } else if described {
+            Mention::Described
         } else {
             Mention::None
         };
         Ok((bound, mention))
+    }
+}
+
+/// Whether a value could only have come from the customer: at least
+/// [`MIN_MENTION`] characters, with a digit (an id, a phone number).
+fn keyish(v: &str) -> bool {
+    v.chars().count() >= MIN_MENTION && v.chars().any(|c| c.is_ascii_digit())
+}
+
+/// Every string and number under `v`, lower-cased and trimmed.
+fn scalars(v: &Value, f: &mut impl FnMut(String)) {
+    match v {
+        Value::String(s) => f(s.trim().to_lowercase()),
+        Value::Number(n) => f(n.to_string()),
+        Value::Array(items) => items.iter().for_each(|x| scalars(x, f)),
+        Value::Object(m) => m.values().for_each(|x| scalars(x, f)),
+        _ => {}
     }
 }
 
@@ -2009,6 +2139,63 @@ pub(crate) mod tests {
         assert!((chance - 7.0 / 8.0).abs() < 1e-9, "{chance}");
         // A user id comes from the customer, never from an output: no rule.
         assert!(b.bind("get_user_details", &live(vec![])).is_err());
+    }
+
+    #[test]
+    fn the_record_the_customer_described_is_scored_by_use() {
+        // The agent looks the customer up by the number it was given, reads
+        // the customer's lines until it finds the one with that number, and
+        // reads no more.
+        let manifest = ToolManifest {
+            domain: "telecom".to_string(),
+            tools: BTreeMap::from([
+                ("get_customer_by_phone".to_string(), ToolKind::Read),
+                ("get_details_by_id".to_string(), ToolKind::Read),
+            ]),
+            docs: BTreeMap::new(),
+        };
+        let lines = |number: &str| {
+            episode(vec![
+                call(
+                    "a",
+                    "get_customer_by_phone",
+                    json!({"phone_number": number}),
+                ),
+                result(
+                    "a",
+                    "get_customer_by_phone",
+                    json!({"customer_id": "C1", "phone_number": number, "line_ids": ["L1", "L2", "L3"]}),
+                ),
+                call("b", "get_details_by_id", json!({"id": "L1"})),
+                result(
+                    "b",
+                    "get_details_by_id",
+                    json!({"line_id": "L1", "phone_number": "555-0101"}),
+                ),
+                call("c", "get_details_by_id", json!({"id": "L2"})),
+                result(
+                    "c",
+                    "get_details_by_id",
+                    json!({"line_id": "L2", "phone_number": "555-0102"}),
+                ),
+            ])
+        };
+        let training: Vec<Episode> = (0..4).map(|_| lines("555-0102")).collect();
+        let b = Bindings::learn(&training, &manifest);
+        // The binding walked the list with the agent...
+        assert_eq!(b.agreement()["get_details_by_id"], [(8, 8), (0, 0)]);
+        // ...and after the line with the number it would pass L3, which no
+        // agent read.
+        assert_eq!(b.described_read.get("get_details_by_id"), Some(&(0, 4)));
+        assert!(b.scores_described_read());
+        let (args, found) = b.bind("get_details_by_id", &lines("555-0102")).unwrap();
+        assert_eq!(args, json!({"id": "L3"}));
+        // Where no line read so far carries the number, the next line has
+        // the unmentioned chance.
+        let (args, open) = b.bind("get_details_by_id", &lines("555-0103")).unwrap();
+        assert_eq!(args, json!({"id": "L3"}));
+        assert!((open - 0.9).abs() < 1e-9, "{open}");
+        assert!((found - 0.3).abs() < 1e-9, "{found}");
     }
 
     #[test]

@@ -2059,14 +2059,30 @@ fn tau2_sessions(
     }
     // In a solo run (τ²-bench's `no-user` mode) the agent itself calls the
     // customer's tools, telecom's phone: they are the agent's tools then.
+    // An agent that calls one when the customer holds the phone is told the
+    // tool does not exist, so a solo run is one where such a call returned.
     let user_tools = tau2.join(format!("src/tau2/domains/{domain}/user_tools.py"));
     if user_tools.exists() {
         let user = load_manifest(domain, &user_tools)?;
-        let solo = episodes.iter().flat_map(|e| &e.events).any(|e| match e {
-            stretto_trace::Event::Assistant { calls, .. } => {
-                calls.iter().any(|c| user.tools.contains_key(&c.name))
-            }
-            _ => false,
+        let solo = episodes.iter().any(|ep| {
+            let mut asked: HashSet<&str> = HashSet::new();
+            ep.events.iter().any(|e| match e {
+                stretto_trace::Event::Assistant { calls, .. } => {
+                    asked.extend(
+                        calls
+                            .iter()
+                            .filter(|c| user.tools.contains_key(&c.name))
+                            .map(|c| c.id.as_str()),
+                    );
+                    false
+                }
+                stretto_trace::Event::ToolResult {
+                    call_id,
+                    error: false,
+                    ..
+                } => asked.contains(call_id.as_str()),
+                _ => false,
+            })
         });
         if solo {
             manifest.tools.extend(user.tools);

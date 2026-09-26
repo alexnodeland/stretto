@@ -39,6 +39,7 @@ const KIND_VALUES: &[&str] = &["manifest.tools.{}", "predicates.*.favors"];
 /// with code features.
 const NOT_IN_EXAMPLES: &[&str] = &[
     "program",
+    "described_read",
     "every_read",
     "Scalar",
     "Len",
