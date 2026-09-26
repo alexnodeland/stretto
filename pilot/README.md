@@ -152,4 +152,6 @@ PATH=~/.venvs/tau2/bin:$PATH python check_flow.py --out runs/check \
 
 With both, GLM-5's 160 retail test episodes replay in about 33 seconds on two workers, where they took about 13 minutes. The rows are the same. For the arms round's habit-alone, arm C and D0 replays, every row matched the published ones, and the MCP path with `--jobs 2` matched too.
 
+Each recorded episode replays in a folder of its own under `--out`, named after its folder. Folders that share a name, such as a task's trials each in their own folder, are named by their path below the folders' common parent instead (`baseline-task-2`, `trial-1-baseline-task-2`). Before, they shared one folder, and with `--jobs` they wrote one trajectory, which the flow reads: an airline replay of both trials saved 23 turns where it saves 45.
+
 [`replay_study.py`](replay_study.py) runs a list of replays from a JSON file, each with its own flow and settings, and skips any run whose `check.json` already exists. An interrupted study resumes where it stopped.

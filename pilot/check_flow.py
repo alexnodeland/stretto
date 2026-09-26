@@ -38,6 +38,7 @@ either way.
 import argparse
 import asyncio
 import json
+import os
 import sys
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
@@ -229,11 +230,34 @@ def recorded_episodes(args) -> list[tuple[str, str, list]]:
             if str(s["task_id"]) in wanted and s.get("trial", 0) in args.trials
         ]
     out = []
-    for d in args.recorded:
+    for d, name in zip(args.recorded, episode_names(args.recorded)):
         messages = [json.loads(l) for l in (d / "trajectory.jsonl").read_text().splitlines()]
         task_id = json.loads((d / "result.json").read_text())["task_id"]
-        out.append((d.name, task_id, messages))
+        out.append((name, task_id, messages))
     return out
+
+
+def episode_names(dirs: list[Path]) -> list[str]:
+    """A distinct name for each recorded episode directory, to replay it under.
+
+    Each keeps its own folder name unless two share one, as a task's trials do
+    when each trial has its own folder. Then every episode is named by its path
+    below the folders' common parent, joined with dashes, since episodes that
+    shared a folder would share one trajectory, which the flow reads.
+
+    >>> episode_names([Path("runs/a/task-2"), Path("runs/a/task-3")])
+    ['task-2', 'task-3']
+    >>> episode_names([Path("runs/a/task-2"), Path("runs/a/trial-1/task-2")])
+    ['task-2', 'trial-1-task-2']
+    """
+    names = [d.name for d in dirs]
+    if len(set(names)) == len(names):
+        return names
+    resolved = [d.resolve() for d in dirs]
+    if len(set(resolved)) < len(resolved):
+        raise SystemExit("check_flow.py: an episode directory is given twice")
+    common = Path(os.path.commonpath(resolved))
+    return ["-".join(d.relative_to(common).parts) for d in resolved]
 
 
 def main() -> None:
