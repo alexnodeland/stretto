@@ -31,6 +31,21 @@ The flow learned habit-only from τ²-bench's four 2025 telecom runs (Claude 3.7
 
 Every agent gained. The spread afterwards is the agents' own habits: GLM-5, for one, reads a customer's lines in parallel, where the 2025 agents read them one at a time. D0's arbiter for telecom, fitted on the same four runs with Jev's answers, did no better than the habit alone on GLM-5: 59 turns saved and 46 detours, against 67 and 50. It asked Jev 910 questions no cache held, about $0.08 ([the answers](answers-2026-09-26-telecom-flows.md)). A flow learned from GLM-5's own telecom runs saved 108 turns with 162 detours. Most of those detours read data usage the customer's problem did not need, a choice that follows from what the customer said.
 
+## What is left in dual control
+
+Replayed with each call tagged, the 443 detours left on the nine agents are tool choices, not bindings:
+
+| Lookup, in tickets about | Detours | Used |
+|---|---|---|
+| `get_bills_for_customer`, no service | 160 | 155 |
+| `get_data_usage`, MMS | 136 | 54 |
+| `get_data_usage`, mobile data | 78 | 105 |
+| `get_details_by_id`, all | 55 | 2,785 |
+| Other | 14 | |
+
+- **A word in the customer's messages does not choose them.** A split on one word or pair, learned per site from the 2025 runs, lands on words such as "it" and "please go" at most sites. The one real split, "no service", holds data-usage reads to 1% of those tickets, and the flow already makes almost none there. MMS tickets are where the data-usage detours are, and the 2025 agents read data usage in 53% of theirs (59% of mobile-data tickets), since MMS needs mobile data. How often one agent does so is that agent's habit.
+- **A field of a result does choose the bills.** In no-service tickets, the 2025 agents read the bills in 86 of 112 episodes where a line they read was suspended, and in 2 of 49 where none was. All 315 of the flow's bill reads come right after a line read. The habit does see the line's status, but only as one feature combined with the plan, roaming and contract end, which few training cases share, so it falls back to the site's share. A feature of the status alone is the next thing to try; it changes every flow's features, so it needs the full replays on all three domains.
+
 ## When the agent holds the phone
 
 In τ²-bench's solo mode the agent calls the phone's tools itself, and reads after a tool are 52–60% of its turns ([the anatomy](telecom-anatomy-2026-09-26.md)). `learn --results` now takes such runs: when the agent's calls to the customer's tools returned, they join the flow's tools, read-only or not as τ²-bench marks them. (A call that did not return does not count: when the customer holds the phone, an agent that calls its tools is told they do not exist, as Claude 3.7 Sonnet was 130 times in the 2025 runs.) `check_flow.py --solo` and `tau2_mcp.py --solo` serve them. A flow learned habit-only from GPT-4.1's and o4-mini's solo training episodes (the manual policy), served at 0.3 and replayed on their 160 test-task episodes each:
