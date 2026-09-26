@@ -45,6 +45,10 @@ It needs many demonstrations, and consistent ones. o4-mini passes 78% itself, bu
 
 **A sure-only workflow hands back at once.** Run so that it acts only where its leaf held one call in at least 95% of at least ten training cases, and hands back otherwise, it handed back at the first step of every episode: 690 of the 730 training episodes open with the customer lookup, 94.5%. With the bar at 70–90% it handed back within its first three calls, where the demonstrators take different routes to the same fixes. A tree's confidence here measures agreement among demonstrators, not whether a step is right, so it is not the gate to hand back on. A check on the outcome is: the ticket says when the issue is resolved (the speed test excellent, an MMS sent), and the workflow can run that check itself.
 
+## What was compiled
+
+[The workflow, as rules](telecom-workflow-2026-09-26-rules.md) (`--show`), is 376 rules at 39 sites. 40 of them are sure, one call in at least 95% of at least ten training cases, and they cover 17% of the training decisions; the rest take the likeliest of the demonstrators' choices at their leaf. τ²-bench's own workflow, drawn as three graphs, has about a hundred steps. What was compiled is a policy that works, readable rule by rule, not the procedure a person wrote: it asks which tools have been called nearly as often as what they returned (131 of its questions against 173; 28 ask about the ticket), because where the demonstrators are in their routine is what best predicts their next step.
+
 ## Knowing when it failed
 
 Each ticket states when the customer will consider the issue resolved: an MMS sent, the speed test excellent, the status bar showing signal. Each is a check the workflow can run itself (`can_send_mms`, `run_speed_test`, `check_status_bar`), and a transfer to a human is the policy's own ending for what the agent may not fix, such as a locked SIM. After each run, the workflow's own verdict against the evaluator's:
@@ -94,4 +98,4 @@ python3 scripts/telecom_workflow.py \
   --tau2 ../tau2-bench --json telecom-workflow.json
 ```
 
-`--no-guard`, `--sure [SHARE]` and `--train-share` give the other rows. The runs, call by call, are in [telecom-workflow-2026-09-26.json](telecom-workflow-2026-09-26.json). Scored this way, GPT-4.1's recorded test episodes (first trial) get the rewards τ²-bench recorded for all 40 of them.
+`--no-guard`, `--sure [SHARE]` and `--train-share` give the other rows, and `--show FILE` writes the rules. The runs, call by call, are in [telecom-workflow-2026-09-26.json](telecom-workflow-2026-09-26.json). Scored this way, GPT-4.1's recorded test episodes (first trial) get the rewards τ²-bench recorded for all 40 of them.

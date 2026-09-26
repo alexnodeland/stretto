@@ -213,6 +213,36 @@ def run(task, predict, vocab, sure, guard, tau2):
     return reward, calls, handed, check
 
 
+def show(predict, sites):
+    """The compiled workflow as rules a person can read: per site (the call
+    that just returned, busiest first), the tree's questions down to its
+    chosen depth, each leaf the call it makes, with its share of the
+    training cases there."""
+    lines = []
+
+    def leaf(tally):
+        action, k = tally.most_common(1)[0]
+        n = sum(tally.values())
+        return f"**{action}** ({k} of {n})"
+
+    def walk(node, depth, indent):
+        tally, split = node
+        if depth == 0 or split is None:
+            lines.append(f"{indent}- then {leaf(tally)}")
+            return
+        f, yes, no = split
+        lines.append(f"{indent}- if `{f}`:")
+        walk(yes, depth - 1, indent + "  ")
+        lines.append(f"{indent}- else:")
+        walk(no, depth - 1, indent + "  ")
+
+    for site, n in sites.most_common():
+        node, depth = predict.roots[site]
+        lines.append(f"\n### After `{site}` ({n} decisions, {depth} deep)\n")
+        walk(node, depth, "")
+    return "\n".join(lines) + "\n"
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("results", nargs="+", help="τ²-bench telecom results in solo mode (no-user)")
@@ -222,6 +252,7 @@ def main():
     ap.add_argument("--no-guard", action="store_true", help="let the workflow repeat a read before any write, or a write")
     ap.add_argument("--train-share", type=float, default=1.0, help="learn from this share of the training tasks")
     ap.add_argument("--json", help="write each test task's run here")
+    ap.add_argument("--show", help="write the compiled workflow here, as rules (Markdown)")
     args = ap.parse_args()
     from tau2.domains.telecom.environment import get_tasks
 
@@ -245,6 +276,8 @@ def main():
     predict = anatomy.tree(ds, with_goal=False, counts=True)
     print(f"fitted on {len(good)} successful episodes of {len(train)} training tasks: {len(ds)} decisions, "
           f"{len({d['action'] for d in ds})} distinct actions", file=sys.stderr)
+    if args.show:
+        Path(args.show).write_text(show(predict, collections.Counter(d["site"] for d in ds)))
     rows = []
     for tid in sorted(test):
         reward, calls, handed, resolved = run(tasks[tid], predict, vocab, args.sure, not args.no_guard, args.tau2)
