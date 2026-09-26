@@ -1,0 +1,32 @@
+{
+ "retail": {
+  "successful": {
+   "writes": 1577,
+   "flagged": 42
+  },
+  "failed": {
+   "writes": 578,
+   "flagged": 52
+  }
+ },
+ "airline": {
+  "successful": {
+   "writes": 282,
+   "flagged": 15
+  },
+  "failed": {
+   "writes": 406,
+   "flagged": 13
+  }
+ },
+ "labels": {
+  "N ? flagged=False": 2,
+  "N ? flagged=True": 1,
+  "N address never read back flagged=False": 5,
+  "N extra never proposed flagged=False": 3,
+  "N mismatch flagged=False": 3,
+  "N mismatch flagged=True": 3,
+  "Y confirmed flagged=False": 25,
+  "Y confirmed flagged=True": 3
+ }
+}
