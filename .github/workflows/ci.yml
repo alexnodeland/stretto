@@ -35,3 +35,5 @@ jobs:
       - run: cargo build -p stretto-report -p stretto-proxy
       - run: python3 scripts/walkthrough.py --bin target/debug
       - run: python3 scripts/http_check.py --bin target/debug
+      # The compiled workflow's binding rules (scripts/telecom_workflow.py), which need no τ²-bench.
+      - run: python3 -m doctest scripts/telecom_workflow.py
