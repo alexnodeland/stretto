@@ -1,0 +1,19 @@
+{
+ "about": "Candidates for #39: a semantic stop at the sites that iterate. `described_read` is new; `answer_in_hand` is from the 2026-09-25 refinement round.",
+ "predicates": [
+  {
+   "id": "described_read",
+   "favors": "hand_back",
+   "question": "Has the agent already looked up the record the customer means, the reservation or order that matches what the customer said (its id, or details such as its route, dates, passengers or items)?",
+   "yes": "One of the records already looked up matches what the customer described.",
+   "no": "No record looked up so far matches what the customer described, or the customer has not yet said which record they mean."
+  },
+  {
+   "id": "answer_in_hand",
+   "favors": "hand_back",
+   "question": "Do the results so far already hold what the customer's latest message asks for, so the agent can reply without looking anything else up?",
+   "yes": "The latest results answer the customer's question, or show what the agent said it would check, and the agent should now tell the customer.",
+   "no": "Something the customer asked about is not in the results yet."
+  }
+ ]
+}
