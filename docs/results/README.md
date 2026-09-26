@@ -62,6 +62,12 @@ The [working paper](https://alexnodeland.github.io/stretto/) puts them together,
 | [Answers: flow search](answers-2026-09-25-search.md) | The answer bundle for the page above |
 | [Paired run on every test task](paired-2026-09-25.md) ([rows](paired-2026-09-25.json), [episodes](paired-2026-09-25-episodes.tar.gz)) | GLM-5.3 on all 40 retail and 20 airline test tasks (airline twice), 80 pairs. With the flow it took 25.5% fewer LLM turns (95% interval 20.5% to 30.4%). 70 pairs passed with the flow and 71 without it: −1.25 points (−7.5 to +6.25), too wide to rule out a loss of a few points. 242 of the flow's 259 lookups were the agent's own |
 
+## 2026-09-26: what a workflow compiled once could take
+
+| Page | What it found |
+|---|---|
+| [The anatomy of τ²-bench episodes](anatomy-2026-09-26.md) ([rows](anatomy-2026-09-26.json)) | On ten agents' retail and airline episodes, replies and the calls that answer the customer are 60–75% of LLM turns. What a workflow compiled once from traces could take is the read skeleton, 19–32% of retail turns and 10–31% of airline turns, which is what the read-only flow already does. After a tool returns, the previous tool alone predicts the next step 50–84% of the time; structured features add up to 11 points and the goal at most 4 more. Rules at least 95% sure on training cover 2–44% of retail decisions and 0–16% of airline decisions, and hold 84–100% on held-out tasks. The literature review behind the question: [compiling workflows from agent traces](../research/compiling-workflows-2026-09-26.md) |
+
 ## Recorded episodes
 
 [Every live episode behind the pilot pages](episodes-2026-09-24.md), 76 in all, is published as one archive per pilot: the conversations, τ²-bench's simulation files, the proxy's session logs and the flows' decisions. The paired run's 160 episodes are in [one more archive](paired-2026-09-25-episodes.tar.gz), laid out the same way ([the page](paired-2026-09-25.md#the-episodes)). Later rounds publish their episodes with their pages, laid out the same way: [the cold start, live](cold-start-live-2026-09-25-episodes.tar.gz), [in airline](cold-start-live-airline-2026-09-25-episodes.tar.gz), [the judge, live](judge-live-2026-09-25-episodes.tar.gz) and [Claude models](claude-models-2026-09-25-episodes.tar.gz). `pilot/rescore.py` reproduces every recorded reward from them.

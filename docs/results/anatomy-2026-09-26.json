@@ -1,0 +1,2386 @@
+{
+ "retail": {
+  "Claude Opus 4.5 (high)": {
+   "domain": "retail",
+   "episodes": 456,
+   "turns": {
+    "reply": 1828,
+    "read, after the customer": 609,
+    "read, after a tool: bound": 502,
+    "read, after a tool: iterate": 357,
+    "read, after a tool: pick": 178,
+    "write, after the customer": 460,
+    "read, after a tool: customer or generated": 68,
+    "write, after the tool": 44
+   },
+   "turns_total": 4046,
+   "arguments": {
+    "read": {
+     "n": 3490,
+     "copy, unique": 565,
+     "copy, select": 1623,
+     "customer": 1155,
+     "constant": 0,
+     "generated": 147,
+     "select, picked": 283,
+     "anchored": 48,
+     "several results": 65
+    },
+    "write": {
+     "n": 2724,
+     "copy, unique": 2293,
+     "copy, select": 259,
+     "customer": 146,
+     "constant": 0,
+     "generated": 26,
+     "select, picked": 187,
+     "anchored": 652,
+     "several results": 1597
+    }
+   },
+   "decisions_after_tool": 2218,
+   "decision_accuracy": {
+    "sequence": 0.8436,
+    "structure": 0.8336,
+    "structure and goal": 0.8738
+   },
+   "decision_accuracy_by_site": {
+    "get_order_details": {
+     "n": 457,
+     "sequence": 0.54,
+     "structure": 0.488,
+     "structure and goal": 0.683
+    },
+    "get_user_details": {
+     "n": 421,
+     "sequence": 0.943,
+     "structure": 0.945,
+     "structure and goal": 0.945
+    },
+    "find_user_id_by_name_zip": {
+     "n": 352,
+     "sequence": 0.929,
+     "structure": 0.929,
+     "structure and goal": 0.929
+    },
+    "get_product_details": {
+     "n": 286,
+     "sequence": 0.937,
+     "structure": 0.93,
+     "structure and goal": 0.93
+    },
+    "modify_pending_order_items": {
+     "n": 125,
+     "sequence": 0.944,
+     "structure": 0.944,
+     "structure and goal": 0.944
+    },
+    "return_delivered_order_items": {
+     "n": 123,
+     "sequence": 0.902,
+     "structure": 0.902,
+     "structure and goal": 0.902
+    },
+    "find_user_id_by_email": {
+     "n": 96,
+     "sequence": 0.927,
+     "structure": 0.927,
+     "structure and goal": 0.927
+    },
+    "exchange_delivered_order_items": {
+     "n": 87,
+     "sequence": 0.977,
+     "structure": 0.977,
+     "structure and goal": 0.977
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.2678,
+     "accuracy": 0.9343
+    },
+    "structure": {
+     "coverage": 0.3287,
+     "accuracy": 0.9438
+    },
+    "structure and goal": {
+     "coverage": 0.3616,
+     "accuracy": 0.9289
+    }
+   },
+   "actions_after_tool": {
+    "reply": 1069,
+    "get_order_details": 430,
+    "get_user_details": 419,
+    "get_product_details": 223,
+    "modify_pending_order_items": 31,
+    "calculate": 28,
+    "transfer_to_human_agents": 5,
+    "find_user_id_by_name_zip": 5
+   }
+  },
+  "Claude Sonnet 4.5": {
+   "domain": "retail",
+   "episodes": 456,
+   "turns": {
+    "read, after the customer": 708,
+    "read, after a tool: bound": 519,
+    "read, after a tool: pick": 294,
+    "reply": 2091,
+    "write, after the tool": 157,
+    "read, after a tool: customer or generated": 85,
+    "write, after the customer": 449,
+    "read, after a tool: iterate": 424
+   },
+   "turns_total": 4727,
+   "arguments": {
+    "read": {
+     "n": 3263,
+     "copy, unique": 551,
+     "copy, select": 1424,
+     "customer": 1117,
+     "constant": 0,
+     "generated": 171,
+     "select, picked": 390,
+     "anchored": 86,
+     "several results": 74
+    },
+    "write": {
+     "n": 2587,
+     "copy, unique": 2178,
+     "copy, select": 271,
+     "customer": 100,
+     "constant": 0,
+     "generated": 38,
+     "select, picked": 202,
+     "anchored": 833,
+     "several results": 1549
+    }
+   },
+   "decisions_after_tool": 2636,
+   "decision_accuracy": {
+    "sequence": 0.6498,
+    "structure": 0.6935,
+    "structure and goal": 0.6931
+   },
+   "decision_accuracy_by_site": {
+    "get_order_details": {
+     "n": 746,
+     "sequence": 0.386,
+     "structure": 0.551,
+     "structure and goal": 0.55
+    },
+    "get_user_details": {
+     "n": 420,
+     "sequence": 0.7,
+     "structure": 0.731,
+     "structure and goal": 0.731
+    },
+    "find_user_id_by_name_zip": {
+     "n": 345,
+     "sequence": 0.87,
+     "structure": 0.87,
+     "structure and goal": 0.87
+    },
+    "get_product_details": {
+     "n": 326,
+     "sequence": 0.736,
+     "structure": 0.693,
+     "structure and goal": 0.693
+    },
+    "return_delivered_order_items": {
+     "n": 138,
+     "sequence": 0.812,
+     "structure": 0.812,
+     "structure and goal": 0.812
+    },
+    "modify_pending_order_items": {
+     "n": 127,
+     "sequence": 0.717,
+     "structure": 0.717,
+     "structure and goal": 0.717
+    },
+    "find_user_id_by_email": {
+     "n": 95,
+     "sequence": 0.895,
+     "structure": 0.895,
+     "structure and goal": 0.895
+    },
+    "exchange_delivered_order_items": {
+     "n": 93,
+     "sequence": 0.774,
+     "structure": 0.774,
+     "structure and goal": 0.774
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.0186,
+     "accuracy": 0.9184
+    },
+    "structure": {
+     "coverage": 0.0186,
+     "accuracy": 0.9184
+    },
+    "structure and goal": {
+     "coverage": 0.0186,
+     "accuracy": 0.9184
+    }
+   },
+   "actions_after_tool": {
+    "reply": 1157,
+    "get_order_details": 605,
+    "get_user_details": 404,
+    "get_product_details": 267,
+    "modify_pending_order_items": 44,
+    "modify_pending_order_address": 28,
+    "return_delivered_order_items": 27,
+    "calculate": 25
+   }
+  },
+  "GLM-5": {
+   "domain": "retail",
+   "episodes": 456,
+   "turns": {
+    "reply": 1787,
+    "write, after the customer": 438,
+    "read, after the customer": 573,
+    "read, after a tool: bound": 489,
+    "read, after a tool: iterate": 355,
+    "write, after the tool": 50,
+    "read, after a tool: customer or generated": 63,
+    "read, after a tool: pick": 176
+   },
+   "turns_total": 3931,
+   "arguments": {
+    "read": {
+     "n": 3365,
+     "copy, unique": 550,
+     "copy, select": 1557,
+     "customer": 1111,
+     "constant": 0,
+     "generated": 147,
+     "select, picked": 272,
+     "anchored": 47,
+     "several results": 79
+    },
+    "write": {
+     "n": 2602,
+     "copy, unique": 2199,
+     "copy, select": 231,
+     "customer": 128,
+     "constant": 0,
+     "generated": 44,
+     "select, picked": 179,
+     "anchored": 661,
+     "several results": 1540
+    }
+   },
+   "decisions_after_tool": 2144,
+   "decision_accuracy": {
+    "sequence": 0.8284,
+    "structure": 0.8162,
+    "structure and goal": 0.8591
+   },
+   "decision_accuracy_by_site": {
+    "get_order_details": {
+     "n": 457,
+     "sequence": 0.538,
+     "structure": 0.466,
+     "structure and goal": 0.665
+    },
+    "get_user_details": {
+     "n": 417,
+     "sequence": 0.93,
+     "structure": 0.962,
+     "structure and goal": 0.962
+    },
+    "find_user_id_by_name_zip": {
+     "n": 338,
+     "sequence": 0.888,
+     "structure": 0.888,
+     "structure and goal": 0.888
+    },
+    "get_product_details": {
+     "n": 283,
+     "sequence": 0.947,
+     "structure": 0.947,
+     "structure and goal": 0.951
+    },
+    "return_delivered_order_items": {
+     "n": 112,
+     "sequence": 0.946,
+     "structure": 0.946,
+     "structure and goal": 0.946
+    },
+    "modify_pending_order_items": {
+     "n": 107,
+     "sequence": 0.916,
+     "structure": 0.916,
+     "structure and goal": 0.916
+    },
+    "find_user_id_by_email": {
+     "n": 94,
+     "sequence": 0.926,
+     "structure": 0.926,
+     "structure and goal": 0.926
+    },
+    "exchange_delivered_order_items": {
+     "n": 80,
+     "sequence": 0.963,
+     "structure": 0.963,
+     "structure and goal": 0.963
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.2024,
+     "accuracy": 0.9263
+    },
+    "structure": {
+     "coverage": 0.3923,
+     "accuracy": 0.9405
+    },
+    "structure and goal": {
+     "coverage": 0.4347,
+     "accuracy": 0.9421
+    }
+   },
+   "actions_after_tool": {
+    "reply": 1011,
+    "get_order_details": 442,
+    "get_user_details": 404,
+    "get_product_details": 218,
+    "modify_pending_order_items": 28,
+    "find_user_id_by_name_zip": 8,
+    "list_all_product_types": 6,
+    "cancel_pending_order": 5
+   }
+  },
+  "GPT-5.2 (high)": {
+   "domain": "retail",
+   "episodes": 456,
+   "turns": {
+    "write, after the customer": 516,
+    "reply": 1837,
+    "read, after the customer": 712,
+    "read, after a tool: customer or generated": 110,
+    "read, after a tool: bound": 461,
+    "read, after a tool: iterate": 382,
+    "read, after a tool: pick": 177,
+    "write, after the tool": 177
+   },
+   "turns_total": 4372,
+   "arguments": {
+    "read": {
+     "n": 3444,
+     "copy, unique": 615,
+     "copy, select": 1515,
+     "customer": 1199,
+     "constant": 0,
+     "generated": 115,
+     "select, picked": 296,
+     "anchored": 108,
+     "several results": 153
+    },
+    "write": {
+     "n": 3021,
+     "copy, unique": 2597,
+     "copy, select": 264,
+     "customer": 139,
+     "constant": 0,
+     "generated": 21,
+     "select, picked": 202,
+     "anchored": 1818,
+     "several results": 1820
+    }
+   },
+   "decisions_after_tool": 2535,
+   "decision_accuracy": {
+    "sequence": 0.7168,
+    "structure": 0.7073,
+    "structure and goal": 0.7436
+   },
+   "decision_accuracy_by_site": {
+    "get_order_details": {
+     "n": 572,
+     "sequence": 0.512,
+     "structure": 0.442,
+     "structure and goal": 0.608
+    },
+    "get_user_details": {
+     "n": 420,
+     "sequence": 0.85,
+     "structure": 0.888,
+     "structure and goal": 0.888
+    },
+    "find_user_id_by_name_zip": {
+     "n": 359,
+     "sequence": 0.741,
+     "structure": 0.741,
+     "structure and goal": 0.741
+    },
+    "get_product_details": {
+     "n": 292,
+     "sequence": 0.853,
+     "structure": 0.853,
+     "structure and goal": 0.853
+    },
+    "modify_pending_order_items": {
+     "n": 138,
+     "sequence": 0.783,
+     "structure": 0.783,
+     "structure and goal": 0.783
+    },
+    "return_delivered_order_items": {
+     "n": 137,
+     "sequence": 0.825,
+     "structure": 0.825,
+     "structure and goal": 0.825
+    },
+    "exchange_delivered_order_items": {
+     "n": 120,
+     "sequence": 0.792,
+     "structure": 0.792,
+     "structure and goal": 0.792
+    },
+    "find_user_id_by_email": {
+     "n": 95,
+     "sequence": 0.747,
+     "structure": 0.747,
+     "structure and goal": 0.747
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.0256,
+     "accuracy": 1.0
+    },
+    "structure": {
+     "coverage": 0.0256,
+     "accuracy": 1.0
+    },
+    "structure and goal": {
+     "coverage": 0.0359,
+     "accuracy": 0.8571
+    }
+   },
+   "actions_after_tool": {
+    "reply": 1228,
+    "get_order_details": 487,
+    "get_user_details": 347,
+    "get_product_details": 227,
+    "modify_pending_order_items": 61,
+    "calculate": 48,
+    "return_delivered_order_items": 25,
+    "cancel_pending_order": 22
+   }
+  },
+  "GPT-5.2 (none)": {
+   "domain": "retail",
+   "episodes": 456,
+   "turns": {
+    "reply": 1601,
+    "read, after the customer": 642,
+    "read, after a tool: customer or generated": 120,
+    "read, after a tool: bound": 404,
+    "read, after a tool: iterate": 416,
+    "write, after the customer": 425,
+    "read, after a tool: pick": 173,
+    "write, after the tool": 143
+   },
+   "turns_total": 3924,
+   "arguments": {
+    "read": {
+     "n": 2995,
+     "copy, unique": 523,
+     "copy, select": 1301,
+     "customer": 1070,
+     "constant": 0,
+     "generated": 101,
+     "select, picked": 265,
+     "anchored": 94,
+     "several results": 103
+    },
+    "write": {
+     "n": 2409,
+     "copy, unique": 2042,
+     "copy, select": 222,
+     "customer": 123,
+     "constant": 0,
+     "generated": 22,
+     "select, picked": 170,
+     "anchored": 1571,
+     "several results": 1437
+    }
+   },
+   "decisions_after_tool": 2323,
+   "decision_accuracy": {
+    "sequence": 0.6694,
+    "structure": 0.7124,
+    "structure and goal": 0.7271
+   },
+   "decision_accuracy_by_site": {
+    "get_order_details": {
+     "n": 586,
+     "sequence": 0.408,
+     "structure": 0.587,
+     "structure and goal": 0.626
+    },
+    "get_user_details": {
+     "n": 369,
+     "sequence": 0.843,
+     "structure": 0.873,
+     "structure and goal": 0.873
+    },
+    "find_user_id_by_name_zip": {
+     "n": 321,
+     "sequence": 0.692,
+     "structure": 0.692,
+     "structure and goal": 0.692
+    },
+    "get_product_details": {
+     "n": 267,
+     "sequence": 0.764,
+     "structure": 0.764,
+     "structure and goal": 0.764
+    },
+    "return_delivered_order_items": {
+     "n": 115,
+     "sequence": 0.835,
+     "structure": 0.835,
+     "structure and goal": 0.835
+    },
+    "modify_pending_order_items": {
+     "n": 114,
+     "sequence": 0.789,
+     "structure": 0.789,
+     "structure and goal": 0.789
+    },
+    "exchange_delivered_order_items": {
+     "n": 101,
+     "sequence": 0.752,
+     "structure": 0.752,
+     "structure and goal": 0.752
+    },
+    "find_user_id_by_email": {
+     "n": 81,
+     "sequence": 0.753,
+     "structure": 0.753,
+     "structure and goal": 0.753
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.0263,
+     "accuracy": 0.9672
+    },
+    "structure": {
+     "coverage": 0.0263,
+     "accuracy": 0.9672
+    },
+    "structure and goal": {
+     "coverage": 0.0293,
+     "accuracy": 0.9559
+    }
+   },
+   "actions_after_tool": {
+    "reply": 1067,
+    "get_order_details": 512,
+    "get_user_details": 291,
+    "get_product_details": 226,
+    "calculate": 68,
+    "modify_pending_order_items": 45,
+    "exchange_delivered_order_items": 18,
+    "modify_pending_order_address": 16
+   }
+  },
+  "Qwen3.5": {
+   "domain": "retail",
+   "episodes": 456,
+   "turns": {
+    "reply": 1756,
+    "read, after the customer": 590,
+    "read, after a tool: customer or generated": 110,
+    "write, after the customer": 524,
+    "read, after a tool: bound": 575,
+    "read, after a tool: pick": 357,
+    "read, after a tool: iterate": 1035,
+    "write, after the tool": 190
+   },
+   "turns_total": 5137,
+   "arguments": {
+    "read": {
+     "n": 3316,
+     "copy, unique": 574,
+     "copy, select": 1471,
+     "customer": 1112,
+     "constant": 0,
+     "generated": 159,
+     "select, picked": 387,
+     "anchored": 63,
+     "several results": 86
+    },
+    "write": {
+     "n": 3054,
+     "copy, unique": 2667,
+     "copy, select": 263,
+     "customer": 109,
+     "constant": 0,
+     "generated": 15,
+     "select, picked": 205,
+     "anchored": 1745,
+     "several results": 1917
+    }
+   },
+   "decisions_after_tool": 3381,
+   "decision_accuracy": {
+    "sequence": 0.6803,
+    "structure": 0.7462,
+    "structure and goal": 0.7495
+   },
+   "decision_accuracy_by_site": {
+    "get_order_details": {
+     "n": 1228,
+     "sequence": 0.589,
+     "structure": 0.739,
+     "structure and goal": 0.752
+    },
+    "get_product_details": {
+     "n": 450,
+     "sequence": 0.529,
+     "structure": 0.556,
+     "structure and goal": 0.556
+    },
+    "get_user_details": {
+     "n": 445,
+     "sequence": 0.867,
+     "structure": 0.919,
+     "structure and goal": 0.919
+    },
+    "find_user_id_by_name_zip": {
+     "n": 345,
+     "sequence": 0.861,
+     "structure": 0.861,
+     "structure and goal": 0.861
+    },
+    "return_delivered_order_items": {
+     "n": 151,
+     "sequence": 0.801,
+     "structure": 0.801,
+     "structure and goal": 0.801
+    },
+    "modify_pending_order_items": {
+     "n": 145,
+     "sequence": 0.8,
+     "structure": 0.8,
+     "structure and goal": 0.8
+    },
+    "exchange_delivered_order_items": {
+     "n": 126,
+     "sequence": 0.849,
+     "structure": 0.849,
+     "structure and goal": 0.849
+    },
+    "modify_pending_order_address": {
+     "n": 96,
+     "sequence": 0.344,
+     "structure": 0.385,
+     "structure and goal": 0.385
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.0101,
+     "accuracy": 1.0
+    },
+    "structure": {
+     "coverage": 0.0222,
+     "accuracy": 0.9467
+    },
+    "structure and goal": {
+     "coverage": 0.0441,
+     "accuracy": 0.8389
+    }
+   },
+   "actions_after_tool": {
+    "get_order_details": 1186,
+    "reply": 1114,
+    "get_user_details": 436,
+    "get_product_details": 401,
+    "modify_pending_order_items": 57,
+    "cancel_pending_order": 33,
+    "return_delivered_order_items": 29,
+    "calculate": 28
+   }
+  },
+  "Gemini 3 Flash": {
+   "domain": "retail",
+   "episodes": 456,
+   "turns": {
+    "read, after the customer": 597,
+    "read, after a tool: customer or generated": 138,
+    "read, after a tool: pick": 323,
+    "reply": 1634,
+    "write, after the customer": 453,
+    "read, after a tool: bound": 577,
+    "read, after a tool: iterate": 628,
+    "write, after the tool": 239
+   },
+   "turns_total": 4589,
+   "arguments": {
+    "read": {
+     "n": 3463,
+     "copy, unique": 597,
+     "copy, select": 1522,
+     "customer": 1185,
+     "constant": 0,
+     "generated": 159,
+     "select, picked": 382,
+     "anchored": 69,
+     "several results": 89
+    },
+    "write": {
+     "n": 2773,
+     "copy, unique": 2403,
+     "copy, select": 247,
+     "customer": 88,
+     "constant": 0,
+     "generated": 35,
+     "select, picked": 181,
+     "anchored": 867,
+     "several results": 1725
+    }
+   },
+   "decisions_after_tool": 2955,
+   "decision_accuracy": {
+    "sequence": 0.6728,
+    "structure": 0.7411,
+    "structure and goal": 0.7503
+   },
+   "decision_accuracy_by_site": {
+    "get_order_details": {
+     "n": 844,
+     "sequence": 0.409,
+     "structure": 0.614,
+     "structure and goal": 0.647
+    },
+    "get_user_details": {
+     "n": 447,
+     "sequence": 0.913,
+     "structure": 0.946,
+     "structure and goal": 0.946
+    },
+    "find_user_id_by_name_zip": {
+     "n": 358,
+     "sequence": 0.872,
+     "structure": 0.872,
+     "structure and goal": 0.872
+    },
+    "get_product_details": {
+     "n": 346,
+     "sequence": 0.702,
+     "structure": 0.702,
+     "structure and goal": 0.691
+    },
+    "return_delivered_order_items": {
+     "n": 143,
+     "sequence": 0.79,
+     "structure": 0.79,
+     "structure and goal": 0.762
+    },
+    "modify_pending_order_items": {
+     "n": 140,
+     "sequence": 0.771,
+     "structure": 0.771,
+     "structure and goal": 0.771
+    },
+    "exchange_delivered_order_items": {
+     "n": 111,
+     "sequence": 0.73,
+     "structure": 0.73,
+     "structure and goal": 0.73
+    },
+    "find_user_id_by_email": {
+     "n": 96,
+     "sequence": 0.917,
+     "structure": 0.917,
+     "structure and goal": 0.917
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.0477,
+     "accuracy": 0.9858
+    },
+    "structure": {
+     "coverage": 0.0477,
+     "accuracy": 0.9858
+    },
+    "structure and goal": {
+     "coverage": 0.0694,
+     "accuracy": 0.8829
+    }
+   },
+   "actions_after_tool": {
+    "reply": 1050,
+    "get_order_details": 810,
+    "get_user_details": 469,
+    "get_product_details": 301,
+    "modify_pending_order_items": 75,
+    "return_delivered_order_items": 40,
+    "calculate": 36,
+    "modify_pending_order_address": 36
+   }
+  },
+  "Gemini 3 Pro": {
+   "domain": "retail",
+   "episodes": 456,
+   "turns": {
+    "reply": 1711,
+    "read, after the customer": 588,
+    "read, after a tool: customer or generated": 148,
+    "write, after the customer": 472,
+    "read, after a tool: bound": 520,
+    "read, after a tool: iterate": 562,
+    "read, after a tool: pick": 317,
+    "write, after the tool": 211
+   },
+   "turns_total": 4529,
+   "arguments": {
+    "read": {
+     "n": 3213,
+     "copy, unique": 542,
+     "copy, select": 1392,
+     "customer": 1102,
+     "constant": 0,
+     "generated": 177,
+     "select, picked": 393,
+     "anchored": 62,
+     "several results": 68
+    },
+    "write": {
+     "n": 2748,
+     "copy, unique": 2381,
+     "copy, select": 239,
+     "customer": 92,
+     "constant": 0,
+     "generated": 36,
+     "select, picked": 179,
+     "anchored": 770,
+     "several results": 1688
+    }
+   },
+   "decisions_after_tool": 2818,
+   "decision_accuracy": {
+    "sequence": 0.6884,
+    "structure": 0.7392,
+    "structure and goal": 0.7502
+   },
+   "decision_accuracy_by_site": {
+    "get_order_details": {
+     "n": 778,
+     "sequence": 0.411,
+     "structure": 0.598,
+     "structure and goal": 0.638
+    },
+    "get_user_details": {
+     "n": 409,
+     "sequence": 0.924,
+     "structure": 0.934,
+     "structure and goal": 0.934
+    },
+    "find_user_id_by_name_zip": {
+     "n": 339,
+     "sequence": 0.858,
+     "structure": 0.858,
+     "structure and goal": 0.858
+    },
+    "get_product_details": {
+     "n": 321,
+     "sequence": 0.717,
+     "structure": 0.717,
+     "structure and goal": 0.717
+    },
+    "return_delivered_order_items": {
+     "n": 145,
+     "sequence": 0.766,
+     "structure": 0.766,
+     "structure and goal": 0.745
+    },
+    "modify_pending_order_items": {
+     "n": 144,
+     "sequence": 0.785,
+     "structure": 0.785,
+     "structure and goal": 0.785
+    },
+    "exchange_delivered_order_items": {
+     "n": 110,
+     "sequence": 0.791,
+     "structure": 0.709,
+     "structure and goal": 0.709
+    },
+    "calculate": {
+     "n": 100,
+     "sequence": 0.98,
+     "structure": 0.98,
+     "structure and goal": 0.98
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.0688,
+     "accuracy": 0.9845
+    },
+    "structure": {
+     "coverage": 0.0724,
+     "accuracy": 0.9755
+    },
+    "structure and goal": {
+     "coverage": 0.0837,
+     "accuracy": 0.928
+    }
+   },
+   "actions_after_tool": {
+    "reply": 1060,
+    "get_order_details": 755,
+    "get_user_details": 430,
+    "get_product_details": 276,
+    "modify_pending_order_items": 70,
+    "calculate": 50,
+    "return_delivered_order_items": 35,
+    "cancel_pending_order": 29
+   }
+  },
+  "Qwen3-Max": {
+   "domain": "retail",
+   "episodes": 456,
+   "turns": {
+    "reply": 2345,
+    "read, after the customer": 656,
+    "read, after a tool: bound": 592,
+    "read, after a tool: pick": 399,
+    "read, after a tool: iterate": 997,
+    "write, after the customer": 572,
+    "read, after a tool: customer or generated": 30,
+    "write, after the tool": 135
+   },
+   "turns_total": 5726,
+   "arguments": {
+    "read": {
+     "n": 3413,
+     "copy, unique": 593,
+     "copy, select": 1516,
+     "customer": 894,
+     "constant": 0,
+     "generated": 410,
+     "select, picked": 469,
+     "anchored": 32,
+     "several results": 88
+    },
+    "write": {
+     "n": 2925,
+     "copy, unique": 2544,
+     "copy, select": 271,
+     "customer": 57,
+     "constant": 0,
+     "generated": 53,
+     "select, picked": 191,
+     "anchored": 233,
+     "several results": 1892
+    }
+   },
+   "decisions_after_tool": 3381,
+   "decision_accuracy": {
+    "sequence": 0.7217,
+    "structure": 0.7918,
+    "structure and goal": 0.7912
+   },
+   "decision_accuracy_by_site": {
+    "get_order_details": {
+     "n": 1261,
+     "sequence": 0.577,
+     "structure": 0.751,
+     "structure and goal": 0.751
+    },
+    "get_user_details": {
+     "n": 445,
+     "sequence": 0.883,
+     "structure": 0.883,
+     "structure and goal": 0.883
+    },
+    "get_product_details": {
+     "n": 423,
+     "sequence": 0.648,
+     "structure": 0.688,
+     "structure and goal": 0.688
+    },
+    "find_user_id_by_name_zip": {
+     "n": 360,
+     "sequence": 0.944,
+     "structure": 0.944,
+     "structure and goal": 0.944
+    },
+    "return_delivered_order_items": {
+     "n": 160,
+     "sequence": 0.775,
+     "structure": 0.775,
+     "structure and goal": 0.775
+    },
+    "modify_pending_order_items": {
+     "n": 147,
+     "sequence": 0.789,
+     "structure": 0.789,
+     "structure and goal": 0.789
+    },
+    "exchange_delivered_order_items": {
+     "n": 124,
+     "sequence": 0.903,
+     "structure": 0.903,
+     "structure and goal": 0.903
+    },
+    "find_user_id_by_email": {
+     "n": 96,
+     "sequence": 0.979,
+     "structure": 0.979,
+     "structure and goal": 0.979
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.1257,
+     "accuracy": 0.92
+    },
+    "structure": {
+     "coverage": 0.1257,
+     "accuracy": 0.92
+    },
+    "structure and goal": {
+     "coverage": 0.1257,
+     "accuracy": 0.92
+    }
+   },
+   "actions_after_tool": {
+    "reply": 1228,
+    "get_order_details": 1188,
+    "get_user_details": 441,
+    "get_product_details": 359,
+    "return_delivered_order_items": 34,
+    "modify_pending_order_address": 29,
+    "modify_pending_order_items": 26,
+    "list_all_product_types": 21
+   }
+  },
+  "GLM-5.3 in Claude Code (paired run, baseline arm)": {
+   "domain": "retail",
+   "episodes": 40,
+   "turns": {
+    "reply": 187,
+    "read, after the customer": 69,
+    "read, after a tool: bound": 47,
+    "read, after a tool: iterate": 113,
+    "read, after a tool: pick": 15,
+    "read, after a tool: customer or generated": 8,
+    "write, after the customer": 45,
+    "write, after the tool": 14
+   },
+   "turns_total": 498,
+   "arguments": {
+    "read": {
+     "n": 316,
+     "copy, unique": 51,
+     "copy, select": 146,
+     "customer": 82,
+     "constant": 0,
+     "generated": 37,
+     "select, picked": 28,
+     "anchored": 0,
+     "several results": 8
+    },
+    "write": {
+     "n": 254,
+     "copy, unique": 230,
+     "copy, select": 16,
+     "customer": 6,
+     "constant": 0,
+     "generated": 2,
+     "select, picked": 12,
+     "anchored": 20,
+     "several results": 149
+    }
+   },
+   "decisions_after_tool": 311,
+   "decision_accuracy": {
+    "sequence": 0.7138,
+    "structure": 0.8199,
+    "structure and goal": 0.8135
+   },
+   "decision_accuracy_by_site": {
+    "get_order_details": {
+     "n": 117,
+     "sequence": 0.658,
+     "structure": 0.915,
+     "structure and goal": 0.915
+    },
+    "get_product_details": {
+     "n": 46,
+     "sequence": 0.609,
+     "structure": 0.674,
+     "structure and goal": 0.674
+    },
+    "get_user_details": {
+     "n": 37,
+     "sequence": 0.892,
+     "structure": 0.892,
+     "structure and goal": 0.892
+    },
+    "find_user_id_by_name_zip": {
+     "n": 35,
+     "sequence": 0.886,
+     "structure": 0.886,
+     "structure and goal": 0.886
+    },
+    "modify_pending_order_items": {
+     "n": 17,
+     "sequence": 0.765,
+     "structure": 0.765,
+     "structure and goal": 0.765
+    },
+    "return_delivered_order_items": {
+     "n": 11,
+     "sequence": 0.818,
+     "structure": 0.818,
+     "structure and goal": 0.818
+    },
+    "modify_pending_order_address": {
+     "n": 8,
+     "sequence": 0.25,
+     "structure": 0.25,
+     "structure and goal": 0.25
+    },
+    "exchange_delivered_order_items": {
+     "n": 8,
+     "sequence": 1.0,
+     "structure": 1.0,
+     "structure and goal": 1.0
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.0,
+     "accuracy": null
+    },
+    "structure": {
+     "coverage": 0.2476,
+     "accuracy": 1.0
+    },
+    "structure and goal": {
+     "coverage": 0.2476,
+     "accuracy": 1.0
+    }
+   },
+   "actions_after_tool": {
+    "reply": 114,
+    "get_order_details": 113,
+    "get_user_details": 35,
+    "get_product_details": 29,
+    "modify_pending_order_items": 4,
+    "calculate": 3,
+    "return_delivered_order_items": 3,
+    "find_user_id_by_name_zip": 2
+   }
+  }
+ },
+ "airline": {
+  "Claude Opus 4.5 (high)": {
+   "domain": "airline",
+   "episodes": 200,
+   "turns": {
+    "reply": 776,
+    "write, after the customer": 160,
+    "read, after the customer": 277,
+    "read, after a tool: iterate": 136,
+    "read, after a tool: customer or generated": 79,
+    "read, after a tool: bound": 21,
+    "write, after the tool": 42,
+    "read, after a tool: pick": 31
+   },
+   "turns_total": 1522,
+   "arguments": {
+    "read": {
+     "n": 2198,
+     "copy, unique": 578,
+     "copy, select": 1028,
+     "customer": 347,
+     "constant": 0,
+     "generated": 245,
+     "select, picked": 220,
+     "anchored": 345,
+     "several results": 342
+    },
+    "write": {
+     "n": 1477,
+     "copy, unique": 784,
+     "copy, select": 546,
+     "customer": 58,
+     "constant": 10,
+     "generated": 79,
+     "select, picked": 241,
+     "anchored": 537,
+     "several results": 863
+    }
+   },
+   "decisions_after_tool": 746,
+   "decision_accuracy": {
+    "sequence": 0.6716,
+    "structure": 0.6595,
+    "structure and goal": 0.6501
+   },
+   "decision_accuracy_by_site": {
+    "get_reservation_details": {
+     "n": 182,
+     "sequence": 0.544,
+     "structure": 0.544,
+     "structure and goal": 0.516
+    },
+    "get_user_details": {
+     "n": 140,
+     "sequence": 0.714,
+     "structure": 0.657,
+     "structure and goal": 0.657
+    },
+    "search_direct_flight": {
+     "n": 86,
+     "sequence": 0.686,
+     "structure": 0.686,
+     "structure and goal": 0.686
+    },
+    "transfer_to_human_agents": {
+     "n": 63,
+     "sequence": 0.984,
+     "structure": 0.984,
+     "structure and goal": 0.984
+    },
+    "search_onestop_flight": {
+     "n": 59,
+     "sequence": 0.881,
+     "structure": 0.881,
+     "structure and goal": 0.881
+    },
+    "update_reservation_flights": {
+     "n": 46,
+     "sequence": 0.609,
+     "structure": 0.609,
+     "structure and goal": 0.609
+    },
+    "calculate": {
+     "n": 42,
+     "sequence": 0.357,
+     "structure": 0.357,
+     "structure and goal": 0.357
+    },
+    "get_flight_status": {
+     "n": 31,
+     "sequence": 0.742,
+     "structure": 0.742,
+     "structure and goal": 0.677
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.1568,
+     "accuracy": 0.9231
+    },
+    "structure": {
+     "coverage": 0.1568,
+     "accuracy": 0.9231
+    },
+    "structure and goal": {
+     "coverage": 0.1568,
+     "accuracy": 0.9231
+    }
+   },
+   "actions_after_tool": {
+    "reply": 437,
+    "get_reservation_details": 103,
+    "search_direct_flight": 70,
+    "calculate": 37,
+    "search_onestop_flight": 27,
+    "get_flight_status": 16,
+    "get_user_details": 13,
+    "update_reservation_baggages": 10
+   }
+  },
+  "Claude Sonnet 4.5": {
+   "domain": "airline",
+   "episodes": 200,
+   "turns": {
+    "read, after the customer": 312,
+    "read, after a tool: bound": 61,
+    "reply": 856,
+    "write, after the customer": 157,
+    "read, after a tool: customer or generated": 209,
+    "read, after a tool: pick": 190,
+    "write, after the tool": 73,
+    "read, after a tool: iterate": 402
+   },
+   "turns_total": 2260,
+   "arguments": {
+    "read": {
+     "n": 2030,
+     "copy, unique": 583,
+     "copy, select": 924,
+     "customer": 290,
+     "constant": 0,
+     "generated": 233,
+     "select, picked": 265,
+     "anchored": 352,
+     "several results": 381
+    },
+    "write": {
+     "n": 1227,
+     "copy, unique": 654,
+     "copy, select": 457,
+     "customer": 46,
+     "constant": 1,
+     "generated": 69,
+     "select, picked": 219,
+     "anchored": 415,
+     "several results": 682
+    }
+   },
+   "decisions_after_tool": 1404,
+   "decision_accuracy": {
+    "sequence": 0.4972,
+    "structure": 0.5848,
+    "structure and goal": 0.5848
+   },
+   "decision_accuracy_by_site": {
+    "get_reservation_details": {
+     "n": 459,
+     "sequence": 0.564,
+     "structure": 0.678,
+     "structure and goal": 0.678
+    },
+    "search_direct_flight": {
+     "n": 250,
+     "sequence": 0.176,
+     "structure": 0.424,
+     "structure and goal": 0.424
+    },
+    "get_user_details": {
+     "n": 178,
+     "sequence": 0.64,
+     "structure": 0.64,
+     "structure and goal": 0.64
+    },
+    "calculate": {
+     "n": 97,
+     "sequence": 0.639,
+     "structure": 0.639,
+     "structure and goal": 0.639
+    },
+    "get_flight_status": {
+     "n": 90,
+     "sequence": 0.211,
+     "structure": 0.211,
+     "structure and goal": 0.211
+    },
+    "search_onestop_flight": {
+     "n": 67,
+     "sequence": 0.522,
+     "structure": 0.522,
+     "structure and goal": 0.522
+    },
+    "transfer_to_human_agents": {
+     "n": 66,
+     "sequence": 0.985,
+     "structure": 0.985,
+     "structure and goal": 0.985
+    },
+    "update_reservation_flights": {
+     "n": 54,
+     "sequence": 0.519,
+     "structure": 0.519,
+     "structure and goal": 0.519
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.0541,
+     "accuracy": 0.9605
+    },
+    "structure": {
+     "coverage": 0.0541,
+     "accuracy": 0.9605
+    },
+    "structure and goal": {
+     "coverage": 0.0541,
+     "accuracy": 0.9605
+    }
+   },
+   "actions_after_tool": {
+    "reply": 469,
+    "get_reservation_details": 381,
+    "search_direct_flight": 208,
+    "calculate": 87,
+    "get_flight_status": 79,
+    "search_onestop_flight": 59,
+    "get_user_details": 46,
+    "cancel_reservation": 18
+   }
+  },
+  "GLM-5": {
+   "domain": "airline",
+   "episodes": 200,
+   "turns": {
+    "read, after the customer": 268,
+    "reply": 775,
+    "write, after the customer": 149,
+    "read, after a tool: iterate": 147,
+    "read, after a tool: customer or generated": 43,
+    "read, after a tool: bound": 21,
+    "read, after a tool: pick": 33,
+    "write, after the tool": 26
+   },
+   "turns_total": 1462,
+   "arguments": {
+    "read": {
+     "n": 2088,
+     "copy, unique": 633,
+     "copy, select": 1004,
+     "customer": 299,
+     "constant": 0,
+     "generated": 152,
+     "select, picked": 187,
+     "anchored": 384,
+     "several results": 381
+    },
+    "write": {
+     "n": 1273,
+     "copy, unique": 687,
+     "copy, select": 479,
+     "customer": 39,
+     "constant": 2,
+     "generated": 66,
+     "select, picked": 218,
+     "anchored": 468,
+     "several results": 762
+    }
+   },
+   "decisions_after_tool": 687,
+   "decision_accuracy": {
+    "sequence": 0.7001,
+    "structure": 0.7001,
+    "structure and goal": 0.7147
+   },
+   "decision_accuracy_by_site": {
+    "get_reservation_details": {
+     "n": 182,
+     "sequence": 0.484,
+     "structure": 0.484,
+     "structure and goal": 0.538
+    },
+    "get_user_details": {
+     "n": 161,
+     "sequence": 0.646,
+     "structure": 0.646,
+     "structure and goal": 0.646
+    },
+    "search_direct_flight": {
+     "n": 86,
+     "sequence": 0.791,
+     "structure": 0.791,
+     "structure and goal": 0.791
+    },
+    "transfer_to_human_agents": {
+     "n": 59,
+     "sequence": 1.0,
+     "structure": 1.0,
+     "structure and goal": 1.0
+    },
+    "search_onestop_flight": {
+     "n": 45,
+     "sequence": 0.911,
+     "structure": 0.911,
+     "structure and goal": 0.911
+    },
+    "update_reservation_flights": {
+     "n": 37,
+     "sequence": 0.811,
+     "structure": 0.811,
+     "structure and goal": 0.811
+    },
+    "get_flight_status": {
+     "n": 31,
+     "sequence": 0.71,
+     "structure": 0.71,
+     "structure and goal": 0.71
+    },
+    "book_reservation": {
+     "n": 29,
+     "sequence": 0.862,
+     "structure": 0.862,
+     "structure and goal": 0.862
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.1077,
+     "accuracy": 0.9459
+    },
+    "structure": {
+     "coverage": 0.1077,
+     "accuracy": 0.9459
+    },
+    "structure and goal": {
+     "coverage": 0.1077,
+     "accuracy": 0.9459
+    }
+   },
+   "actions_after_tool": {
+    "reply": 417,
+    "get_reservation_details": 109,
+    "search_direct_flight": 81,
+    "get_flight_status": 24,
+    "search_onestop_flight": 17,
+    "get_user_details": 10,
+    "book_reservation": 10,
+    "transfer_to_human_agents": 9
+   }
+  },
+  "GPT-5.2 (high)": {
+   "domain": "airline",
+   "episodes": 200,
+   "turns": {
+    "write, after the customer": 173,
+    "reply": 716,
+    "read, after the customer": 283,
+    "read, after a tool: iterate": 218,
+    "write, after the tool": 87,
+    "read, after a tool: bound": 26,
+    "read, after a tool: customer or generated": 75,
+    "read, after a tool: pick": 36
+   },
+   "turns_total": 1614,
+   "arguments": {
+    "read": {
+     "n": 3559,
+     "copy, unique": 768,
+     "copy, select": 1568,
+     "customer": 710,
+     "constant": 0,
+     "generated": 513,
+     "select, picked": 281,
+     "anchored": 477,
+     "several results": 540
+    },
+    "write": {
+     "n": 1295,
+     "copy, unique": 708,
+     "copy, select": 483,
+     "customer": 51,
+     "constant": 0,
+     "generated": 53,
+     "select, picked": 210,
+     "anchored": 663,
+     "several results": 774
+    }
+   },
+   "decisions_after_tool": 898,
+   "decision_accuracy": {
+    "sequence": 0.5791,
+    "structure": 0.5768,
+    "structure and goal": 0.5768
+   },
+   "decision_accuracy_by_site": {
+    "get_reservation_details": {
+     "n": 218,
+     "sequence": 0.248,
+     "structure": 0.257,
+     "structure and goal": 0.257
+    },
+    "get_user_details": {
+     "n": 145,
+     "sequence": 0.717,
+     "structure": 0.717,
+     "structure and goal": 0.717
+    },
+    "transfer_to_human_agents": {
+     "n": 97,
+     "sequence": 1.0,
+     "structure": 1.0,
+     "structure and goal": 1.0
+    },
+    "get_flight_status": {
+     "n": 92,
+     "sequence": 0.543,
+     "structure": 0.543,
+     "structure and goal": 0.543
+    },
+    "search_direct_flight": {
+     "n": 84,
+     "sequence": 0.679,
+     "structure": 0.679,
+     "structure and goal": 0.679
+    },
+    "search_onestop_flight": {
+     "n": 75,
+     "sequence": 0.68,
+     "structure": 0.68,
+     "structure and goal": 0.68
+    },
+    "update_reservation_flights": {
+     "n": 62,
+     "sequence": 0.435,
+     "structure": 0.435,
+     "structure and goal": 0.435
+    },
+    "cancel_reservation": {
+     "n": 37,
+     "sequence": 0.541,
+     "structure": 0.432,
+     "structure and goal": 0.432
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.1214,
+     "accuracy": 0.9725
+    },
+    "structure": {
+     "coverage": 0.1214,
+     "accuracy": 0.9725
+    },
+    "structure and goal": {
+     "coverage": 0.1214,
+     "accuracy": 0.9725
+    }
+   },
+   "actions_after_tool": {
+    "reply": 456,
+    "get_reservation_details": 127,
+    "search_direct_flight": 88,
+    "get_flight_status": 81,
+    "transfer_to_human_agents": 32,
+    "calculate": 21,
+    "search_onestop_flight": 21,
+    "update_reservation_flights": 16
+   }
+  },
+  "GPT-5.2 (none)": {
+   "domain": "airline",
+   "episodes": 200,
+   "turns": {
+    "write, after the customer": 174,
+    "reply": 743,
+    "read, after the customer": 291,
+    "write, after the tool": 84,
+    "read, after a tool: iterate": 200,
+    "read, after a tool: pick": 22,
+    "read, after a tool: bound": 28,
+    "read, after a tool: customer or generated": 161
+   },
+   "turns_total": 1703,
+   "arguments": {
+    "read": {
+     "n": 3107,
+     "copy, unique": 816,
+     "copy, select": 1488,
+     "customer": 468,
+     "constant": 0,
+     "generated": 335,
+     "select, picked": 107,
+     "anchored": 553,
+     "several results": 583
+    },
+    "write": {
+     "n": 1323,
+     "copy, unique": 715,
+     "copy, select": 497,
+     "customer": 56,
+     "constant": 0,
+     "generated": 55,
+     "select, picked": 206,
+     "anchored": 648,
+     "several results": 798
+    }
+   },
+   "decisions_after_tool": 960,
+   "decision_accuracy": {
+    "sequence": 0.6156,
+    "structure": 0.5531,
+    "structure and goal": 0.5792
+   },
+   "decision_accuracy_by_site": {
+    "get_reservation_details": {
+     "n": 208,
+     "sequence": 0.303,
+     "structure": 0.269,
+     "structure and goal": 0.341
+    },
+    "get_user_details": {
+     "n": 150,
+     "sequence": 0.707,
+     "structure": 0.707,
+     "structure and goal": 0.707
+    },
+    "calculate": {
+     "n": 114,
+     "sequence": 0.719,
+     "structure": 0.307,
+     "structure and goal": 0.333
+    },
+    "transfer_to_human_agents": {
+     "n": 103,
+     "sequence": 0.99,
+     "structure": 0.99,
+     "structure and goal": 0.99
+    },
+    "get_flight_status": {
+     "n": 81,
+     "sequence": 0.58,
+     "structure": 0.58,
+     "structure and goal": 0.58
+    },
+    "search_direct_flight": {
+     "n": 79,
+     "sequence": 0.684,
+     "structure": 0.684,
+     "structure and goal": 0.684
+    },
+    "search_onestop_flight": {
+     "n": 70,
+     "sequence": 0.686,
+     "structure": 0.686,
+     "structure and goal": 0.686
+    },
+    "update_reservation_flights": {
+     "n": 55,
+     "sequence": 0.527,
+     "structure": 0.491,
+     "structure and goal": 0.491
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.124,
+     "accuracy": 0.9748
+    },
+    "structure": {
+     "coverage": 0.124,
+     "accuracy": 0.9748
+    },
+    "structure and goal": {
+     "coverage": 0.124,
+     "accuracy": 0.9748
+    }
+   },
+   "actions_after_tool": {
+    "reply": 465,
+    "get_reservation_details": 127,
+    "calculate": 114,
+    "search_direct_flight": 80,
+    "get_flight_status": 63,
+    "transfer_to_human_agents": 34,
+    "get_user_details": 15,
+    "update_reservation_flights": 15
+   }
+  },
+  "Qwen3.5": {
+   "domain": "airline",
+   "episodes": 200,
+   "turns": {
+    "read, after the customer": 295,
+    "read, after a tool: bound": 73,
+    "reply": 730,
+    "write, after the customer": 170,
+    "write, after the tool": 126,
+    "read, after a tool: iterate": 681,
+    "read, after a tool: customer or generated": 185,
+    "read, after a tool: pick": 146
+   },
+   "turns_total": 2406,
+   "arguments": {
+    "read": {
+     "n": 2182,
+     "copy, unique": 618,
+     "copy, select": 1165,
+     "customer": 229,
+     "constant": 0,
+     "generated": 170,
+     "select, picked": 355,
+     "anchored": 463,
+     "several results": 465
+    },
+    "write": {
+     "n": 1957,
+     "copy, unique": 1066,
+     "copy, select": 759,
+     "customer": 58,
+     "constant": 3,
+     "generated": 71,
+     "select, picked": 239,
+     "anchored": 794,
+     "several results": 1232
+    }
+   },
+   "decisions_after_tool": 1676,
+   "decision_accuracy": {
+    "sequence": 0.6337,
+    "structure": 0.6605,
+    "structure and goal": 0.6557
+   },
+   "decision_accuracy_by_site": {
+    "get_reservation_details": {
+     "n": 716,
+     "sequence": 0.679,
+     "structure": 0.816,
+     "structure and goal": 0.816
+    },
+    "search_direct_flight": {
+     "n": 303,
+     "sequence": 0.551,
+     "structure": 0.386,
+     "structure and goal": 0.386
+    },
+    "get_user_details": {
+     "n": 205,
+     "sequence": 0.698,
+     "structure": 0.698,
+     "structure and goal": 0.698
+    },
+    "transfer_to_human_agents": {
+     "n": 84,
+     "sequence": 0.988,
+     "structure": 0.988,
+     "structure and goal": 0.988
+    },
+    "search_onestop_flight": {
+     "n": 82,
+     "sequence": 0.585,
+     "structure": 0.585,
+     "structure and goal": 0.585
+    },
+    "update_reservation_flights": {
+     "n": 80,
+     "sequence": 0.425,
+     "structure": 0.425,
+     "structure and goal": 0.425
+    },
+    "cancel_reservation": {
+     "n": 54,
+     "sequence": 0.389,
+     "structure": 0.407,
+     "structure and goal": 0.481
+    },
+    "get_flight_status": {
+     "n": 53,
+     "sequence": 0.491,
+     "structure": 0.491,
+     "structure and goal": 0.264
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.0501,
+     "accuracy": 0.9881
+    },
+    "structure": {
+     "coverage": 0.0579,
+     "accuracy": 0.9278
+    },
+    "structure and goal": {
+     "coverage": 0.0668,
+     "accuracy": 0.8393
+    }
+   },
+   "actions_after_tool": {
+    "get_reservation_details": 643,
+    "reply": 465,
+    "search_direct_flight": 271,
+    "search_onestop_flight": 75,
+    "get_user_details": 39,
+    "get_flight_status": 39,
+    "update_reservation_flights": 31,
+    "cancel_reservation": 28
+   }
+  },
+  "Gemini 3 Flash": {
+   "domain": "airline",
+   "episodes": 200,
+   "turns": {
+    "reply": 725,
+    "read, after the customer": 284,
+    "write, after the customer": 162,
+    "read, after a tool: pick": 189,
+    "write, after the tool": 89,
+    "read, after a tool: bound": 80,
+    "read, after a tool: iterate": 522,
+    "read, after a tool: customer or generated": 192
+   },
+   "turns_total": 2243,
+   "arguments": {
+    "read": {
+     "n": 3627,
+     "copy, unique": 1003,
+     "copy, select": 1965,
+     "customer": 296,
+     "constant": 0,
+     "generated": 363,
+     "select, picked": 445,
+     "anchored": 695,
+     "several results": 995
+    },
+    "write": {
+     "n": 1109,
+     "copy, unique": 592,
+     "copy, select": 418,
+     "customer": 34,
+     "constant": 9,
+     "generated": 56,
+     "select, picked": 220,
+     "anchored": 337,
+     "several results": 692
+    }
+   },
+   "decisions_after_tool": 1518,
+   "decision_accuracy": {
+    "sequence": 0.5158,
+    "structure": 0.5679,
+    "structure and goal": 0.5593
+   },
+   "decision_accuracy_by_site": {
+    "search_direct_flight": {
+     "n": 369,
+     "sequence": 0.564,
+     "structure": 0.564,
+     "structure and goal": 0.564
+    },
+    "get_reservation_details": {
+     "n": 361,
+     "sequence": 0.449,
+     "structure": 0.618,
+     "structure and goal": 0.598
+    },
+    "get_flight_status": {
+     "n": 196,
+     "sequence": 0.342,
+     "structure": 0.357,
+     "structure and goal": 0.352
+    },
+    "get_user_details": {
+     "n": 184,
+     "sequence": 0.658,
+     "structure": 0.658,
+     "structure and goal": 0.658
+    },
+    "search_onestop_flight": {
+     "n": 112,
+     "sequence": 0.42,
+     "structure": 0.446,
+     "structure and goal": 0.42
+    },
+    "transfer_to_human_agents": {
+     "n": 90,
+     "sequence": 1.0,
+     "structure": 1.0,
+     "structure and goal": 1.0
+    },
+    "update_reservation_flights": {
+     "n": 66,
+     "sequence": 0.242,
+     "structure": 0.424,
+     "structure and goal": 0.394
+    },
+    "cancel_reservation": {
+     "n": 35,
+     "sequence": 0.257,
+     "structure": 0.257,
+     "structure and goal": 0.257
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.0797,
+     "accuracy": 0.9917
+    },
+    "structure": {
+     "coverage": 0.0797,
+     "accuracy": 0.9917
+    },
+    "structure and goal": {
+     "coverage": 0.0797,
+     "accuracy": 0.9917
+    }
+   },
+   "actions_after_tool": {
+    "reply": 446,
+    "search_direct_flight": 354,
+    "get_reservation_details": 290,
+    "get_flight_status": 187,
+    "search_onestop_flight": 85,
+    "get_user_details": 40,
+    "transfer_to_human_agents": 27,
+    "update_reservation_flights": 27
+   }
+  },
+  "Gemini 3 Pro": {
+   "domain": "airline",
+   "episodes": 200,
+   "turns": {
+    "read, after the customer": 286,
+    "reply": 782,
+    "write, after the customer": 165,
+    "write, after the tool": 84,
+    "read, after a tool: iterate": 376,
+    "read, after a tool: pick": 109,
+    "read, after a tool: bound": 33,
+    "read, after a tool: customer or generated": 107
+   },
+   "turns_total": 1942,
+   "arguments": {
+    "read": {
+     "n": 2490,
+     "copy, unique": 685,
+     "copy, select": 1242,
+     "customer": 336,
+     "constant": 0,
+     "generated": 227,
+     "select, picked": 343,
+     "anchored": 450,
+     "several results": 462
+    },
+    "write": {
+     "n": 1510,
+     "copy, unique": 835,
+     "copy, select": 559,
+     "customer": 53,
+     "constant": 0,
+     "generated": 63,
+     "select, picked": 212,
+     "anchored": 451,
+     "several results": 989
+    }
+   },
+   "decisions_after_tool": 1160,
+   "decision_accuracy": {
+    "sequence": 0.544,
+    "structure": 0.5698,
+    "structure and goal": 0.5716
+   },
+   "decision_accuracy_by_site": {
+    "get_reservation_details": {
+     "n": 367,
+     "sequence": 0.471,
+     "structure": 0.586,
+     "structure and goal": 0.597
+    },
+    "search_direct_flight": {
+     "n": 191,
+     "sequence": 0.304,
+     "structure": 0.262,
+     "structure and goal": 0.262
+    },
+    "get_user_details": {
+     "n": 164,
+     "sequence": 0.671,
+     "structure": 0.671,
+     "structure and goal": 0.671
+    },
+    "get_flight_status": {
+     "n": 103,
+     "sequence": 0.612,
+     "structure": 0.612,
+     "structure and goal": 0.612
+    },
+    "search_onestop_flight": {
+     "n": 78,
+     "sequence": 0.654,
+     "structure": 0.654,
+     "structure and goal": 0.654
+    },
+    "update_reservation_flights": {
+     "n": 71,
+     "sequence": 0.493,
+     "structure": 0.493,
+     "structure and goal": 0.465
+    },
+    "transfer_to_human_agents": {
+     "n": 69,
+     "sequence": 1.0,
+     "structure": 1.0,
+     "structure and goal": 1.0
+    },
+    "cancel_reservation": {
+     "n": 37,
+     "sequence": 0.486,
+     "structure": 0.486,
+     "structure and goal": 0.486
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.0862,
+     "accuracy": 0.9
+    },
+    "structure": {
+     "coverage": 0.0862,
+     "accuracy": 0.9
+    },
+    "structure and goal": {
+     "coverage": 0.0862,
+     "accuracy": 0.9
+    }
+   },
+   "actions_after_tool": {
+    "reply": 451,
+    "get_reservation_details": 291,
+    "search_direct_flight": 176,
+    "get_flight_status": 87,
+    "search_onestop_flight": 52,
+    "update_reservation_flights": 27,
+    "transfer_to_human_agents": 16,
+    "get_user_details": 16
+   }
+  },
+  "Qwen3-Max": {
+   "domain": "airline",
+   "episodes": 200,
+   "turns": {
+    "reply": 983,
+    "read, after the customer": 308,
+    "write, after the tool": 94,
+    "write, after the customer": 164,
+    "read, after a tool: iterate": 639,
+    "read, after a tool: pick": 150,
+    "read, after a tool: customer or generated": 83,
+    "read, after a tool: bound": 35
+   },
+   "turns_total": 2456,
+   "arguments": {
+    "read": {
+     "n": 1864,
+     "copy, unique": 455,
+     "copy, select": 1089,
+     "customer": 219,
+     "constant": 0,
+     "generated": 101,
+     "select, picked": 204,
+     "anchored": 248,
+     "several results": 345
+    },
+    "write": {
+     "n": 1991,
+     "copy, unique": 1049,
+     "copy, select": 805,
+     "customer": 37,
+     "constant": 20,
+     "generated": 80,
+     "select, picked": 316,
+     "anchored": 382,
+     "several results": 1170
+    }
+   },
+   "decisions_after_tool": 1473,
+   "decision_accuracy": {
+    "sequence": 0.6293,
+    "structure": 0.6993,
+    "structure and goal": 0.6993
+   },
+   "decision_accuracy_by_site": {
+    "get_reservation_details": {
+     "n": 641,
+     "sequence": 0.652,
+     "structure": 0.821,
+     "structure and goal": 0.821
+    },
+    "search_direct_flight": {
+     "n": 222,
+     "sequence": 0.477,
+     "structure": 0.486,
+     "structure and goal": 0.486
+    },
+    "get_user_details": {
+     "n": 187,
+     "sequence": 0.701,
+     "structure": 0.701,
+     "structure and goal": 0.701
+    },
+    "get_flight_status": {
+     "n": 116,
+     "sequence": 0.603,
+     "structure": 0.603,
+     "structure and goal": 0.603
+    },
+    "update_reservation_flights": {
+     "n": 77,
+     "sequence": 0.597,
+     "structure": 0.597,
+     "structure and goal": 0.597
+    },
+    "transfer_to_human_agents": {
+     "n": 60,
+     "sequence": 1.0,
+     "structure": 1.0,
+     "structure and goal": 1.0
+    },
+    "cancel_reservation": {
+     "n": 50,
+     "sequence": 0.3,
+     "structure": 0.28,
+     "structure and goal": 0.28
+    },
+    "search_onestop_flight": {
+     "n": 46,
+     "sequence": 0.652,
+     "structure": 0.522,
+     "structure and goal": 0.522
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.053,
+     "accuracy": 1.0
+    },
+    "structure": {
+     "coverage": 0.072,
+     "accuracy": 0.9057
+    },
+    "structure and goal": {
+     "coverage": 0.072,
+     "accuracy": 0.9057
+    }
+   },
+   "actions_after_tool": {
+    "get_reservation_details": 564,
+    "reply": 472,
+    "search_direct_flight": 169,
+    "get_flight_status": 109,
+    "search_onestop_flight": 44,
+    "update_reservation_flights": 27,
+    "transfer_to_human_agents": 23,
+    "get_user_details": 20
+   }
+  },
+  "GLM-5.3 in Claude Code (paired run, baseline arm)": {
+   "domain": "airline",
+   "episodes": 40,
+   "turns": {
+    "reply": 210,
+    "read, after the customer": 66,
+    "read, after a tool: pick": 34,
+    "read, after a tool: iterate": 146,
+    "read, after a tool: customer or generated": 27,
+    "write, after the customer": 30,
+    "write, after the tool": 18,
+    "read, after a tool: bound": 14
+   },
+   "turns_total": 545,
+   "arguments": {
+    "read": {
+     "n": 531,
+     "copy, unique": 161,
+     "copy, select": 290,
+     "customer": 43,
+     "constant": 0,
+     "generated": 37,
+     "select, picked": 74,
+     "anchored": 55,
+     "several results": 165
+    },
+    "write": {
+     "n": 403,
+     "copy, unique": 229,
+     "copy, select": 140,
+     "customer": 14,
+     "constant": 0,
+     "generated": 20,
+     "select, picked": 72,
+     "anchored": 121,
+     "several results": 259
+    }
+   },
+   "decisions_after_tool": 335,
+   "decision_accuracy": {
+    "sequence": 0.6507,
+    "structure": 0.5612,
+    "structure and goal": 0.5612
+   },
+   "decision_accuracy_by_site": {
+    "get_reservation_details": {
+     "n": 107,
+     "sequence": 0.636,
+     "structure": 0.804,
+     "structure and goal": 0.804
+    },
+    "search_direct_flight": {
+     "n": 99,
+     "sequence": 0.737,
+     "structure": 0.424,
+     "structure and goal": 0.424
+    },
+    "get_user_details": {
+     "n": 38,
+     "sequence": 0.737,
+     "structure": 0.737,
+     "structure and goal": 0.737
+    },
+    "get_flight_status": {
+     "n": 28,
+     "sequence": 0.786,
+     "structure": 0.179,
+     "structure and goal": 0.179
+    },
+    "update_reservation_flights": {
+     "n": 26,
+     "sequence": 0.115,
+     "structure": 0.115,
+     "structure and goal": 0.115
+    },
+    "search_onestop_flight": {
+     "n": 11,
+     "sequence": 0.818,
+     "structure": 0.818,
+     "structure and goal": 0.818
+    },
+    "book_reservation": {
+     "n": 11,
+     "sequence": 1.0,
+     "structure": 1.0,
+     "structure and goal": 1.0
+    },
+    "cancel_reservation": {
+     "n": 4,
+     "sequence": 0.0,
+     "structure": 0.0,
+     "structure and goal": 0.0
+    }
+   },
+   "decisions_sure": {
+    "sequence": {
+     "coverage": 0.0,
+     "accuracy": null
+    },
+    "structure": {
+     "coverage": 0.0,
+     "accuracy": null
+    },
+    "structure and goal": {
+     "coverage": 0.0,
+     "accuracy": null
+    }
+   },
+   "actions_after_tool": {
+    "get_reservation_details": 96,
+    "reply": 96,
+    "search_direct_flight": 86,
+    "get_flight_status": 26,
+    "update_reservation_flights": 12,
+    "search_onestop_flight": 9,
+    "update_reservation_baggages": 3,
+    "get_user_details": 3
+   }
+  }
+ }
+}
