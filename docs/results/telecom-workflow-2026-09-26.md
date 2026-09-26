@@ -2,7 +2,7 @@
 
 [The telecom anatomy](telecom-anatomy-2026-09-26.md) found that, where the agent operates the phone itself, a decision tree over the tool results predicts most of its steps. This page runs that tree as the agent. It is fitted once on the successful training episodes of τ²-bench's own solo runs, then run with no model on the 40 held-out test tasks in τ²-bench's environment, and scored by τ²-bench's evaluator.
 
-It passed 31 of the 40 held-out tasks (77.5%). The LLM agents whose traces it was fitted on passed 49–78% of the same tasks, and the tree made no LLM call; each of them made 15–18 per episode.
+It passed 31 of the 40 held-out tasks (77.5%). The LLM agents whose traces it was fitted on passed 49–78% of the same tasks, and the tree made no LLM call; each of them made 15–18 per episode. Its own check of the ticket's stated outcome caught every one of its failures, so handing only those to an agent projects 87.5–89.4%, with a model in one episode in five.
 
 ## The workflow
 
@@ -45,11 +45,30 @@ It needs many demonstrations, and consistent ones. o4-mini passes 78% itself, bu
 
 **A sure-only workflow hands back at once.** Run so that it acts only where its leaf held one call in at least 95% of at least ten training cases, and hands back otherwise, it handed back at the first step of every episode: 690 of the 730 training episodes open with the customer lookup, 94.5%. With the bar at 70–90% it handed back within its first three calls, where the demonstrators take different routes to the same fixes. A tree's confidence here measures agreement among demonstrators, not whether a step is right, so it is not the gate to hand back on. A check on the outcome is: the ticket says when the issue is resolved (the speed test excellent, an MMS sent), and the workflow can run that check itself.
 
+## Knowing when it failed
+
+Each ticket states when the customer will consider the issue resolved: an MMS sent, the speed test excellent, the status bar showing signal. Each is a check the workflow can run itself (`can_send_mms`, `run_speed_test`, `check_status_bar`), and a transfer to a human is the policy's own ending for what the agent may not fix, such as a locked SIM. After each run, the workflow's own verdict against the evaluator's:
+
+| The workflow's own check | Passed | Failed |
+|---|---|---|
+| Resolved | 20 | 1 |
+| Transferred to a human | 11 | 0 |
+| Not resolved | 0 | 8 |
+
+It knew when it had failed: every run its check called unresolved had failed, and 31 of the 32 it called done had passed. So the gate to hand back on is the outcome, not the tree's confidence. Hand the 8 unresolved episodes to an agent, which passes each as often as its four trials of that task did (assuming it does as well from where the workflow stopped as from the start), and the pair passes 87.5–89.4%, with a model in 8 episodes of 40: above any of the four agents alone (49–78%), because the workflow passes MMS tasks the agents often fail, and the agents pass the mobile-data tasks it does not.
+
+| Workflow, then this agent where its check says unresolved | Projected pass rate | The agent alone |
+|---|---|---|
+| GPT-4.1, workflow policy | 87.5% | 78.1% |
+| GPT-4.1, manual policy | 88.7% | 49.4% |
+| o4-mini, workflow policy | 89.4% | 77.5% |
+| o4-mini, manual policy | 89.4% | 78.1% |
+
 ## What it says
 
 Compiling once works when three things hold: the procedure branches on what the tools return, the agent runs the tools itself, and the arguments come from a closed set or from earlier results. In τ²-bench telecom's solo mode all three hold. A decision tree fitted on successful traces then does the whole job as well as the agents that made the traces, with no model. In retail and airline, and in telecom with the customer holding the phone, the procedure branches on what the customer says, and what a compiled workflow can take is [the read skeleton](anatomy-2026-09-26.md), which stretto's flows already take.
 
-For stretto, this is the case its flows stop short of. They compile reads only. A compiled procedure that also makes the fixes needs [the write guards](guards-2026-09-24.md) or a confirmation, and an outcome check to hand back on. It is a different product from a read-ahead flow: a procedure that runs to completion, with a model only where it hands back.
+For stretto, this is the case its flows stop short of. They compile reads only. A compiled procedure that also makes the fixes needs [the write guards](guards-2026-09-24.md) or a confirmation, and hands back on its outcome check, which here caught every failure. It is a different product from a read-ahead flow: a procedure that runs to completion, with a model only where its own check says it did not.
 
 The closest prior work: decision mining fits a tree at each of a process's branch points ([Rozinat and van der Aalst, 2006](https://doi.org/10.1007/11841760_33)); VIPER distils a policy into a decision tree ([Bastani et al., 2018](https://arxiv.org/abs/1805.08328)); and the loops the guard stops are behaviour cloning's compounding errors ([Ross et al., 2011](https://arxiv.org/abs/1011.0686)), which DAgger fixes with on-policy corrections, where this uses a rule instead.
 

@@ -118,6 +118,29 @@ def decisions(sim, ticket, vocab):
     return out
 
 
+# The tickets' own criteria ("They will consider the issue resolved when ..."),
+# each as a check the workflow can run itself: the phrase, the probe, and what
+# its result says when the issue is resolved.
+RESOLVED = [
+    ("mms message can be successfully sent", "can_send_mms", lambda r: "can send mms" in r.lower()),
+    ("speed test returns excellent", "run_speed_test", lambda r: "(excellent)" in r.lower()),
+    ("status bar shows that they have signal", "check_status_bar",
+     lambda r: "📶" in r and "no signal" not in r.lower() and "airplane mode" not in r.lower()),
+]
+
+
+def own_check(env, ticket):
+    """Whether the ticket's stated criterion holds, by the probe the workflow
+    can call itself (None if the ticket states none of these)."""
+    from tau2.data_model.message import ToolCall
+
+    for phrase, probe, holds in RESOLVED:
+        if phrase in ticket.lower():
+            result = env.get_response(ToolCall(id="check", name=probe, arguments={}, requestor="assistant"))
+            return holds(result.content or "")
+    return None
+
+
 def repeats(action, calls, since_write):
     """Whether an action repeats a read made since the last write, or a write."""
     if action == STOP:
@@ -178,7 +201,16 @@ def run(task, predict, vocab, sure, guard, tau2):
     ).reward
     if RewardType.ACTION in task.evaluation_criteria.reward_basis:
         reward *= ActionEvaluator.calculate_reward(task=task, full_trajectory=messages).reward
-    return reward, calls, handed
+    # After scoring (the probe is a read, and the score was taken from the
+    # calls alone): would the workflow's own check of the ticket's criterion
+    # have told it whether it had succeeded?
+    # A transfer to a human is the policy's own ending for what the agent may
+    # not fix (a locked SIM), not a failure to hand to a model.
+    if calls and calls[-1] == "transfer_to_human_agents":
+        check = "transferred"
+    else:
+        check = "resolved" if own_check(env, task.ticket or "") else "not resolved"
+    return reward, calls, handed, check
 
 
 def main():
@@ -215,16 +247,20 @@ def main():
           f"{len({d['action'] for d in ds})} distinct actions", file=sys.stderr)
     rows = []
     for tid in sorted(test):
-        reward, calls, handed = run(tasks[tid], predict, vocab, args.sure, not args.no_guard, args.tau2)
-        rows.append({"task_id": tid, "reward": reward, "handed_back": handed, "calls": calls})
+        reward, calls, handed, resolved = run(tasks[tid], predict, vocab, args.sure, not args.no_guard, args.tau2)
+        rows.append({"task_id": tid, "reward": reward, "handed_back": handed, "own_check": resolved, "calls": calls})
     passed = sum(r["reward"] == 1 for r in rows)
     alone = [r for r in rows if not r["handed_back"]]
     agents = collections.defaultdict(list)
+    trials = collections.defaultdict(lambda: collections.defaultdict(list))
     for path in args.results:
         data = json.load(open(path))
         for s in data["simulations"]:
             if s["task_id"] in test:
-                agents[Path(path).name].append((s.get("reward_info") or {}).get("reward") == 1)
+                ok = (s.get("reward_info") or {}).get("reward") == 1
+                agents[Path(path).name].append(ok)
+                trials[Path(path).name][s["task_id"]].append(ok)
+    per_task = {k: {t: sum(v) / len(v) for t, v in ts.items()} for k, ts in trials.items()}
     report = {
         "test_tasks": len(rows),
         "passed": passed,
@@ -237,6 +273,19 @@ def main():
         },
         "training_tasks": len(train),
         "agents_on_test_tasks": {k: round(sum(v) / len(v), 3) for k, v in agents.items()},
+        # The workflow's own check against the evaluator: (check says resolved, passed).
+        "own_check": {
+            f"{c}, {'passed' if p else 'failed'}": sum(1 for r in rows if r["own_check"] == c and (r["reward"] == 1) == p)
+            for c in ("resolved", "transferred", "not resolved") for p in (True, False)
+        },
+        # Hand the episodes the check says are unresolved to each agent, which
+        # passes them as often as its four trials of that task did.
+        "workflow_then_agent": {
+            k: round((sum(r["reward"] == 1 for r in rows if r["own_check"] != "not resolved")
+                      + sum(per_task[k][r["task_id"]] for r in rows if r["own_check"] == "not resolved")) / len(rows), 3)
+            for k in per_task
+        },
+        "handed_to_agent": sum(1 for r in rows if r["own_check"] == "not resolved"),
         "runs": rows,
     }
     print(json.dumps({k: v for k, v in report.items() if k != "runs"}, indent=1))
