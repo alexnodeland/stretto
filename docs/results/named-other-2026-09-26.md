@@ -21,6 +21,18 @@ In GLM-5's training episodes the agent went on to read none of the records the c
 
 Airline's detours fell by 93% at no cost in turns on GLM-5's episodes, more than [the flow search](search-2026-09-25.md) found by setting per-site thresholds (26 to 6), and from one signal the traces carry rather than a search over settings. It is the same lesson as [the anatomy](anatomy-2026-09-26.md): which record to read is the customer's choice, and the traces show when the customer has made it.
 
+## Against the flow search
+
+[The flow search](search-2026-09-25.md) set a threshold per site to cut D0's detours. D0, compiled again with the count from the same four 2025 agents' training episodes and the same cached answers, replayed at 0.3 on the search's test set, GLM-5's 240 test-task episodes:
+
+| Flow | Airline: turns saved · detours | Retail: turns saved · detours |
+|---|---|---|
+| D0, with Jev (the arbiter) | 41 · 26 → 41 · 15 | 294 · 58 → 294 · 40 |
+| The habit alone | 55 · 50 → 55 · 6 | 311 · 58 → 307 · 33 |
+| The search's picks, per-site thresholds on D0 (F2, F6) | 48 · 6 | 293 · 30 |
+
+The habit alone, with the count and without a System-One model, now makes as few airline detours as the search's pick and saves 7 more turns; in retail it saves 14 more turns for 3 more detours. The search's gains came from two sites where it cut the flow back, after a reservation read and after a product read, which is where the flow went on to records the customer had not asked about. The count reaches the same decisions from what the traces show, with nothing to search and no threshold to carry to another agent. Three of retail's 1,193 arbiter decisions were not in the answer cache and handed back; airline's were all answered.
+
 ## Reproduce
 
 ```sh
