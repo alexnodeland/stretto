@@ -1124,3 +1124,45 @@ fn a_flow_leaves_a_tool_whose_input_changed_to_the_agent() {
     drop(host);
     fs::remove_dir_all(&dir).unwrap();
 }
+
+#[test]
+fn a_flow_calls_only_the_tools_the_operator_granted() {
+    let dir = std::env::temp_dir().join(format!("stretto-grant-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    let flow = learned_flow(&dir);
+    let run = |tools: &str| {
+        let mut host = Host::start(&[
+            "--domain",
+            "retail",
+            "--flow",
+            flow.to_str().unwrap(),
+            "--oracle",
+            "mock",
+            "--flow-tools",
+            tools,
+            "--",
+            DEMO,
+            "--world",
+            "retail",
+        ]);
+        host.send(
+            json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+            "protocolVersion": "2025-06-18", "capabilities": {},
+            "clientInfo": {"name": "stretto-test-host", "version": "0"}}}),
+        );
+        assert_eq!(host.recv()["id"], 1);
+        host.send(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+        let found = host.call(
+            3,
+            "find_user_id_by_email",
+            json!({"email": "c7@example.com"}),
+        );
+        texts(&found).len()
+    };
+    // Granted the user lookup, the flow makes it; granted only another
+    // tool, it leaves the lookup to the agent.
+    assert_eq!(run("get_user_details,get_order_details"), 2);
+    assert_eq!(run("get_order_details"), 1);
+    fs::remove_dir_all(&dir).unwrap();
+}

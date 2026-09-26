@@ -99,6 +99,9 @@ pub struct FlowConfig {
     pub log: Option<PathBuf>,
     /// Shadow mode (RFC-001 §3.7): decide and log, but make no lookups.
     pub shadow: bool,
+    /// The only tools the flow may call on its own, if the operator named
+    /// them (`--flow-tools`); otherwise every tool it reads as a lookup.
+    pub tools: Option<std::collections::BTreeSet<String>>,
     /// Exploration at the flow's decisions, logged with each one.
     pub explore: Option<stretto_report::flow::Explore>,
 }
@@ -1046,11 +1049,12 @@ impl<'a, W: Write> Engine<'a, W> {
         }
     }
 
-    /// Whether the flow may call `tool`: the flow reads it as a lookup, and
-    /// the server, once it has listed its tools, has it, does not mark it as
-    /// a write, and lists the input contract the flow pinned for it, if any.
-    /// A tool whose arguments changed since the flow learned to bind them is
-    /// left to the agent.
+    /// Whether the flow may call `tool`: the flow reads it as a lookup, the
+    /// operator granted it (`--flow-tools`, if given), and the server, once
+    /// it has listed its tools, has it, does not mark it as a write, and
+    /// lists the input contract the flow pinned for it, if any. A tool whose
+    /// arguments changed since the flow learned to bind them is left to the
+    /// agent.
     fn may_look_up(&mut self, fc: &FlowConfig, tool: &str) -> bool {
         let flow_reads = fc.flow.manifest().tools.get(tool) == Some(&ToolKind::Read);
         let server_allows = match self.server_tools.get(tool) {
@@ -1072,7 +1076,8 @@ impl<'a, W: Write> Engine<'a, W> {
                 self.server_contracts[tool]
             );
         }
-        flow_reads && server_allows && !changed
+        let granted = fc.tools.as_ref().is_none_or(|t| t.contains(tool));
+        flow_reads && server_allows && !changed && granted
     }
 
     fn learn_tools(&mut self, response: &Value) {

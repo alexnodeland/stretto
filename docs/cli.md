@@ -632,6 +632,7 @@ Usage: stretto-proxy [OPTIONS] [-- <SERVER_COMMAND>...]
 - `--flow-per-session <N>` (default `40`): Lookups per session, at most.
 - `--flow-questions <N>` (default `300`): Questions to the System-One model per session, at most.
 - `--flow-log <FILE>`: Append the flow's decisions here (default: next to the session log).
+- `--flow-tools <TOOLS>` (repeatable): The only tools the flow may call on its own (comma-separated, or the option repeated). A server's `readOnlyHint` says a call changes nothing, not that it is free, unlogged or fine to make unasked: a read can be metered, rate-limited, or recorded as an access. Without this, the flow may call every tool it reads as a lookup.
 - `--flow-shadow`: Shadow mode: the flow decides after each call and logs what it would look up (`"shadow": true`), but makes no lookups, so the agent gets the server's results unchanged. `stretto promote --sessions` then makes the same decisions again from the answers cached in --oracle-cache, and scores them against what the agent did.
 - `--flow-explore <EPSILON>`: Explore: with this probability, take a lookup other than the rule's choice, drawn by the decider's probabilities among those that bind. Each decision in the flow log then carries its `policy`: every option and the chance that the flow took what it took, for `stretto evaluate`. 0 explores nothing but still logs it.
 - `--flow-explore-seed <N>` (default `0`): Seed for the exploration draws.

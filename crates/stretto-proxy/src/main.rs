@@ -78,6 +78,19 @@ struct Cli {
     /// Append the flow's decisions here (default: next to the session log).
     #[arg(help_heading = "Flows", long, value_name = "FILE")]
     flow_log: Option<PathBuf>,
+    /// The only tools the flow may call on its own (comma-separated, or the
+    /// option repeated). A server's `readOnlyHint` says a call changes
+    /// nothing, not that it is free, unlogged or fine to make unasked: a
+    /// read can be metered, rate-limited, or recorded as an access. Without
+    /// this, the flow may call every tool it reads as a lookup.
+    #[arg(
+        help_heading = "Flows",
+        long,
+        value_name = "TOOLS",
+        value_delimiter = ',',
+        requires = "flow"
+    )]
+    flow_tools: Vec<String>,
     /// Shadow mode: the flow decides after each call and logs what it
     /// would look up (`"shadow": true`), but makes no lookups, so the agent
     /// gets the server's results unchanged. `stretto promote --sessions`
@@ -324,6 +337,8 @@ fn active(cli: &Cli) -> Result<Active> {
                 max_questions: cli.flow_questions,
                 log: cli.flow_log.clone().map(expand_home),
                 shadow: cli.flow_shadow,
+                tools: (!cli.flow_tools.is_empty())
+                    .then(|| cli.flow_tools.iter().cloned().collect()),
                 explore: match cli.flow_explore {
                     Some(e) if !(0.0..=1.0).contains(&e) => {
                         bail!("--flow-explore must be in [0, 1]")
