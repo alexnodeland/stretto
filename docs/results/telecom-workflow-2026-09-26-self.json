@@ -1,0 +1,731 @@
+[
+ {
+  "configuration": "10% of the training tasks, seed 0",
+  "arguments": "--train-share 0.1 --self-train 4 --rollouts 16",
+  "rounds": [
+   {
+    "round": 0,
+    "kept_runs": 0,
+    "kept_that_pass": 0,
+    "test_passed": 12
+   },
+   {
+    "round": 1,
+    "kept_runs": 16,
+    "kept_that_pass": 16,
+    "test_passed": 13
+   },
+   {
+    "round": 2,
+    "kept_runs": 29,
+    "kept_that_pass": 29,
+    "test_passed": 13
+   },
+   {
+    "round": 3,
+    "kept_runs": 33,
+    "kept_that_pass": 33,
+    "test_passed": 14
+   },
+   {
+    "round": 4,
+    "kept_runs": 34,
+    "kept_that_pass": 34,
+    "test_passed": 13
+   }
+  ],
+  "own_check_after_last_round": {
+   "resolved, passed": 2,
+   "transferred, passed": 11,
+   "not resolved, failed": 27
+  },
+  "workflow_then_agent_after_last_round": {
+   "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.787,
+   "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.675,
+   "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.781,
+   "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.781
+  },
+  "calls_per_episode": 24.52
+ },
+ {
+  "configuration": "25%, seed 0",
+  "arguments": "--train-share 0.25 --self-train 4 --rollouts 16",
+  "rounds": [
+   {
+    "round": 0,
+    "kept_runs": 0,
+    "kept_that_pass": 0,
+    "test_passed": 18
+   },
+   {
+    "round": 1,
+    "kept_runs": 53,
+    "kept_that_pass": 52,
+    "test_passed": 19
+   },
+   {
+    "round": 2,
+    "kept_runs": 64,
+    "kept_that_pass": 62,
+    "test_passed": 20
+   },
+   {
+    "round": 3,
+    "kept_runs": 67,
+    "kept_that_pass": 65,
+    "test_passed": 26
+   },
+   {
+    "round": 4,
+    "kept_runs": 67,
+    "kept_that_pass": 64,
+    "test_passed": 23
+   }
+  ],
+  "own_check_after_last_round": {
+   "resolved, passed": 11,
+   "transferred, passed": 12,
+   "transferred, failed": 3,
+   "not resolved, failed": 14
+  },
+  "workflow_then_agent_after_last_round": {
+   "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.812,
+   "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.812,
+   "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.838,
+   "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.838
+  },
+  "calls_per_episode": 23.05
+ },
+ {
+  "configuration": "25%, seed 1",
+  "arguments": "--train-share 0.25 --self-train 4 --rollouts 16 --seed 1",
+  "rounds": [
+   {
+    "round": 0,
+    "kept_runs": 0,
+    "kept_that_pass": 0,
+    "test_passed": 18
+   },
+   {
+    "round": 1,
+    "kept_runs": 57,
+    "kept_that_pass": 53,
+    "test_passed": 20
+   },
+   {
+    "round": 2,
+    "kept_runs": 63,
+    "kept_that_pass": 60,
+    "test_passed": 23
+   },
+   {
+    "round": 3,
+    "kept_runs": 65,
+    "kept_that_pass": 62,
+    "test_passed": 19
+   },
+   {
+    "round": 4,
+    "kept_runs": 66,
+    "kept_that_pass": 63,
+    "test_passed": 23
+   }
+  ],
+  "own_check_after_last_round": {
+   "resolved, passed": 12,
+   "resolved, failed": 1,
+   "transferred, passed": 11,
+   "not resolved, failed": 16
+  },
+  "workflow_then_agent_after_last_round": {
+   "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.85,
+   "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.819,
+   "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.863,
+   "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.863
+  },
+  "calls_per_episode": 22.77
+ },
+ {
+  "configuration": "25%, seed 2",
+  "arguments": "--train-share 0.25 --self-train 4 --rollouts 16 --seed 2",
+  "rounds": [
+   {
+    "round": 0,
+    "kept_runs": 0,
+    "kept_that_pass": 0,
+    "test_passed": 18
+   },
+   {
+    "round": 1,
+    "kept_runs": 58,
+    "kept_that_pass": 57,
+    "test_passed": 24
+   },
+   {
+    "round": 2,
+    "kept_runs": 60,
+    "kept_that_pass": 59,
+    "test_passed": 22
+   },
+   {
+    "round": 3,
+    "kept_runs": 63,
+    "kept_that_pass": 62,
+    "test_passed": 21
+   },
+   {
+    "round": 4,
+    "kept_runs": 63,
+    "kept_that_pass": 62,
+    "test_passed": 21
+   }
+  ],
+  "own_check_after_last_round": {
+   "resolved, passed": 10,
+   "resolved, failed": 1,
+   "transferred, passed": 11,
+   "transferred, failed": 1,
+   "not resolved, failed": 17
+  },
+  "workflow_then_agent_after_last_round": {
+   "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.794,
+   "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.787,
+   "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.8,
+   "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.787
+  },
+  "calls_per_episode": 19.48
+ },
+ {
+  "configuration": "50%, seed 0",
+  "arguments": "--train-share 0.5 --self-train 4 --rollouts 16",
+  "rounds": [
+   {
+    "round": 0,
+    "kept_runs": 0,
+    "kept_that_pass": 0,
+    "test_passed": 18
+   },
+   {
+    "round": 1,
+    "kept_runs": 61,
+    "kept_that_pass": 60,
+    "test_passed": 20
+   },
+   {
+    "round": 2,
+    "kept_runs": 66,
+    "kept_that_pass": 65,
+    "test_passed": 22
+   },
+   {
+    "round": 3,
+    "kept_runs": 67,
+    "kept_that_pass": 66,
+    "test_passed": 26
+   },
+   {
+    "round": 4,
+    "kept_runs": 67,
+    "kept_that_pass": 66,
+    "test_passed": 23
+   }
+  ],
+  "own_check_after_last_round": {
+   "resolved, passed": 12,
+   "resolved, failed": 1,
+   "transferred, passed": 11,
+   "not resolved, failed": 16
+  },
+  "workflow_then_agent_after_last_round": {
+   "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.85,
+   "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.831,
+   "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.869,
+   "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.863
+  },
+  "calls_per_episode": 17.15
+ },
+ {
+  "configuration": "50%, seed 1",
+  "arguments": "--train-share 0.5 --self-train 4 --rollouts 16 --seed 1",
+  "rounds": [
+   {
+    "round": 0,
+    "kept_runs": 0,
+    "kept_that_pass": 0,
+    "test_passed": 18
+   },
+   {
+    "round": 1,
+    "kept_runs": 63,
+    "kept_that_pass": 62,
+    "test_passed": 19
+   },
+   {
+    "round": 2,
+    "kept_runs": 64,
+    "kept_that_pass": 62,
+    "test_passed": 21
+   },
+   {
+    "round": 3,
+    "kept_runs": 65,
+    "kept_that_pass": 63,
+    "test_passed": 23
+   },
+   {
+    "round": 4,
+    "kept_runs": 66,
+    "kept_that_pass": 63,
+    "test_passed": 23
+   }
+  ],
+  "own_check_after_last_round": {
+   "resolved, passed": 12,
+   "resolved, failed": 1,
+   "transferred, passed": 11,
+   "not resolved, failed": 16
+  },
+  "workflow_then_agent_after_last_round": {
+   "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.838,
+   "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.806,
+   "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.838,
+   "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.819
+  },
+  "calls_per_episode": 17.6
+ },
+ {
+  "configuration": "50%, seed 2",
+  "arguments": "--train-share 0.5 --self-train 4 --rollouts 16 --seed 2",
+  "rounds": [
+   {
+    "round": 0,
+    "kept_runs": 0,
+    "kept_that_pass": 0,
+    "test_passed": 18
+   },
+   {
+    "round": 1,
+    "kept_runs": 63,
+    "kept_that_pass": 61,
+    "test_passed": 23
+   },
+   {
+    "round": 2,
+    "kept_runs": 67,
+    "kept_that_pass": 65,
+    "test_passed": 25
+   },
+   {
+    "round": 3,
+    "kept_runs": 67,
+    "kept_that_pass": 65,
+    "test_passed": 24
+   },
+   {
+    "round": 4,
+    "kept_runs": 67,
+    "kept_that_pass": 65,
+    "test_passed": 22
+   }
+  ],
+  "own_check_after_last_round": {
+   "resolved, passed": 11,
+   "resolved, failed": 1,
+   "transferred, passed": 11,
+   "transferred, failed": 1,
+   "not resolved, failed": 16
+  },
+  "workflow_then_agent_after_last_round": {
+   "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.812,
+   "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.8,
+   "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.825,
+   "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.812
+  },
+  "calls_per_episode": 22.3
+ },
+ {
+  "configuration": "100%, seed 0",
+  "arguments": "--self-train 4 --rollouts 16",
+  "rounds": [
+   {
+    "round": 0,
+    "kept_runs": 0,
+    "kept_that_pass": 0,
+    "test_passed": 31
+   },
+   {
+    "round": 1,
+    "kept_runs": 67,
+    "kept_that_pass": 65,
+    "test_passed": 31
+   },
+   {
+    "round": 2,
+    "kept_runs": 67,
+    "kept_that_pass": 63,
+    "test_passed": 27
+   },
+   {
+    "round": 3,
+    "kept_runs": 67,
+    "kept_that_pass": 63,
+    "test_passed": 26
+   },
+   {
+    "round": 4,
+    "kept_runs": 67,
+    "kept_that_pass": 63,
+    "test_passed": 33
+   }
+  ],
+  "own_check_after_last_round": {
+   "resolved, passed": 21,
+   "transferred, passed": 12,
+   "transferred, failed": 1,
+   "not resolved, failed": 6
+  },
+  "workflow_then_agent_after_last_round": {
+   "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.956,
+   "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.9,
+   "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.938,
+   "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.919
+  },
+  "calls_per_episode": 19.98
+ },
+ {
+  "configuration": "100%, seed 1",
+  "arguments": "--self-train 4 --rollouts 16 --seed 1",
+  "rounds": [
+   {
+    "round": 0,
+    "kept_runs": 0,
+    "kept_that_pass": 0,
+    "test_passed": 31
+   },
+   {
+    "round": 1,
+    "kept_runs": 67,
+    "kept_that_pass": 65,
+    "test_passed": 30
+   },
+   {
+    "round": 2,
+    "kept_runs": 67,
+    "kept_that_pass": 65,
+    "test_passed": 35
+   },
+   {
+    "round": 3,
+    "kept_runs": 67,
+    "kept_that_pass": 65,
+    "test_passed": 31
+   },
+   {
+    "round": 4,
+    "kept_runs": 67,
+    "kept_that_pass": 65,
+    "test_passed": 31
+   }
+  ],
+  "own_check_after_last_round": {
+   "resolved, passed": 20,
+   "resolved, failed": 1,
+   "transferred, passed": 11,
+   "not resolved, failed": 8
+  },
+  "workflow_then_agent_after_last_round": {
+   "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.875,
+   "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.887,
+   "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.894,
+   "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.894
+  },
+  "calls_per_episode": 20.73
+ },
+ {
+  "configuration": "25%, its runs as they stand only",
+  "arguments": "--train-share 0.25 --self-train 4 --rollouts 0",
+  "rounds": [
+   {
+    "round": 0,
+    "kept_runs": 0,
+    "kept_that_pass": 0,
+    "test_passed": 18
+   },
+   {
+    "round": 1,
+    "kept_runs": 12,
+    "kept_that_pass": 12,
+    "test_passed": 19
+   },
+   {
+    "round": 2,
+    "kept_runs": 17,
+    "kept_that_pass": 17,
+    "test_passed": 17
+   },
+   {
+    "round": 3,
+    "kept_runs": 18,
+    "kept_that_pass": 18,
+    "test_passed": 17
+   },
+   {
+    "round": 4,
+    "kept_runs": 18,
+    "kept_that_pass": 18,
+    "test_passed": 17
+   }
+  ],
+  "own_check_after_last_round": {
+   "resolved, passed": 6,
+   "transferred, passed": 11,
+   "not resolved, failed": 23
+  },
+  "workflow_then_agent_after_last_round": {
+   "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.8,
+   "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.725,
+   "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.8,
+   "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.781
+  },
+  "calls_per_episode": 21.2
+ },
+ {
+  "configuration": "50%, its runs as they stand only",
+  "arguments": "--train-share 0.5 --self-train 4 --rollouts 0",
+  "rounds": [
+   {
+    "round": 0,
+    "kept_runs": 0,
+    "kept_that_pass": 0,
+    "test_passed": 18
+   },
+   {
+    "round": 1,
+    "kept_runs": 22,
+    "kept_that_pass": 22,
+    "test_passed": 18
+   },
+   {
+    "round": 2,
+    "kept_runs": 22,
+    "kept_that_pass": 22,
+    "test_passed": 18
+   },
+   {
+    "round": 3,
+    "kept_runs": 22,
+    "kept_that_pass": 22,
+    "test_passed": 18
+   },
+   {
+    "round": 4,
+    "kept_runs": 22,
+    "kept_that_pass": 22,
+    "test_passed": 18
+   }
+  ],
+  "own_check_after_last_round": {
+   "resolved, passed": 7,
+   "resolved, failed": 1,
+   "transferred, passed": 11,
+   "not resolved, failed": 21
+  },
+  "workflow_then_agent_after_last_round": {
+   "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.819,
+   "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.75,
+   "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.825,
+   "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.812
+  },
+  "calls_per_episode": 24.1
+ },
+ {
+  "configuration": "25%, kept on τ²-bench's evaluator (an oracle)",
+  "arguments": "--train-share 0.25 --self-train 4 --rollouts 16 --verifier evaluator",
+  "rounds": [
+   {
+    "round": 0,
+    "kept_runs": 0,
+    "kept_that_pass": 0,
+    "test_passed": 18
+   },
+   {
+    "round": 1,
+    "kept_runs": 60,
+    "kept_that_pass": 60,
+    "test_passed": 16
+   },
+   {
+    "round": 2,
+    "kept_runs": 68,
+    "kept_that_pass": 68,
+    "test_passed": 22
+   },
+   {
+    "round": 3,
+    "kept_runs": 69,
+    "kept_that_pass": 69,
+    "test_passed": 24
+   },
+   {
+    "round": 4,
+    "kept_runs": 71,
+    "kept_that_pass": 71,
+    "test_passed": 21
+   }
+  ],
+  "own_check_after_last_round": {
+   "resolved, passed": 10,
+   "transferred, passed": 11,
+   "not resolved, failed": 19
+  },
+  "workflow_then_agent_after_last_round": {
+   "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.844,
+   "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.794,
+   "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.863,
+   "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.856
+  },
+  "calls_per_episode": 23.15
+ },
+ {
+  "configuration": "25%, the first run kept, not the shortest",
+  "arguments": "--train-share 0.25 --self-train 4 --rollouts 16 --keep first",
+  "rounds": [
+   {
+    "round": 0,
+    "kept_runs": 0,
+    "kept_that_pass": 0,
+    "test_passed": 18
+   },
+   {
+    "round": 1,
+    "kept_runs": 53,
+    "kept_that_pass": 52,
+    "test_passed": 17
+   },
+   {
+    "round": 2,
+    "kept_runs": 61,
+    "kept_that_pass": 58,
+    "test_passed": 18
+   },
+   {
+    "round": 3,
+    "kept_runs": 63,
+    "kept_that_pass": 60,
+    "test_passed": 17
+   },
+   {
+    "round": 4,
+    "kept_runs": 67,
+    "kept_that_pass": 64,
+    "test_passed": 20
+   }
+  ],
+  "own_check_after_last_round": {
+   "resolved, passed": 9,
+   "resolved, failed": 1,
+   "transferred, passed": 11,
+   "not resolved, failed": 19
+  },
+  "workflow_then_agent_after_last_round": {
+   "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.8,
+   "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.775,
+   "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.8,
+   "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.787
+  },
+  "calls_per_episode": 23.55
+ },
+ {
+  "configuration": "100%, the first run kept, not the shortest",
+  "arguments": "--self-train 4 --rollouts 16 --keep first",
+  "rounds": [
+   {
+    "round": 0,
+    "kept_runs": 0,
+    "kept_that_pass": 0,
+    "test_passed": 31
+   },
+   {
+    "round": 1,
+    "kept_runs": 67,
+    "kept_that_pass": 66,
+    "test_passed": 30
+   },
+   {
+    "round": 2,
+    "kept_runs": 67,
+    "kept_that_pass": 66,
+    "test_passed": 29
+   },
+   {
+    "round": 3,
+    "kept_runs": 67,
+    "kept_that_pass": 66,
+    "test_passed": 29
+   },
+   {
+    "round": 4,
+    "kept_runs": 67,
+    "kept_that_pass": 66,
+    "test_passed": 34
+   }
+  ],
+  "own_check_after_last_round": {
+   "resolved, passed": 23,
+   "transferred, passed": 11,
+   "not resolved, failed": 6
+  },
+  "workflow_then_agent_after_last_round": {
+   "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.956,
+   "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.944,
+   "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.975,
+   "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.994
+  },
+  "calls_per_episode": 22.5
+ },
+ {
+  "configuration": "100%, ten bagged trees, no self-training",
+  "arguments": "--bag 10",
+  "rounds": [
+   {
+    "round": 0,
+    "test_passed": 31
+   }
+  ],
+  "own_check_after_last_round": {
+   "resolved, passed": 20,
+   "resolved, failed": 1,
+   "transferred, passed": 11,
+   "not resolved, failed": 8
+  },
+  "workflow_then_agent_after_last_round": {
+   "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.875,
+   "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.887,
+   "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.894,
+   "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.894
+  },
+  "calls_per_episode": 22.23
+ },
+ {
+  "configuration": "25%, ten bagged trees, no self-training",
+  "arguments": "--bag 10 --train-share 0.25",
+  "rounds": [
+   {
+    "round": 0,
+    "test_passed": 14
+   }
+  ],
+  "own_check_after_last_round": {
+   "resolved, passed": 3,
+   "transferred, passed": 11,
+   "not resolved, failed": 26
+  },
+  "workflow_then_agent_after_last_round": {
+   "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.787,
+   "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.681,
+   "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.787,
+   "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.781
+  },
+  "calls_per_episode": 27.8
+ }
+]

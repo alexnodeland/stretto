@@ -2,7 +2,7 @@
 
 [The telecom anatomy](telecom-anatomy-2026-09-26.md) found that, where the agent operates the phone itself, a decision tree over the tool results predicts most of its steps. This page runs that tree as the agent. It is fitted once on the successful training episodes of τ²-bench's own solo runs, then run with no model on the 40 held-out test tasks in τ²-bench's environment, and scored by τ²-bench's evaluator.
 
-It passed 31 of the 40 held-out tasks (77.5%), and 25–31 (mean 71%) when refitted on ten resamples of its training episodes. The LLM agents whose traces it was fitted on passed 49–78% of the same tasks, and the tree made no LLM call; each of them made 15–18 per episode. Its own check of the ticket's stated outcome caught every one of its failures, so handing only those to an agent projects 87.5–89.4%, with a model in one episode in five.
+It passed 31 of the 40 held-out tasks (77.5%), and 25–31 (mean 71%) when refitted on ten resamples of its training episodes. The LLM agents whose traces it was fitted on passed 49–78% of the same tasks, and the tree made no LLM call; each of them made 15–18 per episode. Its own check of the ticket's stated outcome caught every one of its failures, so handing only those to an agent projects 87.5–89.4%, with a model in one episode in five. The same check lets it learn from its own tries: fitted on a quarter or half of the demonstrations, then trying each training ticket 17 times and keeping the shortest run the check verified, it went from 18 to 22–23 of 40.
 
 ## The workflow
 
@@ -41,8 +41,10 @@ It did better than every agent on MMS, where a task can stack up to nine faults,
 | All four, 50% of the training tasks (37) | 18 |
 | All four, 25% (18 tasks) | 18 |
 | All four, 10% (7 tasks) | 12 |
+| All four, ten trees each fitted on a resample of the episodes, their leaves' shares averaged (bagging) | 31 |
+| All four, 25%, bagged the same way | 14 |
 
-It needs many demonstrations, and consistent ones. o4-mini passes 78% itself, but a workflow fitted on its traces alone passes 40–43%: it takes varied routes to the same fixes (the anatomy predicts 55–57% of its steps), and a tree fitted on them picks the commonest step at each point rather than any one coherent route. GPT-4.1 under the written workflow is the most consistent demonstrator of the four, and the four together cover more fault combinations than any one.
+It needs many demonstrations, and consistent ones, and averaging trees fitted on resamples does not stand in for them. o4-mini passes 78% itself, but a workflow fitted on its traces alone passes 40–43%: it takes varied routes to the same fixes (the anatomy predicts 55–57% of its steps), and a tree fitted on them picks the commonest step at each point rather than any one coherent route. GPT-4.1 under the written workflow is the most consistent demonstrator of the four, and the four together cover more fault combinations than any one.
 
 **A sure-only workflow hands back at once.** Run so that it acts only where its leaf held one call in at least 95% of at least ten training cases, and hands back otherwise, it handed back at the first step of every episode: 690 of the 730 training episodes open with the customer lookup, 94.5%. With the bar at 70–90% it handed back within its first three calls, where the demonstrators take different routes to the same fixes. A tree's confidence here measures agreement among demonstrators, not whether a step is right, so it is not the gate to hand back on. A check on the outcome is: the ticket says when the issue is resolved (the speed test excellent, an MMS sent), and the workflow can run that check itself.
 
@@ -68,6 +70,31 @@ It knew when it had failed: every run its check called unresolved had failed, an
 | GPT-4.1, manual policy | 88.7% | 49.4% |
 | o4-mini, workflow policy | 89.4% | 77.5% |
 | o4-mini, manual policy | 89.4% | 78.1% |
+
+## Learning from its own runs
+
+The ticket's check is a verifier, so the workflow can also learn from itself: try, keep what the verifier accepts, refit. That is expert iteration ([Anthony et al., 2017](https://arxiv.org/abs/1705.08439)), and it is how STaR ([Zelikman et al., 2022](https://arxiv.org/abs/2203.14465)) and rejection-sampling fine-tuning ([Yuan et al., 2023](https://arxiv.org/abs/2308.01825)) improve language models on their own filtered samples; Agent Workflow Memory ([Wang et al., 2024](https://arxiv.org/abs/2409.07429)) induces an agent's workflows from its own past runs. Here nothing is a model: the learner is the tree, the tries are drawn from its own leaves, and the verifier is the ticket's criterion.
+
+Each round (`--self-train`), the workflow ran on each of the 74 training tickets once as it stood and 16 times drawing each call from its leaf's calls by their counts. It kept, per ticket, the shortest run its check said resolved, and never a transfer, which the check cannot verify and a search would learn to reach for. It was then refitted on the demonstrations and those runs, and scored on the 40 test tasks. For the tickets outside the share it had no demonstration, only the ticket and the phone's starting state.
+
+| Fitted on | Demonstrations alone | Then its own runs: round 1 | Round 2 | Round 3 | Round 4 |
+|---|---|---|---|---|---|
+| 25% of the training tasks (18), three seeds | 18 | 21 (19–24) | 21.7 (20–23) | 22 (19–26) | **22.3** (21–23) |
+| 50% (37), three seeds | 18 | 20.7 (19–23) | 22.7 (21–25) | 24.3 (23–26) | **22.7** (22–23) |
+| 10% (7) | 12 | 13 | 13 | 14 | 13 |
+| All (74), two seeds | 31 | 30.5 (30–31) | 31 (27–35) | 28.5 (26–31) | 32 (31–33) |
+| 25%, keeping its runs as they stand, with no draws | 18 | 19 | 17 | 17 | 17 |
+| 50%, the same | 18 | 18 | 18 | 18 | 18 |
+| 25%, keeping the first run that passes, not the shortest | 18 | 17 | 18 | 17 | 20 |
+| 25%, keeping runs τ²-bench's evaluator passes (an oracle) | 18 | 16 | 22 | 24 | 21 |
+
+Test tasks passed, of 40; one run per seed, the mean with its range.
+
+- **From a quarter or half of the demonstrations, its own tries take it from 18 to 22–23 of 40,** part of the way to the 31 that all of them give (25–31 on resamples, mean 28.4). Tried on 74 tickets, it kept runs on 63–67 of them by the fourth round. Handing the runs its check calls unresolved to an agent then projects 79–87%, against 87.5–89.4% for the workflow fitted on everything.
+- **It needs somewhere to try.** Kept as they stand, its runs teach it nothing: those are the runs it already makes. A deployment's own sessions are exactly that, one run per ticket, so the gain needs the draws: a simulator, a sandbox or a staging copy where a ticket can be tried again.
+- **The shortest run it can verify is the one to keep.** Keeping the first that passes, which is its own run where that passes, gained 2 at most. The shortest is the most direct route to a fix, and one route per ticket.
+- **Its check served as well as the evaluator.** Kept on the evaluator's reward instead, the runs taught it no more (21 in the fourth round, one seed). Of the up to 67 runs the check kept each round, 0–4 failed the evaluator, and over every configuration's last round, no run the check called unresolved had passed.
+- **It cannot learn what no demonstrator did.** The draws come from its own leaves. Fitted on 7 tasks, its leaves hold 44 of the 62 calls the demonstrators made on all 74; it kept runs on 34 tickets and passed 13–14. With every demonstration, its own runs added nothing: 26–35 across the rounds, a mean of 30.5 against 31, about as far as a refit on resampled demonstrations moves it (25–31).
 
 ## What it says
 
@@ -99,4 +126,4 @@ python3 scripts/telecom_workflow.py \
   --tau2 ../tau2-bench --json telecom-workflow.json
 ```
 
-`--no-guard`, `--sure [SHARE]`, `--train-share` and `--bootstrap SEED` give the other rows, and `--show FILE` writes the rules. The runs, call by call, are in [telecom-workflow-2026-09-26.json](telecom-workflow-2026-09-26.json). Scored this way, GPT-4.1's recorded test episodes (first trial) get the rewards τ²-bench recorded for all 40 of them.
+`--no-guard`, `--sure [SHARE]`, `--train-share`, `--bootstrap SEED` and `--bag N` give the other rows, and `--show FILE` writes the rules. `--self-train 4 --rollouts 16` (with `--seed`, `--keep first` or `--verifier evaluator`) gives the self-training rows, whose rounds are in [telecom-workflow-2026-09-26-self.json](telecom-workflow-2026-09-26-self.json); four rounds take about ten minutes. The runs, call by call, are in [telecom-workflow-2026-09-26.json](telecom-workflow-2026-09-26.json). Scored this way, GPT-4.1's recorded test episodes (first trial) get the rewards τ²-bench recorded for all 40 of them.

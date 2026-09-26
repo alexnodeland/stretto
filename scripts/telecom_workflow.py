@@ -17,6 +17,14 @@ With --sure, the workflow runs only while its leaf is sure (one action in at
 least 95% of at least 10 training cases, or the share given) and hands back otherwise: the share
 of test episodes it finishes alone, and how many of those pass.
 
+With --self-train ROUNDS, the workflow then learns from its own runs, as
+expert iteration and rejection-sampling fine-tuning do, with no model: each
+round it runs on every training task's ticket, once as it stands and
+--rollouts times drawing each call from its leaf's calls by their counts, and
+keeps, per task, the shortest run its own check of the ticket's criterion
+says resolved (a transfer is not kept). It is refitted on the demonstrations
+and those runs, and scored on the test tasks after each round.
+
 usage: telecom_workflow.py RESULTS.json... [--tau2 DIR] [--sure] [--json OUT]
 """
 
@@ -152,9 +160,10 @@ def repeats(action, calls, since_write):
     return action in calls
 
 
-def run(task, predict, vocab, sure, guard, tau2):
+def run(task, predict, vocab, sure, guard, tau2, rng=None, record=None):
     """Run the workflow on one task in τ²-bench's environment; its reward,
-    its calls, and whether it handed back."""
+    its calls, and whether it handed back. With `rng`, each call is drawn
+    from the leaf's calls by their counts; `record` collects the decisions."""
     from tau2.data_model.message import AssistantMessage, ToolCall
     from tau2.data_model.tasks import RewardType
     from tau2.domains.telecom.environment import get_environment
@@ -178,10 +187,14 @@ def run(task, predict, vocab, sure, guard, tau2):
         # the last write returns what it returned, and a fix made once is made.
         allowed = [(a, k) for a, k in tally.most_common() if not (guard and repeats(a, calls, since_write))]
         action, k = allowed[0] if allowed else (STOP, 0)
+        if rng is not None and allowed:
+            action, k = rng.choices(allowed, weights=[k for _, k in allowed])[0]
         share = k / support if support else 0.0
         if sure and not (share >= sure and support >= 10):
             handed = True
             break
+        if record is not None:
+            record.append({"site": state.site, "state": state.whole(), "action": action})
         if action == STOP:
             break
         name, args = unlabel(action)
@@ -212,6 +225,23 @@ def run(task, predict, vocab, sure, guard, tau2):
     else:
         check = "resolved" if own_check(env, task.ticket or "") else "not resolved"
     return reward, calls, handed, check
+
+
+def bagged(predicts):
+    """Trees fitted on resamples, as one: each action's share of its leaf,
+    summed over the trees (Breiman's bagging, by average share)."""
+
+    def predict(d):
+        total = collections.Counter()
+        for p in predicts:
+            _, _, _, tally = p(d)
+            n = sum(tally.values())
+            for a, k in tally.items():
+                total[a] += k / n
+        action, k = total.most_common(1)[0]
+        return action, k / len(predicts), len(predicts), total
+
+    return predict
 
 
 def show(predict, sites):
@@ -255,12 +285,23 @@ def main():
     ap.add_argument("--json", help="write each test task's run here")
     ap.add_argument("--show", help="write the compiled workflow here, as rules (Markdown)")
     ap.add_argument("--bootstrap", type=int, metavar="SEED", help="learn from a resample of the episodes, with replacement")
+    ap.add_argument("--self-train", type=int, default=0, metavar="ROUNDS",
+                    help="then learn from its own runs on every training task's ticket that its own check says resolved")
+    ap.add_argument("--rollouts", type=int, default=8, help="runs per training task and round drawn from the leaves' counts (8)")
+    ap.add_argument("--seed", type=int, default=0, help="seed for --self-train's draws and --bag's resamples")
+    ap.add_argument("--bag", type=int, default=0, metavar="N",
+                    help="fit N trees, each on a resample of the episodes, and take the call their leaves' shares favour")
+    ap.add_argument("--keep", choices=["shortest", "first"], default="shortest",
+                    help="per task, keep the shortest run kept in any round, or this round's first (as it stands, else the first draw)")
+    ap.add_argument("--verifier", choices=["own", "evaluator"], default="own",
+                    help="keep a run on its own check (the default), or on τ²-bench's evaluator, an oracle a deployment lacks")
     args = ap.parse_args()
     from tau2.domains.telecom.environment import get_tasks
 
     tasks = {t.id: t for t in get_tasks("base")}
     split = json.loads((Path(args.tau2) / "data/tau2/domains/telecom/split_tasks.json").read_text())
     train, test = set(split["train"]), set(split["test"])
+    tickets = sorted(train)  # every training task's ticket, for --self-train
     if args.train_share < 1:
         # A fixed sample of the training tasks, each smaller share inside every larger one.
         ranked = sorted(train, key=lambda t: hashlib.sha256(t.encode()).hexdigest())
@@ -272,20 +313,57 @@ def main():
     # Ticket words in between 5% and 95% of the training tickets.
     df = collections.Counter(g for t in train for g in words(tasks[t].ticket or ""))
     vocab = {g for g, n in df.items() if 0.05 * len(train) <= n <= 0.95 * len(train)}
-    ds = []
+    episodes = []
     for s in good:
-        for d in decisions(s, tasks[s["task_id"]].ticket or "", vocab):
+        ep = decisions(s, tasks[s["task_id"]].ticket or "", vocab)
+        for d in ep:
             d["task"], d["goal"] = s["task_id"], "none"
-            ds.append(d)
-    predict = anatomy.tree(ds, with_goal=False, counts=True)
+        episodes.append(ep)
+    ds = [d for ep in episodes for d in ep]
+
+    def fit(episodes):
+        if not args.bag:
+            return anatomy.tree([d for ep in episodes for d in ep], with_goal=False, counts=True)
+        rng = random.Random(f"bag/{args.seed}/{len(episodes)}")
+        return bagged([anatomy.tree([d for ep in rng.choices(episodes, k=len(episodes)) for d in ep],
+                                    with_goal=False, counts=True) for _ in range(args.bag)])
+
+    predict = fit(episodes)
     print(f"fitted on {len(good)} successful episodes of {len(train)} training tasks: {len(ds)} decisions, "
           f"{len({d['action'] for d in ds})} distinct actions", file=sys.stderr)
-    if args.show:
-        Path(args.show).write_text(show(predict, collections.Counter(d["site"] for d in ds)))
-    rows = []
-    for tid in sorted(test):
-        reward, calls, handed, resolved = run(tasks[tid], predict, vocab, args.sure, not args.no_guard, args.tau2)
-        rows.append({"task_id": tid, "reward": reward, "handed_back": handed, "own_check": resolved, "calls": calls})
+
+    def on_test(predict):
+        rows = []
+        for tid in sorted(test):
+            reward, calls, handed, resolved = run(tasks[tid], predict, vocab, args.sure, not args.no_guard, args.tau2)
+            rows.append({"task_id": tid, "reward": reward, "handed_back": handed, "own_check": resolved, "calls": calls})
+        return rows
+
+    rows = on_test(predict)
+    rounds = [{"round": 0, "kept_runs": 0, "kept_that_pass": 0, "test_passed": sum(r["reward"] == 1 for r in rows)}]
+    best = {}  # per training task, the shortest run kept: (calls, decisions, reward)
+    for r in range(args.self_train):
+        for tid in tickets:
+            for k in range(args.rollouts + 1):
+                record = []
+                rng = random.Random(f"{args.seed}/{r}/{tid}/{k}" if args.seed else f"{r}/{tid}/{k}") if k else None
+                reward, calls, _, check = run(tasks[tid], predict, vocab, None, not args.no_guard, args.tau2, rng, record)
+                ok = check == "resolved" if args.verifier == "own" else reward == 1
+                if ok and args.keep == "first":
+                    best[tid] = (calls, record, reward)
+                    break
+                if ok and (tid not in best or len(calls) < len(best[tid][0])):
+                    best[tid] = (calls, record, reward)
+        own = [[dict(d, task=tid, goal="none") for d in record] for tid, (_, record, _) in sorted(best.items())]
+        predict = fit(episodes + own)
+        rows = on_test(predict)
+        rounds.append({"round": r + 1, "kept_runs": len(best), "kept_that_pass": sum(b[2] == 1 for b in best.values()),
+                       "test_passed": sum(x["reward"] == 1 for x in rows)})
+        print(f"round {r + 1}: kept runs on {len(best)} of {len(tickets)} training tickets "
+              f"({rounds[-1]['kept_that_pass']} pass the evaluator); test passed {rounds[-1]['test_passed']}", file=sys.stderr)
+    if args.show and not args.bag:
+        own = [d for _, record, _ in best.values() for d in record]
+        Path(args.show).write_text(show(predict, collections.Counter(d["site"] for d in ds + own)))
     passed = sum(r["reward"] == 1 for r in rows)
     alone = [r for r in rows if not r["handed_back"]]
     agents = collections.defaultdict(list)
@@ -323,6 +401,7 @@ def main():
             for k in per_task
         },
         "handed_to_agent": sum(1 for r in rows if r["own_check"] == "not resolved"),
+        **({"self_training": rounds} if args.self_train else {}),
         "runs": rows,
     }
     print(json.dumps({k: v for k, v in report.items() if k != "runs"}, indent=1))
