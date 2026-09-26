@@ -33,6 +33,17 @@ Airline's detours fell by 93% at no cost in turns on GLM-5's episodes, more than
 
 The habit alone, with the count and without a System-One model, now makes as few airline detours as the search's pick and saves 7 more turns; in retail it saves 14 more turns for 3 more detours. The search's gains came from two sites where it cut the flow back, after a reservation read and after a product read, which is where the flow went on to records the customer had not asked about. The count reaches the same decisions from what the traces show, with nothing to search and no threshold to carry to another agent. Three of retail's 1,193 arbiter decisions were not in the answer cache and handed back; airline's were all answered.
 
+## On other agents
+
+The same D0, before and after, on the habit alone at 0.3, replayed on two other agents' test-task episodes (four trials):
+
+| Agent | Airline: turns saved · detours | Retail: turns saved · detours |
+|---|---|---|
+| Claude Sonnet 4.5 | 130 · 103 → 130 · 63 | 416 · 106 → 412 · 82 |
+| Qwen3.5 | 286 · 41 → 286 · 28 | 551 · 104 → 547 · 72 |
+
+The count carried: 23–39% fewer detours for at most 4 turns. The flow search's retail pick gave up 15 and 33 turns on these agents' episodes, since they used the product lookups it dropped. The arbiter's replays on these agents are left out: their questions were not in the local answer cache, and a decision without an answer hands back.
+
 ## Reproduce
 
 ```sh
