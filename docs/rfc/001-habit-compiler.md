@@ -687,7 +687,7 @@ What this changes:
 
 stretto now implements the first design end to end. It measured three more things: the live form in airline, policy guards against published trajectories, and a flow audited as a fugue program.
 
-- **Details:** stretto's [implementation status](../design.md#implementation-status-2026-09-24), [airline pilot](../results/pilot-airline-2026-09-24.md), [guard audit](../results/guards-2026-09-24.md) and [flow audit](../results/audit-2026-09-24.md), and the [working paper](https://alexnodeland.github.io/stretto/), which collects every result so far.
+- **Details:** stretto's [implementation status](../design.md#implementation-status-2026-09-26), [airline pilot](../results/pilot-airline-2026-09-24.md), [guard audit](../results/guards-2026-09-24.md) and [flow audit](../results/audit-2026-09-24.md), and the [working paper](https://alexnodeland.github.io/stretto/), which collects every result so far.
 
 Five findings; §3.11, §4, §6 and §7 are updated to match.
 

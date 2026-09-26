@@ -15,7 +15,7 @@ The design is [RFC-001](docs/rfc/001-habit-compiler.md), first accepted in fugue
 
 ## Status
 
-Pre-alpha, with every piece of the first design built ([implementation status](docs/design.md#implementation-status-2026-09-24)). 0.1.0 is the first release ([changelog](CHANGELOG.md)). It is not on crates.io yet, because it depends on a fugue release that is not out yet (its `program` feature).
+Pre-alpha, with every piece of the first design built ([implementation status](docs/design.md#implementation-status-2026-09-26)). 0.1.0 is the first release ([changelog](CHANGELOG.md)). It is not on crates.io yet, because it depends on a fugue release that is not out yet (its `program` feature).
 
 ## Use it with your agent
 

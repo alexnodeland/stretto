@@ -1,6 +1,6 @@
 # Roadmap
 
-Every piece of the first design is built: the flow compiler, the MCP proxy, the policy guards, the audit, the confirmation judge and the shipped arbiters ([implementation status](design.md#implementation-status-2026-09-24)). The evidence so far:
+Every piece of the first design is built: the flow compiler, the MCP proxy, the policy guards, the audit, the confirmation judge and the shipped arbiters ([implementation status](design.md#implementation-status-2026-09-26)). The evidence so far:
 
 - offline replays on τ²-bench's published trajectories;
 - live pilots of ten paired tasks per domain, with GLM-5.3 in Claude Code as the agent;

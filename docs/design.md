@@ -80,7 +80,7 @@ stretto-proxy session logs ─┼─► stretto-trace (Episode) ─► stretto-m
                                   stretto_commit, conversation context, session logs (v2)
 ```
 
-## Implementation status (2026-09-24)
+## Implementation status (2026-09-26)
 
 | Piece | State | Where |
 |---|---|---|
@@ -111,6 +111,13 @@ stretto-proxy session logs ─┼─► stretto-trace (Episode) ─► stretto-m
 | Predicate refinement (§3.4) | Built ([#16](https://github.com/alexnodeland/stretto/issues/16)). One round in airline kept two of eight candidates, which fitted the agents the proposer read but not GLM-5, so the three hand-proposed predicates stay ([results](results/refine-2026-09-25.md)) | `stretto refine`; `phase0 --candidates`; `refine.rs`; `data/predicates-v2.json` |
 | Flow search (§3.10) | Built ([#25](https://github.com/alexnodeland/stretto/issues/25)), replayed: searched on GLM-5's training-task episodes, its front held flows with far fewer detours than D0 on the test-task episodes in both domains, for 7 more turns saved in airline and one fewer in retail, each by changing one or two sites' thresholds ([results](results/search-2026-09-25.md)). None has run live | `stretto search`; `search.rs`; `thresholds` in the flow IR |
 | Streamable HTTP servers | Built: the proxy speaks MCP's HTTP transport to the server and stdio to the host; tested against the reference TypeScript server and a strict test server | `stretto-proxy --upstream`; `http.rs` |
+| A record the customer did not ask about | Built, replayed: bindings count how often the agent went on to read a record the customer had not named once they had named another (`named_other`). GLM-5's airline detours fell from 56 to 4 at no cost in turns ([results](results/named-other-2026-09-26.md)) | `flow.rs` (`Bindings::bind`) |
+| The record the customer described, already read | Built, replayed: bindings count how often the agent read another of a list after the record holding a value the customer gave, such as a ticket's phone number (`described_read`). The solo telecom flow's detours halved, with more turns saved ([results](results/telecom-flows-2026-09-26.md#when-the-agent-holds-the-phone)) | `flow.rs` |
+| Sources in the order the agent used them at a site | Built, replayed: in telecom, 1.9% to 12.8% of nine agents' turns saved, with retail and airline unchanged ([results](results/telecom-flows-2026-09-26.md)) | `flow.rs` (`site_sources`); `flow-show` and `flow-diff` list them |
+| Pinned tool contracts and granted tools | Built: a flow learned from recorded sessions pins each tool's input contract, and the proxy leaves a tool whose contract changed to the agent; `--flow-tools` names the only tools a flow may call on its own | `flow.rs` (`contracts`); `stretto-proxy --flow-tools` |
+| A write checked against the proposal | Built, logged beside the confirmation judge, not enforced: 3% of successful episodes' writes flagged ([results](results/proposal-check-2026-09-26.md)) | `confirm.rs` (`contradicted`); `scripts/proposal_check.py` |
+| Solo runs and telecom replays | Built: `learn --results` takes τ²-bench's solo runs, where the agent runs the customer's tools; `check_flow.py` replays telecom, with the customer's own calls as the customer's turns, and `--solo` | `main.rs`; `pilot/check_flow.py`, `pilot/tau2_mcp.py` |
+| A workflow compiled once, run with no model | Measured, as a script, in telecom's solo mode: 31 of 40 held-out tasks with no model, an outcome check that caught every failure, self-training from its own verified tries, and identifiers bound for a customer no trace saw ([results](results/telecom-workflow-2026-09-26.md)). Not in the product: stretto's flows still only read ([#38](https://github.com/alexnodeland/stretto/issues/38)) | `scripts/telecom_workflow.py`, `scripts/anatomy.py` |
 
 Everything else not built yet, and the experiments still to run, are grouped in the [roadmap](roadmap.md).
 
