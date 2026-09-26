@@ -35,7 +35,12 @@ run for another customer of the database, whose first line takes John's
 line's state, keeping the tasks whose own gold actions still solve them and
 whose faults the account still shows.
 
-usage: telecom_workflow.py RESULTS.json... [--tau2 DIR] [--sure] [--json OUT]
+With --export FILE, the workflow is written as a procedure (the IR in
+docs/formats.md), which `stretto-procedure` runs against an MCP server with
+no model; `pilot/run_procedure.py` runs it on the test tasks and checks it
+against this script's runs.
+
+usage: telecom_workflow.py RESULTS.json... [--tau2 DIR] [--sure] [--json OUT] [--export FILE]
 """
 
 import argparse
@@ -443,11 +448,17 @@ def decisions(sim, ticket, vocab):
 # each as a check the workflow can run itself: the phrase, the probe, and what
 # its result says when the issue is resolved.
 RESOLVED = [
-    ("mms message can be successfully sent", "can_send_mms", lambda r: "can send mms" in r.lower()),
-    ("speed test returns excellent", "run_speed_test", lambda r: "(excellent)" in r.lower()),
-    ("status bar shows that they have signal", "check_status_bar",
-     lambda r: "📶" in r and "no signal" not in r.lower() and "airplane mode" not in r.lower()),
+    # (phrase, probe, what the lowercased result contains, what it lacks)
+    ("mms message can be successfully sent", "can_send_mms", ["can send mms"], []),
+    ("speed test returns excellent", "run_speed_test", ["(excellent)"], []),
+    ("status bar shows that they have signal", "check_status_bar", ["📶"], ["no signal", "airplane mode"]),
 ]
+
+
+def holds(result, contains, lacks):
+    """Whether a probe's result says the issue is resolved."""
+    r = result.lower()
+    return all(c in r for c in contains) and not any(x in r for x in lacks)
 
 
 def own_check(env, ticket):
@@ -455,10 +466,10 @@ def own_check(env, ticket):
     can call itself (None if the ticket states none of these)."""
     from tau2.data_model.message import ToolCall
 
-    for phrase, probe, holds in RESOLVED:
+    for phrase, probe, contains, lacks in RESOLVED:
         if phrase in ticket.lower():
             result = env.get_response(ToolCall(id="check", name=probe, arguments={}, requestor="assistant"))
-            return holds(result.content or "")
+            return holds(result.content or "", contains, lacks)
     return None
 
 
@@ -559,6 +570,36 @@ def run(task, predict, vocab, sure, guard, tau2, rng=None, record=None, construc
     return reward, calls, handed, check
 
 
+def export(predict, vocab, sources, train):
+    """The compiled workflow as a procedure, the IR `stretto-procedure` runs:
+    per site the tree cut at its chosen depth, each leaf its calls in the
+    order the workflow tries them; the ticket words it reads; the tools that
+    only read; and the checks of each ticket's stated outcome."""
+
+    def node(n, depth):
+        tally, split = n
+        if depth == 0 or split is None:
+            return {"calls": [[a, k] for a, k in tally.most_common()]}
+        f, yes, no = split
+        return {"feature": f, "yes": node(yes, depth - 1), "no": node(no, depth - 1)}
+
+    return {
+        "stretto_procedure": 1,
+        "domain": "telecom",
+        "provenance": {"sources": sorted(sources), "training_tasks": len(train)},
+        "symbolic": SYMBOLIC,
+        "max_calls": MAX_CALLS,
+        "stop": STOP,
+        "handoff": "transfer_to_human_agents",
+        "handoff_arguments": dict(unlabel("transfer_to_human_agents")[1]),
+        "reads": sorted(anatomy.READ["telecom"]),
+        "vocab": sorted(vocab),
+        "trees": {site: node(root, depth) for site, (root, depth) in sorted(predict.roots.items())},
+        "fallback": node(predict.everything, 0),
+        "checks": [{"phrase": p, "probe": probe, "contains": c, "lacks": x} for p, probe, c, x in RESOLVED],
+    }
+
+
 def bagged(predicts):
     """Trees fitted on resamples, as one: each action's share of its leaf,
     summed over the trees (Breiman's bagging, by average share)."""
@@ -616,6 +657,7 @@ def main():
     ap.add_argument("--train-share", type=float, default=1.0, help="learn from this share of the training tasks")
     ap.add_argument("--json", help="write each test task's run here")
     ap.add_argument("--show", help="write the compiled workflow here, as rules (Markdown)")
+    ap.add_argument("--export", help="write the compiled workflow here as a procedure, the IR stretto-procedure runs")
     ap.add_argument("--bootstrap", type=int, metavar="SEED", help="learn from a resample of the episodes, with replacement")
     ap.add_argument("--self-train", type=int, default=0, metavar="ROUNDS",
                     help="then learn from its own runs on every training task's ticket that its own check says resolved")
@@ -724,6 +766,9 @@ def main():
                        "test_passed": sum(x["reward"] == 1 for x in rows)})
         print(f"round {r + 1}: kept runs on {len(best)} of {len(tickets)} training tickets "
               f"({rounds[-1]['kept_that_pass']} pass the evaluator); test passed {rounds[-1]['test_passed']}", file=sys.stderr)
+    if args.export and not args.bag:
+        sources = {Path(p).name.split("_")[0] for p in args.results}
+        Path(args.export).write_text(json.dumps(export(predict, vocab, sources, train), indent=1, ensure_ascii=False) + "\n")
     if args.show and not args.bag:
         own = [d for _, record, _ in best.values() for d in record]
         Path(args.show).write_text(show(predict, collections.Counter(d["site"] for d in ds + own)))

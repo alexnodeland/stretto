@@ -157,7 +157,7 @@ def handback(runs: Path, task, env) -> tuple[list[dict], str]:
     if row is None:
         raise SystemExit(f"no workflow run for task {task.id} in {runs}")
     calls = [dict(zip(("name", "arguments"), telecom_workflow.unlabel(c))) for c in row["calls"]]
-    probe = next((p for phrase, p, _ in telecom_workflow.RESOLVED if phrase in (task.ticket or "").lower()), None)
+    probe = next((p for phrase, p, *_ in telecom_workflow.RESOLVED if phrase in (task.ticket or "").lower()), None)
     if probe:
         calls.append({"name": probe, "arguments": {}})
     init = task.initial_state

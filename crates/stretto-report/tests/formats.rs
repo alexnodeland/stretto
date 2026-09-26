@@ -26,6 +26,8 @@ const DATA_MAPS: &[&str] = &[
     "bindings.agreed",
     "bindings.named_other",
     "contracts",
+    "trees",
+    "handoff_arguments",
 ];
 
 /// Fields holding another project's format, which that project documents:
@@ -121,6 +123,7 @@ fn the_formats_page_names_every_field() {
         "docs/results/cold-start-2026-09-24-live.flow.json",
         "data/arbiters/retail.json",
         "data/arbiters/airline.json",
+        "docs/results/telecom-workflow-2026-09-26.procedure.json",
     ] {
         let json: Value =
             serde_json::from_str(&std::fs::read_to_string(repo(example)).unwrap()).unwrap();
@@ -143,6 +146,11 @@ fn the_published_examples_load() {
         let arbiter = Arbiter::load(&repo(&format!("data/arbiters/{domain}.json"))).unwrap();
         assert_eq!(arbiter.domain(), domain);
     }
+    let procedure = stretto_report::procedure::Procedure::load(&repo(
+        "docs/results/telecom-workflow-2026-09-26.procedure.json",
+    ))
+    .unwrap();
+    assert!(procedure.symbolic && procedure.trees.contains_key("start"));
 }
 
 #[test]

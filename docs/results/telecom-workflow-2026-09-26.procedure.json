@@ -1,0 +1,8730 @@
+{
+ "stretto_procedure": 1,
+ "domain": "telecom",
+ "provenance": {
+  "sources": [
+   "gpt-4.1-2025-04-14",
+   "o4-mini-2025-04-16"
+  ],
+  "training_tasks": 74
+ },
+ "symbolic": true,
+ "max_calls": 50,
+ "stop": "stop",
+ "handoff": "transfer_to_human_agents",
+ "handoff_arguments": {
+  "summary": "The customer's issue needs a human agent."
+ },
+ "reads": [
+  "can_send_mms",
+  "check_apn_settings",
+  "check_app_permissions",
+  "check_app_status",
+  "check_data_restriction_status",
+  "check_installed_apps",
+  "check_network_mode_preference",
+  "check_network_status",
+  "check_payment_request",
+  "check_sim_status",
+  "check_status_bar",
+  "check_vpn_status",
+  "check_wifi_calling_status",
+  "check_wifi_status",
+  "get_bills_for_customer",
+  "get_customer_by_id",
+  "get_customer_by_name",
+  "get_customer_by_phone",
+  "get_data_usage",
+  "get_details_by_id",
+  "run_speed_test"
+ ],
+ "vocab": [
+  "abroad",
+  "abroad in",
+  "all",
+  "all their",
+  "an",
+  "an mms",
+  "and",
+  "and the",
+  "app",
+  "app for",
+  "are",
+  "are unable",
+  "at",
+  "at home",
+  "bar",
+  "bar shows",
+  "be",
+  "be successfully",
+  "been",
+  "been unable",
+  "bills",
+  "bills they",
+  "browse",
+  "browse the",
+  "but",
+  "but they",
+  "calls",
+  "calls and",
+  "can",
+  "can be",
+  "change",
+  "change their",
+  "current",
+  "current location",
+  "data",
+  "data if",
+  "data plan",
+  "data they",
+  "excellent",
+  "excellent internet",
+  "experiencing",
+  "experiencing issues",
+  "few",
+  "few hours",
+  "for",
+  "for the",
+  "france",
+  "france they",
+  "gave",
+  "gave permission",
+  "gb",
+  "gb of",
+  "has",
+  "has been",
+  "have",
+  "have signal",
+  "home",
+  "home in",
+  "hours",
+  "hours customer",
+  "if",
+  "if necessary",
+  "in",
+  "in france",
+  "in the",
+  "internet",
+  "internet and",
+  "internet speed",
+  "is",
+  "is experiencing",
+  "issues",
+  "issues with",
+  "location",
+  "location abroad",
+  "location at",
+  "make",
+  "make or",
+  "message",
+  "message can",
+  "messages",
+  "messages using",
+  "messaging",
+  "messaging app",
+  "mms",
+  "mms message",
+  "mms messages",
+  "mobile",
+  "mobile data",
+  "necessary",
+  "no",
+  "no service",
+  "not",
+  "not change",
+  "number current",
+  "number they",
+  "of",
+  "of data",
+  "or",
+  "or receive",
+  "overdue",
+  "overdue bills",
+  "past",
+  "past few",
+  "pay",
+  "pay all",
+  "permission",
+  "permission to",
+  "phone service",
+  "phone to",
+  "plan",
+  "plan but",
+  "receive",
+  "receive calls",
+  "refuel",
+  "refuel gb",
+  "returns",
+  "returns excellent",
+  "send",
+  "send mms",
+  "sent",
+  "service",
+  "service customer",
+  "service they",
+  "shows",
+  "shows no",
+  "shows that",
+  "signal",
+  "speed",
+  "speed test",
+  "speed they",
+  "states",
+  "states they",
+  "status",
+  "status bar",
+  "successfully",
+  "successfully sent",
+  "test",
+  "test returns",
+  "that",
+  "that they",
+  "the internet",
+  "the past",
+  "the status",
+  "the united",
+  "their messaging",
+  "their mobile",
+  "their overdue",
+  "their phone",
+  "they are",
+  "they gave",
+  "they have",
+  "to browse",
+  "to make",
+  "to pay",
+  "to send",
+  "to use",
+  "united",
+  "united states",
+  "use",
+  "use their",
+  "user has",
+  "user is",
+  "using",
+  "using their",
+  "when an",
+  "when speed",
+  "when the",
+  "will not",
+  "will refuel",
+  "with",
+  "with their"
+ ],
+ "trees": {
+  "can_send_mms": {
+   "feature": "can_send_mms:says your messaging app can send mms messages.",
+   "yes": {
+    "feature": "called reboot_device",
+    "yes": {
+     "calls": [
+      [
+       "stop",
+       100
+      ]
+     ]
+    },
+    "no": {
+     "feature": "called run_speed_test",
+     "yes": {
+      "calls": [
+       [
+        "stop",
+        44
+       ]
+      ]
+     },
+     "no": {
+      "feature": "called check_installed_apps",
+      "yes": {
+       "calls": [
+        [
+         "stop",
+         7
+        ]
+       ]
+      },
+      "no": {
+       "feature": "reseat_sim_card:status bar=📶¹ poor",
+       "yes": {
+        "calls": [
+         [
+          "reboot_device",
+          5
+         ],
+         [
+          "stop",
+          2
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "stop",
+          15
+         ],
+         [
+          "reboot_device",
+          3
+         ],
+         [
+          "check_data_restriction_status",
+          1
+         ]
+        ]
+       }
+      }
+     }
+    }
+   },
+   "no": {
+    "feature": "called check_network_status",
+    "yes": {
+     "feature": "called check_wifi_calling_status",
+     "yes": {
+      "feature": "called run_speed_test",
+      "yes": {
+       "feature": "called check_app_permissions",
+       "yes": {
+        "calls": [
+         [
+          "check_apn_settings",
+          11
+         ],
+         [
+          "check_installed_apps",
+          3
+         ],
+         [
+          "grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"sms\"}",
+          3
+         ],
+         [
+          "run_speed_test",
+          2
+         ],
+         [
+          "grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"storage\"}",
+          2
+         ],
+         [
+          "check_app_status{\"app_name\": \"messaging\"}",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "check_installed_apps",
+          14
+         ],
+         [
+          "check_app_permissions{\"app_name\": \"Messaging\"}",
+          9
+         ],
+         [
+          "check_app_permissions{\"app_name\": \"messaging\"}",
+          3
+         ],
+         [
+          "check_apn_settings",
+          3
+         ],
+         [
+          "check_app_permissions{\"app_name\": \"Messages\"}",
+          2
+         ],
+         [
+          "toggle_wifi_calling",
+          1
+         ],
+         [
+          "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\"}}",
+          1
+         ],
+         [
+          "check_app_permissions{\"app_name\": \"Default Messaging\"}",
+          1
+         ]
+        ]
+       }
+      },
+      "no": {
+       "feature": "called check_app_permissions",
+       "yes": {
+        "calls": [
+         [
+          "check_apn_settings",
+          11
+         ],
+         [
+          "check_app_permissions{\"app_name\": \"messaging\"}",
+          6
+         ],
+         [
+          "check_wifi_calling_status",
+          3
+         ],
+         [
+          "reset_apn_settings",
+          3
+         ],
+         [
+          "run_speed_test",
+          2
+         ],
+         [
+          "reboot_device",
+          2
+         ],
+         [
+          "check_sim_status",
+          1
+         ],
+         [
+          "toggle_wifi_calling",
+          1
+         ],
+         [
+          "check_network_status",
+          1
+         ],
+         [
+          "check_vpn_status",
+          1
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          1
+         ],
+         [
+          "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mms_port\": null, \"mms_proxy\": null, \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\", \"reset_at_reboot\": false}}",
+          1
+         ],
+         [
+          "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "check_app_permissions{\"app_name\": \"messaging\"}",
+          19
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          3
+         ],
+         [
+          "check_installed_apps",
+          2
+         ],
+         [
+          "reset_apn_settings",
+          2
+         ],
+         [
+          "check_app_permissions{\"app_name\": \"Messaging\"}",
+          2
+         ],
+         [
+          "check_data_restriction_status",
+          2
+         ],
+         [
+          "reboot_device",
+          1
+         ],
+         [
+          "check_apn_settings",
+          1
+         ],
+         [
+          "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\", \"reset_at_reboot\": false}}",
+          1
+         ],
+         [
+          "check_network_status",
+          1
+         ],
+         [
+          "check_network_mode_preference",
+          1
+         ],
+         [
+          "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mms_port\": null, \"mms_proxy\": null, \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\", \"reset_at_reboot\": false}}",
+          1
+         ]
+        ]
+       }
+      }
+     },
+     "no": {
+      "feature": "called check_apn_settings",
+      "yes": {
+       "feature": "called reseat_sim_card",
+       "yes": {
+        "calls": [
+         [
+          "check_wifi_calling_status",
+          23
+         ],
+         [
+          "reset_apn_settings",
+          3
+         ],
+         [
+          "check_apn_settings",
+          2
+         ],
+         [
+          "run_speed_test",
+          2
+         ],
+         [
+          "check_installed_apps",
+          1
+         ],
+         [
+          "check_app_permissions{\"app_name\": \"messaging\"}",
+          1
+         ],
+         [
+          "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"internet\", \"mms_port\": null, \"mms_proxy\": null, \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\", \"reset_at_reboot\": false}}",
+          1
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          1
+         ],
+         [
+          "check_data_restriction_status",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "check_wifi_calling_status",
+          20
+         ],
+         [
+          "check_network_mode_preference",
+          14
+         ],
+         [
+          "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mms_port\": null, \"mms_proxy\": null, \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\", \"reset_at_reboot\": false}}",
+          2
+         ],
+         [
+          "check_sim_status",
+          1
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          1
+         ]
+        ]
+       }
+      },
+      "no": {
+       "feature": "check_sim_status:says no sim card detected in the phone.",
+       "yes": {
+        "calls": [
+         [
+          "check_apn_settings",
+          18
+         ],
+         [
+          "check_network_status",
+          12
+         ],
+         [
+          "check_network_mode_preference",
+          3
+         ],
+         [
+          "check_wifi_calling_status",
+          2
+         ],
+         [
+          "toggle_roaming",
+          2
+         ],
+         [
+          "check_installed_apps",
+          1
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "check_apn_settings",
+          30
+         ],
+         [
+          "check_wifi_calling_status",
+          15
+         ],
+         [
+          "check_installed_apps",
+          8
+         ],
+         [
+          "run_speed_test",
+          5
+         ],
+         [
+          "toggle_roaming",
+          3
+         ],
+         [
+          "check_network_mode_preference",
+          2
+         ],
+         [
+          "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+          2
+         ],
+         [
+          "check_sim_status",
+          2
+         ],
+         [
+          "toggle_airplane_mode",
+          1
+         ],
+         [
+          "reseat_sim_card",
+          1
+         ]
+        ]
+       }
+      }
+     }
+    },
+    "no": {
+     "feature": "check_status_bar:error=False",
+     "yes": {
+      "feature": "called check_wifi_calling_status",
+      "yes": {
+       "feature": "called check_installed_apps",
+       "yes": {
+        "calls": [
+         [
+          "check_apn_settings",
+          4
+         ],
+         [
+          "get_customer_by_phone{\"phone_number\": \"@ticket\\\\d{3}\\\\-\\\\d{3}\\\\-\\\\d{4}\"}",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "check_installed_apps",
+          4
+         ],
+         [
+          "check_app_permissions{\"app_name\": \"Messaging\"}",
+          1
+         ]
+        ]
+       }
+      },
+      "no": {
+       "feature": "ticket: abroad",
+       "yes": {
+        "calls": [
+         [
+          "check_apn_settings",
+          6
+         ],
+         [
+          "check_wifi_calling_status",
+          2
+         ],
+         [
+          "check_network_status",
+          2
+         ],
+         [
+          "run_speed_test",
+          1
+         ],
+         [
+          "check_app_permissions{\"app_name\": \"messaging\"}",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "check_wifi_calling_status",
+          8
+         ],
+         [
+          "check_network_mode_preference",
+          5
+         ],
+         [
+          "get_customer_by_phone{\"phone_number\": \"@ticket\\\\d{3}\\\\-\\\\d{3}\\\\-\\\\d{4}\"}",
+          1
+         ]
+        ]
+       }
+      }
+     },
+     "no": {
+      "feature": "called toggle_roaming",
+      "yes": {
+       "feature": "toggle_roaming:status bar=📶⁴ excellent",
+       "yes": {
+        "calls": [
+         [
+          "check_apn_settings",
+          3
+         ],
+         [
+          "check_wifi_calling_status",
+          3
+         ],
+         [
+          "toggle_data",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "toggle_roaming",
+          3
+         ],
+         [
+          "check_status_bar",
+          3
+         ],
+         [
+          "check_app_permissions{\"app_name\": \"messaging\"}",
+          1
+         ]
+        ]
+       }
+      },
+      "no": {
+       "feature": "called check_status_bar",
+       "yes": {
+        "calls": [
+         [
+          "check_network_status",
+          15
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "check_status_bar",
+          81
+         ],
+         [
+          "check_network_status",
+          20
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          2
+         ]
+        ]
+       }
+      }
+     }
+    }
+   }
+  },
+  "check_apn_settings": {
+   "feature": "run_speed_test:speed test failed=no connection.",
+   "yes": {
+    "feature": "called check_network_status",
+    "yes": {
+     "feature": "called get_data_usage",
+     "yes": {
+      "calls": [
+       [
+        "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+        3
+       ],
+       [
+        "disconnect_vpn",
+        2
+       ],
+       [
+        "check_network_status",
+        1
+       ],
+       [
+        "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_data_usage$.line_id\"}",
+        1
+       ],
+       [
+        "check_data_restriction_status",
+        1
+       ],
+       [
+        "toggle_roaming",
+        1
+       ]
+      ]
+     },
+     "no": {
+      "feature": "called toggle_airplane_mode",
+      "yes": {
+       "calls": [
+        [
+         "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+         6
+        ],
+        [
+         "run_speed_test",
+         3
+        ],
+        [
+         "reset_apn_settings",
+         1
+        ],
+        [
+         "toggle_data",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "reset_apn_settings",
+         2
+        ],
+        [
+         "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+         2
+        ],
+        [
+         "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_details_by_id$.line_id\"}",
+         2
+        ],
+        [
+         "check_data_restriction_status",
+         2
+        ],
+        [
+         "run_speed_test",
+         1
+        ],
+        [
+         "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+         1
+        ],
+        [
+         "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+         1
+        ],
+        [
+         "check_network_status",
+         1
+        ]
+       ]
+      }
+     }
+    },
+    "no": {
+     "feature": "toggle_airplane_mode:status bar=📶¹ poor",
+     "yes": {
+      "feature": "toggle_roaming:status bar=✈️ airplane mode",
+      "yes": {
+       "calls": [
+        [
+         "reseat_sim_card",
+         7
+        ],
+        [
+         "reboot_device",
+         3
+        ],
+        [
+         "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+         2
+        ],
+        [
+         "check_vpn_status",
+         2
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "check_network_status",
+         5
+        ],
+        [
+         "check_data_restriction_status",
+         4
+        ],
+        [
+         "reboot_device",
+         2
+        ],
+        [
+         "reseat_sim_card",
+         1
+        ]
+       ]
+      }
+     },
+     "no": {
+      "feature": "check_sim_status:says your sim card is active and working.",
+      "yes": {
+       "calls": [
+        [
+         "check_data_restriction_status",
+         9
+        ],
+        [
+         "reboot_device",
+         1
+        ],
+        [
+         "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "reset_apn_settings",
+         5
+        ],
+        [
+         "check_wifi_calling_status",
+         1
+        ]
+       ]
+      }
+     }
+    }
+   },
+   "no": {
+    "feature": "check_apn_settings:mmsc url (for picture messages)=http://mms.carrier.com/mms/wapenc",
+    "yes": {
+     "feature": "called set_network_mode_preference",
+     "yes": {
+      "feature": "called check_wifi_calling_status",
+      "yes": {
+       "calls": [
+        [
+         "can_send_mms",
+         5
+        ],
+        [
+         "check_app_permissions{\"app_name\": \"messaging\"}",
+         5
+        ],
+        [
+         "check_installed_apps",
+         3
+        ],
+        [
+         "check_app_permissions{\"app_name\": \"Messaging\"}",
+         2
+        ],
+        [
+         "check_wifi_calling_status",
+         1
+        ],
+        [
+         "reboot_device",
+         1
+        ],
+        [
+         "toggle_wifi_calling",
+         1
+        ],
+        [
+         "check_data_restriction_status",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "can_send_mms",
+         12
+        ],
+        [
+         "check_wifi_calling_status",
+         10
+        ],
+        [
+         "check_installed_apps",
+         3
+        ],
+        [
+         "toggle_roaming",
+         2
+        ],
+        [
+         "run_speed_test",
+         1
+        ]
+       ]
+      }
+     },
+     "no": {
+      "feature": "called toggle_airplane_mode",
+      "yes": {
+       "calls": [
+        [
+         "reset_apn_settings",
+         8
+        ],
+        [
+         "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "check_wifi_calling_status",
+         8
+        ],
+        [
+         "check_network_mode_preference",
+         4
+        ],
+        [
+         "check_network_status",
+         4
+        ],
+        [
+         "can_send_mms",
+         4
+        ],
+        [
+         "run_speed_test",
+         2
+        ],
+        [
+         "check_app_permissions{\"app_name\": \"Messaging\"}",
+         2
+        ],
+        [
+         "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+         2
+        ],
+        [
+         "check_installed_apps",
+         1
+        ],
+        [
+         "reset_apn_settings",
+         1
+        ],
+        [
+         "check_app_permissions{\"app_name\": \"messaging\"}",
+         1
+        ],
+        [
+         "grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"storage\"}",
+         1
+        ],
+        [
+         "check_data_restriction_status",
+         1
+        ],
+        [
+         "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+         1
+        ]
+       ]
+      }
+     }
+    },
+    "no": {
+     "feature": "check_wifi_calling_status:says wi-fi calling is currently turned off.",
+     "yes": {
+      "feature": "called enable_roaming",
+      "yes": {
+       "calls": [
+        [
+         "reset_apn_settings",
+         3
+        ],
+        [
+         "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mms_port\": null, \"mms_proxy\": null, \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\", \"reset_at_reboot\": true}}",
+         1
+        ],
+        [
+         "check_installed_apps",
+         1
+        ],
+        [
+         "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mms_port\": null, \"mms_proxy\": null, \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\", \"reset_at_reboot\": false}}",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "reset_apn_settings",
+         10
+        ],
+        [
+         "can_send_mms",
+         1
+        ]
+       ]
+      }
+     },
+     "no": {
+      "feature": "called get_details_by_id",
+      "yes": {
+       "calls": [
+        [
+         "reset_apn_settings",
+         36
+        ],
+        [
+         "check_sim_status",
+         1
+        ],
+        [
+         "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mms_port\": null, \"mms_proxy\": null, \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\"}}",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "reset_apn_settings",
+         6
+        ],
+        [
+         "check_wifi_calling_status",
+         1
+        ],
+        [
+         "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+         1
+        ]
+       ]
+      }
+     }
+    }
+   }
+  },
+  "check_app_permissions": {
+   "feature": "check_app_permissions:app 'messaging' has permission for=sms, storage, phone.",
+   "yes": {
+    "feature": "called check_apn_settings",
+    "yes": {
+     "feature": "called toggle_data",
+     "yes": {
+      "feature": "called check_sim_status",
+      "yes": {
+       "calls": [
+        [
+         "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+         2
+        ],
+        [
+         "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+         1
+        ],
+        [
+         "transfer_to_human_agents",
+         1
+        ],
+        [
+         "check_app_status{\"app_name\": \"messaging\"}",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "check_network_mode_preference",
+         2
+        ],
+        [
+         "run_speed_test",
+         1
+        ],
+        [
+         "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+         1
+        ],
+        [
+         "check_data_restriction_status",
+         1
+        ]
+       ]
+      }
+     },
+     "no": {
+      "feature": "called reseat_sim_card",
+      "yes": {
+       "calls": [
+        [
+         "can_send_mms",
+         4
+        ],
+        [
+         "reset_apn_settings",
+         1
+        ],
+        [
+         "check_network_status",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "reset_apn_settings",
+         4
+        ],
+        [
+         "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+         1
+        ],
+        [
+         "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+         1
+        ],
+        [
+         "can_send_mms",
+         1
+        ]
+       ]
+      }
+     }
+    },
+    "no": {
+     "feature": "called toggle_roaming",
+     "yes": {
+      "calls": [
+       [
+        "check_apn_settings",
+        5
+       ]
+      ]
+     },
+     "no": {
+      "calls": [
+       [
+        "check_apn_settings",
+        4
+       ],
+       [
+        "can_send_mms",
+        1
+       ]
+      ]
+     }
+    }
+   },
+   "no": {
+    "feature": "check_app_permissions:says app 'messaging' not found on this phone.",
+    "yes": {
+     "feature": "called check_apn_settings",
+     "yes": {
+      "feature": "called reset_apn_settings",
+      "yes": {
+       "calls": [
+        [
+         "check_installed_apps",
+         4
+        ],
+        [
+         "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mms_port\": null, \"mms_proxy\": null, \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\", \"reset_at_reboot\": false}}",
+         2
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "check_installed_apps",
+         8
+        ],
+        [
+         "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_details_by_id$.line_id\"}",
+         1
+        ]
+       ]
+      }
+     },
+     "no": {
+      "feature": "called set_network_mode_preference",
+      "yes": {
+       "calls": [
+        [
+         "check_apn_settings",
+         4
+        ],
+        [
+         "check_installed_apps",
+         2
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "check_installed_apps",
+         6
+        ],
+        [
+         "run_speed_test",
+         1
+        ]
+       ]
+      }
+     }
+    },
+    "no": {
+     "feature": "check_app_permissions:app 'messaging' has permission for=sms, phone.",
+     "yes": {
+      "feature": "get_details_by_id:activated=true",
+      "yes": {
+       "calls": [
+        [
+         "grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"storage\"}",
+         9
+        ],
+        [
+         "toggle_airplane_mode",
+         8
+        ],
+        [
+         "grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"mms\"}",
+         1
+        ],
+        [
+         "check_app_status{\"app_name\": \"messaging\"}",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"storage\"}",
+         36
+        ],
+        [
+         "can_send_mms",
+         2
+        ],
+        [
+         "check_apn_settings",
+         1
+        ],
+        [
+         "check_network_status",
+         1
+        ],
+        [
+         "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+         1
+        ],
+        [
+         "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+         1
+        ]
+       ]
+      }
+     },
+     "no": {
+      "feature": "check_app_permissions:app 'messaging' has permission for=phone.",
+      "yes": {
+       "calls": [
+        [
+         "grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"storage\"}",
+         24
+        ],
+        [
+         "grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"sms\"}",
+         18
+        ],
+        [
+         "run_speed_test",
+         2
+        ],
+        [
+         "check_app_status{\"app_name\": \"messaging\"}",
+         1
+        ],
+        [
+         "check_apn_settings",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"sms\"}",
+         21
+        ],
+        [
+         "check_app_status{\"app_name\": \"messaging\"}",
+         6
+        ],
+        [
+         "check_installed_apps",
+         3
+        ],
+        [
+         "toggle_airplane_mode",
+         2
+        ],
+        [
+         "check_apn_settings",
+         1
+        ],
+        [
+         "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+         1
+        ]
+       ]
+      }
+     }
+    }
+   }
+  },
+  "check_app_status": {
+   "feature": "check_app_status:says - storage",
+   "yes": {
+    "calls": [
+     [
+      "grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"sms\"}",
+      8
+     ],
+     [
+      "can_send_mms",
+      1
+     ],
+     [
+      "run_speed_test",
+      1
+     ]
+    ]
+   },
+   "no": {
+    "calls": [
+     [
+      "grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"storage\"}",
+      6
+     ],
+     [
+      "check_data_restriction_status",
+      1
+     ]
+    ]
+   }
+  },
+  "check_data_restriction_status": {
+   "feature": "check_data_restriction_status:says data saver mode is off.",
+   "yes": {
+    "feature": "called set_network_mode_preference",
+    "yes": {
+     "calls": [
+      [
+       "check_vpn_status",
+       32
+      ],
+      [
+       "check_app_permissions{\"app_name\": \"messaging\"}",
+       3
+      ],
+      [
+       "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+       2
+      ],
+      [
+       "check_wifi_calling_status",
+       2
+      ],
+      [
+       "check_network_mode_preference",
+       1
+      ],
+      [
+       "check_network_status",
+       1
+      ],
+      [
+       "check_sim_status",
+       1
+      ],
+      [
+       "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_details_by_id$.line_id\"}",
+       1
+      ],
+      [
+       "check_apn_settings",
+       1
+      ],
+      [
+       "run_speed_test",
+       1
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+       1
+      ],
+      [
+       "can_send_mms",
+       1
+      ],
+      [
+       "toggle_roaming",
+       1
+      ]
+     ]
+    },
+    "no": {
+     "calls": [
+      [
+       "check_network_mode_preference",
+       38
+      ],
+      [
+       "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+       8
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+       3
+      ],
+      [
+       "check_apn_settings",
+       3
+      ],
+      [
+       "run_speed_test",
+       2
+      ],
+      [
+       "check_status_bar",
+       2
+      ],
+      [
+       "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       2
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+       2
+      ],
+      [
+       "check_app_permissions{\"app_name\": \"messaging\"}",
+       2
+      ],
+      [
+       "check_data_restriction_status",
+       1
+      ],
+      [
+       "check_vpn_status",
+       1
+      ],
+      [
+       "can_send_mms",
+       1
+      ],
+      [
+       "check_wifi_calling_status",
+       1
+      ],
+      [
+       "toggle_airplane_mode",
+       1
+      ],
+      [
+       "toggle_data",
+       1
+      ]
+     ]
+    }
+   },
+   "no": {
+    "feature": "called run_speed_test",
+    "yes": {
+     "calls": [
+      [
+       "toggle_data_saver_mode",
+       52
+      ],
+      [
+       "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       1
+      ],
+      [
+       "check_apn_settings",
+       1
+      ]
+     ]
+    },
+    "no": {
+     "calls": [
+      [
+       "toggle_data_saver_mode",
+       22
+      ],
+      [
+       "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       2
+      ],
+      [
+       "check_network_mode_preference",
+       2
+      ],
+      [
+       "toggle_roaming",
+       2
+      ],
+      [
+       "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       1
+      ],
+      [
+       "check_vpn_status",
+       1
+      ],
+      [
+       "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+       1
+      ]
+     ]
+    }
+   }
+  },
+  "check_installed_apps": {
+   "calls": [
+    [
+     "check_app_permissions{\"app_name\": \"messaging\"}",
+     74
+    ],
+    [
+     "check_app_status{\"app_name\": \"messaging\"}",
+     5
+    ],
+    [
+     "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mms_port\": null, \"mms_proxy\": null, \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\", \"reset_at_reboot\": false}}",
+     1
+    ],
+    [
+     "toggle_roaming",
+     1
+    ],
+    [
+     "check_wifi_calling_status",
+     1
+    ],
+    [
+     "reset_apn_settings",
+     1
+    ]
+   ]
+  },
+  "check_network_mode_preference": {
+   "feature": "called set_network_mode_preference",
+   "yes": {
+    "calls": [
+     [
+      "check_wifi_calling_status",
+      14
+     ],
+     [
+      "check_vpn_status",
+      1
+     ]
+    ]
+   },
+   "no": {
+    "calls": [
+     [
+      "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+      214
+     ],
+     [
+      "run_speed_test",
+      10
+     ],
+     [
+      "check_wifi_calling_status",
+      5
+     ],
+     [
+      "check_data_restriction_status",
+      5
+     ],
+     [
+      "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+      5
+     ],
+     [
+      "check_app_permissions{\"app_name\": \"messaging\"}",
+      3
+     ],
+     [
+      "disconnect_vpn",
+      3
+     ],
+     [
+      "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+      3
+     ],
+     [
+      "toggle_roaming",
+      3
+     ],
+     [
+      "check_vpn_status",
+      2
+     ],
+     [
+      "check_sim_status",
+      2
+     ],
+     [
+      "toggle_data_saver_mode",
+      2
+     ],
+     [
+      "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+      2
+     ],
+     [
+      "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+      1
+     ],
+     [
+      "check_apn_settings",
+      1
+     ],
+     [
+      "reboot_device",
+      1
+     ],
+     [
+      "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_details_by_id$.line_id\"}",
+      1
+     ],
+     [
+      "can_send_mms",
+      1
+     ],
+     [
+      "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+      1
+     ]
+    ]
+   }
+  },
+  "check_network_status": {
+   "feature": "check_network_status:cellular connection=connected",
+   "yes": {
+    "feature": "check_network_status:data roaming enabled=no",
+    "yes": {
+     "feature": "ticket: abroad",
+     "yes": {
+      "feature": "check_network_status:mobile data enabled=no",
+      "yes": {
+       "feature": "called toggle_data",
+       "yes": {
+        "calls": [
+         [
+          "toggle_roaming",
+          19
+         ]
+        ]
+       },
+       "no": {
+        "feature": "get_details_by_id:roaming_enabled=false",
+        "yes": {
+         "calls": [
+          [
+           "toggle_roaming",
+           5
+          ],
+          [
+           "toggle_data",
+           4
+          ],
+          [
+           "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           2
+          ],
+          [
+           "run_speed_test",
+           1
+          ],
+          [
+           "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "toggle_data",
+           30
+          ],
+          [
+           "toggle_roaming",
+           3
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           2
+          ],
+          [
+           "run_speed_test",
+           1
+          ]
+         ]
+        }
+       }
+      },
+      "no": {
+       "feature": "get_details_by_id:roaming_enabled=false",
+       "yes": {
+        "feature": "called enable_roaming",
+        "yes": {
+         "calls": [
+          [
+           "toggle_roaming",
+           11
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+           2
+          ],
+          [
+           "check_data_restriction_status",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "toggle_roaming",
+           5
+          ],
+          [
+           "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           4
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+           2
+          ],
+          [
+           "check_status_bar",
+           1
+          ],
+          [
+           "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           1
+          ]
+         ]
+        }
+       },
+       "no": {
+        "feature": "called get_details_by_id",
+        "yes": {
+         "calls": [
+          [
+           "toggle_roaming",
+           112
+          ],
+          [
+           "run_speed_test",
+           1
+          ],
+          [
+           "check_status_bar",
+           1
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "toggle_roaming",
+           9
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           5
+          ],
+          [
+           "run_speed_test",
+           1
+          ]
+         ]
+        }
+       }
+      }
+     },
+     "no": {
+      "feature": "check_network_status:mobile data enabled=no",
+      "yes": {
+       "feature": "check_status_bar:status bar=📵 data disabled",
+       "yes": {
+        "calls": [
+         [
+          "toggle_data",
+          9
+         ],
+         [
+          "run_speed_test",
+          2
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "toggle_data",
+          6
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+          1
+         ]
+        ]
+       }
+      },
+      "no": {
+       "feature": "get_details_by_id:roaming_enabled=true",
+       "yes": {
+        "feature": "check_status_bar:status bar=🔽 data saver",
+        "yes": {
+         "calls": [
+          [
+           "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           4
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+           3
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+           3
+          ],
+          [
+           "check_status_bar",
+           1
+          ],
+          [
+           "check_apn_settings",
+           1
+          ],
+          [
+           "reset_apn_settings",
+           1
+          ],
+          [
+           "enable_roaming{\"customer_id\": \"@get_bills_for_customer$[*].customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           1
+          ]
+         ]
+        }
+       },
+       "no": {
+        "feature": "called toggle_airplane_mode",
+        "yes": {
+         "calls": [
+          [
+           "run_speed_test",
+           2
+          ],
+          [
+           "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+           2
+          ],
+          [
+           "check_network_mode_preference",
+           1
+          ],
+          [
+           "stop",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           7
+          ],
+          [
+           "run_speed_test",
+           5
+          ],
+          [
+           "check_data_restriction_status",
+           2
+          ],
+          [
+           "get_customer_by_phone{\"phone_number\": \"@ticket\\\\d{3}\\\\-\\\\d{3}\\\\-\\\\d{4}\"}",
+           2
+          ],
+          [
+           "toggle_data_saver_mode",
+           1
+          ]
+         ]
+        }
+       }
+      }
+     }
+    },
+    "no": {
+     "feature": "called run_speed_test",
+     "yes": {
+      "feature": "reseat_sim_card:status bar=📶¹ poor",
+      "yes": {
+       "feature": "run_speed_test:speed test failed=no connection.",
+       "yes": {
+        "calls": [
+         [
+          "check_network_mode_preference",
+          2
+         ],
+         [
+          "check_data_restriction_status",
+          1
+         ],
+         [
+          "check_apn_settings",
+          1
+         ],
+         [
+          "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "check_network_mode_preference",
+          10
+         ]
+        ]
+       }
+      },
+      "no": {
+       "feature": "called can_send_mms",
+       "yes": {
+        "feature": "called get_customer_by_phone",
+        "yes": {
+         "calls": [
+          [
+           "can_send_mms",
+           2
+          ],
+          [
+           "run_speed_test",
+           2
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           2
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "get_customer_by_phone{\"phone_number\": \"@ticket\\\\d{3}\\\\-\\\\d{3}\\\\-\\\\d{4}\"}",
+           5
+          ]
+         ]
+        }
+       },
+       "no": {
+        "calls": [
+         [
+          "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_data_usage$.line_id\"}",
+          4
+         ],
+         [
+          "toggle_data",
+          1
+         ],
+         [
+          "check_apn_settings",
+          1
+         ],
+         [
+          "check_network_mode_preference",
+          1
+         ],
+         [
+          "reboot_device",
+          1
+         ]
+        ]
+       }
+      }
+     },
+     "no": {
+      "feature": "check_network_status:mobile data enabled=no",
+      "yes": {
+       "feature": "called get_details_by_id",
+       "yes": {
+        "calls": [
+         [
+          "toggle_data",
+          4
+         ],
+         [
+          "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          3
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "toggle_data",
+          6
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          1
+         ]
+        ]
+       }
+      },
+      "no": {
+       "feature": "ticket: an",
+       "yes": {
+        "feature": "check_network_status:cellular signal=excellent",
+        "yes": {
+         "calls": [
+          [
+           "can_send_mms",
+           4
+          ],
+          [
+           "check_wifi_calling_status",
+           3
+          ],
+          [
+           "check_apn_settings",
+           2
+          ],
+          [
+           "check_app_permissions{\"app_name\": \"Messaging\"}",
+           1
+          ],
+          [
+           "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+           4
+          ],
+          [
+           "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           2
+          ],
+          [
+           "run_speed_test",
+           1
+          ]
+         ]
+        }
+       },
+       "no": {
+        "feature": "called get_details_by_id",
+        "yes": {
+         "calls": [
+          [
+           "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           9
+          ],
+          [
+           "run_speed_test",
+           3
+          ],
+          [
+           "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           3
+          ],
+          [
+           "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_data_usage$.line_id\"}",
+           1
+          ],
+          [
+           "check_network_mode_preference",
+           1
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+           1
+          ],
+          [
+           "disconnect_vpn",
+           1
+          ],
+          [
+           "check_status_bar",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           3
+          ],
+          [
+           "run_speed_test",
+           1
+          ],
+          [
+           "check_status_bar",
+           1
+          ],
+          [
+           "check_network_mode_preference",
+           1
+          ]
+         ]
+        }
+       }
+      }
+     }
+    }
+   },
+   "no": {
+    "feature": "check_network_status:airplane mode=off",
+    "yes": {
+     "feature": "check_network_status:sim card status=missing",
+     "yes": {
+      "feature": "called get_customer_by_phone",
+      "yes": {
+       "feature": "get_details_by_id:status=active",
+       "yes": {
+        "feature": "called can_send_mms",
+        "yes": {
+         "calls": [
+          [
+           "reseat_sim_card",
+           7
+          ],
+          [
+           "check_sim_status",
+           2
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "check_sim_status",
+           12
+          ],
+          [
+           "reseat_sim_card",
+           2
+          ],
+          [
+           "can_send_mms",
+           1
+          ]
+         ]
+        }
+       },
+       "no": {
+        "feature": "ticket: all",
+        "yes": {
+         "calls": [
+          [
+           "reseat_sim_card",
+           37
+          ],
+          [
+           "check_sim_status",
+           2
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "reseat_sim_card",
+           16
+          ],
+          [
+           "check_sim_status",
+           5
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           3
+          ]
+         ]
+        }
+       }
+      },
+      "no": {
+       "calls": [
+        [
+         "check_sim_status",
+         11
+        ]
+       ]
+      }
+     },
+     "no": {
+      "feature": "check_network_status:sim card status=active",
+      "yes": {
+       "calls": [
+        [
+         "reboot_device",
+         2
+        ],
+        [
+         "check_apn_settings",
+         2
+        ],
+        [
+         "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+         2
+        ],
+        [
+         "resume_line{\"customer_id\": \"@get_details_by_id$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+         1
+        ],
+        [
+         "reset_apn_settings",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "feature": "called reboot_device",
+       "yes": {
+        "calls": [
+         [
+          "check_sim_status",
+          5
+         ]
+        ]
+       },
+       "no": {
+        "feature": "get_details_by_id:roaming_enabled=true",
+        "yes": {
+         "calls": [
+          [
+           "transfer_to_human_agents",
+           13
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "transfer_to_human_agents",
+           5
+          ],
+          [
+           "check_sim_status",
+           2
+          ],
+          [
+           "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"limit\": 5}",
+           2
+          ]
+         ]
+        }
+       }
+      }
+     }
+    },
+    "no": {
+     "feature": "check_network_status:sim card status=active",
+     "yes": {
+      "feature": "get_details_by_id:roaming_enabled=false",
+      "yes": {
+       "feature": "check_network_status:data roaming enabled=no",
+       "yes": {
+        "calls": [
+         [
+          "toggle_airplane_mode",
+          6
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          1
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "toggle_airplane_mode",
+          17
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+          3
+         ]
+        ]
+       }
+      },
+      "no": {
+       "feature": "check_network_status:mobile data enabled=no",
+       "yes": {
+        "feature": "called get_details_by_id",
+        "yes": {
+         "calls": [
+          [
+           "toggle_airplane_mode",
+           8
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "toggle_airplane_mode",
+           8
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           2
+          ]
+         ]
+        }
+       },
+       "no": {
+        "calls": [
+         [
+          "toggle_airplane_mode",
+          25
+         ]
+        ]
+       }
+      }
+     },
+     "no": {
+      "feature": "check_network_status:mobile data enabled=no",
+      "yes": {
+       "calls": [
+        [
+         "toggle_airplane_mode",
+         6
+        ],
+        [
+         "can_send_mms",
+         1
+        ],
+        [
+         "check_status_bar",
+         1
+        ],
+        [
+         "check_sim_status",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "feature": "called get_details_by_id",
+       "yes": {
+        "feature": "get_details_by_id:activated=true",
+        "yes": {
+         "calls": [
+          [
+           "toggle_airplane_mode",
+           5
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "toggle_airplane_mode",
+           6
+          ],
+          [
+           "reseat_sim_card",
+           3
+          ],
+          [
+           "send_payment_request{\"bill_id\": \"@get_bills_for_customer$[*].bill_id?{\\\"status\\\": \\\"Issued\\\"}\", \"customer_id\": \"@get_bills_for_customer$[*].customer_id\"}",
+           1
+          ]
+         ]
+        }
+       },
+       "no": {
+        "calls": [
+         [
+          "toggle_airplane_mode",
+          7
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          1
+         ]
+        ]
+       }
+      }
+     }
+    }
+   }
+  },
+  "check_payment_request": {
+   "calls": [
+    [
+     "make_payment",
+     101
+    ],
+    [
+     "transfer_to_human_agents",
+     2
+    ]
+   ]
+  },
+  "check_sim_status": {
+   "feature": "check_sim_status:says no sim card detected in the phone.",
+   "yes": {
+    "feature": "called toggle_airplane_mode",
+    "yes": {
+     "calls": [
+      [
+       "reseat_sim_card",
+       106
+      ]
+     ]
+    },
+    "no": {
+     "feature": "check_network_status:airplane mode=off",
+     "yes": {
+      "calls": [
+       [
+        "reseat_sim_card",
+        27
+       ]
+      ]
+     },
+     "no": {
+      "calls": [
+       [
+        "reseat_sim_card",
+        6
+       ],
+       [
+        "toggle_airplane_mode",
+        2
+       ]
+      ]
+     }
+    }
+   },
+   "no": {
+    "feature": "check_sim_status:says the sim card is locked with a pin code.",
+    "yes": {
+     "feature": "made send_payment_request{\"bill_id\": \"@get_bills_for_customer$[*].bill_id?{\\\"status\\\": \\\"Issued\\\"}\", \"customer_id\": \"@get_bills_for_customer$[*].customer_id\"}",
+     "yes": {
+      "calls": [
+       [
+        "transfer_to_human_agents",
+        6
+       ],
+       [
+        "check_payment_request",
+        1
+       ]
+      ]
+     },
+     "no": {
+      "calls": [
+       [
+        "transfer_to_human_agents",
+        54
+       ]
+      ]
+     }
+    },
+    "no": {
+     "feature": "called set_network_mode_preference",
+     "yes": {
+      "feature": "called get_data_usage",
+      "yes": {
+       "calls": [
+        [
+         "reset_apn_settings",
+         9
+        ],
+        [
+         "check_apn_settings",
+         8
+        ],
+        [
+         "reseat_sim_card",
+         1
+        ],
+        [
+         "check_network_status",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "check_apn_settings",
+         26
+        ],
+        [
+         "reset_apn_settings",
+         1
+        ],
+        [
+         "get_customer_by_phone{\"phone_number\": \"@ticket\\\\d{3}\\\\-\\\\d{3}\\\\-\\\\d{4}\"}",
+         1
+        ],
+        [
+         "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+         1
+        ],
+        [
+         "check_status_bar",
+         1
+        ],
+        [
+         "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+         1
+        ]
+       ]
+      }
+     },
+     "no": {
+      "feature": "reseat_sim_card:status bar=📵 no signal",
+      "yes": {
+       "calls": [
+        [
+         "check_status_bar",
+         16
+        ],
+        [
+         "reset_apn_settings",
+         4
+        ],
+        [
+         "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+         4
+        ],
+        [
+         "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"limit\": 5}",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "reset_apn_settings",
+         20
+        ],
+        [
+         "check_network_status",
+         11
+        ],
+        [
+         "toggle_data",
+         5
+        ],
+        [
+         "check_status_bar",
+         3
+        ],
+        [
+         "reseat_sim_card",
+         3
+        ],
+        [
+         "check_apn_settings",
+         2
+        ],
+        [
+         "check_network_mode_preference",
+         2
+        ],
+        [
+         "run_speed_test",
+         1
+        ],
+        [
+         "check_data_restriction_status",
+         1
+        ],
+        [
+         "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+         1
+        ]
+       ]
+      }
+     }
+    }
+   }
+  },
+  "check_status_bar": {
+   "feature": "check_status_bar:status bar=✈️ airplane mode",
+   "yes": {
+    "feature": "called toggle_airplane_mode",
+    "yes": {
+     "calls": [
+      [
+       "disconnect_vpn",
+       12
+      ]
+     ]
+    },
+    "no": {
+     "feature": "get_details_by_id:activated=true",
+     "yes": {
+      "feature": "ticket: abroad",
+      "yes": {
+       "feature": "check_status_bar:status bar=🔒 vpn connected",
+       "yes": {
+        "calls": [
+         [
+          "toggle_airplane_mode",
+          7
+         ],
+         [
+          "check_network_status",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "toggle_airplane_mode",
+          7
+         ]
+        ]
+       }
+      },
+      "no": {
+       "calls": [
+        [
+         "check_network_status",
+         5
+        ],
+        [
+         "toggle_airplane_mode",
+         1
+        ]
+       ]
+      }
+     },
+     "no": {
+      "feature": "get_details_by_id:roaming_enabled=false",
+      "yes": {
+       "feature": "ticket: browse",
+       "yes": {
+        "feature": "check_status_bar:status bar=🔒 vpn connected",
+        "yes": {
+         "calls": [
+          [
+           "toggle_airplane_mode",
+           7
+          ],
+          [
+           "check_network_status",
+           1
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "toggle_airplane_mode",
+           12
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           2
+          ]
+         ]
+        }
+       },
+       "no": {
+        "feature": "get_details_by_id:status=active",
+        "yes": {
+         "calls": [
+          [
+           "toggle_airplane_mode",
+           7
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "toggle_airplane_mode",
+           4
+          ],
+          [
+           "check_network_status",
+           1
+          ]
+         ]
+        }
+       }
+      },
+      "no": {
+       "feature": "get_details_by_id:status=suspended",
+       "yes": {
+        "calls": [
+         [
+          "toggle_airplane_mode",
+          13
+         ],
+         [
+          "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"limit\": 12}",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "feature": "get_details_by_id:roaming_enabled=true",
+        "yes": {
+         "calls": [
+          [
+           "toggle_airplane_mode",
+           26
+          ],
+          [
+           "check_network_status",
+           3
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "toggle_airplane_mode",
+           196
+          ],
+          [
+           "check_network_status",
+           4
+          ]
+         ]
+        }
+       }
+      }
+     }
+    }
+   },
+   "no": {
+    "feature": "check_status_bar:status bar=📱 data enabled",
+    "yes": {
+     "feature": "check_status_bar:status bar=📶¹ poor",
+     "yes": {
+      "feature": "check_status_bar:status bar=🔽 data saver",
+      "yes": {
+       "feature": "called toggle_data_saver_mode",
+       "yes": {
+        "calls": [
+         [
+          "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+          4
+         ],
+         [
+          "check_network_mode_preference",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "feature": "called get_data_usage",
+        "yes": {
+         "calls": [
+          [
+           "toggle_data_saver_mode",
+           5
+          ],
+          [
+           "check_network_status",
+           3
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "run_speed_test",
+           2
+          ],
+          [
+           "check_network_status",
+           2
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           1
+          ]
+         ]
+        }
+       }
+      },
+      "no": {
+       "feature": "ticket: an",
+       "yes": {
+        "feature": "called check_sim_status",
+        "yes": {
+         "calls": [
+          [
+           "check_network_mode_preference",
+           2
+          ],
+          [
+           "can_send_mms",
+           2
+          ],
+          [
+           "reset_apn_settings",
+           2
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+           2
+          ],
+          [
+           "can_send_mms",
+           1
+          ],
+          [
+           "check_network_mode_preference",
+           1
+          ],
+          [
+           "check_network_status",
+           1
+          ]
+         ]
+        }
+       },
+       "no": {
+        "feature": "get_details_by_id:status=active",
+        "yes": {
+         "calls": [
+          [
+           "check_network_status",
+           5
+          ],
+          [
+           "toggle_roaming",
+           2
+          ],
+          [
+           "check_network_mode_preference",
+           2
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           2
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "check_network_status",
+           16
+          ],
+          [
+           "check_network_mode_preference",
+           11
+          ],
+          [
+           "check_sim_status",
+           3
+          ],
+          [
+           "run_speed_test",
+           1
+          ]
+         ]
+        }
+       }
+      }
+     },
+     "no": {
+      "feature": "ticket: all",
+      "yes": {
+       "feature": "called check_payment_request",
+       "yes": {
+        "calls": [
+         [
+          "stop",
+          8
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "stop",
+          7
+         ],
+         [
+          "check_network_status",
+          2
+         ]
+        ]
+       }
+      },
+      "no": {
+       "feature": "called check_network_status",
+       "yes": {
+        "feature": "get_details_by_id:status=active",
+        "yes": {
+         "calls": [
+          [
+           "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           2
+          ],
+          [
+           "run_speed_test",
+           1
+          ],
+          [
+           "check_data_restriction_status",
+           1
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "run_speed_test",
+           3
+          ],
+          [
+           "check_apn_settings",
+           2
+          ],
+          [
+           "check_sim_status",
+           1
+          ]
+         ]
+        }
+       },
+       "no": {
+        "feature": "check_status_bar:status bar=🔽 data saver",
+        "yes": {
+         "calls": [
+          [
+           "check_network_status",
+           6
+          ],
+          [
+           "run_speed_test",
+           2
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "run_speed_test",
+           18
+          ],
+          [
+           "check_network_status",
+           3
+          ],
+          [
+           "check_apn_settings",
+           1
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           1
+          ]
+         ]
+        }
+       }
+      }
+     }
+    },
+    "no": {
+     "feature": "check_status_bar:status bar=📵 no signal",
+     "yes": {
+      "feature": "called check_sim_status",
+      "yes": {
+       "feature": "called check_network_status",
+       "yes": {
+        "feature": "get_details_by_id:roaming_enabled=true",
+        "yes": {
+         "calls": [
+          [
+           "reset_apn_settings",
+           3
+          ],
+          [
+           "reboot_device",
+           2
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "reset_apn_settings",
+           6
+          ],
+          [
+           "check_apn_settings",
+           2
+          ]
+         ]
+        }
+       },
+       "no": {
+        "feature": "get_details_by_id:len(line_items)=1",
+        "yes": {
+         "calls": [
+          [
+           "reset_apn_settings",
+           5
+          ],
+          [
+           "transfer_to_human_agents",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "check_network_status",
+           6
+          ],
+          [
+           "reset_apn_settings",
+           1
+          ]
+         ]
+        }
+       }
+      },
+      "no": {
+       "feature": "called get_details_by_id",
+       "yes": {
+        "feature": "reboot_device:status bar=✈️ airplane mode",
+        "yes": {
+         "calls": [
+          [
+           "check_sim_status",
+           10
+          ],
+          [
+           "check_network_status",
+           2
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "check_network_status",
+           27
+          ],
+          [
+           "check_sim_status",
+           10
+          ],
+          [
+           "reset_apn_settings",
+           4
+          ],
+          [
+           "reseat_sim_card",
+           1
+          ],
+          [
+           "toggle_data",
+           1
+          ],
+          [
+           "reboot_device",
+           1
+          ]
+         ]
+        }
+       },
+       "no": {
+        "feature": "ticket: abroad",
+        "yes": {
+         "calls": [
+          [
+           "check_network_status",
+           8
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "check_network_status",
+           11
+          ]
+         ]
+        }
+       }
+      }
+     },
+     "no": {
+      "feature": "called toggle_data",
+      "yes": {
+       "calls": [
+        [
+         "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+         2
+        ],
+        [
+         "disconnect_vpn",
+         2
+        ],
+        [
+         "toggle_roaming",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "feature": "get_details_by_id:name=premium plan",
+       "yes": {
+        "feature": "check_status_bar:status bar=🔒 vpn connected",
+        "yes": {
+         "calls": [
+          [
+           "check_network_status",
+           3
+          ],
+          [
+           "check_sim_status",
+           2
+          ],
+          [
+           "toggle_data",
+           2
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "toggle_data",
+           17
+          ]
+         ]
+        }
+       },
+       "no": {
+        "feature": "called check_sim_status",
+        "yes": {
+         "calls": [
+          [
+           "check_network_status",
+           8
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "toggle_data",
+           13
+          ],
+          [
+           "check_network_status",
+           12
+          ],
+          [
+           "run_speed_test",
+           2
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           1
+          ],
+          [
+           "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           1
+          ]
+         ]
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "check_vpn_status": {
+   "calls": [
+    [
+     "disconnect_vpn",
+     101
+    ],
+    [
+     "check_network_status",
+     7
+    ],
+    [
+     "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+     5
+    ],
+    [
+     "run_speed_test",
+     3
+    ],
+    [
+     "reboot_device",
+     2
+    ],
+    [
+     "can_send_mms",
+     2
+    ],
+    [
+     "check_app_permissions{\"app_name\": \"messaging\"}",
+     2
+    ],
+    [
+     "check_network_mode_preference",
+     2
+    ],
+    [
+     "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+     2
+    ],
+    [
+     "toggle_roaming",
+     1
+    ],
+    [
+     "check_app_status{\"app_name\": \"messaging\"}",
+     1
+    ],
+    [
+     "check_wifi_calling_status",
+     1
+    ],
+    [
+     "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+     1
+    ],
+    [
+     "check_apn_settings",
+     1
+    ]
+   ]
+  },
+  "check_wifi_calling_status": {
+   "feature": "check_wifi_calling_status:says wi-fi calling is currently turned off.",
+   "yes": {
+    "feature": "called check_apn_settings",
+    "yes": {
+     "calls": [
+      [
+       "check_app_permissions{\"app_name\": \"messaging\"}",
+       14
+      ],
+      [
+       "can_send_mms",
+       8
+      ],
+      [
+       "check_data_restriction_status",
+       6
+      ],
+      [
+       "check_installed_apps",
+       4
+      ],
+      [
+       "check_app_permissions{\"app_name\": \"Messaging\"}",
+       3
+      ],
+      [
+       "check_network_mode_preference",
+       2
+      ],
+      [
+       "check_app_status{\"app_name\": \"messaging\"}",
+       1
+      ],
+      [
+       "check_sim_status",
+       1
+      ],
+      [
+       "run_speed_test",
+       1
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+       1
+      ],
+      [
+       "stop",
+       1
+      ],
+      [
+       "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mms_port\": null, \"mms_proxy\": null, \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\", \"reset_at_reboot\": false}}",
+       1
+      ]
+     ]
+    },
+    "no": {
+     "calls": [
+      [
+       "check_installed_apps",
+       11
+      ],
+      [
+       "check_app_permissions{\"app_name\": \"Messaging\"}",
+       5
+      ],
+      [
+       "run_speed_test",
+       3
+      ],
+      [
+       "can_send_mms",
+       2
+      ],
+      [
+       "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       2
+      ],
+      [
+       "check_network_status",
+       1
+      ],
+      [
+       "check_apn_settings",
+       1
+      ]
+     ]
+    }
+   },
+   "no": {
+    "feature": "run_speed_test:speed test failed=no connection.",
+    "yes": {
+     "calls": [
+      [
+       "toggle_wifi_calling",
+       4
+      ],
+      [
+       "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       1
+      ],
+      [
+       "run_speed_test",
+       1
+      ]
+     ]
+    },
+    "no": {
+     "calls": [
+      [
+       "toggle_wifi_calling",
+       64
+      ],
+      [
+       "check_sim_status",
+       1
+      ],
+      [
+       "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mms_port\": null, \"mms_proxy\": null, \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\", \"reset_at_reboot\": false}}",
+       1
+      ]
+     ]
+    }
+   }
+  },
+  "disconnect_vpn": {
+   "calls": [
+    [
+     "run_speed_test",
+     130
+    ],
+    [
+     "toggle_data",
+     9
+    ],
+    [
+     "check_data_restriction_status",
+     5
+    ],
+    [
+     "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+     5
+    ],
+    [
+     "check_network_mode_preference",
+     1
+    ],
+    [
+     "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+     1
+    ],
+    [
+     "toggle_data_saver_mode",
+     1
+    ],
+    [
+     "reboot_device",
+     1
+    ],
+    [
+     "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+     1
+    ],
+    [
+     "toggle_roaming",
+     1
+    ]
+   ]
+  },
+  "enable_roaming": {
+   "feature": "called check_network_status",
+   "yes": {
+    "feature": "run_speed_test:speed test failed=no connection.",
+    "yes": {
+     "feature": "made enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+     "yes": {
+      "feature": "toggle_data:status bar=📶¹ poor",
+      "yes": {
+       "feature": "toggle_data:status bar=🔽 data saver",
+       "yes": {
+        "calls": [
+         [
+          "run_speed_test",
+          4
+         ],
+         [
+          "toggle_data_saver_mode",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "feature": "check_status_bar:status bar=✈️ airplane mode",
+        "yes": {
+         "calls": [
+          [
+           "run_speed_test",
+           10
+          ],
+          [
+           "check_network_status",
+           2
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "run_speed_test",
+           9
+          ]
+         ]
+        }
+       }
+      },
+      "no": {
+       "feature": "check_network_status:mobile data enabled=no",
+       "yes": {
+        "calls": [
+         [
+          "toggle_data",
+          6
+         ],
+         [
+          "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          2
+         ],
+         [
+          "run_speed_test",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "feature": "check_network_status:cellular signal=poor",
+        "yes": {
+         "calls": [
+          [
+           "run_speed_test",
+           4
+          ],
+          [
+           "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+           1
+          ],
+          [
+           "check_network_mode_preference",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "run_speed_test",
+           8
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+           4
+          ],
+          [
+           "check_network_status",
+           2
+          ],
+          [
+           "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_details_by_id$.line_id\"}",
+           1
+          ],
+          [
+           "check_wifi_calling_status",
+           1
+          ],
+          [
+           "check_apn_settings",
+           1
+          ]
+         ]
+        }
+       }
+      }
+     },
+     "no": {
+      "feature": "called refuel_data",
+      "yes": {
+       "feature": "called toggle_airplane_mode",
+       "yes": {
+        "calls": [
+         [
+          "run_speed_test",
+          7
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "run_speed_test",
+          4
+         ],
+         [
+          "reboot_device",
+          1
+         ]
+        ]
+       }
+      },
+      "no": {
+       "calls": [
+        [
+         "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+         4
+        ],
+        [
+         "run_speed_test",
+         3
+        ],
+        [
+         "reset_apn_settings",
+         1
+        ]
+       ]
+      }
+     }
+    },
+    "no": {
+     "feature": "ticket: an",
+     "yes": {
+      "feature": "called toggle_airplane_mode",
+      "yes": {
+       "calls": [
+        [
+         "run_speed_test",
+         2
+        ],
+        [
+         "toggle_data",
+         1
+        ],
+        [
+         "toggle_roaming",
+         1
+        ],
+        [
+         "check_app_permissions{\"app_name\": \"messaging\"}",
+         1
+        ],
+        [
+         "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "feature": "check_network_status:cellular signal=poor",
+       "yes": {
+        "calls": [
+         [
+          "check_network_mode_preference",
+          3
+         ],
+         [
+          "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+          2
+         ],
+         [
+          "check_apn_settings",
+          1
+         ],
+         [
+          "can_send_mms",
+          1
+         ],
+         [
+          "check_network_status",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "feature": "check_apn_settings:mmsc url (for picture messages)=http://mms.carrier.com/mms/wapenc",
+        "yes": {
+         "calls": [
+          [
+           "check_wifi_calling_status",
+           1
+          ],
+          [
+           "grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"storage\"}",
+           1
+          ],
+          [
+           "can_send_mms",
+           1
+          ],
+          [
+           "check_network_mode_preference",
+           1
+          ],
+          [
+           "check_data_restriction_status",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "can_send_mms",
+           12
+          ],
+          [
+           "check_apn_settings",
+           3
+          ]
+         ]
+        }
+       }
+      }
+     },
+     "no": {
+      "feature": "check_network_status:mobile data enabled=no",
+      "yes": {
+       "feature": "called toggle_data",
+       "yes": {
+        "feature": "get_data_usage:data_used_gb=15.1",
+        "yes": {
+         "calls": [
+          [
+           "toggle_data_saver_mode",
+           3
+          ],
+          [
+           "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+           2
+          ],
+          [
+           "check_network_mode_preference",
+           2
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "run_speed_test",
+           8
+          ],
+          [
+           "check_network_mode_preference",
+           4
+          ],
+          [
+           "check_data_restriction_status",
+           2
+          ],
+          [
+           "disconnect_vpn",
+           1
+          ],
+          [
+           "toggle_data_saver_mode",
+           1
+          ],
+          [
+           "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+           1
+          ]
+         ]
+        }
+       },
+       "no": {
+        "feature": "check_network_status:airplane mode=off",
+        "yes": {
+         "calls": [
+          [
+           "toggle_data",
+           4
+          ],
+          [
+           "toggle_roaming",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "toggle_data",
+           5
+          ],
+          [
+           "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           1
+          ]
+         ]
+        }
+       }
+      },
+      "no": {
+       "feature": "check_network_status:cellular signal=excellent",
+       "yes": {
+        "calls": [
+         [
+          "run_speed_test",
+          2
+         ],
+         [
+          "stop",
+          2
+         ],
+         [
+          "check_status_bar",
+          2
+         ],
+         [
+          "reboot_device",
+          1
+         ],
+         [
+          "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "feature": "get_data_usage:data_used_gb=15.1",
+        "yes": {
+         "calls": [
+          [
+           "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+           2
+          ],
+          [
+           "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+           1
+          ],
+          [
+           "stop",
+           1
+          ],
+          [
+           "toggle_roaming",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+           7
+          ],
+          [
+           "run_speed_test",
+           4
+          ],
+          [
+           "check_network_mode_preference",
+           4
+          ],
+          [
+           "toggle_data_saver_mode",
+           3
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+           3
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           1
+          ],
+          [
+           "toggle_roaming",
+           1
+          ]
+         ]
+        }
+       }
+      }
+     }
+    }
+   },
+   "no": {
+    "feature": "get_data_usage:data_used_gb=15.1",
+    "yes": {
+     "feature": "called refuel_data",
+     "yes": {
+      "calls": [
+       [
+        "run_speed_test",
+        2
+       ],
+       [
+        "toggle_roaming",
+        2
+       ],
+       [
+        "reboot_device",
+        1
+       ]
+      ]
+     },
+     "no": {
+      "calls": [
+       [
+        "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+        11
+       ],
+       [
+        "toggle_roaming",
+        2
+       ],
+       [
+        "check_network_status",
+        1
+       ]
+      ]
+     }
+    },
+    "no": {
+     "feature": "get_details_by_id:roaming_enabled=false",
+     "yes": {
+      "feature": "ticket: an",
+      "yes": {
+       "feature": "called toggle_roaming",
+       "yes": {
+        "calls": [
+         [
+          "can_send_mms",
+          5
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "toggle_roaming",
+          7
+         ],
+         [
+          "check_network_status",
+          5
+         ],
+         [
+          "can_send_mms",
+          1
+         ],
+         [
+          "check_data_restriction_status",
+          1
+         ]
+        ]
+       }
+      },
+      "no": {
+       "feature": "called check_status_bar",
+       "yes": {
+        "calls": [
+         [
+          "toggle_roaming",
+          2
+         ],
+         [
+          "check_network_status",
+          2
+         ],
+         [
+          "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          2
+         ],
+         [
+          "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "check_network_status",
+          9
+         ],
+         [
+          "check_status_bar",
+          4
+         ]
+        ]
+       }
+      }
+     },
+     "no": {
+      "feature": "ticket: an",
+      "yes": {
+       "calls": [
+        [
+         "toggle_roaming",
+         11
+        ],
+        [
+         "check_network_status",
+         2
+        ],
+        [
+         "can_send_mms",
+         2
+        ]
+       ]
+      },
+      "no": {
+       "feature": "get_details_by_id:activated=true",
+       "yes": {
+        "calls": [
+         [
+          "toggle_roaming",
+          6
+         ],
+         [
+          "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_details_by_id$.line_id\"}",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "feature": "called get_data_usage",
+        "yes": {
+         "calls": [
+          [
+           "toggle_roaming",
+           4
+          ],
+          [
+           "check_network_status",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "toggle_roaming",
+           32
+          ],
+          [
+           "check_network_status",
+           3
+          ],
+          [
+           "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           2
+          ],
+          [
+           "check_status_bar",
+           2
+          ],
+          [
+           "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_details_by_id$.line_id\"}",
+           2
+          ],
+          [
+           "toggle_data",
+           1
+          ]
+         ]
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "get_bills_for_customer": {
+   "feature": "called get_details_by_id",
+   "yes": {
+    "feature": "called check_payment_request",
+    "yes": {
+     "calls": [
+      [
+       "resume_line{\"customer_id\": \"@get_bills_for_customer$[*].customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       8
+      ],
+      [
+       "send_payment_request{\"bill_id\": \"@get_bills_for_customer$[*].bill_id?{\\\"status\\\": \\\"Issued\\\"}\", \"customer_id\": \"@get_bills_for_customer$[*].customer_id\"}",
+       2
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_details_by_id$.line_id\"}",
+       1
+      ],
+      [
+       "transfer_to_human_agents",
+       1
+      ]
+     ]
+    },
+    "no": {
+     "calls": [
+      [
+       "send_payment_request{\"bill_id\": \"@get_bills_for_customer$[*].bill_id?{\\\"status\\\": \\\"Overdue\\\"}\", \"customer_id\": \"@get_bills_for_customer$[*].customer_id\"}",
+       63
+      ],
+      [
+       "send_payment_request{\"bill_id\": \"@get_bills_for_customer$[*].bill_id?{\\\"status\\\": \\\"Issued\\\"}\", \"customer_id\": \"@get_bills_for_customer$[*].customer_id\"}",
+       15
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_bills_for_customer$[*].bill_id?{\\\"status\\\": \\\"Issued\\\"}\"}",
+       9
+      ],
+      [
+       "reboot_device",
+       2
+      ],
+      [
+       "transfer_to_human_agents",
+       2
+      ],
+      [
+       "refuel_data{\"customer_id\": \"@get_bills_for_customer$[*].customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+       1
+      ],
+      [
+       "toggle_airplane_mode",
+       1
+      ],
+      [
+       "check_status_bar",
+       1
+      ]
+     ]
+    }
+   },
+   "no": {
+    "calls": [
+     [
+      "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+      20
+     ],
+     [
+      "send_payment_request{\"bill_id\": \"@get_bills_for_customer$[*].bill_id?{\\\"status\\\": \\\"Overdue\\\"}\", \"customer_id\": \"@get_bills_for_customer$[*].customer_id\"}",
+      2
+     ],
+     [
+      "transfer_to_human_agents",
+      1
+     ],
+     [
+      "send_payment_request{\"bill_id\": \"@get_bills_for_customer$[*].bill_id?{\\\"status\\\": \\\"Issued\\\"}\", \"customer_id\": \"@get_bills_for_customer$[*].customer_id\"}",
+      1
+     ],
+     [
+      "check_status_bar",
+      1
+     ]
+    ]
+   }
+  },
+  "get_customer_by_phone": {
+   "calls": [
+    [
+     "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+     600
+    ],
+    [
+     "check_status_bar",
+     83
+    ],
+    [
+     "check_network_status",
+     45
+    ],
+    [
+     "can_send_mms",
+     33
+    ],
+    [
+     "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\"}",
+     11
+    ],
+    [
+     "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"limit\": 12}",
+     8
+    ],
+    [
+     "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"limit\": 10}",
+     5
+    ],
+    [
+     "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"limit\": 5}",
+     2
+    ]
+   ]
+  },
+  "get_data_usage": {
+   "feature": "get_data_usage:data_used_gb=15.1",
+   "yes": {
+    "feature": "toggle_airplane_mode:status bar=📵 data disabled",
+    "yes": {
+     "feature": "called run_speed_test",
+     "yes": {
+      "calls": [
+       [
+        "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+        31
+       ],
+       [
+        "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+        9
+       ],
+       [
+        "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_data_usage$.line_id\"}",
+        1
+       ],
+       [
+        "reset_apn_settings",
+        1
+       ],
+       [
+        "check_apn_settings",
+        1
+       ]
+      ]
+     },
+     "no": {
+      "calls": [
+       [
+        "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+        6
+       ],
+       [
+        "toggle_data",
+        6
+       ],
+       [
+        "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_data_usage$.line_id\"}",
+        4
+       ],
+       [
+        "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+        1
+       ],
+       [
+        "disconnect_vpn",
+        1
+       ],
+       [
+        "check_data_restriction_status",
+        1
+       ]
+      ]
+     }
+    },
+    "no": {
+     "feature": "called enable_roaming",
+     "yes": {
+      "calls": [
+       [
+        "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+        46
+       ],
+       [
+        "check_network_mode_preference",
+        3
+       ],
+       [
+        "toggle_data_saver_mode",
+        2
+       ],
+       [
+        "disconnect_vpn",
+        1
+       ],
+       [
+        "toggle_roaming",
+        1
+       ]
+      ]
+     },
+     "no": {
+      "calls": [
+       [
+        "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+        87
+       ],
+       [
+        "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_data_usage$.line_id\"}",
+        19
+       ],
+       [
+        "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+        3
+       ],
+       [
+        "run_speed_test",
+        2
+       ],
+       [
+        "check_network_mode_preference",
+        1
+       ],
+       [
+        "toggle_data_saver_mode",
+        1
+       ]
+      ]
+     }
+    }
+   },
+   "no": {
+    "feature": "get_details_by_id:status=active",
+    "yes": {
+     "feature": "called toggle_roaming",
+     "yes": {
+      "calls": [
+       [
+        "check_network_mode_preference",
+        2
+       ],
+       [
+        "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+        2
+       ],
+       [
+        "reset_apn_settings",
+        1
+       ],
+       [
+        "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_data_usage$.line_id\"}",
+        1
+       ],
+       [
+        "disconnect_vpn",
+        1
+       ]
+      ]
+     },
+     "no": {
+      "calls": [
+       [
+        "run_speed_test",
+        5
+       ],
+       [
+        "check_data_restriction_status",
+        2
+       ],
+       [
+        "toggle_roaming",
+        2
+       ],
+       [
+        "check_network_mode_preference",
+        1
+       ],
+       [
+        "toggle_data",
+        1
+       ]
+      ]
+     }
+    },
+    "no": {
+     "feature": "called check_sim_status",
+     "yes": {
+      "calls": [
+       [
+        "check_network_status",
+        7
+       ],
+       [
+        "reseat_sim_card",
+        2
+       ],
+       [
+        "check_data_restriction_status",
+        2
+       ],
+       [
+        "check_status_bar",
+        1
+       ]
+      ]
+     },
+     "no": {
+      "calls": [
+       [
+        "check_status_bar",
+        12
+       ],
+       [
+        "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_data_usage$.line_id\"}",
+        9
+       ],
+       [
+        "reset_apn_settings",
+        1
+       ]
+      ]
+     }
+    }
+   }
+  },
+  "get_details_by_id": {
+   "feature": "get_details_by_id:status=active",
+   "yes": {
+    "feature": "get_details_by_id:roaming_enabled=false",
+    "yes": {
+     "feature": "called check_network_status",
+     "yes": {
+      "feature": "called can_send_mms",
+      "yes": {
+       "feature": "called run_speed_test",
+       "yes": {
+        "calls": [
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          44
+         ],
+         [
+          "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          24
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+          6
+         ],
+         [
+          "check_sim_status",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          11
+         ],
+         [
+          "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          8
+         ],
+         [
+          "reseat_sim_card",
+          2
+         ],
+         [
+          "check_app_permissions{\"app_name\": \"messaging\"}",
+          2
+         ],
+         [
+          "check_apn_settings",
+          2
+         ],
+         [
+          "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+          1
+         ],
+         [
+          "check_app_permissions{\"app_name\": \"Messaging\"}",
+          1
+         ],
+         [
+          "check_wifi_calling_status",
+          1
+         ]
+        ]
+       }
+      },
+      "no": {
+       "feature": "called toggle_data",
+       "yes": {
+        "calls": [
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          10
+         ],
+         [
+          "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          10
+         ],
+         [
+          "run_speed_test",
+          2
+         ],
+         [
+          "disconnect_vpn",
+          1
+         ],
+         [
+          "toggle_data_saver_mode",
+          1
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+          1
+         ],
+         [
+          "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+          1
+         ],
+         [
+          "check_data_restriction_status",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          40
+         ],
+         [
+          "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          7
+         ],
+         [
+          "toggle_roaming",
+          5
+         ],
+         [
+          "toggle_airplane_mode",
+          4
+         ],
+         [
+          "toggle_data",
+          3
+         ],
+         [
+          "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          3
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+          2
+         ],
+         [
+          "run_speed_test",
+          2
+         ],
+         [
+          "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          1
+         ],
+         [
+          "reset_apn_settings",
+          1
+         ],
+         [
+          "check_network_mode_preference",
+          1
+         ],
+         [
+          "check_sim_status",
+          1
+         ],
+         [
+          "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mms_port\": null, \"mms_proxy\": null, \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\", \"reset_at_reboot\": false}}",
+          1
+         ]
+        ]
+       }
+      }
+     },
+     "no": {
+      "feature": "ticket: abroad",
+      "yes": {
+       "feature": "ticket: an",
+       "yes": {
+        "calls": [
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          67
+         ],
+         [
+          "check_network_status",
+          15
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+          13
+         ],
+         [
+          "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          13
+         ],
+         [
+          "can_send_mms",
+          3
+         ],
+         [
+          "check_status_bar",
+          2
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.device_id\"}",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          241
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+          94
+         ],
+         [
+          "check_network_status",
+          36
+         ],
+         [
+          "check_status_bar",
+          30
+         ],
+         [
+          "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          15
+         ],
+         [
+          "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          6
+         ],
+         [
+          "run_speed_test",
+          4
+         ],
+         [
+          "toggle_airplane_mode",
+          2
+         ]
+        ]
+       }
+      },
+      "no": {
+       "feature": "called check_status_bar",
+       "yes": {
+        "calls": [
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          9
+         ],
+         [
+          "check_network_status",
+          2
+         ],
+         [
+          "reset_apn_settings",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          155
+         ],
+         [
+          "check_network_status",
+          3
+         ],
+         [
+          "check_status_bar",
+          2
+         ],
+         [
+          "can_send_mms",
+          1
+         ]
+        ]
+       }
+      }
+     }
+    },
+    "no": {
+     "feature": "called check_network_status",
+     "yes": {
+      "feature": "run_speed_test:speed test failed=no connection.",
+      "yes": {
+       "feature": "check_network_status:cellular signal=poor",
+       "yes": {
+        "calls": [
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+          9
+         ],
+         [
+          "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          2
+         ],
+         [
+          "check_apn_settings",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          8
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+          5
+         ],
+         [
+          "transfer_to_human_agents",
+          1
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          1
+         ],
+         [
+          "check_apn_settings",
+          1
+         ]
+        ]
+       }
+      },
+      "no": {
+       "feature": "called can_send_mms",
+       "yes": {
+        "calls": [
+         [
+          "check_apn_settings",
+          3
+         ],
+         [
+          "check_wifi_calling_status",
+          3
+         ],
+         [
+          "check_app_permissions{\"app_name\": \"messaging\"}",
+          2
+         ],
+         [
+          "check_network_mode_preference",
+          2
+         ],
+         [
+          "run_speed_test",
+          1
+         ],
+         [
+          "grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"storage\"}",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "toggle_roaming",
+          4
+         ],
+         [
+          "run_speed_test",
+          4
+         ],
+         [
+          "toggle_data",
+          3
+         ],
+         [
+          "reset_apn_settings",
+          3
+         ],
+         [
+          "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          2
+         ],
+         [
+          "check_sim_status",
+          1
+         ],
+         [
+          "check_network_status",
+          1
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+          1
+         ],
+         [
+          "check_status_bar",
+          1
+         ]
+        ]
+       }
+      }
+     },
+     "no": {
+      "feature": "ticket: browse",
+      "yes": {
+       "feature": "called check_status_bar",
+       "yes": {
+        "calls": [
+         [
+          "check_network_status",
+          3
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+          2
+         ],
+         [
+          "toggle_airplane_mode",
+          1
+         ],
+         [
+          "check_network_mode_preference",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+          95
+         ],
+         [
+          "check_network_status",
+          26
+         ],
+         [
+          "check_status_bar",
+          24
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.device_id\"}",
+          1
+         ]
+        ]
+       }
+      },
+      "no": {
+       "feature": "ticket: all",
+       "yes": {
+        "calls": [
+         [
+          "check_status_bar",
+          16
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.device_id\"}",
+          14
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          8
+         ],
+         [
+          "check_network_status",
+          5
+         ],
+         [
+          "send_payment_request{\"bill_id\": \"@get_bills_for_customer$[*].bill_id?{\\\"status\\\": \\\"Issued\\\"}\", \"customer_id\": \"@get_bills_for_customer$[*].customer_id\"}",
+          2
+         ],
+         [
+          "reboot_device",
+          1
+         ],
+         [
+          "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"limit\": 5}",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "can_send_mms",
+          18
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.device_id\"}",
+          10
+         ],
+         [
+          "check_network_status",
+          9
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+          2
+         ]
+        ]
+       }
+      }
+     }
+    }
+   },
+   "no": {
+    "feature": "ticket: all",
+    "yes": {
+     "feature": "called get_bills_for_customer",
+     "yes": {
+      "feature": "get_details_by_id:len(line_items)=1",
+      "yes": {
+       "calls": [
+        [
+         "resume_line{\"customer_id\": \"@get_details_by_id$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+         37
+        ]
+       ]
+      },
+      "no": {
+       "feature": "get_details_by_id:status=paid",
+       "yes": {
+        "calls": [
+         [
+          "check_status_bar",
+          24
+         ],
+         [
+          "check_sim_status",
+          1
+         ],
+         [
+          "check_network_status",
+          1
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "send_payment_request{\"bill_id\": \"@get_details_by_id$.bill_id\", \"customer_id\": \"@get_details_by_id$.customer_id\"}",
+          9
+         ],
+         [
+          "send_payment_request{\"bill_id\": \"@get_bills_for_customer$[*].bill_id?{\\\"status\\\": \\\"Overdue\\\"}\", \"customer_id\": \"@get_bills_for_customer$[*].customer_id\"}",
+          9
+         ],
+         [
+          "resume_line{\"customer_id\": \"@get_bills_for_customer$[*].customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          8
+         ],
+         [
+          "transfer_to_human_agents",
+          6
+         ]
+        ]
+       }
+      }
+     },
+     "no": {
+      "feature": "get_details_by_id:roaming_enabled=true",
+      "yes": {
+       "feature": "called reset_apn_settings",
+       "yes": {
+        "calls": [
+         [
+          "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"limit\": 5}",
+          4
+         ],
+         [
+          "transfer_to_human_agents",
+          1
+         ],
+         [
+          "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\"}",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\"}",
+          23
+         ],
+         [
+          "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"limit\": 12}",
+          8
+         ],
+         [
+          "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"limit\": 5}",
+          7
+         ],
+         [
+          "transfer_to_human_agents",
+          4
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          2
+         ],
+         [
+          "check_status_bar",
+          1
+         ]
+        ]
+       }
+      },
+      "no": {
+       "feature": "get_details_by_id:activated=true",
+       "yes": {
+        "calls": [
+         [
+          "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\"}",
+          8
+         ],
+         [
+          "check_status_bar",
+          6
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\"}",
+          32
+         ],
+         [
+          "check_status_bar",
+          4
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+          3
+         ]
+        ]
+       }
+      }
+     }
+    },
+    "no": {
+     "feature": "called check_network_status",
+     "yes": {
+      "feature": "run_speed_test:speed test failed=no connection.",
+      "yes": {
+       "feature": "called get_data_usage",
+       "yes": {
+        "calls": [
+         [
+          "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+          11
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          19
+         ],
+         [
+          "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_details_by_id$.line_id\"}",
+          17
+         ],
+         [
+          "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          7
+         ],
+         [
+          "run_speed_test",
+          3
+         ],
+         [
+          "reset_apn_settings",
+          2
+         ],
+         [
+          "toggle_data",
+          1
+         ],
+         [
+          "check_wifi_calling_status",
+          1
+         ],
+         [
+          "check_data_restriction_status",
+          1
+         ],
+         [
+          "check_apn_settings",
+          1
+         ],
+         [
+          "check_status_bar",
+          1
+         ]
+        ]
+       }
+      },
+      "no": {
+       "feature": "check_status_bar:status bar=🔒 vpn connected",
+       "yes": {
+        "calls": [
+         [
+          "toggle_data_saver_mode",
+          4
+         ],
+         [
+          "check_network_mode_preference",
+          1
+         ],
+         [
+          "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          1
+         ],
+         [
+          "run_speed_test",
+          1
+         ],
+         [
+          "check_vpn_status",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+          5
+         ],
+         [
+          "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          4
+         ],
+         [
+          "toggle_airplane_mode",
+          4
+         ],
+         [
+          "check_network_mode_preference",
+          3
+         ],
+         [
+          "toggle_roaming",
+          3
+         ],
+         [
+          "toggle_data",
+          2
+         ],
+         [
+          "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          2
+         ],
+         [
+          "check_data_restriction_status",
+          2
+         ],
+         [
+          "check_vpn_status",
+          1
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          1
+         ],
+         [
+          "run_speed_test",
+          1
+         ],
+         [
+          "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_details_by_id$.line_id\"}",
+          1
+         ]
+        ]
+       }
+      }
+     },
+     "no": {
+      "feature": "ticket: abroad",
+      "yes": {
+       "feature": "get_details_by_id:activated=true",
+       "yes": {
+        "calls": [
+         [
+          "check_status_bar",
+          18
+         ],
+         [
+          "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          6
+         ],
+         [
+          "check_network_status",
+          2
+         ],
+         [
+          "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          2
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_data_usage$.line_id\"}",
+          1
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          59
+         ],
+         [
+          "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          56
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.device_id\"}",
+          23
+         ],
+         [
+          "check_status_bar",
+          15
+         ],
+         [
+          "check_network_status",
+          4
+         ],
+         [
+          "check_sim_status",
+          3
+         ],
+         [
+          "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_details_by_id$.line_id\"}",
+          2
+         ],
+         [
+          "toggle_data_saver_mode",
+          1
+         ]
+        ]
+       }
+      },
+      "no": {
+       "feature": "ticket: an",
+       "yes": {
+        "calls": [
+         [
+          "can_send_mms",
+          10
+         ],
+         [
+          "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_details_by_id$.line_id\"}",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "calls": [
+         [
+          "check_status_bar",
+          23
+         ],
+         [
+          "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+          19
+         ],
+         [
+          "get_details_by_id{\"id\": \"@get_details_by_id$.device_id\"}",
+          1
+         ],
+         [
+          "check_network_mode_preference",
+          1
+         ]
+        ]
+       }
+      }
+     }
+    }
+   }
+  },
+  "grant_app_permission": {
+   "feature": "check_app_permissions:app 'messaging' has permission for=phone.",
+   "yes": {
+    "feature": "made grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"sms\"}",
+    "yes": {
+     "calls": [
+      [
+       "can_send_mms",
+       28
+      ],
+      [
+       "grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"storage\"}",
+       3
+      ],
+      [
+       "transfer_to_human_agents",
+       1
+      ],
+      [
+       "reboot_device",
+       1
+      ]
+     ]
+    },
+    "no": {
+     "calls": [
+      [
+       "grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"sms\"}",
+       8
+      ],
+      [
+       "can_send_mms",
+       3
+      ]
+     ]
+    }
+   },
+   "no": {
+    "feature": "called check_status_bar",
+    "yes": {
+     "calls": [
+      [
+       "can_send_mms",
+       52
+      ],
+      [
+       "check_apn_settings",
+       1
+      ],
+      [
+       "check_app_permissions{\"app_name\": \"messaging\"}",
+       1
+      ]
+     ]
+    },
+    "no": {
+     "calls": [
+      [
+       "can_send_mms",
+       18
+      ],
+      [
+       "reboot_device",
+       2
+      ],
+      [
+       "check_app_permissions{\"app_name\": \"messaging\"}",
+       2
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+       1
+      ],
+      [
+       "run_speed_test",
+       1
+      ],
+      [
+       "reset_apn_settings",
+       1
+      ]
+     ]
+    }
+   }
+  },
+  "make_payment": {
+   "feature": "made send_payment_request{\"bill_id\": \"@get_bills_for_customer$[*].bill_id?{\\\"status\\\": \\\"Overdue\\\"}\", \"customer_id\": \"@get_bills_for_customer$[*].customer_id\"}",
+   "yes": {
+    "calls": [
+     [
+      "get_details_by_id{\"id\": \"@get_bills_for_customer$[*].bill_id?{\\\"status\\\": \\\"Overdue\\\"}\"}",
+      37
+     ],
+     [
+      "resume_line{\"customer_id\": \"@get_bills_for_customer$[*].customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+      18
+     ],
+     [
+      "get_details_by_id{\"id\": \"@get_details_by_id$.line_id\"}",
+      6
+     ],
+     [
+      "get_bills_for_customer{\"customer_id\": \"@get_bills_for_customer$[*].customer_id\"}",
+      5
+     ],
+     [
+      "get_bills_for_customer{\"customer_id\": \"@get_bills_for_customer$[*].customer_id\", \"limit\": 5}",
+      5
+     ],
+     [
+      "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+      2
+     ],
+     [
+      "get_details_by_id{\"id\": \"@get_bills_for_customer$[*].bill_id?{\\\"status\\\": \\\"Issued\\\"}\"}",
+      1
+     ],
+     [
+      "get_bills_for_customer{\"customer_id\": \"@get_bills_for_customer$[*].customer_id\", \"limit\": 12}",
+      1
+     ]
+    ]
+   },
+   "no": {
+    "calls": [
+     [
+      "get_details_by_id{\"id\": \"@get_bills_for_customer$[*].bill_id?{\\\"status\\\": \\\"Issued\\\"}\"}",
+      17
+     ],
+     [
+      "get_details_by_id{\"id\": \"@get_details_by_id$.bill_id\"}",
+      9
+     ],
+     [
+      "get_bills_for_customer{\"customer_id\": \"@get_bills_for_customer$[*].customer_id\", \"limit\": 5}",
+      1
+     ]
+    ]
+   }
+  },
+  "reboot_device": {
+   "feature": "ticket: an",
+   "yes": {
+    "feature": "run_speed_test:speed test failed=no connection.",
+    "yes": {
+     "calls": [
+      [
+       "run_speed_test",
+       7
+      ],
+      [
+       "can_send_mms",
+       1
+      ],
+      [
+       "check_network_mode_preference",
+       1
+      ]
+     ]
+    },
+    "no": {
+     "feature": "reboot_device:status bar=📶⁴ excellent",
+     "yes": {
+      "feature": "called can_send_mms",
+      "yes": {
+       "calls": [
+        [
+         "can_send_mms",
+         74
+        ],
+        [
+         "check_apn_settings",
+         5
+        ],
+        [
+         "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mms_port\": null, \"mms_proxy\": null, \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\", \"reset_at_reboot\": false}}",
+         2
+        ],
+        [
+         "toggle_roaming",
+         1
+        ],
+        [
+         "stop",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "check_wifi_calling_status",
+         5
+        ],
+        [
+         "can_send_mms",
+         3
+        ]
+       ]
+      }
+     },
+     "no": {
+      "calls": [
+       [
+        "check_status_bar",
+        2
+       ],
+       [
+        "can_send_mms",
+        2
+       ],
+       [
+        "get_customer_by_phone{\"phone_number\": \"@ticket\\\\d{3}\\\\-\\\\d{3}\\\\-\\\\d{4}\"}",
+        1
+       ],
+       [
+        "check_network_status",
+        1
+       ],
+       [
+        "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+        1
+       ]
+      ]
+     }
+    }
+   },
+   "no": {
+    "feature": "ticket: all",
+    "yes": {
+     "feature": "reboot_device:status bar=📶⁴ excellent",
+     "yes": {
+      "feature": "get_details_by_id:roaming_enabled=true",
+      "yes": {
+       "calls": [
+        [
+         "stop",
+         10
+        ],
+        [
+         "check_status_bar",
+         5
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "stop",
+         21
+        ]
+       ]
+      }
+     },
+     "no": {
+      "feature": "get_details_by_id:status=paid",
+      "yes": {
+       "calls": [
+        [
+         "check_status_bar",
+         25
+        ],
+        [
+         "toggle_airplane_mode",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "check_status_bar",
+         3
+        ],
+        [
+         "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+         1
+        ],
+        [
+         "transfer_to_human_agents",
+         1
+        ],
+        [
+         "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"limit\": 5}",
+         1
+        ],
+        [
+         "check_network_status",
+         1
+        ]
+       ]
+      }
+     }
+    },
+    "no": {
+     "feature": "reboot_device:status bar=📶⁴ excellent",
+     "yes": {
+      "feature": "run_speed_test:speed test failed=no connection.",
+      "yes": {
+       "calls": [
+        [
+         "run_speed_test",
+         42
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "run_speed_test",
+         4
+        ],
+        [
+         "toggle_data",
+         1
+        ]
+       ]
+      }
+     },
+     "no": {
+      "feature": "called check_network_status",
+      "yes": {
+       "calls": [
+        [
+         "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+         3
+        ],
+        [
+         "run_speed_test",
+         2
+        ],
+        [
+         "check_network_status",
+         1
+        ],
+        [
+         "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+         1
+        ],
+        [
+         "toggle_data_saver_mode",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "run_speed_test",
+         6
+        ],
+        [
+         "check_status_bar",
+         4
+        ]
+       ]
+      }
+     }
+    }
+   }
+  },
+  "refuel_data": {
+   "calls": [
+    [
+     "run_speed_test",
+     202
+    ],
+    [
+     "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+     15
+    ],
+    [
+     "check_status_bar",
+     10
+    ],
+    [
+     "toggle_data",
+     9
+    ],
+    [
+     "toggle_data_saver_mode",
+     6
+    ],
+    [
+     "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_data_usage$.line_id\"}",
+     5
+    ],
+    [
+     "can_send_mms",
+     3
+    ],
+    [
+     "reboot_device",
+     2
+    ],
+    [
+     "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+     2
+    ],
+    [
+     "resume_line{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+     1
+    ],
+    [
+     "check_data_restriction_status",
+     1
+    ],
+    [
+     "check_network_mode_preference",
+     1
+    ],
+    [
+     "toggle_wifi_calling",
+     1
+    ],
+    [
+     "check_network_status",
+     1
+    ],
+    [
+     "check_apn_settings",
+     1
+    ],
+    [
+     "disconnect_vpn",
+     1
+    ],
+    [
+     "transfer_to_human_agents",
+     1
+    ]
+   ]
+  },
+  "reseat_sim_card": {
+   "feature": "reseat_sim_card:status bar=📵 no signal",
+   "yes": {
+    "feature": "get_details_by_id:status=paid",
+    "yes": {
+     "feature": "check_sim_status:says no sim card detected in the phone.",
+     "yes": {
+      "calls": [
+       [
+        "check_sim_status",
+        22
+       ],
+       [
+        "check_status_bar",
+        1
+       ]
+      ]
+     },
+     "no": {
+      "calls": [
+       [
+        "check_sim_status",
+        7
+       ],
+       [
+        "check_apn_settings",
+        3
+       ],
+       [
+        "reset_apn_settings",
+        1
+       ]
+      ]
+     }
+    },
+    "no": {
+     "feature": "called check_network_status",
+     "yes": {
+      "calls": [
+       [
+        "check_sim_status",
+        31
+       ],
+       [
+        "transfer_to_human_agents",
+        4
+       ],
+       [
+        "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+        3
+       ],
+       [
+        "reset_apn_settings",
+        1
+       ]
+      ]
+     },
+     "no": {
+      "calls": [
+       [
+        "check_sim_status",
+        7
+       ],
+       [
+        "check_network_status",
+        4
+       ],
+       [
+        "reset_apn_settings",
+        3
+       ],
+       [
+        "transfer_to_human_agents",
+        3
+       ]
+      ]
+     }
+    }
+   },
+   "no": {
+    "feature": "ticket: an",
+    "yes": {
+     "feature": "check_network_status:mobile data enabled=no",
+     "yes": {
+      "calls": [
+       [
+        "toggle_data",
+        17
+       ],
+       [
+        "check_network_status",
+        12
+       ],
+       [
+        "check_network_mode_preference",
+        7
+       ],
+       [
+        "check_sim_status",
+        2
+       ],
+       [
+        "check_status_bar",
+        1
+       ],
+       [
+        "can_send_mms",
+        1
+       ],
+       [
+        "run_speed_test",
+        1
+       ]
+      ]
+     },
+     "no": {
+      "calls": [
+       [
+        "can_send_mms",
+        21
+       ],
+       [
+        "check_status_bar",
+        14
+       ],
+       [
+        "check_network_status",
+        7
+       ],
+       [
+        "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+        6
+       ],
+       [
+        "check_network_mode_preference",
+        5
+       ],
+       [
+        "check_apn_settings",
+        3
+       ],
+       [
+        "toggle_roaming",
+        3
+       ],
+       [
+        "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+        3
+       ],
+       [
+        "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+        2
+       ],
+       [
+        "check_wifi_calling_status",
+        1
+       ],
+       [
+        "toggle_airplane_mode",
+        1
+       ]
+      ]
+     }
+    },
+    "no": {
+     "feature": "toggle_airplane_mode:status bar=📵 no signal",
+     "yes": {
+      "calls": [
+       [
+        "stop",
+        15
+       ],
+       [
+        "check_status_bar",
+        9
+       ]
+      ]
+     },
+     "no": {
+      "calls": [
+       [
+        "reboot_device",
+        8
+       ],
+       [
+        "run_speed_test",
+        4
+       ],
+       [
+        "toggle_airplane_mode",
+        2
+       ],
+       [
+        "check_vpn_status",
+        1
+       ]
+      ]
+     }
+    }
+   }
+  },
+  "reset_apn_settings": {
+   "calls": [
+    [
+     "reboot_device",
+     163
+    ],
+    [
+     "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+     7
+    ],
+    [
+     "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"limit\": 5}",
+     2
+    ],
+    [
+     "check_status_bar",
+     2
+    ],
+    [
+     "check_wifi_calling_status",
+     2
+    ],
+    [
+     "toggle_data_saver_mode",
+     2
+    ],
+    [
+     "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+     1
+    ],
+    [
+     "toggle_data",
+     1
+    ],
+    [
+     "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+     1
+    ],
+    [
+     "check_network_mode_preference",
+     1
+    ],
+    [
+     "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+     1
+    ]
+   ]
+  },
+  "resume_line": {
+   "calls": [
+    [
+     "check_status_bar",
+     48
+    ],
+    [
+     "reboot_device",
+     22
+    ],
+    [
+     "reset_apn_settings",
+     1
+    ]
+   ]
+  },
+  "resume_line!": {
+   "calls": [
+    [
+     "reset_apn_settings",
+     1
+    ],
+    [
+     "run_speed_test",
+     1
+    ],
+    [
+     "stop",
+     1
+    ]
+   ]
+  },
+  "run_speed_test": {
+   "feature": "run_speed_test:speed test failed=no connection.",
+   "yes": {
+    "feature": "called check_network_status",
+    "yes": {
+     "feature": "called get_details_by_id",
+     "yes": {
+      "feature": "called get_data_usage",
+      "yes": {
+       "feature": "called enable_roaming",
+       "yes": {
+        "feature": "called refuel_data",
+        "yes": {
+         "calls": [
+          [
+           "toggle_roaming",
+           4
+          ],
+          [
+           "check_apn_settings",
+           1
+          ],
+          [
+           "check_network_status",
+           1
+          ],
+          [
+           "reset_apn_settings",
+           1
+          ],
+          [
+           "set_network_mode_preference{\"mode\": \"4g_only\"}",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "check_apn_settings",
+           5
+          ],
+          [
+           "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+           3
+          ],
+          [
+           "check_data_restriction_status",
+           1
+          ],
+          [
+           "toggle_roaming",
+           1
+          ],
+          [
+           "disconnect_vpn",
+           1
+          ],
+          [
+           "check_vpn_status",
+           1
+          ]
+         ]
+        }
+       },
+       "no": {
+        "feature": "get_details_by_id:name=premium plan",
+        "yes": {
+         "calls": [
+          [
+           "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_data_usage$.line_id\"}",
+           5
+          ],
+          [
+           "check_data_restriction_status",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "check_sim_status",
+           2
+          ],
+          [
+           "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_data_usage$.line_id\"}",
+           2
+          ],
+          [
+           "check_network_status",
+           1
+          ],
+          [
+           "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+           1
+          ]
+         ]
+        }
+       }
+      },
+      "no": {
+       "feature": "called toggle_data_saver_mode",
+       "yes": {
+        "feature": "called check_apn_settings",
+        "yes": {
+         "calls": [
+          [
+           "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           3
+          ],
+          [
+           "check_sim_status",
+           1
+          ],
+          [
+           "check_network_status",
+           1
+          ],
+          [
+           "reseat_sim_card",
+           1
+          ],
+          [
+           "set_network_mode_preference{\"mode\": \"4g_only\"}",
+           1
+          ],
+          [
+           "toggle_roaming",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           6
+          ],
+          [
+           "check_vpn_status",
+           5
+          ],
+          [
+           "check_apn_settings",
+           5
+          ],
+          [
+           "reset_apn_settings",
+           1
+          ],
+          [
+           "disconnect_vpn",
+           1
+          ]
+         ]
+        }
+       },
+       "no": {
+        "feature": "check_network_status:cellular connection=connected",
+        "yes": {
+         "calls": [
+          [
+           "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           25
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+           18
+          ],
+          [
+           "check_data_restriction_status",
+           10
+          ],
+          [
+           "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           6
+          ],
+          [
+           "check_apn_settings",
+           5
+          ],
+          [
+           "toggle_roaming",
+           3
+          ],
+          [
+           "reset_apn_settings",
+           3
+          ],
+          [
+           "can_send_mms",
+           1
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           1
+          ],
+          [
+           "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_details_by_id$.line_id\"}",
+           1
+          ],
+          [
+           "check_vpn_status",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           8
+          ],
+          [
+           "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           6
+          ],
+          [
+           "check_network_status",
+           5
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+           3
+          ],
+          [
+           "reset_apn_settings",
+           2
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           2
+          ],
+          [
+           "check_wifi_calling_status",
+           2
+          ],
+          [
+           "toggle_roaming",
+           2
+          ],
+          [
+           "check_network_mode_preference",
+           1
+          ],
+          [
+           "can_send_mms",
+           1
+          ],
+          [
+           "check_data_restriction_status",
+           1
+          ],
+          [
+           "disconnect_vpn",
+           1
+          ]
+         ]
+        }
+       }
+      }
+     },
+     "no": {
+      "feature": "get_customer_by_phone:account_status=active",
+      "yes": {
+       "feature": "reseat_sim_card:status bar=📶⁴ excellent",
+       "yes": {
+        "calls": [
+         [
+          "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+          3
+         ],
+         [
+          "check_apn_settings",
+          1
+         ],
+         [
+          "check_network_status",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "feature": "ticket: abroad",
+        "yes": {
+         "calls": [
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           14
+          ],
+          [
+           "toggle_roaming",
+           4
+          ],
+          [
+           "toggle_data",
+           1
+          ],
+          [
+           "reset_apn_settings",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           6
+          ],
+          [
+           "reset_apn_settings",
+           2
+          ],
+          [
+           "toggle_data",
+           1
+          ]
+         ]
+        }
+       }
+      },
+      "no": {
+       "feature": "toggle_airplane_mode:status bar=📶¹ poor",
+       "yes": {
+        "calls": [
+         [
+          "get_customer_by_phone{\"phone_number\": \"@ticket\\\\d{3}\\\\-\\\\d{3}\\\\-\\\\d{4}\"}",
+          2
+         ],
+         [
+          "check_sim_status",
+          2
+         ],
+         [
+          "check_network_mode_preference",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "feature": "toggle_roaming:status bar=📱 data enabled",
+        "yes": {
+         "calls": [
+          [
+           "get_customer_by_phone{\"phone_number\": \"@ticket\\\\d{3}\\\\-\\\\d{3}\\\\-\\\\d{4}\"}",
+           12
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "get_customer_by_phone{\"phone_number\": \"@ticket\\\\d{3}\\\\-\\\\d{3}\\\\-\\\\d{4}\"}",
+           5
+          ],
+          [
+           "check_data_restriction_status",
+           1
+          ],
+          [
+           "toggle_roaming",
+           1
+          ]
+         ]
+        }
+       }
+      }
+     }
+    },
+    "no": {
+     "feature": "called refuel_data",
+     "yes": {
+      "feature": "called check_status_bar",
+      "yes": {
+       "feature": "called check_sim_status",
+       "yes": {
+        "feature": "reset_apn_settings:status bar=📶⁴ excellent",
+        "yes": {
+         "calls": [
+          [
+           "check_network_status",
+           4
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_details_by_id$.device_id\"}",
+           2
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_data_usage$.line_id\"}",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "check_network_status",
+           11
+          ],
+          [
+           "check_network_mode_preference",
+           1
+          ],
+          [
+           "check_data_restriction_status",
+           1
+          ]
+         ]
+        }
+       },
+       "no": {
+        "feature": "called toggle_airplane_mode",
+        "yes": {
+         "calls": [
+          [
+           "check_sim_status",
+           20
+          ],
+          [
+           "check_network_status",
+           6
+          ],
+          [
+           "check_vpn_status",
+           1
+          ],
+          [
+           "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_data_usage$.line_id\"}",
+           1
+          ],
+          [
+           "check_apn_settings",
+           1
+          ],
+          [
+           "disconnect_vpn",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "check_network_status",
+           12
+          ],
+          [
+           "check_sim_status",
+           3
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_details_by_id$.device_id\"}",
+           1
+          ],
+          [
+           "check_vpn_status",
+           1
+          ]
+         ]
+        }
+       }
+      },
+      "no": {
+       "feature": "called set_network_mode_preference",
+       "yes": {
+        "calls": [
+         [
+          "check_sim_status",
+          2
+         ],
+         [
+          "check_network_status",
+          2
+         ],
+         [
+          "check_status_bar",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "feature": "called enable_roaming",
+        "yes": {
+         "calls": [
+          [
+           "check_status_bar",
+           16
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "check_status_bar",
+           28
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_details_by_id$.device_id\"}",
+           3
+          ]
+         ]
+        }
+       }
+      }
+     },
+     "no": {
+      "feature": "called set_network_mode_preference",
+      "yes": {
+       "feature": "called check_apn_settings",
+       "yes": {
+        "feature": "called get_data_usage",
+        "yes": {
+         "calls": [
+          [
+           "check_network_status",
+           3
+          ],
+          [
+           "check_data_restriction_status",
+           1
+          ],
+          [
+           "reset_apn_settings",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           14
+          ],
+          [
+           "check_data_restriction_status",
+           2
+          ],
+          [
+           "check_network_status",
+           2
+          ],
+          [
+           "check_vpn_status",
+           1
+          ],
+          [
+           "reseat_sim_card",
+           1
+          ]
+         ]
+        }
+       },
+       "no": {
+        "feature": "called check_sim_status",
+        "yes": {
+         "calls": [
+          [
+           "check_apn_settings",
+           3
+          ],
+          [
+           "check_data_restriction_status",
+           1
+          ],
+          [
+           "check_vpn_status",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "check_sim_status",
+           25
+          ],
+          [
+           "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           6
+          ],
+          [
+           "check_apn_settings",
+           3
+          ],
+          [
+           "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_details_by_id$.line_id\"}",
+           2
+          ],
+          [
+           "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\"}",
+           1
+          ],
+          [
+           "check_network_status",
+           1
+          ],
+          [
+           "toggle_roaming",
+           1
+          ]
+         ]
+        }
+       }
+      },
+      "no": {
+       "feature": "called toggle_airplane_mode",
+       "yes": {
+        "feature": "called check_sim_status",
+        "yes": {
+         "calls": [
+          [
+           "check_network_status",
+           8
+          ],
+          [
+           "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           2
+          ],
+          [
+           "get_customer_by_phone{\"phone_number\": \"@ticket\\\\d{3}\\\\-\\\\d{3}\\\\-\\\\d{4}\"}",
+           1
+          ],
+          [
+           "toggle_data",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "check_sim_status",
+           12
+          ],
+          [
+           "check_network_status",
+           4
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+           1
+          ]
+         ]
+        }
+       },
+       "no": {
+        "feature": "get_details_by_id:name=premium plan",
+        "yes": {
+         "calls": [
+          [
+           "check_apn_settings",
+           2
+          ],
+          [
+           "check_sim_status",
+           1
+          ],
+          [
+           "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           1
+          ],
+          [
+           "can_send_mms",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "check_network_status",
+           20
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           4
+          ],
+          [
+           "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           2
+          ],
+          [
+           "check_sim_status",
+           1
+          ],
+          [
+           "toggle_data",
+           1
+          ],
+          [
+           "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           1
+          ]
+         ]
+        }
+       }
+      }
+     }
+    }
+   },
+   "no": {
+    "feature": "ticket: an",
+    "yes": {
+     "feature": "called set_network_mode_preference",
+     "yes": {
+      "feature": "ticket: abroad",
+      "yes": {
+       "feature": "get_details_by_id:roaming_enabled=false",
+       "yes": {
+        "feature": "check_network_status:mobile data enabled=yes",
+        "yes": {
+         "calls": [
+          [
+           "can_send_mms",
+           7
+          ],
+          [
+           "check_apn_settings",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "can_send_mms",
+           3
+          ],
+          [
+           "check_apn_settings",
+           3
+          ],
+          [
+           "check_wifi_calling_status",
+           1
+          ]
+         ]
+        }
+       },
+       "no": {
+        "calls": [
+         [
+          "can_send_mms",
+          34
+         ]
+        ]
+       }
+      },
+      "no": {
+       "calls": [
+        [
+         "can_send_mms",
+         3
+        ],
+        [
+         "check_wifi_calling_status",
+         3
+        ],
+        [
+         "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mms_port\": null, \"mms_proxy\": null, \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\", \"reset_at_reboot\": false}}",
+         1
+        ],
+        [
+         "reset_apn_settings",
+         1
+        ]
+       ]
+      }
+     },
+     "no": {
+      "feature": "toggle_data:status bar=📶¹ poor",
+      "yes": {
+       "feature": "called check_status_bar",
+       "yes": {
+        "feature": "called refuel_data",
+        "yes": {
+         "calls": [
+          [
+           "check_data_restriction_status",
+           13
+          ],
+          [
+           "check_network_mode_preference",
+           3
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "check_network_mode_preference",
+           4
+          ],
+          [
+           "check_data_restriction_status",
+           1
+          ]
+         ]
+        }
+       },
+       "no": {
+        "calls": [
+         [
+          "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+          2
+         ],
+         [
+          "can_send_mms",
+          1
+         ],
+         [
+          "check_network_mode_preference",
+          1
+         ],
+         [
+          "reset_apn_settings",
+          1
+         ]
+        ]
+       }
+      },
+      "no": {
+       "feature": "check_network_status:cellular connection=no_service",
+       "yes": {
+        "calls": [
+         [
+          "check_installed_apps",
+          2
+         ],
+         [
+          "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+          2
+         ],
+         [
+          "can_send_mms",
+          2
+         ],
+         [
+          "check_apn_settings",
+          2
+         ],
+         [
+          "reboot_device",
+          1
+         ]
+        ]
+       },
+       "no": {
+        "feature": "get_details_by_id:roaming_enabled=false",
+        "yes": {
+         "calls": [
+          [
+           "can_send_mms",
+           4
+          ],
+          [
+           "check_wifi_calling_status",
+           2
+          ],
+          [
+           "check_network_mode_preference",
+           1
+          ],
+          [
+           "grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"sms\"}",
+           1
+          ],
+          [
+           "check_app_permissions{\"app_name\": \"Messaging\"}",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "can_send_mms",
+           19
+          ],
+          [
+           "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+           2
+          ]
+         ]
+        }
+       }
+      }
+     }
+    },
+    "no": {
+     "feature": "set_network_mode_preference:status bar=📶⁴ excellent",
+     "yes": {
+      "feature": "set_network_mode_preference:status bar=🔒 vpn connected",
+      "yes": {
+       "feature": "called disconnect_vpn",
+       "yes": {
+        "calls": [
+         [
+          "stop",
+          117
+         ]
+        ]
+       },
+       "no": {
+        "feature": "called toggle_data_saver_mode",
+        "yes": {
+         "calls": [
+          [
+           "check_vpn_status",
+           42
+          ],
+          [
+           "disconnect_vpn",
+           7
+          ],
+          [
+           "check_data_restriction_status",
+           1
+          ],
+          [
+           "toggle_roaming",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "check_vpn_status",
+           14
+          ],
+          [
+           "check_data_restriction_status",
+           12
+          ],
+          [
+           "disconnect_vpn",
+           10
+          ],
+          [
+           "toggle_data_saver_mode",
+           3
+          ],
+          [
+           "run_speed_test",
+           1
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+           1
+          ]
+         ]
+        }
+       }
+      },
+      "no": {
+       "feature": "set_network_mode_preference:status bar=🔽 data saver",
+       "yes": {
+        "feature": "called check_data_restriction_status",
+        "yes": {
+         "calls": [
+          [
+           "stop",
+           7
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "stop",
+           4
+          ],
+          [
+           "toggle_data_saver_mode",
+           2
+          ],
+          [
+           "check_data_restriction_status",
+           1
+          ]
+         ]
+        }
+       },
+       "no": {
+        "feature": "toggle_roaming:status bar=🔽 data saver",
+        "yes": {
+         "calls": [
+          [
+           "stop",
+           9
+          ],
+          [
+           "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_data_usage$.line_id\"}",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "stop",
+           145
+          ]
+         ]
+        }
+       }
+      }
+     },
+     "no": {
+      "feature": "check_network_status:cellular signal=poor",
+      "yes": {
+       "feature": "called toggle_data_saver_mode",
+       "yes": {
+        "feature": "called check_data_restriction_status",
+        "yes": {
+         "calls": [
+          [
+           "check_network_mode_preference",
+           15
+          ],
+          [
+           "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+           4
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+           1
+          ]
+         ]
+        }
+       },
+       "no": {
+        "feature": "get_details_by_id:status=active",
+        "yes": {
+         "calls": [
+          [
+           "check_data_restriction_status",
+           8
+          ],
+          [
+           "toggle_data_saver_mode",
+           3
+          ],
+          [
+           "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           3
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+           3
+          ],
+          [
+           "check_network_mode_preference",
+           1
+          ],
+          [
+           "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+           1
+          ],
+          [
+           "reset_apn_settings",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "check_data_restriction_status",
+           21
+          ],
+          [
+           "check_network_mode_preference",
+           12
+          ],
+          [
+           "toggle_data_saver_mode",
+           4
+          ],
+          [
+           "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+           2
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           1
+          ],
+          [
+           "reset_apn_settings",
+           1
+          ]
+         ]
+        }
+       }
+      },
+      "no": {
+       "feature": "toggle_airplane_mode:status bar=📶¹ poor",
+       "yes": {
+        "feature": "toggle_data:status bar=🔽 data saver",
+        "yes": {
+         "calls": [
+          [
+           "toggle_data_saver_mode",
+           5
+          ],
+          [
+           "check_network_mode_preference",
+           3
+          ],
+          [
+           "check_data_restriction_status",
+           1
+          ],
+          [
+           "check_vpn_status",
+           1
+          ],
+          [
+           "disconnect_vpn",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "check_data_restriction_status",
+           17
+          ],
+          [
+           "check_network_mode_preference",
+           2
+          ],
+          [
+           "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+           1
+          ],
+          [
+           "reset_apn_settings",
+           1
+          ],
+          [
+           "check_sim_status",
+           1
+          ]
+         ]
+        }
+       },
+       "no": {
+        "feature": "called toggle_data_saver_mode",
+        "yes": {
+         "calls": [
+          [
+           "stop",
+           25
+          ],
+          [
+           "check_vpn_status",
+           8
+          ],
+          [
+           "check_network_mode_preference",
+           2
+          ],
+          [
+           "disconnect_vpn",
+           1
+          ],
+          [
+           "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+           1
+          ]
+         ]
+        },
+        "no": {
+         "calls": [
+          [
+           "stop",
+           76
+          ],
+          [
+           "check_data_restriction_status",
+           15
+          ],
+          [
+           "check_status_bar",
+           8
+          ],
+          [
+           "toggle_data_saver_mode",
+           6
+          ],
+          [
+           "reboot_device",
+           1
+          ],
+          [
+           "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+           1
+          ],
+          [
+           "resume_line{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_data_usage$.line_id\"}",
+           1
+          ],
+          [
+           "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+           1
+          ]
+         ]
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "send_payment_request": {
+   "calls": [
+    [
+     "check_payment_request",
+     102
+    ],
+    [
+     "make_payment",
+     1
+    ],
+    [
+     "transfer_to_human_agents",
+     1
+    ],
+    [
+     "check_status_bar",
+     1
+    ]
+   ]
+  },
+  "set_apn_settings": {
+   "calls": [
+    [
+     "can_send_mms",
+     10
+    ],
+    [
+     "reboot_device",
+     4
+    ],
+    [
+     "check_wifi_calling_status",
+     3
+    ],
+    [
+     "toggle_wifi_calling",
+     1
+    ],
+    [
+     "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+     1
+    ]
+   ]
+  },
+  "set_network_mode_preference": {
+   "feature": "ticket: an",
+   "yes": {
+    "feature": "called run_speed_test",
+    "yes": {
+     "feature": "called get_details_by_id",
+     "yes": {
+      "calls": [
+       [
+        "run_speed_test",
+        35
+       ]
+      ]
+     },
+     "no": {
+      "calls": [
+       [
+        "run_speed_test",
+        5
+       ],
+       [
+        "can_send_mms",
+        1
+       ]
+      ]
+     }
+    },
+    "no": {
+     "feature": "set_network_mode_preference:status bar=📱 data enabled",
+     "yes": {
+      "feature": "check_network_status:airplane mode=on",
+      "yes": {
+       "calls": [
+        [
+         "check_apn_settings",
+         6
+        ],
+        [
+         "reset_apn_settings",
+         4
+        ],
+        [
+         "can_send_mms",
+         4
+        ],
+        [
+         "check_wifi_calling_status",
+         2
+        ],
+        [
+         "check_data_restriction_status",
+         2
+        ],
+        [
+         "check_network_status",
+         1
+        ],
+        [
+         "check_status_bar",
+         1
+        ],
+        [
+         "toggle_data_saver_mode",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "can_send_mms",
+         15
+        ],
+        [
+         "check_apn_settings",
+         11
+        ],
+        [
+         "run_speed_test",
+         8
+        ],
+        [
+         "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+         1
+        ],
+        [
+         "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+         1
+        ],
+        [
+         "toggle_roaming",
+         1
+        ]
+       ]
+      }
+     },
+     "no": {
+      "feature": "called can_send_mms",
+      "yes": {
+       "calls": [
+        [
+         "toggle_data",
+         4
+        ],
+        [
+         "reseat_sim_card",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "toggle_data",
+         5
+        ]
+       ]
+      }
+     }
+    }
+   },
+   "no": {
+    "feature": "set_network_mode_preference:status bar=🔽 data saver",
+    "yes": {
+     "feature": "called check_network_status",
+     "yes": {
+      "calls": [
+       [
+        "run_speed_test",
+        12
+       ]
+      ]
+     },
+     "no": {
+      "feature": "called toggle_roaming",
+      "yes": {
+       "calls": [
+        [
+         "check_data_restriction_status",
+         5
+        ],
+        [
+         "toggle_data_saver_mode",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "run_speed_test",
+         3
+        ],
+        [
+         "toggle_data_saver_mode",
+         2
+        ],
+        [
+         "check_data_restriction_status",
+         1
+        ]
+       ]
+      }
+     }
+    },
+    "no": {
+     "feature": "check_network_status:airplane mode=on",
+     "yes": {
+      "feature": "get_details_by_id:name=premium plan",
+      "yes": {
+       "calls": [
+        [
+         "run_speed_test",
+         11
+        ],
+        [
+         "stop",
+         1
+        ],
+        [
+         "toggle_roaming",
+         1
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "run_speed_test",
+         37
+        ],
+        [
+         "disconnect_vpn",
+         1
+        ],
+        [
+         "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+         1
+        ],
+        [
+         "toggle_data",
+         1
+        ]
+       ]
+      }
+     },
+     "no": {
+      "feature": "toggle_roaming:status bar=🔒 vpn connected",
+      "yes": {
+       "calls": [
+        [
+         "run_speed_test",
+         47
+        ],
+        [
+         "check_vpn_status",
+         3
+        ]
+       ]
+      },
+      "no": {
+       "calls": [
+        [
+         "run_speed_test",
+         156
+        ],
+        [
+         "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+         1
+        ],
+        [
+         "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_details_by_id$.line_id\"}",
+         1
+        ],
+        [
+         "check_network_status",
+         1
+        ]
+       ]
+      }
+     }
+    }
+   }
+  },
+  "start": {
+   "calls": [
+    [
+     "get_customer_by_phone{\"phone_number\": \"@ticket\\\\d{3}\\\\-\\\\d{3}\\\\-\\\\d{4}\"}",
+     690
+    ],
+    [
+     "can_send_mms",
+     40
+    ]
+   ]
+  },
+  "toggle_airplane_mode": {
+   "feature": "toggle_airplane_mode:status bar=📵 no signal",
+   "yes": {
+    "feature": "called reboot_device",
+    "yes": {
+     "calls": [
+      [
+       "check_status_bar",
+       12
+      ],
+      [
+       "check_sim_status",
+       1
+      ]
+     ]
+    },
+    "no": {
+     "calls": [
+      [
+       "check_sim_status",
+       98
+      ],
+      [
+       "check_network_status",
+       47
+      ],
+      [
+       "reseat_sim_card",
+       9
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+       5
+      ],
+      [
+       "send_payment_request{\"bill_id\": \"@get_bills_for_customer$[*].bill_id?{\\\"status\\\": \\\"Overdue\\\"}\", \"customer_id\": \"@get_bills_for_customer$[*].customer_id\"}",
+       1
+      ],
+      [
+       "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\"}",
+       1
+      ]
+     ]
+    }
+   },
+   "no": {
+    "feature": "toggle_airplane_mode:status bar=📱 data enabled",
+    "yes": {
+     "calls": [
+      [
+       "run_speed_test",
+       26
+      ],
+      [
+       "check_network_status",
+       21
+      ],
+      [
+       "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+       17
+      ],
+      [
+       "toggle_roaming",
+       16
+      ],
+      [
+       "check_network_mode_preference",
+       13
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+       7
+      ],
+      [
+       "check_status_bar",
+       4
+      ],
+      [
+       "can_send_mms",
+       4
+      ],
+      [
+       "toggle_data_saver_mode",
+       3
+      ],
+      [
+       "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       3
+      ],
+      [
+       "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       2
+      ],
+      [
+       "stop",
+       1
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+       1
+      ]
+     ]
+    },
+    "no": {
+     "calls": [
+      [
+       "toggle_data",
+       59
+      ],
+      [
+       "check_network_status",
+       22
+      ],
+      [
+       "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       6
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+       5
+      ],
+      [
+       "check_sim_status",
+       4
+      ],
+      [
+       "run_speed_test",
+       4
+      ],
+      [
+       "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       4
+      ],
+      [
+       "toggle_roaming",
+       3
+      ],
+      [
+       "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+       2
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+       2
+      ],
+      [
+       "toggle_airplane_mode",
+       1
+      ]
+     ]
+    }
+   }
+  },
+  "toggle_data": {
+   "feature": "toggle_data:status bar=🔽 data saver",
+   "yes": {
+    "feature": "called check_network_status",
+    "yes": {
+     "calls": [
+      [
+       "run_speed_test",
+       15
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+       7
+      ],
+      [
+       "toggle_data_saver_mode",
+       6
+      ],
+      [
+       "toggle_roaming",
+       4
+      ],
+      [
+       "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       3
+      ],
+      [
+       "check_data_restriction_status",
+       3
+      ],
+      [
+       "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_data_usage$.line_id\"}",
+       3
+      ],
+      [
+       "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       1
+      ],
+      [
+       "check_vpn_status",
+       1
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+       1
+      ],
+      [
+       "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+       1
+      ],
+      [
+       "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+       1
+      ]
+     ]
+    },
+    "no": {
+     "calls": [
+      [
+       "toggle_data_saver_mode",
+       15
+      ],
+      [
+       "check_data_restriction_status",
+       14
+      ],
+      [
+       "check_network_status",
+       1
+      ],
+      [
+       "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+       1
+      ],
+      [
+       "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       1
+      ]
+     ]
+    }
+   },
+   "no": {
+    "feature": "toggle_data:status bar=📱 data enabled",
+    "yes": {
+     "calls": [
+      [
+       "run_speed_test",
+       68
+      ],
+      [
+       "check_network_mode_preference",
+       16
+      ],
+      [
+       "toggle_roaming",
+       16
+      ],
+      [
+       "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+       15
+      ],
+      [
+       "can_send_mms",
+       13
+      ],
+      [
+       "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       8
+      ],
+      [
+       "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       8
+      ],
+      [
+       "check_network_status",
+       3
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+       2
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+       2
+      ],
+      [
+       "check_wifi_calling_status",
+       1
+      ],
+      [
+       "toggle_wifi",
+       1
+      ],
+      [
+       "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_data_usage$.line_id\"}",
+       1
+      ],
+      [
+       "disconnect_vpn",
+       1
+      ],
+      [
+       "check_data_restriction_status",
+       1
+      ],
+      [
+       "check_apn_settings",
+       1
+      ]
+     ]
+    },
+    "no": {
+     "calls": [
+      [
+       "toggle_data",
+       14
+      ],
+      [
+       "check_status_bar",
+       2
+      ],
+      [
+       "check_network_status",
+       1
+      ],
+      [
+       "reboot_device",
+       1
+      ]
+     ]
+    }
+   }
+  },
+  "toggle_data_saver_mode": {
+   "feature": "toggle_data_saver_mode:status bar=📶¹ poor",
+   "yes": {
+    "feature": "called run_speed_test",
+    "yes": {
+     "feature": "run_speed_test:speed test failed=no connection.",
+     "yes": {
+      "calls": [
+       [
+        "check_network_mode_preference",
+        10
+       ],
+       [
+        "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+        3
+       ],
+       [
+        "toggle_data_saver_mode",
+        2
+       ],
+       [
+        "run_speed_test",
+        1
+       ]
+      ]
+     },
+     "no": {
+      "calls": [
+       [
+        "run_speed_test",
+        21
+       ],
+       [
+        "check_network_mode_preference",
+        10
+       ],
+       [
+        "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+        10
+       ],
+       [
+        "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+        1
+       ]
+      ]
+     }
+    },
+    "no": {
+     "feature": "check_status_bar:status bar=🔒 vpn connected",
+     "yes": {
+      "calls": [
+       [
+        "check_network_mode_preference",
+        14
+       ],
+       [
+        "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+        2
+       ],
+       [
+        "check_network_status",
+        2
+       ],
+       [
+        "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+        1
+       ],
+       [
+        "disconnect_vpn",
+        1
+       ],
+       [
+        "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+        1
+       ]
+      ]
+     },
+     "no": {
+      "calls": [
+       [
+        "check_network_mode_preference",
+        14
+       ],
+       [
+        "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+        9
+       ],
+       [
+        "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+        4
+       ],
+       [
+        "run_speed_test",
+        1
+       ],
+       [
+        "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+        1
+       ]
+      ]
+     }
+    }
+   },
+   "no": {
+    "feature": "called run_speed_test",
+    "yes": {
+     "feature": "check_status_bar:status bar=📶⁴ excellent",
+     "yes": {
+      "calls": [
+       [
+        "run_speed_test",
+        3
+       ],
+       [
+        "disconnect_vpn",
+        2
+       ],
+       [
+        "check_vpn_status",
+        1
+       ]
+      ]
+     },
+     "no": {
+      "calls": [
+       [
+        "run_speed_test",
+        30
+       ],
+       [
+        "check_network_mode_preference",
+        1
+       ],
+       [
+        "reboot_device",
+        1
+       ]
+      ]
+     }
+    },
+    "no": {
+     "feature": "toggle_roaming:status bar=🔒 vpn connected",
+     "yes": {
+      "calls": [
+       [
+        "check_vpn_status",
+        4
+       ],
+       [
+        "run_speed_test",
+        1
+       ]
+      ]
+     },
+     "no": {
+      "calls": [
+       [
+        "run_speed_test",
+        7
+       ],
+       [
+        "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+        1
+       ],
+       [
+        "toggle_data_saver_mode",
+        1
+       ],
+       [
+        "can_send_mms",
+        1
+       ],
+       [
+        "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+        1
+       ]
+      ]
+     }
+    }
+   }
+  },
+  "toggle_roaming": {
+   "feature": "toggle_roaming:status bar=📱 data enabled",
+   "yes": {
+    "feature": "toggle_roaming:status bar=📶¹ poor",
+    "yes": {
+     "calls": [
+      [
+       "run_speed_test",
+       51
+      ],
+      [
+       "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+       21
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+       14
+      ],
+      [
+       "check_network_mode_preference",
+       10
+      ],
+      [
+       "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       9
+      ],
+      [
+       "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       9
+      ],
+      [
+       "toggle_roaming",
+       5
+      ],
+      [
+       "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+       4
+      ],
+      [
+       "toggle_data_saver_mode",
+       3
+      ],
+      [
+       "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_data_usage$.line_id\"}",
+       2
+      ],
+      [
+       "check_apn_settings",
+       1
+      ],
+      [
+       "check_network_status",
+       1
+      ],
+      [
+       "check_vpn_status",
+       1
+      ],
+      [
+       "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_details_by_id$.line_id\"}",
+       1
+      ]
+     ]
+    },
+    "no": {
+     "calls": [
+      [
+       "run_speed_test",
+       100
+      ],
+      [
+       "can_send_mms",
+       13
+      ],
+      [
+       "toggle_roaming",
+       7
+      ],
+      [
+       "check_data_restriction_status",
+       4
+      ],
+      [
+       "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       2
+      ],
+      [
+       "toggle_wifi_calling",
+       2
+      ],
+      [
+       "check_vpn_status",
+       2
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+       2
+      ],
+      [
+       "check_app_permissions{\"app_name\": \"messaging\"}",
+       2
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+       2
+      ],
+      [
+       "check_apn_settings",
+       2
+      ],
+      [
+       "toggle_data_saver_mode",
+       1
+      ],
+      [
+       "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+       1
+      ],
+      [
+       "check_wifi_calling_status",
+       1
+      ],
+      [
+       "check_network_status",
+       1
+      ],
+      [
+       "check_app_permissions{\"app_name\": \"Messaging\"}",
+       1
+      ],
+      [
+       "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+       1
+      ],
+      [
+       "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_details_by_id$.line_id\"}",
+       1
+      ],
+      [
+       "reboot_device",
+       1
+      ],
+      [
+       "reset_apn_settings",
+       1
+      ],
+      [
+       "transfer_to_human_agents",
+       1
+      ]
+     ]
+    }
+   },
+   "no": {
+    "feature": "toggle_roaming:status bar=✈️ airplane mode",
+    "yes": {
+     "calls": [
+      [
+       "check_status_bar",
+       17
+      ],
+      [
+       "toggle_airplane_mode",
+       11
+      ]
+     ]
+    },
+    "no": {
+     "calls": [
+      [
+       "toggle_data",
+       19
+      ],
+      [
+       "toggle_roaming",
+       4
+      ],
+      [
+       "check_status_bar",
+       4
+      ],
+      [
+       "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       2
+      ],
+      [
+       "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+       2
+      ],
+      [
+       "check_network_status",
+       1
+      ],
+      [
+       "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+       1
+      ]
+     ]
+    }
+   }
+  },
+  "toggle_wifi": {
+   "calls": [
+    [
+     "run_speed_test",
+     1
+    ]
+   ]
+  },
+  "toggle_wifi_calling": {
+   "calls": [
+    [
+     "can_send_mms",
+     59
+    ],
+    [
+     "check_app_permissions{\"app_name\": \"messaging\"}",
+     8
+    ],
+    [
+     "run_speed_test",
+     3
+    ],
+    [
+     "check_apn_settings",
+     3
+    ],
+    [
+     "check_sim_status",
+     1
+    ],
+    [
+     "check_data_restriction_status",
+     1
+    ]
+   ]
+  },
+  "transfer_to_human_agents": {
+   "calls": [
+    [
+     "stop",
+     109
+    ],
+    [
+     "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+     1
+    ],
+    [
+     "transfer_to_human_agents",
+     1
+    ]
+   ]
+  }
+ },
+ "fallback": {
+  "calls": [
+   [
+    "get_details_by_id{\"id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+    1367
+   ],
+   [
+    "run_speed_test",
+    1235
+   ],
+   [
+    "stop",
+    730
+   ],
+   [
+    "get_customer_by_phone{\"phone_number\": \"@ticket\\\\d{3}\\\\-\\\\d{3}\\\\-\\\\d{4}\"}",
+    721
+   ],
+   [
+    "check_network_status",
+    613
+   ],
+   [
+    "check_status_bar",
+    603
+   ],
+   [
+    "can_send_mms",
+    586
+   ],
+   [
+    "toggle_airplane_mode",
+    410
+   ],
+   [
+    "set_network_mode_preference{\"mode\": \"4g_5g_preferred\"}",
+    395
+   ],
+   [
+    "toggle_roaming",
+    351
+   ],
+   [
+    "check_sim_status",
+    326
+   ],
+   [
+    "get_details_by_id{\"id\": \"@get_details_by_id$.plan_id\"}",
+    314
+   ],
+   [
+    "check_network_mode_preference",
+    293
+   ],
+   [
+    "get_data_usage{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+    280
+   ],
+   [
+    "toggle_data",
+    277
+   ],
+   [
+    "check_apn_settings",
+    244
+   ],
+   [
+    "reboot_device",
+    241
+   ],
+   [
+    "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+    235
+   ],
+   [
+    "reseat_sim_card",
+    234
+   ],
+   [
+    "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+    225
+   ],
+   [
+    "check_data_restriction_status",
+    201
+   ],
+   [
+    "reset_apn_settings",
+    183
+   ],
+   [
+    "toggle_data_saver_mode",
+    167
+   ],
+   [
+    "disconnect_vpn",
+    155
+   ],
+   [
+    "check_wifi_calling_status",
+    154
+   ],
+   [
+    "check_app_permissions{\"app_name\": \"messaging\"}",
+    153
+   ],
+   [
+    "check_vpn_status",
+    131
+   ],
+   [
+    "transfer_to_human_agents",
+    111
+   ],
+   [
+    "check_payment_request",
+    103
+   ],
+   [
+    "make_payment",
+    102
+   ],
+   [
+    "grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"storage\"}",
+    83
+   ],
+   [
+    "check_installed_apps",
+    81
+   ],
+   [
+    "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\"}",
+    77
+   ],
+   [
+    "send_payment_request{\"bill_id\": \"@get_bills_for_customer$[*].bill_id?{\\\"status\\\": \\\"Overdue\\\"}\", \"customer_id\": \"@get_bills_for_customer$[*].customer_id\"}",
+    75
+   ],
+   [
+    "toggle_wifi_calling",
+    75
+   ],
+   [
+    "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_data_usage$.line_id\"}",
+    60
+   ],
+   [
+    "grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"sms\"}",
+    59
+   ],
+   [
+    "get_details_by_id{\"id\": \"@get_details_by_id$.device_id\"}",
+    56
+   ],
+   [
+    "resume_line{\"customer_id\": \"@get_details_by_id$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+    38
+   ],
+   [
+    "get_details_by_id{\"id\": \"@get_bills_for_customer$[*].bill_id?{\\\"status\\\": \\\"Overdue\\\"}\"}",
+    37
+   ],
+   [
+    "refuel_data{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_details_by_id$.line_id\"}",
+    36
+   ],
+   [
+    "resume_line{\"customer_id\": \"@get_bills_for_customer$[*].customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+    34
+   ],
+   [
+    "check_app_permissions{\"app_name\": \"Messaging\"}",
+    28
+   ],
+   [
+    "get_details_by_id{\"id\": \"@get_bills_for_customer$[*].bill_id?{\\\"status\\\": \\\"Issued\\\"}\"}",
+    27
+   ],
+   [
+    "send_payment_request{\"bill_id\": \"@get_bills_for_customer$[*].bill_id?{\\\"status\\\": \\\"Issued\\\"}\", \"customer_id\": \"@get_bills_for_customer$[*].customer_id\"}",
+    21
+   ],
+   [
+    "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"limit\": 5}",
+    20
+   ],
+   [
+    "check_app_status{\"app_name\": \"messaging\"}",
+    17
+   ],
+   [
+    "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"limit\": 12}",
+    17
+   ],
+   [
+    "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mms_port\": null, \"mms_proxy\": null, \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\", \"reset_at_reboot\": false}}",
+    14
+   ],
+   [
+    "send_payment_request{\"bill_id\": \"@get_details_by_id$.bill_id\", \"customer_id\": \"@get_details_by_id$.customer_id\"}",
+    9
+   ],
+   [
+    "get_details_by_id{\"id\": \"@get_details_by_id$.bill_id\"}",
+    9
+   ],
+   [
+    "get_details_by_id{\"id\": \"@get_details_by_id$.line_id\"}",
+    7
+   ],
+   [
+    "get_bills_for_customer{\"customer_id\": \"@get_bills_for_customer$[*].customer_id\", \"limit\": 5}",
+    6
+   ],
+   [
+    "get_bills_for_customer{\"customer_id\": \"@get_bills_for_customer$[*].customer_id\"}",
+    5
+   ],
+   [
+    "get_bills_for_customer{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"limit\": 10}",
+    5
+   ],
+   [
+    "enable_roaming{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_customer_by_phone$.line_ids[*]\"}",
+    4
+   ],
+   [
+    "get_details_by_id{\"id\": \"@get_data_usage$.line_id\"}",
+    2
+   ],
+   [
+    "check_app_permissions{\"app_name\": \"Messages\"}",
+    2
+   ],
+   [
+    "set_network_mode_preference{\"mode\": \"4g_only\"}",
+    2
+   ],
+   [
+    "refuel_data{\"customer_id\": \"@get_bills_for_customer$[*].customer_id\", \"gb_amount\": 2, \"line_id\": \"@get_data_usage$.line_id\"}",
+    1
+   ],
+   [
+    "grant_app_permission{\"app_name\": \"messaging\", \"permission\": \"mms\"}",
+    1
+   ],
+   [
+    "resume_line{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+    1
+   ],
+   [
+    "resume_line{\"customer_id\": \"@get_customer_by_phone$.customer_id\", \"line_id\": \"@get_data_usage$.line_id\"}",
+    1
+   ],
+   [
+    "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\", \"reset_at_reboot\": false}}",
+    1
+   ],
+   [
+    "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"internet\", \"mms_port\": null, \"mms_proxy\": null, \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\", \"reset_at_reboot\": false}}",
+    1
+   ],
+   [
+    "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\"}}",
+    1
+   ],
+   [
+    "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mms_port\": null, \"mms_proxy\": null, \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\", \"reset_at_reboot\": true}}",
+    1
+   ],
+   [
+    "toggle_wifi",
+    1
+   ],
+   [
+    "set_apn_settings{\"apn_settings\": {\"apn_name\": \"internet\", \"mms_apn\": \"mms\", \"mms_port\": null, \"mms_proxy\": null, \"mmsc_url\": \"http://mms.carrier.com/mms/wapenc\"}}",
+    1
+   ],
+   [
+    "check_app_permissions{\"app_name\": \"Default Messaging\"}",
+    1
+   ],
+   [
+    "enable_roaming{\"customer_id\": \"@get_bills_for_customer$[*].customer_id\", \"line_id\": \"@get_details_by_id$.line_id\"}",
+    1
+   ],
+   [
+    "get_bills_for_customer{\"customer_id\": \"@get_bills_for_customer$[*].customer_id\", \"limit\": 12}",
+    1
+   ]
+  ]
+ },
+ "checks": [
+  {
+   "phrase": "mms message can be successfully sent",
+   "probe": "can_send_mms",
+   "contains": [
+    "can send mms"
+   ],
+   "lacks": []
+  },
+  {
+   "phrase": "speed test returns excellent",
+   "probe": "run_speed_test",
+   "contains": [
+    "(excellent)"
+   ],
+   "lacks": []
+  },
+  {
+   "phrase": "status bar shows that they have signal",
+   "probe": "check_status_bar",
+   "contains": [
+    "📶"
+   ],
+   "lacks": [
+    "no signal",
+    "airplane mode"
+   ]
+  }
+ ]
+}

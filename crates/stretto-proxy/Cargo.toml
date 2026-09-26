@@ -17,6 +17,11 @@ path = "src/main.rs"
 name = "stretto-mcp-demo"
 path = "src/bin/stretto-mcp-demo.rs"
 
+# Runs a compiled procedure against an MCP server, with no model.
+[[bin]]
+name = "stretto-procedure"
+path = "src/bin/stretto-procedure.rs"
+
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true

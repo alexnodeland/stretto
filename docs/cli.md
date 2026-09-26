@@ -1,6 +1,6 @@
 # CLI reference
 
-Every command and option of the two binaries: `stretto`, which measures agents' traces and compiles, learns, serves and audits flows, and `stretto-proxy`, which records an MCP server's sessions and runs flows, guards and the confirmation judge on them. `--help` prints the same text.
+Every command and option of the three binaries: `stretto`, which measures agents' traces and compiles, learns, serves and audits flows; `stretto-proxy`, which records an MCP server's sessions and runs flows, guards and the confirmation judge on them; and `stretto-procedure`, which runs a compiled procedure against an MCP server with no model. `--help` prints the same text.
 
 The sections below are generated from the code. After changing an option, run `STRETTO_BLESS=1 cargo test --bins` to rewrite them; CI fails while they are out of date.
 
@@ -668,3 +668,26 @@ Usage: stretto-proxy [OPTIONS] [-- <SERVER_COMMAND>...]
 - `<SERVER_COMMAND>...` (not with `--upstream`): The MCP server to run, and its arguments.
 
 <!-- end stretto-proxy -->
+
+<!-- begin stretto-procedure -->
+
+## `stretto-procedure`
+
+Run a compiled procedure on a ticket against an MCP server (stdio), with no model. The run goes to stdout as JSON: its calls, its check of the outcome the ticket states, and its verdict (`resolved`, `transferred`, or `hand_back` when the check failed and the ticket should go to a model).
+
+```text
+Usage: stretto-procedure [OPTIONS] --procedure <FILE> -- <SERVER>...
+```
+
+**Options**
+
+- `--procedure <FILE>` (required): The procedure (JSON), as `scripts/telecom_workflow.py --export` writes it.
+- `--ticket <TEXT>` (not with `--ticket-file`): The ticket, as text.
+- `--ticket-file <FILE>` (not with `--ticket`): The ticket, from a file.
+- `--out <FILE>`: Write the run here instead of to stdout.
+
+**Arguments**
+
+- `<SERVER>...` (required): The MCP server to run against, and its arguments (after `--`).
+
+<!-- end stretto-procedure -->

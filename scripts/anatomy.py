@@ -271,6 +271,7 @@ def tree(train, with_goal, max_depth=6, min_leaf=5, counts=False):
         return down(root, d, depth)
 
     predict.roots = roots  # per site: (node, depth), for reading the tree
+    predict.everything = everything  # the node for a site training never saw
     return predict
 def walk(sim, domain, writes):
     """Turns, calls (with argument classes) and decisions of one episode."""

@@ -21,6 +21,8 @@
 //! [`phase0::compile_flow`] keeps what a live read-only [`flow`] needs.
 //! [`guards`] are typed policy checks a proxy runs before a write, and
 //! [`audit`] scores recorded episodes under a flow, as a fugue program.
+//! A [`procedure`] is a whole workflow compiled once from traces, writes
+//! included, for where no user speaks, run with no model.
 
 pub mod arbitrate;
 pub mod audit;
@@ -31,6 +33,7 @@ pub mod flow;
 pub mod guards;
 pub mod matching;
 pub mod phase0;
+pub mod procedure;
 pub mod program;
 pub mod promote;
 pub mod refine;

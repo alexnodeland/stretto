@@ -199,6 +199,29 @@ A map from site to threshold, written when a flow's settings come from `stretto 
 - **`bindings.agreed`**: the binding picked the agent's own order id at all 10 of its `get_order_details` calls, a chance of 11/12. For `get_product_details` it matched 2 of 4 times, all where the customer had mentioned the product, a chance of 3/6.
 - **`folds`** holds five copies of one fit. Jev's pick matched the agent at 9 of the 15 held-out decisions (`agree` 0.6), and the agent's step was always among the options (`cover` 1.0). At `get_order_details` Jev matched 3 of 9, so the arbiter trusts it less there than elsewhere.
 
+## The procedure IR (`stretto_procedure: 1`)
+
+A whole workflow compiled once from agents' traces, writes included, for where no user speaks: `scripts/telecom_workflow.py --export` writes it from τ²-bench telecom's solo runs, and `stretto-procedure` runs it against an MCP server with no model ([results](results/telecom-workflow-2026-09-26.md)). [The published one](results/telecom-workflow-2026-09-26.procedure.json) is the workflow of those results, with its identifiers held as where they came from.
+
+| Field | What it holds |
+|---|---|
+| `stretto_procedure` | The format version, 1 |
+| `domain` | The domain it was compiled for |
+| `provenance` | `sources`, the runs it was compiled from, and `training_tasks`, how many tasks they cover |
+| `symbolic` | Whether its identifiers are held as where they came from and bound again at run time, or are constants of the traces |
+| `max_calls` | The most calls a run makes |
+| `stop` | The action that ends a run |
+| `handoff`, `handoff_arguments` | The tool that hands the customer to a person, which also ends a run, and what it is called with |
+| `reads` | The tools that only read: the guard skips a read made since the last write, and a write already made |
+| `vocab` | The ticket's words and word pairs the trees may ask about |
+| `trees` | Per site, the tool that just returned (`!` after a failed call) or `start`, its tree |
+| `fallback` | The node for a site training never saw |
+| `checks` | Each outcome a ticket may state: its `phrase`, the read that checks it (`probe`), and what that read's result, lowercased, `contains` and `lacks` when the outcome holds |
+
+A tree's node is a question, `{"feature": F, "yes": NODE, "no": NODE}`, which goes to `yes` when the run's state has feature `F`, or a leaf, `{"calls": [[ACTION, COUNT], …]}`: the actions taken there in training, by count, in the order the run tries them. It takes the first that binds and is not a repeat. An action is a tool with its arguments as JSON (`toggle_roaming`, `enable_roaming{"customer_id": …}`), or `stop`. With `symbolic`, an argument that is an identifier is held as where it came from: `@TOOL$.path[*]`, the most recent result of `TOOL` with a value at that path, the first in a list not yet passed as that argument, with `?{…}` the fields that set its record apart; or `@ticket` and a pattern, the ticket's first text of that shape (`\d{N}` for N digits, `\` before a literal character).
+
+A run's state is a set of features: `ticket: WORD` for each word of the ticket in `vocab`; `called TOOL` and `made ACTION` for each tool called and write made; and, from each tool's last result, `TOOL:error` or `TOOL:error=False`, and for a record `TOOL:FIELD=value` for each short field (ids and free text left out), `TOOL:len(FIELD)=0`, `1` or `2+` for its lists, and `TOOL:FIELD.*.status=value` for a map of records; for a list `TOOL:len($)`; and for a phone's check, `TOOL:KEY=value` for each part of each `Key: value` line and `TOOL:says LINE` for a short line of its own, parts with digits left out. After a record that holds a value the ticket gives (the line with the ticket's number), another record of its kind does not replace it in the state.
+
 ## The arbiter file (`stretto_arbiter: 1`)
 
 A flow's arbiter on its own, to serve with a habit learned elsewhere ([data/arbiters](../data/arbiters/README.md)). `stretto export-arbiter` writes it from a flow whose folds share one fit, and refuses a flow whose five folds were fitted apart, since none of those is the arbiter for new tasks. It is pretty-printed.
