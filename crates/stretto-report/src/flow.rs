@@ -1593,7 +1593,7 @@ impl Bindings {
                 if at_site.iter().map(|(_, n)| n).sum::<usize>() >= MIN_SITE_VALUES {
                     let mut ranked = at_site.clone();
                     // Stable: equal counts keep the sources' own order.
-                    ranked.sort_by(|a, b| b.1.cmp(&a.1));
+                    ranked.sort_by_key(|&(_, n)| std::cmp::Reverse(n));
                     ranked
                         .iter()
                         .flat_map(|((t, path), _)| {
