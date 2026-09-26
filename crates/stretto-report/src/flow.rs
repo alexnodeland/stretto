@@ -521,7 +521,10 @@ impl Flow {
     /// with per-site thresholds or bindings scored where the customer named
     /// another value, else [`FLOW_VERSION`].
     pub(crate) fn format_version(&self) -> u32 {
-        if self.thresholds.is_empty() && !self.bindings.scores_named_other() {
+        if self.thresholds.is_empty()
+            && !self.bindings.scores_named_other()
+            && !self.bindings.orders_sources_by_site()
+        {
             FLOW_VERSION
         } else {
             FLOW_THRESHOLDS_VERSION
@@ -655,10 +658,12 @@ impl Flow {
         if flow.stretto_flow == FLOW_VERSION && !flow.thresholds.is_empty() {
             anyhow::bail!("a flow with per-site thresholds is format {FLOW_THRESHOLDS_VERSION}");
         }
-        if flow.stretto_flow == FLOW_VERSION && flow.bindings.scores_named_other() {
+        if flow.stretto_flow == FLOW_VERSION
+            && (flow.bindings.scores_named_other() || flow.bindings.orders_sources_by_site())
+        {
             anyhow::bail!(
-                "a flow with bindings scored where another value was named is format \
-                 {FLOW_THRESHOLDS_VERSION}"
+                "a flow with bindings scored where another value was named, or with sources \
+                 ordered by site, is format {FLOW_THRESHOLDS_VERSION}"
             );
         }
         crate::program::FlowProgram::new(&flow)?;
@@ -1035,7 +1040,34 @@ pub struct Bindings {
     /// the chance of an unmentioned one.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     named_other: BTreeMap<String, (usize, usize)>,
+    /// Per lookup argument with more than one source, and per site (the
+    /// tool whose result came last before the call): how many of the
+    /// argument's values the agent took from each source there. The binding
+    /// tries a site's sources in that order, and the most recent output
+    /// first within each, where the order learned elsewhere is recency
+    /// alone: after reading a phone line, an agent working through the
+    /// customer's lines takes the next line id, not the plan id of the line
+    /// it just read. Empty in flows learned before it was counted.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    site_sources: Vec<SiteSource>,
 }
+
+/// How many values of a lookup's argument the agent took from one source at
+/// one site, in training ([`Bindings::site_sources`]).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+struct SiteSource {
+    tool: String,
+    arg: String,
+    /// The tool whose result came last before the call.
+    site: String,
+    /// The source: a tool's output, and the path in it.
+    source: (String, String),
+    values: usize,
+}
+
+/// Values a site must have taken from its sources before their order there
+/// replaces recency.
+const MIN_SITE_VALUES: usize = 5;
 
 /// Whether the customer had mentioned the values a binding picks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1176,6 +1208,8 @@ impl Bindings {
         let episodes: Vec<&Episode> = episodes.into_iter().collect();
         let is_read = |c: &ToolCall| manifest.tools.get(&c.name) == Some(&ToolKind::Read);
         let mut b = Bindings::default();
+        let mut by_site: BTreeMap<(String, String, String, (String, String)), usize> =
+            BTreeMap::new();
         for ep in &episodes {
             let mut outputs: Vec<(&str, Value)> = Vec::new();
             for e in &ep.events {
@@ -1187,7 +1221,13 @@ impl Bindings {
                         ..
                     } => outputs.push((name.as_str(), parse(content))),
                     Event::Assistant { calls, .. } => {
+                        // A flow makes a batch of reads one after another, so
+                        // each read of a batch is at the site of the read before
+                        // it, as the flow will be when it makes the next.
+                        let mut before: Option<&str> = None;
                         for c in calls.iter().filter(|c| is_read(c)) {
+                            let site = before.or(outputs.last().map(|(t, _)| *t));
+                            before = Some(c.name.as_str());
                             let Value::Object(args) = &c.arguments else {
                                 continue;
                             };
@@ -1209,7 +1249,17 @@ impl Bindings {
                                     paths.into_iter().next().map(|p| (tool.to_string(), p))
                                 });
                                 if let Some(source) = found {
-                                    *entry.found.entry(source).or_insert(0) += 1;
+                                    *entry.found.entry(source.clone()).or_insert(0) += 1;
+                                    if let Some(site) = site {
+                                        *by_site
+                                            .entry((
+                                                c.name.clone(),
+                                                arg.clone(),
+                                                site.to_string(),
+                                                source,
+                                            ))
+                                            .or_insert(0) += 1;
+                                    }
                                 }
                             }
                         }
@@ -1218,6 +1268,25 @@ impl Bindings {
                 }
             }
         }
+        // Kept only for arguments with more than one source, where the order
+        // matters.
+        let multi: BTreeSet<(String, String)> = b
+            .sources
+            .iter()
+            .filter(|(_, t)| t.found.len() > 1)
+            .map(|(k, _)| k.clone())
+            .collect();
+        b.site_sources = by_site
+            .into_iter()
+            .filter(|((tool, arg, _, _), _)| multi.contains(&(tool.clone(), arg.clone())))
+            .map(|((tool, arg, site, source), values)| SiteSource {
+                tool,
+                arg,
+                site,
+                source,
+                values,
+            })
+            .collect();
         let mut agreed: BTreeMap<String, [(usize, usize); 2]> = BTreeMap::new();
         for ep in &episodes {
             for (i, e) in ep.events.iter().enumerate() {
@@ -1298,6 +1367,12 @@ impl Bindings {
     /// apart (`named_other`), as flows learned by this build do.
     pub(crate) fn scores_named_other(&self) -> bool {
         !self.named_other.is_empty()
+    }
+
+    /// Whether the binding orders an argument's sources by site
+    /// (`site_sources`), as flows learned by this build do.
+    pub(crate) fn orders_sources_by_site(&self) -> bool {
+        !self.site_sources.is_empty()
     }
 
     /// Per lookup: how often the binding picked the agent's own arguments in
@@ -1493,25 +1568,71 @@ impl Bindings {
                 .filter(|(_, &n)| n >= 2 && n as f64 >= MIN_SOURCE_SHARE * *values as f64)
                 .map(|(s, _)| s)
                 .collect();
+            // Where the agent took this argument at this site, if it did so
+            // often enough: its sources in that order, each the most recent
+            // output first. Otherwise every source by recency.
+            let site = outputs.last().map(|(t, _)| *t);
+            let at_site: Vec<(&(String, String), usize)> = rules
+                .iter()
+                .map(|&r| {
+                    let n = self
+                        .site_sources
+                        .iter()
+                        .filter(|s| {
+                            s.tool == tool
+                                && &s.arg == arg
+                                && Some(s.site.as_str()) == site
+                                && &s.source == r
+                        })
+                        .map(|s| s.values)
+                        .sum::<usize>();
+                    (r, n)
+                })
+                .collect();
+            let order: Vec<(&str, &Value, &String)> =
+                if at_site.iter().map(|(_, n)| n).sum::<usize>() >= MIN_SITE_VALUES {
+                    let mut ranked = at_site.clone();
+                    // Stable: equal counts keep the sources' own order.
+                    ranked.sort_by(|a, b| b.1.cmp(&a.1));
+                    ranked
+                        .iter()
+                        .flat_map(|((t, path), _)| {
+                            outputs
+                                .iter()
+                                .rev()
+                                .filter(move |(source, _)| source == t)
+                                .map(move |(source, out)| (*source, out, path))
+                        })
+                        .collect()
+                } else {
+                    outputs
+                        .iter()
+                        .rev()
+                        .flat_map(|(source, out)| {
+                            rules
+                                .iter()
+                                .filter(move |(t, _)| t == source)
+                                .map(move |(_, path)| (*source, out, path))
+                        })
+                        .collect()
+                };
             let mut candidates: Vec<(String, bool)> = Vec::new();
             // Whether the customer mentioned any value at the sources, one
             // already passed included.
             let mut any_mentioned = false;
-            for (source, out) in outputs.iter().rev() {
-                for (_, path) in rules.iter().filter(|(t, _)| t == source) {
-                    for (value, siblings) in at_path(out, path) {
-                        let mentioned = mentions(&customer, &value)
-                            || siblings.iter().any(|s| {
-                                s.chars().count() >= MIN_MENTION && mentions(&customer, s)
-                            });
-                        any_mentioned |= mentioned;
-                        if used.contains(&(arg.as_str(), value.clone()))
-                            || candidates.iter().any(|(v, _)| *v == value)
-                        {
-                            continue;
-                        }
-                        candidates.push((value, mentioned));
+            for (_, out, path) in order {
+                for (value, siblings) in at_path(out, path) {
+                    let mentioned = mentions(&customer, &value)
+                        || siblings
+                            .iter()
+                            .any(|s| s.chars().count() >= MIN_MENTION && mentions(&customer, s));
+                    any_mentioned |= mentioned;
+                    if used.contains(&(arg.as_str(), value.clone()))
+                        || candidates.iter().any(|(v, _)| *v == value)
+                    {
+                        continue;
                     }
+                    candidates.push((value, mentioned));
                 }
             }
             let pick = candidates
@@ -1889,6 +2010,50 @@ pub(crate) mod tests {
         // And a flow with the count is written as format 2.
         assert!(b.scores_named_other());
         assert!(!older.scores_named_other());
+    }
+
+    #[test]
+    fn takes_the_source_the_agent_used_at_the_site() {
+        // Each order names a related order. Mostly the agent walks the user's
+        // list; twice it follows the first order's related one instead.
+        let order = |id: &str, related: &str| json!({"order_id": id, "related_order": related});
+        let training: Vec<Episode> = (0..10)
+            .map(|i| {
+                let next = if i < 8 { "#W2" } else { "#W9" };
+                episode(vec![
+                    Event::User {
+                        text: "help with my orders".to_string(),
+                    },
+                    call("a", "get_user_details", json!({"user_id": "ann_1"})),
+                    result("a", "get_user_details", user(&["#W1", "#W2", "#W3"])),
+                    call("b", "get_order_details", json!({"order_id": "#W1"})),
+                    result("b", "get_order_details", order("#W1", "#W9")),
+                    call("c", "get_order_details", json!({"order_id": next})),
+                    result("c", "get_order_details", order(next, "#W0")),
+                ])
+            })
+            .collect();
+        let b = Bindings::learn(&training, &manifest());
+        assert!(b.orders_sources_by_site());
+        let after_one = episode(vec![
+            Event::User {
+                text: "I want to cancel something".to_string(),
+            },
+            call("a", "get_user_details", json!({"user_id": "bob_2"})),
+            result("a", "get_user_details", user(&["#W7", "#W8"])),
+            call("b", "get_order_details", json!({"order_id": "#W7"})),
+            result("b", "get_order_details", order("#W7", "#W5")),
+        ]);
+        let args = |b: &Bindings| b.bind("get_order_details", &after_one).map(|(v, _)| v);
+        // At this site the agent took the next order of the list 8 times in
+        // 10: the binding does too, where recency alone takes the related
+        // order of the one just read.
+        assert_eq!(args(&b), Ok(json!({"order_id": "#W8"})));
+        let older = Bindings {
+            site_sources: Vec::new(),
+            ..b.clone()
+        };
+        assert_eq!(args(&older), Ok(json!({"order_id": "#W5"})));
     }
 
     #[test]

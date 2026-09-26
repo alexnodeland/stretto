@@ -133,11 +133,12 @@ def label(answer: dict, made: set, recorded: set, turn_of: dict, name: str) -> d
 async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
     """Replay the recorded calls through `call`, skipping those the flow made."""
     trajectory = episode / "trajectory.jsonl"
-    recorded = {key(c["name"], c["arguments"]) for m in messages for c in m.get("tool_calls") or []}
+    agent = [m for m in messages if m["role"] == "assistant"]
+    recorded = {key(c["name"], c["arguments"]) for m in agent for c in m.get("tool_calls") or []}
     # The calls in the first turn of each recorded call: a lookup that
     # spares one of them spares that share of the turn.
     turn_of: dict[tuple[str, str], int] = {}
-    for m in messages:
+    for m in agent:
         for c in m.get("tool_calls") or []:
             turn_of.setdefault(key(c["name"], c["arguments"]), len(m["tool_calls"]))
     answers = episode / "flow-answers.jsonl"
@@ -154,7 +155,9 @@ async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
         greeting = i == 0 and not m.get("tool_calls")
         if m["role"] == "assistant" and not greeting:
             turns += 1
-        if not m.get("tool_calls"):
+        # In telecom the customer calls tools on their own phone; those are
+        # the customer's turn, recorded as they happened, not replayed.
+        if not m.get("tool_calls") or m["role"] != "assistant":
             with open(trajectory, "a") as f:
                 f.write(json.dumps(m) + "\n")
             continue

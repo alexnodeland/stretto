@@ -55,6 +55,10 @@ const NOT_IN_EXAMPLES: &[&str] = &[
     "lower",
     "named_other",
     "contracts",
+    "site_sources",
+    "site",
+    "source",
+    "arg",
 ];
 
 fn names(v: &Value, path: &str, out: &mut BTreeSet<String>) {
