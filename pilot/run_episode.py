@@ -25,7 +25,9 @@ every call, making the lookups it names within the same tool response.
 
 The habit arm (`--arm habit`) is the flows arm with the flow deciding on the
 habit's prediction alone (`--decider habit`): it never asks the System-One
-model.
+model. The reach arm (`--arm reach`) decides on the probability that the agent
+makes a lookup before its next write (`--decider reach`), with no model either;
+it needs a flow learned with those counts (`--flow`).
 
 `--confirm-judge log|enforce` adds the confirmation judge to the guards arm:
 the proxy puts each write the guards check for a confirmation to Jev as
@@ -35,6 +37,17 @@ agent's process, so the harness hands it Jev's key in a file only it opens
 when the agent exits); the agent's process gets the file's path, never the
 key. `--label` names the arm's directory, so two judge settings can share
 `--out`.
+
+`--solo` runs τ²-bench's no-user mode (telecom): no customer, the ticket in
+τ²-bench's solo system prompt, the phone's tools and `done` served to the
+agent, and the episode scored as τ²-bench scores solo runs (its environment
+assertions, and the required actions where the task asks). As in τ²-bench,
+the episode ends when the agent calls `done`, and a turn that ends with
+neither `done` nor a transfer to a human is an agent error. With `--handback
+RUNS.json` (`scripts/telecom_workflow.py --json`) the agent takes over from
+the compiled workflow: the workflow's calls on the task are made first, with
+their effects in place, and the agent is told what they returned and that
+the workflow's own check of the ticket's outcome failed (the cascade).
 
 `--agent-cli claude` runs the agent on a Claude model instead
 (`claude-agent.sh`, with `--model`), and `--customer-cli claude
@@ -50,6 +63,7 @@ import atexit
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -58,7 +72,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import customer
-from tau2.agent.llm_agent import AGENT_INSTRUCTION, SYSTEM_PROMPT
+from tau2.agent.llm_agent import AGENT_INSTRUCTION, AGENT_SOLO_INSTRUCTION, SYSTEM_PROMPT, SYSTEM_PROMPT_SOLO
 from tau2.data_model.message import AssistantMessage, ToolMessage, UserMessage
 from tau2.data_model.simulation import SimulationRun, TerminationReason
 from tau2.evaluator.evaluator import EvaluationType, evaluate_simulation
@@ -75,7 +89,9 @@ TAU2 = Path(os.environ.get("TAU2_DIR", HERE.parent.parent / "sierra-research" / 
 GREETING = "Hi! How can I help you today?"
 STOPS = (STOP, TRANSFER, OUT_OF_SCOPE)
 # The arms with a flow behind the tools, and who decides in each.
-FLOW_ARMS = {"flows": "arbiter", "habit": "habit"}
+FLOW_ARMS = {"flows": "arbiter", "habit": "habit", "reach": "reach"}
+# τ²-bench's solo agent never speaks; its first turn has no message to answer.
+SOLO_START = "Start on the ticket."
 
 
 def now() -> str:
@@ -128,11 +144,46 @@ def start_flow(args, episode: Path) -> tuple[subprocess.Popen, str]:
     return serve, address
 
 
+def handback(runs: Path, task, env) -> tuple[list[dict], str]:
+    """The compiled workflow's calls on a task, and the note the agent gets
+    when the workflow hands the task over: each call with what it returned
+    (made here on the task's initial state, as the tools will make them), and
+    the workflow's own check of the ticket's outcome, made last."""
+    sys.path.insert(0, str(HERE.parent / "scripts"))
+    import telecom_workflow
+    from tau2.data_model.message import ToolCall
+
+    row = next((r for r in json.loads(runs.read_text())["runs"] if r["task_id"] == str(task.id)), None)
+    if row is None:
+        raise SystemExit(f"no workflow run for task {task.id} in {runs}")
+    calls = [dict(zip(("name", "arguments"), telecom_workflow.unlabel(c))) for c in row["calls"]]
+    probe = next((p for phrase, p, _ in telecom_workflow.RESOLVED if phrase in (task.ticket or "").lower()), None)
+    if probe:
+        calls.append({"name": probe, "arguments": {}})
+    init = task.initial_state
+    env.set_state(
+        initialization_data=init.initialization_data if init else None,
+        initialization_actions=init.initialization_actions if init else None,
+        message_history=[],
+    )
+    lines = []
+    for i, c in enumerate(calls):
+        result = env.get_response(ToolCall(id=f"prefix_{i}", name=c["name"], arguments=c["arguments"], requestor="assistant"))
+        lines.append(f"{i + 1}. {c['name']} {json.dumps(c['arguments'])}\n{result.content or ''}")
+    note = (
+        "An automated procedure worked on this ticket before you. It made these tool calls, in order; "
+        "their effects are in place. The last is its check of the outcome the ticket states, which "
+        "found the issue not yet resolved.\n\n" + "\n\n".join(lines)
+        + "\n\nContinue from here: solve the ticket, then call `done`."
+    )
+    return calls, note
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--domain", default="retail")
     parser.add_argument("--task-id", required=True)
-    parser.add_argument("--arm", default="baseline", choices=["baseline", "flows", "habit", "guards"])
+    parser.add_argument("--arm", default="baseline", choices=["baseline", "flows", "habit", "reach", "guards"])
     parser.add_argument("--out", type=Path, default=Path("runs/pilot"))
     parser.add_argument("--model", default="glm-5.3", help="the agent's model")
     parser.add_argument(
@@ -171,6 +222,11 @@ def main() -> None:
         "--judge-oracle", default="jev", choices=["jev", "replay", "mock"],
         help="who answers the judge's questions (mock: plumbing checks only)",
     )
+    parser.add_argument("--solo", action="store_true", help="τ²-bench's no-user mode (telecom): no customer")
+    parser.add_argument(
+        "--handback", type=Path, metavar="RUNS.json",
+        help="solo: take over from the compiled workflow's run on the task (scripts/telecom_workflow.py --json)",
+    )
     parser.add_argument(
         "--read-only-hints", action="store_true",
         help="mark τ²-bench's read tools readOnlyHint: true (writes false) in tools/list, as a real "
@@ -189,15 +245,19 @@ def main() -> None:
         parser.error(f"--model {args.model} does not run on --agent-cli {args.agent_cli}")
     if args.customer_cli == "claude" and not args.customer_model:
         parser.error("--customer-cli claude needs --customer-model")
+    if args.handback and not args.solo:
+        parser.error("--handback needs --solo")
+    if args.solo and (args.arm == "guards" or args.record_context):
+        parser.error("--solo has no conversation for the guards arm or --record-context")
     args.flow_decider = FLOW_ARMS.get(args.arm, "arbiter")
 
     task = next(
         t for t in registry.get_tasks_loader(args.domain)() if str(t.id) == args.task_id
     )
-    env = registry.get_env_constructor(args.domain)()
+    env = registry.get_env_constructor(args.domain)(solo_mode=args.solo)
     episode = (args.out / (args.label or args.arm) / f"task-{args.task_id}").resolve()
     episode.mkdir(parents=True, exist_ok=True)
-    for stale in ("trajectory.jsonl", "events.jsonl", "tools-state.json", "flow.jsonl", "context.jsonl"):
+    for stale in ("trajectory.jsonl", "events.jsonl", "tools-state.json", "flow.jsonl", "context.jsonl", "prefix.json"):
         (episode / stale).unlink(missing_ok=True)
     context = episode / "context.jsonl"
 
@@ -222,15 +282,24 @@ def main() -> None:
     def customer_reply(dialogue: list[tuple[str, str]]) -> tuple[str, dict]:
         return customer.reply(sim_prompt, dialogue, cli=args.customer_cli, model=args.customer_model)
 
-    first, usage = customer_reply([("agent", GREETING)])
-    dialogue = [("agent", GREETING), ("customer", first)]
-    customer_usage = [usage]
-    record(
-        AssistantMessage(role="assistant", content=GREETING),
-        UserMessage(role="user", content=first),
-    )
-    say("assistant", GREETING)
-    say("user", first)
+    prefix = None
+    if args.solo:
+        # No customer: the agent's first message answers none.
+        first, dialogue, customer_usage = SOLO_START, [], []
+        if args.handback:
+            calls, first = handback(args.handback, task, registry.get_env_constructor(args.domain)(solo_mode=True))
+            prefix = episode / "prefix.json"
+            prefix.write_text(json.dumps(calls, indent=1))
+    else:
+        first, usage = customer_reply([("agent", GREETING)])
+        dialogue = [("agent", GREETING), ("customer", first)]
+        customer_usage = [usage]
+        record(
+            AssistantMessage(role="assistant", content=GREETING),
+            UserMessage(role="user", content=first),
+        )
+        say("assistant", GREETING)
+        say("user", first)
 
     python = Path(subprocess.check_output(["which", "python"], text=True).strip())
     judge, server_env = [], {}
@@ -270,14 +339,22 @@ def main() -> None:
                     "--episode-dir", str(episode),
                     "--max-calls", str(args.max_calls),
                 ] + (["--read-only-hints"] if args.read_only_hints else [])
-                + (["--flow-address", flow_address] if serve else []),
+                + (["--flow-address", flow_address] if serve else [])
+                + (["--solo"] if args.solo else []) + (["--prefix", str(prefix)] if prefix else []),
             } | ({"env": server_env} if server_env else {})
         }
     }
     (episode / "mcp.json").write_text(json.dumps(config, indent=1))
-    system = SYSTEM_PROMPT.format(
-        agent_instruction=AGENT_INSTRUCTION, domain_policy=env.get_policy()
-    )
+    if args.solo:
+        system = SYSTEM_PROMPT_SOLO.format(
+            agent_instruction=AGENT_SOLO_INSTRUCTION.format(stop_function_name="done", stop_token="###STOP###"),
+            domain_policy=env.get_policy(),
+            ticket=task.ticket,
+        )
+    else:
+        system = SYSTEM_PROMPT.format(
+            agent_instruction=AGENT_INSTRUCTION, domain_policy=env.get_policy()
+        )
     agent = subprocess.Popen(
         [
             str(WRAPPERS[args.agent_cli]), "-p", "--bare", "--tools", "",
@@ -305,6 +382,12 @@ def main() -> None:
         for line in agent.stdout:
             events.write(line)
             event = json.loads(line)
+            if event.get("type") == "system" and event.get("subtype") == "init":
+                # Without its tools the agent would run on, spending turns.
+                failed = [m["name"] for m in event.get("mcp_servers", []) if m.get("status") == "failed"]
+                if failed:
+                    agent.kill()
+                    raise SystemExit(f"MCP server {failed} failed to start: see {episode / 'log'}")
             if event.get("type") == "result":
                 return event.get("result") or ""
         return None
@@ -325,6 +408,20 @@ def main() -> None:
         text = turn()
         if text is None:
             ending = "agent_error"
+            break
+        if args.solo:
+            state = json.loads((episode / "tools-state.json").read_text())
+            if state.get("over_budget"):
+                ending = "max_steps"
+            elif state.get("stopped") or transferred():
+                # `done`, or a transfer: the policy's own ending for what the
+                # agent may not fix, as the compiled workflow ends there too.
+                ending = "agent_stop"
+            else:
+                # τ²-bench's solo agent may only call tools: a message with
+                # neither a call nor the stop ends the episode as an error.
+                record(AssistantMessage(role="assistant", content=text))
+                ending = "solo_error"
             break
         dialogue.append(("agent", text))
         record(AssistantMessage(role="assistant", content=text))
@@ -370,6 +467,8 @@ def main() -> None:
         "transfer": TerminationReason.USER_STOP,
         "max_steps": TerminationReason.MAX_STEPS,
         "agent_error": TerminationReason.AGENT_ERROR,
+        "agent_stop": TerminationReason.AGENT_STOP,
+        "solo_error": TerminationReason.AGENT_ERROR,
     }[ending]
     simulation = SimulationRun(
         id=str(uuid.uuid4()),
@@ -381,8 +480,10 @@ def main() -> None:
         termination_reason=termination,
         messages=messages,
     )
+    # Solo runs are scored as τ²-bench scores them: the environment
+    # assertions, and the required actions where the task's basis has them.
     reward = evaluate_simulation(
-        simulation, task, EvaluationType.ENV, solo_mode=False, domain=args.domain
+        simulation, task, EvaluationType.ALL if args.solo else EvaluationType.ENV, solo_mode=args.solo, domain=args.domain
     )
     simulation.reward_info = reward
     (episode / "simulation.json").write_text(simulation.model_dump_json(indent=1))
@@ -437,10 +538,15 @@ def main() -> None:
         } if args.confirm_judge else None,
         "reward": reward.reward,
         "termination": termination.value,
+        "ending": ending,
+        "solo": args.solo,
+        "handback": str(args.handback) if args.handback else None,
+        "workflow_calls": tools.get("prefix_calls", 0),
         "llm_turns": len(responses),
         "tool_turns": sum(1 for n in responses.values() if n > 0),
         "parallel_turns": sum(1 for n in responses.values() if n > 1),
         "tool_calls": tools.get("tool_calls"),
+        "stopped": tools.get("stopped", False),
         "flow_lookups": tools.get("flow_lookups", 0),
         "flow_queries": tools.get("flow_queries", 0),
         "flow_answers": {

@@ -13,6 +13,13 @@ writes (its other tools get no hint). `stretto learn --sessions` then takes
 the tools' kinds from the recorded session, with no `--manifest`. It is off
 by default, so the pilots' agents saw the same tool list throughout.
 
+With `--solo` (τ²-bench's no-user mode, telecom), the agent also has the
+customer's tools, the phone's, and τ²-bench's `done` tool, which ends the
+episode: it is recorded as τ²-bench's solo agent records it, and later calls
+are refused. `--prefix FILE` makes the calls in FILE (a JSON list of
+`{"name", "arguments"}`) before serving, recorded as the agent's: a compiled
+workflow's calls, handed back with their effects in place.
+
 With `--flow-address`, a read-only flow runs after each of the agent's calls
 (the flows arm): the server asks `stretto flow-serve` what to do next, makes
 the lookup it names, records it like any other call, and asks again, until
@@ -23,7 +30,7 @@ it no turns.
 Usage (normally started by the agent, behind `stretto-proxy`):
 
     python tau2_mcp.py --domain retail --task-id 0 --episode-dir DIR \
-        [--read-only-hints] [--flow-address HOST:PORT]
+        [--read-only-hints] [--flow-address HOST:PORT] [--solo [--prefix FILE]]
 """
 
 import argparse
@@ -41,6 +48,10 @@ from mcp.server.stdio import stdio_server
 from tau2.data_model.message import AssistantMessage, ToolCall
 from tau2.environment.toolkit import ToolType
 from tau2.registry import registry
+
+
+# τ²-bench's solo agent: the tool that ends the episode, and how it is recorded.
+STOP_TOOL, STOP_TOKEN = "done", "###STOP###"
 
 
 def load_task(domain: str, task_id: str):
@@ -82,6 +93,9 @@ class Episode:
         self.tools = {t.name: t for t in self.env.get_tools()}
         if solo:
             self.tools.update({t.name: t for t in self.env.get_user_tools()})
+        self.solo = solo
+        self.stopped = False
+        self.prefix_calls = 0
         self.read_only_hints = read_only_hints
         self.calls = 0
         self.max_calls = max_calls
@@ -108,6 +122,8 @@ class Episode:
                     "over_budget": over_budget,
                     "flow_queries": self.flow_queries,
                     "flow_lookups": self.flow_lookups,
+                    "stopped": self.stopped,
+                    "prefix_calls": self.prefix_calls,
                 }
             )
         )
@@ -135,6 +151,12 @@ class Episode:
                     annotations=self.hint(name) if self.read_only_hints else None,
                 )
             )
+        if self.solo:
+            out.append(types.Tool(
+                name=STOP_TOOL,
+                description="Call this function when you are done with the task.",
+                inputSchema={"type": "object", "properties": {}},
+            ))
         return out
 
     def execute(self, name: str, arguments: dict) -> tuple[str, bool]:
@@ -151,6 +173,14 @@ class Episode:
 
     def call(self, name: str, arguments: dict) -> tuple[str, bool]:
         """The agent's call, then (in the flows arm) the flow's lookups."""
+        if self.stopped:
+            return "The episode has ended (done was called).", True
+        if self.solo and name == STOP_TOOL:
+            # As τ²-bench's solo agent: the stop replaces the message's calls.
+            self.stopped = True
+            self.append(AssistantMessage(role="assistant", content=STOP_TOKEN))
+            self.save_state()
+            return STOP_TOKEN, False
         self.calls += 1
         if self.calls > self.max_calls:
             self.save_state(over_budget=True)
@@ -246,7 +276,11 @@ def main() -> None:
     )
     parser.add_argument(
         "--solo", action="store_true",
-        help="τ²-bench's no-user mode: the agent also has the customer's tools (telecom's phone)",
+        help="τ²-bench's no-user mode: the agent also has the customer's tools (telecom's phone) and `done`",
+    )
+    parser.add_argument(
+        "--prefix", type=Path,
+        help="make these calls first (a JSON list of {name, arguments}), recorded as the agent's",
     )
     args = parser.parse_args()
     episode = Episode(
@@ -261,6 +295,9 @@ def main() -> None:
         args.record_answers,
         args.solo,
     )
+    for c in json.loads(args.prefix.read_text()) if args.prefix else []:
+        episode.execute(c["name"], c.get("arguments") or {})
+        episode.prefix_calls += 1
     episode.save_state()
     asyncio.run(serve(episode))
 
