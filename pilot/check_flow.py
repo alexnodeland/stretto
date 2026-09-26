@@ -20,6 +20,13 @@ on only where training shows no branch).
     python check_flow.py --results glm-5_retail.json --oracle-cache CACHE \\
         --flow-oracle jev
 
+`--same-result` also skips a recorded call whose recorded result is one a
+flow lookup of the same tool already returned, where the two agree on every
+argument both pass (an optional argument such as a `limit` that changes
+nothing), and counts that lookup as used rather than as a detour. Each such
+pair goes to `same-result.json` in the episode's folder. Exploration labels
+stay exact.
+
 `--explore EPSILON` serves the flow exploring (`stretto serve --explore`)
 and writes every decision with each option's outcome to `decisions.jsonl`,
 for `stretto evaluate`: `used` if the agent makes the lookup later (a
@@ -69,6 +76,52 @@ def flow_calls(text: str) -> list[tuple[str, str]]:
             out.append(key(head[0], json.loads(body)))
     return out
 
+
+def flow_results(text: str) -> list[tuple[tuple[str, str], str]]:
+    r"""The lookups the flow appended to a tool response, each with its result.
+
+    >>> text = "ok" + MARK + " ---\n\nget_bills {\"id\": \"C1\"}:\n[{\"b\": 1,\n \"a\": 2}]"
+    >>> flow_results(text)
+    [(('get_bills', '{"id": "C1"}'), '[{"a": 2, "b": 1}]')]
+    """
+    out: list[tuple[tuple[str, str], list[str]]] = []
+    if MARK not in text:
+        return []
+    for line in text.split(MARK, 1)[1].splitlines()[1:]:
+        head = line.split(" {", 1)
+        if len(head) == 2 and line.endswith(":"):
+            body = "{" + head[1].rsplit(":", 1)[0].removesuffix(" (error)")
+            try:
+                out.append((key(head[0], json.loads(body)), []))
+                continue
+            except ValueError:
+                pass
+        if out:
+            out[-1][1].append(line)
+    return [(k, same("\n".join(lines))) for k, lines in out]
+
+
+def agree(a: dict, b: dict) -> bool:
+    """Whether two calls' arguments agree wherever both pass one.
+
+    >>> agree({"customer_id": "C1"}, {"customer_id": "C1", "limit": 12})
+    True
+    >>> agree({"date": "05-01"}, {"date": "05-02"})
+    False
+    """
+    return all(a[k] == b[k] for k in a.keys() & b.keys())
+
+
+def same(text: str) -> str:
+    """A result in a form that compares equal whatever its layout."""
+    try:
+        return json.dumps(json.loads(text), sort_keys=True)
+    except ValueError:
+        return text.strip()
+
+
+# Set by --same-result.
+SAME_RESULT = False
 
 # tau2_mcp.py's own defaults for a server started as above.
 MAX_CALLS, FLOW_MAX, FLOW_BUDGET = 60, 8, 40
@@ -147,6 +200,12 @@ async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
     decisions: list[dict] = []
     made: set[tuple[str, str]] = set()
     by_flow: list[tuple[str, str]] = []
+    # With --same-result: what each flow lookup returned, by tool, and the
+    # lookups a recorded call with other arguments returned the same as.
+    results = {m.get("id"): m.get("content") for m in messages if m["role"] == "tool"}
+    returned: dict[str, list[tuple[tuple[str, str], str]]] = {}
+    twins: set[tuple[str, str]] = set()
+    pairs: list[list] = []
     turns = tool_turns = saved = calls = skipped = 0
     for i, m in enumerate(messages):
         if m["role"] == "tool":
@@ -169,6 +228,18 @@ async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
             if k in made:
                 skipped += 1
                 continue
+            if SAME_RESULT and results.get(c.get("id")) is not None:
+                r = same(results[c.get("id")])
+                twin = next(
+                    (f for f, out in returned.get(c["name"], []) if out == r and agree(json.loads(f[1]), c["arguments"])),
+                    None,
+                )
+                if twin is not None:
+                    twins.add(twin)
+                    pairs.append([list(k), list(twin)])
+                    made.add(k)
+                    skipped += 1
+                    continue
             left += 1
             text = await call(c["name"], c["arguments"])
             made.add(k)
@@ -187,7 +258,12 @@ async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
             for f in flow_calls(text):
                 made.add(f)
                 by_flow.append(f)
+            if SAME_RESULT:
+                for f, out in flow_results(text):
+                    returned.setdefault(f[0], []).append((f, out))
         saved += left == 0
+    if pairs:
+        (episode / "same-result.json").write_text(json.dumps(pairs))
     state = json.loads((episode / "tools-state.json").read_text())
     return {
         "decisions": decisions,
@@ -199,7 +275,7 @@ async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
         "calls_skipped": skipped,
         "flow_lookups": state.get("flow_lookups"),
         "flow_queries": state.get("flow_queries"),
-        "detours": sum(1 for f in by_flow if f not in recorded),
+        "detours": sum(1 for f in by_flow if f not in recorded and f not in twins),
     }
 
 
@@ -291,7 +367,13 @@ def main() -> None:
     parser.add_argument("--explore-seed", type=int, default=0, help="seed for the exploration draws")
     parser.add_argument("--in-process", action="store_true", help="call tau2_mcp.Episode directly instead of over MCP")
     parser.add_argument("--jobs", type=int, default=1, help="episodes to replay at once")
+    parser.add_argument(
+        "--same-result", action="store_true",
+        help="a recorded call returning what a flow lookup of the same tool returned counts as made",
+    )
     args = parser.parse_args()
+    global SAME_RESULT
+    SAME_RESULT = args.same_result
     episodes = recorded_episodes(args)
     if not episodes:
         parser.error("nothing to replay")

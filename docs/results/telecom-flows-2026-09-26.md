@@ -33,7 +33,7 @@ Every agent gained. The spread afterwards is the agents' own habits: GLM-5, for 
 
 ## What is left in dual control
 
-Replayed with each call tagged, the 443 detours left on the nine agents are tool choices, not bindings:
+Replayed with each call tagged, the 443 detours left on the nine agents are tool choices, not bindings, and the bills, the largest share, are mostly reads the agents make too, with another argument:
 
 | Lookup, in tickets about | Detours | Used |
 |---|---|---|
@@ -44,7 +44,7 @@ Replayed with each call tagged, the 443 detours left on the nine agents are tool
 | Other | 14 | |
 
 - **A word in the customer's messages does not choose them.** A split on one word or pair, learned per site from the 2025 runs, lands on words such as "it" and "please go" at most sites. The one real split, "no service", holds data-usage reads to 1% of those tickets, and the flow already makes almost none there. MMS tickets are where the data-usage detours are, and the 2025 agents read data usage in 53% of theirs (59% of mobile-data tickets), since MMS needs mobile data. How often one agent does so is that agent's habit.
-- **A field of a result does choose the bills.** In no-service tickets, the 2025 agents read the bills in 86 of 112 episodes where a line they read was suspended, and in 2 of 49 where none was. All 315 of the flow's bill reads come right after a line read. The habit does see the line's status, but only as one feature combined with the plan, roaming and contract end, which few training cases share, so it falls back to the site's share. Learned with the status as its only feature (feature selection capped at one field, which picks the status), the flow saved 51 more turns across the nine agents (13.1%) but made 810 detours, not 443: it lost the data-usage and roaming fields its other lookups decide by. So the combined feature stays, and what the bills need is the status as a feature of its own beside the others, which the habit's one-feature-per-result encoding cannot hold.
+- **The bills come right after a suspended line, and four agents ask for them with a limit.** In no-service tickets the 2025 agents read the bills in 86 of 112 episodes where a line they read was suspended, and in 2 of 49 where none was, and the habit holds that: after a line read whose combined feature (status, plan, roaming, contract end) has the most common suspended combination, it predicts the bills at 71% (58 of 82 training steps), after the other two at 18–19% (15 of 82), and after an active line at 1% or less. So the status is not lost in the combination. Backing off from the combined feature to the status alone before dropping it, as factored language models back off one factor at a time ([Bilmes & Kirchhoff 2003](https://aclanthology.org/N03-2002/)), replays exactly as before on all nine agents, and a flow learned with the status as its only feature (feature selection capped at one field) saved 51 more turns (13.1%) but made 810 detours, not 443, having lost the data-usage and roaming fields its other lookups decide by. What the tags show instead is that 149 of the 160 detours are GPT-5.2's (at both efforts) and the two Qwen agents'. When the ticket's own line is suspended, they read the bills in 52–95% of episodes, as the flow does, but always with a `limit` (from 5 to 12, except 3 in 12 of Qwen3-Max's 80 calls), where the flow passes the customer alone. The account has three or four bills, so a limit of four or more returns what the flow's lookup returned. `check_flow.py --same-result` counts a recorded call as made when a flow lookup of the same tool, agreeing on every argument both pass, has already returned its recorded result: only an optional argument may differ. With it, the nine agents' replays save 2,350 turns (13.3%) with 298 detours, 15 of them bills, against 2,260 and 443. Whether an agent with the flow's bills in front of it would still ask with its own limit, only a live run can tell.
 
 ## When the agent holds the phone
 
@@ -65,6 +65,8 @@ A value the customer gave has a digit and at least four characters, and either t
 
 D0, compiled again with this build from the same traces and cached answers, replays exactly as before at 0.3, habit alone, on all nine leaderboard agents' retail and airline test episodes: the same turns saved, detours and lookups in each of the 18 replays. For GLM-5 that is 55 turns saved and 6 detours in airline and 307 and 33 in retail, and for Claude Sonnet 4.5 130 and 63, and 412 and 82. Retail's bindings agree with the agents exactly as often as before. Airline's flight search binds better (22 of 112 unmentioned picks agreed, from 12), with no change in the replays.
 
+Scored with `--same-result`, all 18 retail and airline replays are as they were, with no pair: none of those agents' calls differs from a flow lookup only in an optional argument. A first version that matched on the result alone moved seven of the airline replays, by pairing calls whose required arguments differed but whose results were equal; hence the rule that the arguments both pass agree.
+
 ## Reproduce
 
 ```sh
@@ -80,4 +82,4 @@ for f in $(scripts/fetch-leaderboard.sh -t all | grep telecom | cut -d= -f2); do
 done
 ```
 
-*Before* is the same flow with `bindings.site_sources` removed. The solo flow comes from the two `telecom_no-user` runs, replayed with `--solo`; its first numbers are the same flow without `bindings.described_read`.
+*Before* is the same flow with `bindings.site_sources` removed. The breakdown of what is left replays with `pilot/check_flow_tagged.py`, which writes each episode's calls by author (`tags.json`), and the same-result counts add `--same-result`. The solo flow comes from the two `telecom_no-user` runs, replayed with `--solo`; its first numbers are the same flow without `bindings.described_read`.
