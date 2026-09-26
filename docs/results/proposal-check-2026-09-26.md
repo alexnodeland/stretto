@@ -27,7 +27,7 @@ Some flags in successful episodes are real lapses τ²-bench does not score. In 
 
 - **Useful to log, not to enforce.** In retail it flags three times as many writes in failed episodes as in successful ones, and it needs no model and no key. But it would refuse about 3% of the writes of successful episodes, where [the guards](guards-2026-09-24.md) refuse about 1% in airline. In airline it does not separate them.
 - **It catches half of the wrong-record lapses.** The rest name the record in words the check cannot tie to it, such as a cabin class or "the cheaper one".
-- It is not in `stretto-proxy`. Wired in, it would log beside the confirmation judge (`--confirm-judge log`), not refuse.
+- `stretto-proxy` logs it beside the confirmation judge (`proposal_check` in each judged write's entry), and refuses nothing. The proxy has no dataset to find closed choices in, so it checks only values with a digit, as ids carry them. On the 2025 runs above, that flags exactly the writes this page's closed-choice rule flagged.
 
 ## Reproduce
 
