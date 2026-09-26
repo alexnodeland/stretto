@@ -44,7 +44,7 @@ A third of the turns, the most any flow has saved in replay, against 12.8% when 
 
 ## Retail and airline: unchanged
 
-D0, compiled again with this build from the same traces and cached answers, replays exactly as before at 0.3 on GLM-5's and Claude Sonnet 4.5's test episodes: 55 turns saved and 6 detours in airline and 307 and 33 in retail for GLM-5, and 130 and 63, 412 and 82 for Sonnet. Retail's bindings agree with the agents exactly as often as before. Airline's flight search binds better (22 of 112 unmentioned picks agreed, from 12), with no change in the replays.
+D0, compiled again with this build from the same traces and cached answers, replays exactly as before at 0.3, habit alone, on all nine leaderboard agents' retail and airline test episodes: the same turns saved, detours and lookups in each of the 18 replays. For GLM-5 that is 55 turns saved and 6 detours in airline and 307 and 33 in retail, and for Claude Sonnet 4.5 130 and 63, and 412 and 82. Retail's bindings agree with the agents exactly as often as before. Airline's flight search binds better (22 of 112 unmentioned picks agreed, from 12), with no change in the replays.
 
 ## Reproduce
 
