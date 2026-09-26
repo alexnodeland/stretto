@@ -82,4 +82,4 @@ for f in $(scripts/fetch-leaderboard.sh -t all | grep telecom | cut -d= -f2); do
 done
 ```
 
-*Before* is the same flow with `bindings.site_sources` removed. The breakdown of what is left replays with `pilot/check_flow_tagged.py`, which writes each episode's calls by author (`tags.json`), and the same-result counts add `--same-result`. The solo flow comes from the two `telecom_no-user` runs, replayed with `--solo`; its first numbers are the same flow without `bindings.described_read`.
+*Before* is the same flow with `bindings.site_sources` removed. The breakdown of what is left replays with `pilot/check_flow_tagged.py`, which writes each episode's calls by author (`tags.json`); `scripts/detours.py tools`, given each agent's results file and replay folder, prints the table, with the detours the agent made with other arguments (146 of the bills', 1 of the 228 data-usage ones). The same-result counts add `--same-result`. The solo flow comes from the two `telecom_no-user` runs, replayed with `--solo`; its first numbers are the same flow without `bindings.described_read`.

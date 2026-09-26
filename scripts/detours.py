@@ -21,6 +21,13 @@ wrote (a `tags.json` per episode) and, for `chains`, with `--explore 0` (a
         Airline: each reservation the flow read, by whether a reservation
         read before it was one the customer had described (its origin and
         destination named, by code or city, or its id).
+
+    detours.py tools RESULTS.json REPLAY_DIR [RESULTS.json REPLAY_DIR ...]
+        Each lookup tool's detours and uses, summed over the replays given,
+        by the kind of task (the bracketed issue that starts a τ²-bench
+        telecom task id, else "all"), and how many of the detours the agent
+        made the same call of with other arguments in that episode (another
+        record, or an optional argument such as a `limit`) rather than none.
 """
 
 import argparse
@@ -192,6 +199,38 @@ def cmd_described(args):
         print(f"after a reservation the customer described: {before!s:5}  used {tally[(before, 'used')]:3d}  detours {tally[(before, 'detour')]:3d}")
 
 
+def kind(episode):
+    """The bracketed issue that starts a telecom task id, else "all"."""
+    m = re.match(r"task-\[([^\]]+)\]", episode)
+    return m.group(1) if m else "all"
+
+
+def cmd_tools(args):
+    if len(args.pairs) % 2:
+        raise SystemExit("detours.py tools: give RESULTS.json REPLAY_DIR pairs")
+    tally = collections.Counter()
+    for results, replay in zip(args.pairs[::2], args.pairs[1::2]):
+        sims = simulations(results)
+        for e in episodes(replay):
+            if e.name not in sims:
+                continue
+            calls = [c for m in sims[e.name]["messages"] if m["role"] == "assistant" for c in m.get("tool_calls") or []]
+            recorded = {key(c["name"], c["arguments"]) for c in calls}
+            tools = {c["name"] for c in calls}
+            for who, tool, a in json.loads((e / "tags.json").read_text()):
+                if who != "flow":
+                    continue
+                if key(tool, a) in recorded:
+                    tally[(tool, kind(e.name), "used")] += 1
+                else:
+                    tally[(tool, kind(e.name), "detour")] += 1
+                    tally[(tool, kind(e.name), "other arguments")] += tool in tools
+    rows = sorted({(t, k) for t, k, _ in tally}, key=lambda r: -tally[(*r, "detour")])
+    print(f"{'lookup':26s} {'task':18s} {'detours':>8s} {'used':>6s}  detours the agent made with other arguments")
+    for t, k in rows:
+        print(f"{t:26s} {k:18s} {tally[(t, k, 'detour')]:8d} {tally[(t, k, 'used')]:6d}  {tally[(t, k, 'other arguments')]}")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -208,6 +247,9 @@ def main():
     p.add_argument("replay")
     p.add_argument("--tau2", default="../tau2-bench")
     p.set_defaults(run=cmd_described)
+    p = sub.add_parser("tools")
+    p.add_argument("pairs", nargs="+", metavar="RESULTS_OR_REPLAY")
+    p.set_defaults(run=cmd_tools)
     args = ap.parse_args()
     args.run(args)
 
