@@ -180,6 +180,68 @@ def renamed_environment(rename):
     return make
 
 
+def as_customer(customer_id):
+    """John Smith's tasks moved to another customer of τ²-bench's database:
+    his customer and line ids, device, number, name and email in each task
+    become theirs, and their first line takes his line's state (active,
+    roaming, data used), so that the account differs in its lines, bills,
+    device and payment method, not in the faults the task sets. Returns the
+    renaming and the environment."""
+    from tau2.domains.telecom.data_model import TelecomDB
+    from tau2.domains.telecom.environment import TELECOM_DB_PATH, TELECOM_USER_DB_PATH, get_environment
+    from tau2.domains.telecom.user_data_model import TelecomUserDB
+
+    db = json.loads(TelecomDB.load(TELECOM_DB_PATH).model_dump_json())
+    john = next(c for c in db["customers"] if c["full_name"] == "John Smith")
+    other = next(c for c in db["customers"] if c["customer_id"] == customer_id)
+    lines = {line["line_id"]: line for line in db["lines"]}
+    target = next(lines[i] for i in john["line_ids"] if lines[i]["phone_number"] == john["phone_number"])
+    line = lines[other["line_ids"][0]]
+    for k in ("status", "roaming_enabled", "data_used_gb", "data_refueling_gb", "suspension_start_date"):
+        line[k] = target[k]
+    other["account_status"] = john["account_status"]
+    mapping = {john["customer_id"]: other["customer_id"], target["line_id"]: line["line_id"],
+               target["device_id"]: line["device_id"], target["phone_number"]: line["phone_number"],
+               john["full_name"]: other["full_name"], john["email"]: other["email"]}
+    pattern = re.compile(r"(?<![\w.-])(" + "|".join(map(re.escape, sorted(mapping, key=len, reverse=True))) + r")(?![\w-])")
+
+    def rename(text):
+        return pattern.sub(lambda m: mapping[m.group()], text)
+
+    db_text = json.dumps(db)
+    user = rename(TelecomUserDB.load(TELECOM_USER_DB_PATH).model_dump_json())
+
+    def make(**kw):
+        return get_environment(db=TelecomDB.model_validate_json(db_text), user_db=TelecomUserDB.model_validate_json(user),
+                               policy_type="workflow", **kw)
+
+    return rename, make
+
+
+def gold_passes(task, constructor):
+    """Whether a task's own gold actions, made as the agent's calls, pass
+    τ²-bench's evaluator: whether a moved task can still be solved."""
+    from tau2.data_model.message import AssistantMessage, ToolCall
+    from tau2.data_model.tasks import RewardType
+    from tau2.evaluator.evaluator_action import ActionEvaluator
+    from tau2.evaluator.evaluator_env import EnvironmentEvaluator
+
+    env = constructor(solo_mode=True)
+    init = task.initial_state
+    env.set_state(initialization_data=init.initialization_data if init else None,
+                  initialization_actions=init.initialization_actions if init else None, message_history=[])
+    messages = []
+    for i, a in enumerate(task.evaluation_criteria.actions or []):
+        call = ToolCall(id=f"gold_{i}", name=a.name, arguments=a.arguments, requestor="assistant")
+        messages.append(AssistantMessage(role="assistant", content=None, tool_calls=[call]))
+        messages.append(env.get_response(call))
+    reward = EnvironmentEvaluator.calculate_reward(environment_constructor=constructor, task=task, full_trajectory=messages,
+                                                   solo_mode=True, strict_replay=False).reward
+    if RewardType.ACTION in task.evaluation_criteria.reward_basis:
+        reward *= ActionEvaluator.calculate_reward(task=task, full_trajectory=messages).reward
+    return reward == 1
+
+
 def resolve(sym, outputs, ticket, passed):
     r"""Bind a symbol again: the ticket's first match of its shape, or the most
     recent result of its tool with a value at its path, the first in a list
@@ -518,6 +580,8 @@ def main():
                     help="learn identifiers as where they came from (a result's path, the ticket) and bind them when run")
     ap.add_argument("--rename", action="store_true",
                     help="run the test tasks for a customer no trace saw: John Smith's name, ids and numbers renamed")
+    ap.add_argument("--as-customer", metavar="ID",
+                    help="run the test tasks for another customer of the database (C1003), keeping those its gold actions still solve")
     ap.add_argument("--bag", type=int, default=0, metavar="N",
                     help="fit N trees, each on a resample of the episodes, and take the call their leaves' shares favour")
     ap.add_argument("--keep", choices=["shortest", "first"], default="shortest",
@@ -540,6 +604,13 @@ def main():
         test_environment = renamed_environment(RENAME)
         for tid in test:
             tasks[tid] = Task.model_validate_json(RENAME(tasks[tid].model_dump_json()))
+    if args.as_customer:
+        RENAME, test_environment = as_customer(args.as_customer)
+        for tid in test:
+            tasks[tid] = Task.model_validate_json(RENAME(tasks[tid].model_dump_json()))
+        solvable = {tid for tid in test if gold_passes(tasks[tid], test_environment)}
+        print(f"as {args.as_customer}: the gold actions solve {len(solvable)} of {len(test)} test tasks", file=sys.stderr)
+        test = solvable
     if args.train_share < 1:
         # A fixed sample of the training tasks, each smaller share inside every larger one.
         ranked = sorted(train, key=lambda t: hashlib.sha256(t.encode()).hexdigest())

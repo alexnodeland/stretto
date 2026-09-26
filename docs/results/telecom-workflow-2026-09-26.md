@@ -115,7 +115,14 @@ Held-out test tasks passed, of 40 ([the runs](telecom-workflow-2026-09-26-bindin
 - **Its check still separates.** All 7 runs it called unresolved had failed, and 32 of the 33 it called done or transferred had passed. Handing the unresolved to an agent projects 88.7–90.0%.
 - **With half the demonstrations, and its own tries.** Fitted on half the training tasks with identifiers learned as where they came from, it passed 17 renamed tasks. Self-trained on its own verified runs of the original customer's tickets, as [above](#learning-from-its-own-runs), it passed 21–28 over the next four rounds (three seeds; mean 25.1), where the same with constants on the original tasks passed 19–26 (mean 22.6). Likely because an identifier learned as where it came from makes one action of "the next line" or "the overdue bill", whatever its id, and the tree learns one action from fewer demonstrations than several.
 
-It is one renamed customer, the database otherwise the same, so this tests binding, not an account in another state: a real second customer would bring other plans and faults.
+**Another customer's account.** Renaming tests binding, not an account in another shape. `--as-customer C1003` moves each test task to Michael Lee, another customer in τ²-bench's database: one line where John Smith has three, a phone without eSIM, a PayPal account that has expired and a disputed bill. His line takes John's line's state (active, roaming, data used) so that each task's faults still hold, and the tasks' own gold actions, made as the agent's calls, still solve all 40.
+
+| Workflow | John Smith (three lines) | Michael Lee (one line) | Refitted on five resamples, Michael Lee |
+|---|---|---|---|
+| Identifiers as constants | 31 | 19 | 17–19 |
+| **Identifiers as where they came from** | **32** | **35** | 24–30 |
+
+Bound again, the workflow did as well for an account of another shape, and better on three MMS tasks: for John it read all three lines and went on to the data path, and with one line there was nothing to read past. Its check again caught every failure it had (4 unresolved, all failed), and handing those to an agent projects 93.8–96.3%. The line took John's state, so the faults are the same; an account in another state (a suspended line, an expired card the fix needs) would ask the workflow for steps no trace shows.
 
 ## What it says
 
