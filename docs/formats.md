@@ -38,6 +38,7 @@ A flow makes read-only calls on the agent's behalf, so a review asks what it may
 | `program` | The flow's run after each call, as a fugue program |
 | `promoted` | Where the flow may act, once promoted; absent until `stretto promote` writes it |
 | `thresholds` | Per-site thresholds, in place of the served one at those sites; absent unless a search set them |
+| `contracts` | Each tool's input contract when the flow was learned from recorded sessions: `{tool: "order_id:string!, reason:string"}`, each argument with its JSON type and `!` when required. `stretto-proxy` makes no lookup of a tool whose server lists another. Absent for a flow compiled from τ²-bench results |
 
 ### `provenance`
 

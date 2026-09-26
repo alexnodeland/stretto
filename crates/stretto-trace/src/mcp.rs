@@ -269,6 +269,82 @@ pub fn manifest(log: &McpLog, domain: &str) -> ToolManifest {
     }
 }
 
+/// A listed tool's input contract: each argument of its `inputSchema`, in
+/// order of name, with its JSON type and `!` when required, such as
+/// `order_id:string!, reason:string`. `None` for a tool without a schema.
+/// A flow pins the contracts of the tools it learned from
+/// ([`contracts_of`]), and `stretto-proxy` stops looking up a tool whose
+/// contract has changed since.
+pub fn contract(tool: &Value) -> Option<String> {
+    let schema = tool.get("inputSchema")?;
+    let required: HashSet<&str> = schema
+        .get("required")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect();
+    let mut args: Vec<String> = schema
+        .get("properties")
+        .and_then(Value::as_object)
+        .into_iter()
+        .flatten()
+        .map(|(name, p)| {
+            let ty = match p.get("type") {
+                Some(Value::String(t)) => t.clone(),
+                Some(Value::Array(ts)) => ts
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .collect::<Vec<_>>()
+                    .join("|"),
+                _ => "any".to_string(),
+            };
+            let mark = if required.contains(name.as_str()) {
+                "!"
+            } else {
+                ""
+            };
+            format!("{name}:{ty}{mark}")
+        })
+        .collect();
+    args.sort();
+    Some(args.join(", "))
+}
+
+/// The input contract ([`contract`]) of every tool the logs' servers
+/// listed. A later listing replaces an earlier one.
+pub fn contracts_of(logs: &[McpLog]) -> BTreeMap<String, String> {
+    let mut out = BTreeMap::new();
+    for log in logs {
+        let mut awaiting = HashSet::new();
+        for (from, m) in log.messages() {
+            match from {
+                Peer::Client if method(m) == Some("tools/list") => {
+                    if let Some(id) = request_id(m) {
+                        awaiting.insert(id_key(id));
+                    }
+                }
+                Peer::Server => {
+                    let Some(id) = response_id(m) else { continue };
+                    if !awaiting.remove(&id_key(id)) {
+                        continue;
+                    }
+                    let listed = m.pointer("/result/tools").and_then(Value::as_array);
+                    for tool in listed.into_iter().flatten() {
+                        if let (Some(name), Some(c)) =
+                            (tool.get("name").and_then(Value::as_str), contract(tool))
+                        {
+                            out.insert(name.to_string(), c);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    out
+}
+
 /// A listed tool's description and argument descriptions, if it has any.
 fn tool_doc(tool: &Value) -> Option<ToolDoc> {
     let summary = tool
@@ -979,6 +1055,33 @@ mod tests {
                 "result:2",
                 "result:1"
             ]
+        );
+    }
+
+    #[test]
+    fn a_tools_contract_names_its_arguments_types_and_which_are_required() {
+        let tool = json!({"name": "get_order", "inputSchema": {"type": "object",
+            "properties": {"order_id": {"type": "string"}, "limit": {"type": ["integer", "null"]}, "x": {}},
+            "required": ["order_id"]}});
+        assert_eq!(
+            contract(&tool).as_deref(),
+            Some("limit:integer|null, order_id:string!, x:any")
+        );
+        assert_eq!(contract(&json!({"name": "no_schema"})), None);
+        let mut log = log_of(&[
+            (
+                Peer::Client,
+                json!({"jsonrpc": "2.0", "id": 1, "method": "tools/list"}),
+            ),
+            (
+                Peer::Server,
+                json!({"jsonrpc": "2.0", "id": 1, "result": {"tools": [tool]}}),
+            ),
+        ]);
+        log.header.stretto_mcp_log = 2;
+        assert_eq!(
+            contracts_of(&[log])["get_order"],
+            "limit:integer|null, order_id:string!, x:any"
         );
     }
 }

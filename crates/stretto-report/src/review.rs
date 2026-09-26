@@ -403,6 +403,21 @@ pub fn show(flow: &Flow, threshold: f64) -> String {
     for b in bound.values() {
         binding_rows(&mut md, b, named_other);
     }
+    let pinned: Vec<(&String, &String)> = flow
+        .contracts()
+        .iter()
+        .filter(|(t, _)| bound.contains_key(*t))
+        .collect();
+    if !pinned.is_empty() {
+        let _ = writeln!(md, "\n## Pinned inputs\n");
+        let _ = writeln!(
+            md,
+            "Each lookup's arguments as the server listed them when the sessions were recorded. `stretto-proxy` makes no lookup of a tool whose server lists other arguments now.\n"
+        );
+        for (tool, contract) in pinned {
+            let _ = writeln!(md, "- `{tool}`: `{contract}`");
+        }
+    }
     let features = feature_fields(flow);
     if !features.is_empty() {
         let _ = writeln!(md, "\n## Code features\n");
@@ -735,6 +750,27 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
         }
     }
     sections.push(("Bindings".to_string(), binds));
+
+    // Pinned input contracts: the server's arguments when each flow learned.
+    let mut pinned = Vec::new();
+    let tools: BTreeSet<&String> = old
+        .contracts()
+        .keys()
+        .chain(new.contracts().keys())
+        .collect();
+    for t in tools {
+        match (old.contracts().get(t), new.contracts().get(t)) {
+            (Some(a), Some(b)) if a != b => pinned.push(format!("`{t}`: `{a}` → `{b}`")),
+            (None, Some(b)) if !old.contracts().is_empty() => {
+                pinned.push(format!("`{t}` pinned: `{b}`"))
+            }
+            (Some(_), None) if !new.contracts().is_empty() => {
+                pinned.push(format!("`{t}` no longer pinned"))
+            }
+            _ => {}
+        }
+    }
+    sections.push(("Pinned inputs".to_string(), pinned));
 
     // Code features.
     let mut features = Vec::new();

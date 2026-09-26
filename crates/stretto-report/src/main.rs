@@ -1205,7 +1205,7 @@ fn main() -> Result<()> {
             if !(train_fraction > 0.0 && train_fraction <= 1.0) {
                 anyhow::bail!("--train-fraction must be in (0, 1]");
             }
-            let (episodes, manifest) = match sessions {
+            let (episodes, manifest, contracts) = match sessions {
                 Some(sessions) => {
                     if train_fraction < 1.0 || !train_tasks.is_empty() || !trials.is_empty() {
                         anyhow::bail!(
@@ -1233,18 +1233,19 @@ fn main() -> Result<()> {
                             ep
                         })
                         .collect();
-                    (episodes, manifest)
+                    (episodes, manifest, stretto_trace::mcp::contracts_of(&logs))
                 }
                 None => {
                     let tau2 = tau2.context("--results needs --tau2")?;
-                    tau2_sessions(
+                    let (episodes, manifest) = tau2_sessions(
                         &tau2,
                         &domain,
                         &results,
                         &train_tasks,
                         train_fraction,
                         &trials,
-                    )?
+                    )?;
+                    (episodes, manifest, BTreeMap::new())
                 }
             };
             let mut config = phase0::Config::new(PathBuf::new());
@@ -1281,6 +1282,7 @@ fn main() -> Result<()> {
                 config.shadow = Some(sc);
                 phase0::compile_flow_from_episodes(&config, &episodes, &manifest, oracle.as_ref())?
             };
+            let flow = flow.with_contracts(contracts);
             flow.save(&out)?;
             eprintln!(
                 "stretto: learned the {domain} flow from {} sessions ({} tools) and wrote {}",

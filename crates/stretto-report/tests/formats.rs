@@ -25,6 +25,7 @@ const DATA_MAPS: &[&str] = &[
     "bindings.args.{}.*",
     "bindings.agreed",
     "bindings.named_other",
+    "contracts",
 ];
 
 /// Fields holding another project's format, which that project documents:
@@ -53,6 +54,7 @@ const NOT_IN_EXAMPLES: &[&str] = &[
     "tasks",
     "lower",
     "named_other",
+    "contracts",
 ];
 
 fn names(v: &Value, path: &str, out: &mut BTreeSet<String>) {

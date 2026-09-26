@@ -1080,3 +1080,47 @@ fn a_shadow_flow_decides_and_logs_but_makes_no_lookups() {
     let site = &scored.sites["find_user_id_by_email"];
     assert_eq!((site.lookups, site.used), (1, 1), "{scored:?}");
 }
+
+#[test]
+fn a_flow_leaves_a_tool_whose_input_changed_to_the_agent() {
+    let dir = std::env::temp_dir().join(format!("stretto-contract-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    // The flow learned `get_user_details` when it took a number.
+    let learned = learned_flow(&dir);
+    let mut flow: Value = serde_json::from_str(&fs::read_to_string(&learned).unwrap()).unwrap();
+    flow["contracts"] = json!({"get_user_details": "user_id:integer!"});
+    let pinned = dir.join("pinned.flow.json");
+    fs::write(&pinned, flow.to_string()).unwrap();
+    let mut host = Host::start(&[
+        "--domain",
+        "retail",
+        "--flow",
+        pinned.to_str().unwrap(),
+        "--oracle",
+        "mock",
+        "--",
+        DEMO,
+        "--world",
+        "retail",
+    ]);
+    host.send(
+        json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+        "protocolVersion": "2025-06-18", "capabilities": {},
+        "clientInfo": {"name": "stretto-test-host", "version": "0"}}}),
+    );
+    assert_eq!(host.recv()["id"], 1);
+    host.send(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+    host.send(json!({"jsonrpc": "2.0", "id": 2, "method": "tools/list"}));
+    host.recv();
+    // The server now lists it with a string: the flow no longer looks it up,
+    // and the agent gets the server's result alone.
+    let found = host.call(
+        3,
+        "find_user_id_by_email",
+        json!({"email": "c7@example.com"}),
+    );
+    assert_eq!(texts(&found), ["user_7"]);
+    drop(host);
+    fs::remove_dir_all(&dir).unwrap();
+}

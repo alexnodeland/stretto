@@ -413,6 +413,11 @@ pub(crate) struct Engine<'a, W: Write> {
     lists: HashSet<String>,
     /// The server's tools and their `readOnlyHint`, once listed.
     server_tools: HashMap<String, Option<bool>>,
+    /// The server's tools' input contracts, once listed
+    /// ([`stretto_trace::mcp::contract`]).
+    server_contracts: HashMap<String, String>,
+    /// Tools the flow pins another contract for, reported once each.
+    changed: HashSet<String>,
     jobs: Vec<Job>,
     /// Requests of the proxy's own it stopped waiting for.
     abandoned: HashSet<String>,
@@ -465,6 +470,8 @@ impl<'a, W: Write> Engine<'a, W> {
             jobs: Vec::new(),
             abandoned: HashSet::new(),
             next_id: 0,
+            server_contracts: HashMap::new(),
+            changed: HashSet::new(),
             lookups: 0,
             questions: 0,
             context_read: 0,
@@ -1040,16 +1047,32 @@ impl<'a, W: Write> Engine<'a, W> {
     }
 
     /// Whether the flow may call `tool`: the flow reads it as a lookup, and
-    /// the server, once it has listed its tools, has it and does not mark it
-    /// as a write.
-    fn may_look_up(&self, fc: &FlowConfig, tool: &str) -> bool {
+    /// the server, once it has listed its tools, has it, does not mark it as
+    /// a write, and lists the input contract the flow pinned for it, if any.
+    /// A tool whose arguments changed since the flow learned to bind them is
+    /// left to the agent.
+    fn may_look_up(&mut self, fc: &FlowConfig, tool: &str) -> bool {
         let flow_reads = fc.flow.manifest().tools.get(tool) == Some(&ToolKind::Read);
         let server_allows = match self.server_tools.get(tool) {
             Some(Some(false)) => false,
             Some(_) => true,
             None => self.server_tools.is_empty(),
         };
-        flow_reads && server_allows
+        let changed = match (
+            fc.flow.contracts().get(tool),
+            self.server_contracts.get(tool),
+        ) {
+            (Some(pinned), Some(now)) => pinned != now,
+            _ => false,
+        };
+        if changed && self.changed.insert(tool.to_string()) {
+            eprintln!(
+                "stretto-proxy: {tool}'s input changed since the flow was learned ({} → {}); the flow no longer looks it up",
+                fc.flow.contracts()[tool],
+                self.server_contracts[tool]
+            );
+        }
+        flow_reads && server_allows && !changed
     }
 
     fn learn_tools(&mut self, response: &Value) {
@@ -1060,6 +1083,9 @@ impl<'a, W: Write> Engine<'a, W> {
                     .pointer("/annotations/readOnlyHint")
                     .and_then(Value::as_bool);
                 self.server_tools.insert(name.to_string(), hint);
+                if let Some(c) = mcp::contract(tool) {
+                    self.server_contracts.insert(name.to_string(), c);
+                }
             }
         }
     }

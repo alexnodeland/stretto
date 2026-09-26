@@ -1281,6 +1281,7 @@ fn featured(
                 program: crate::program::standard(),
                 promoted: None,
                 thresholds: BTreeMap::new(),
+                contracts: BTreeMap::new(),
             })
         }
         None => None,

@@ -191,6 +191,12 @@ pub struct Flow {
     /// those sites. Above 1, the flow never acts at the site.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub(crate) thresholds: BTreeMap<String, f64>,
+    /// Each tool's input contract when the flow was learned from recorded
+    /// sessions ([`stretto_trace::mcp::contract`]): its arguments, types and
+    /// which are required. The proxy makes no lookup of a tool whose server
+    /// now lists another. Empty for a flow compiled from τ²-bench results.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub(crate) contracts: BTreeMap<String, String>,
 }
 
 /// Where a flow may act (RFC-001 §3.7), from `stretto promote`: each site
@@ -489,6 +495,18 @@ impl Flow {
     /// Its per-site thresholds (see [`Flow::with_thresholds`]).
     pub fn thresholds(&self) -> &BTreeMap<String, f64> {
         &self.thresholds
+    }
+
+    /// The input contracts it pins, by tool (see [`Flow::with_contracts`]).
+    pub fn contracts(&self) -> &BTreeMap<String, String> {
+        &self.contracts
+    }
+
+    /// The flow pinning `contracts`, the input contract of each tool as the
+    /// server listed it when the flow's sessions were recorded.
+    pub fn with_contracts(mut self, contracts: BTreeMap<String, String>) -> Self {
+        self.contracts = contracts;
+        self
     }
 
     /// The flow with `thresholds` in place of the served threshold at those
@@ -1207,6 +1225,8 @@ impl Bindings {
                     continue;
                 };
                 for (j, c) in calls.iter().enumerate() {
+                    // A lookup the proxy made on its own was bound by this
+                    // very rule: it would agree with itself.
                     if !is_read(c) {
                         continue;
                     }
@@ -2048,6 +2068,7 @@ pub(crate) mod tests {
             program: crate::program::standard(),
             promoted: None,
             thresholds: BTreeMap::new(),
+            contracts: BTreeMap::new(),
         }
     }
 
