@@ -11,6 +11,8 @@ It does, where the agent runs the tools. The anatomy is the same script, with te
 - **When the agent holds the phone, the procedure is the episode.** In τ²'s solo mode, replies fall to 5–6% of turns, and reads after a tool rise to 52–60% (41–49% bound, every argument fixed by an earlier result: the phone's checks take none). The fixes, the procedure's writes, are the other 29–35%.
 - **A written workflow makes an agent's traces more compilable, if the agent follows it.** Solo, GPT-4.1's next steps under the workflow are predicted 79.7% of the time by the tree, and sure rules cover 46.5% of them at 97.9%; under the manual, 73.6% and 28.6%. It also passed 68% of episodes instead of 52%. o4-mini passed as often or more with either (67–72%) and followed neither: 55–57% predicted, 8–13% covered.
 
+[Run as the agent](telecom-workflow-2026-09-26.md), a tree fitted on the four solo runs' successful training episodes passed 31 of the 40 held-out tasks with no model, as many as the agents did.
+
 So a workflow compiled once from traces can run a procedure that branches on what the tools return, and runs furthest when the agent runs the tools itself and follows a written procedure. Where the procedure branches on what the customer says, as in retail and airline, it is the read skeleton and no more. stretto's flows compile only reads; in telecom's solo mode, where a third of the turns are fixes that sure rules cover, the next question is whether a fix a rule is 98% sure of can be made without asking, which is [the write guards'](guards-2026-09-24.md) question, not the flow's.
 
 ## Method

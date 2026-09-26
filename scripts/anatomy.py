@@ -22,7 +22,7 @@ Arguments are classed after TraceCompiler's binding classes
 A copy the customer also wrote is counted as anchored: the customer's words
 pick it.
 
-Decisions after a tool returns (another call, or a reply) are predicted three
+Decisions after a tool returns (another call, or a reply) are predicted five
 ways, fitted on half of the tasks and scored on the other half, and then the
 other way round:
 
@@ -31,7 +31,10 @@ other way round:
   status field, whether a list is empty, or whether records listed earlier
   are still unread (decision mining's rule at a gateway, one feature deep);
 - structure and goal: the same with the episode's goal as a feature, the set
-  of writes it makes, known only in hindsight: what the customer asks for.
+  of writes it makes, known only in hindsight: what the customer asks for;
+- state tree (and goal): a decision tree over the whole state, every tool's
+  last result and the tools called, its depth chosen by cross-validation
+  (decision mining at a gateway, many features deep).
 
 What none of them predicts takes more of the conversation than its goal.
 
@@ -194,52 +197,57 @@ def entropy(counts):
     return -sum(k / n * math.log2(k / n) for k in counts.values() if k)
 
 
-def tree(train, with_goal, max_depth=6, min_leaf=5):
+def tree(train, with_goal, max_depth=6, min_leaf=5, counts=False):
     """Per site, a decision tree over the whole state: decision mining at a
     gateway, many features deep, as C4.5 does in process mining. Each split
     takes the feature with the most information gain among those at least
     `min_leaf` cases have and lack (ID3), and each site's depth, up to
     `max_depth`, is chosen by two-fold cross-validation over the training
-    tasks, as the single feature is."""
+    tasks, as the single feature is. Predictions are (action, its share of the
+    leaf's training cases, their number), and with `counts` the leaf's
+    actions by count too."""
 
     def feats(d):
         return d["state"] | {f"goal has {w}" for w in d["goal"].split("+")} if with_goal else d["state"]
 
     def grow(cases, depth):
-        """A leaf (action, share, cases), or (feature, yes, no, leaf)."""
-        counts = collections.Counter(d["action"] for d in cases)
-        action, k = counts.most_common(1)[0]
+        """A node: the actions of its cases by count, and its split (the
+        feature, then the nodes of the cases with and without it), if any."""
+        tally = collections.Counter(d["action"] for d in cases)
+        k = tally.most_common(1)[0][1]
         n = len(cases)
-        leaf = (action, k / n, n)
         if depth == 0 or k == n or n < 2 * min_leaf:
-            return leaf
+            return (tally, None)
         by_feature = collections.defaultdict(collections.Counter)
         for d in cases:
             for f in feats(d):
                 by_feature[f][d["action"]] += 1
-        h = entropy(counts)
+        h = entropy(tally)
         best = None
         for f in sorted(by_feature):
             has = by_feature[f]
             m = sum(has.values())
             if m < min_leaf or n - m < min_leaf:
                 continue
-            gain = h - m / n * entropy(has) - (n - m) / n * entropy(counts - has)
+            gain = h - m / n * entropy(has) - (n - m) / n * entropy(tally - has)
             if best is None or gain > best[0] + 1e-12:
                 best = (gain, f)
         if best is None or best[0] <= 1e-9:
-            return leaf
+            return (tally, None)
         f = best[1]
         yes = [d for d in cases if f in feats(d)]
         no = [d for d in cases if f not in feats(d)]
-        return (f, grow(yes, depth - 1), grow(no, depth - 1), leaf)
+        return (tally, (f, grow(yes, depth - 1), grow(no, depth - 1)))
 
     def down(node, d, depth):
-        while depth > 0 and len(node) == 4:
-            f, yes, no, _ = node
-            node = yes if f in feats(d) else no
+        tally, split = node
+        while depth > 0 and split is not None:
+            f, yes, no = split
+            tally, split = yes if f in feats(d) else no
             depth -= 1
-        return node[3] if len(node) == 4 else node
+        action, k = tally.most_common(1)[0]
+        n = sum(tally.values())
+        return (action, k / n, n, tally) if counts else (action, k / n, n)
 
     sites = collections.defaultdict(list)
     for d in train:
@@ -256,17 +264,13 @@ def tree(train, with_goal, max_depth=6, min_leaf=5):
             ]
             depth = max(range(max_depth + 1), key=lambda k: (scores[k], -k))
         roots[site] = (grow(cases, depth), depth)
-    fallback = fit(train, lambda d: None)
+    everything = (collections.Counter(d["action"] for d in train), None)
 
     def predict(d):
-        if d["site"] not in roots:
-            return fallback(d)
-        root, depth = roots[d["site"]]
+        root, depth = roots.get(d["site"], (everything, 0))
         return down(root, d, depth)
 
     return predict
-
-
 def walk(sim, domain, writes):
     """Turns, calls (with argument classes) and decisions of one episode."""
     messages = sim["messages"]
