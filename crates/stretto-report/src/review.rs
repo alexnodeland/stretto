@@ -379,16 +379,29 @@ pub fn show(flow: &Flow, threshold: f64) -> String {
         md.push_str(&crate::promote::markdown(p));
     }
     let _ = writeln!(md, "\n## Bindings\n");
+    let named_other = bound.values().any(|b| b.named_other.is_some());
     let _ = writeln!(
         md,
-        "Where each lookup's required arguments come from, and how often binding them that way gave the agent's own arguments in training, when the customer had not mentioned the values and when they had. With nothing tried, the chance is 1/2.\n"
+        "Where each lookup's required arguments come from, and how often binding them that way gave the agent's own arguments in training, when the customer had not mentioned the values and when they had. With nothing tried, the chance is 1/2.{}\n",
+        if named_other {
+            " Where the customer had named another value at the sources, the last column counts the values the binding would pass instead, and how many of them the agent went on to pass: the chance there."
+        } else {
+            ""
+        }
     );
-    let _ = writeln!(
-        md,
-        "| Lookup | Argument | Bound from (values found there, of the values it took) | Chance it is the agent's (right/tried): not mentioned, mentioned |\n|---|---|---|---|"
-    );
+    if named_other {
+        let _ = writeln!(
+            md,
+            "| Lookup | Argument | Bound from (values found there, of the values it took) | Chance it is the agent's (right/tried): not mentioned, mentioned | Another named (used/passed) |\n|---|---|---|---|---|"
+        );
+    } else {
+        let _ = writeln!(
+            md,
+            "| Lookup | Argument | Bound from (values found there, of the values it took) | Chance it is the agent's (right/tried): not mentioned, mentioned |\n|---|---|---|---|"
+        );
+    }
     for b in bound.values() {
-        binding_rows(&mut md, b);
+        binding_rows(&mut md, b, named_other);
     }
     let features = feature_fields(flow);
     if !features.is_empty() {
@@ -456,14 +469,22 @@ pub fn show(flow: &Flow, threshold: f64) -> String {
     md
 }
 
-fn binding_rows(md: &mut String, b: &LookupBinding) {
+fn binding_rows(md: &mut String, b: &LookupBinding, named_other: bool) {
     let [not, mentioned, _] = b.chance();
     let [(a, n), (c, m)] = b.agreed;
-    let chance = if b.bindable() {
+    let mut chance = if b.bindable() {
         format!("{not:.2} ({a}/{n}), {mentioned:.2} ({c}/{m})")
     } else {
         "—".to_string()
     };
+    if named_other {
+        let other = match (b.bindable(), b.named_other, b.chance_named_other()) {
+            (true, Some((u, k)), Some(p)) => format!("{p:.2} ({u}/{k})"),
+            (true, _, _) => format!("{not:.2}, as not mentioned"),
+            _ => "—".to_string(),
+        };
+        chance = format!("{chance} | {other}");
+    }
     if b.arguments.is_empty() {
         let _ = writeln!(md, "| `{}` | none | made once | {chance} |", b.tool);
     }
@@ -700,6 +721,16 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
                         cx[i], cy[i]
                     ));
                 }
+            }
+            // Where another value was named, a flow without the count used
+            // the unmentioned chance.
+            let (ox, oy) = (
+                x.chance_named_other().unwrap_or(cx[0]),
+                y.chance_named_other().unwrap_or(cy[0]),
+            );
+            if (x.named_other.is_some() || y.named_other.is_some()) && (ox - oy).abs() >= tolerance
+            {
+                binds.push(format!("`{l}`'s chance (another named): {ox:.2} → {oy:.2}"));
             }
         }
     }

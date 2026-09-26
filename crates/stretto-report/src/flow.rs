@@ -49,9 +49,10 @@ const MIN_MENTION: usize = 4;
 /// thresholds.
 pub const FLOW_VERSION: u32 = 1;
 
-/// The format of a flow with per-site thresholds (`thresholds`), which a
-/// build that reads only [`FLOW_VERSION`] must refuse rather than ignore.
-/// This build reads both.
+/// The format of a flow with per-site thresholds (`thresholds`) or with
+/// bindings scored apart where the customer named another value
+/// (`bindings.named_other`), which a build that reads only [`FLOW_VERSION`]
+/// must refuse rather than ignore. This build reads both.
 pub const FLOW_THRESHOLDS_VERSION: u32 = 2;
 
 /// The arbiter file format this build reads and writes.
@@ -493,13 +494,20 @@ impl Flow {
     /// The flow with `thresholds` in place of the served threshold at those
     /// sites; above 1, it never acts at a site.
     pub fn with_thresholds(mut self, thresholds: BTreeMap<String, f64>) -> Self {
-        self.stretto_flow = if thresholds.is_empty() {
+        self.thresholds = thresholds;
+        self.stretto_flow = self.format_version();
+        self
+    }
+
+    /// The format version the flow's fields need: [`FLOW_THRESHOLDS_VERSION`]
+    /// with per-site thresholds or bindings scored where the customer named
+    /// another value, else [`FLOW_VERSION`].
+    pub(crate) fn format_version(&self) -> u32 {
+        if self.thresholds.is_empty() && !self.bindings.scores_named_other() {
             FLOW_VERSION
         } else {
             FLOW_THRESHOLDS_VERSION
-        };
-        self.thresholds = thresholds;
-        self
+        }
     }
 
     /// How the flow decides unless told otherwise: with its arbiter, or with
@@ -628,6 +636,12 @@ impl Flow {
         let flow: Self = serde_json::from_str(text)?;
         if flow.stretto_flow == FLOW_VERSION && !flow.thresholds.is_empty() {
             anyhow::bail!("a flow with per-site thresholds is format {FLOW_THRESHOLDS_VERSION}");
+        }
+        if flow.stretto_flow == FLOW_VERSION && flow.bindings.scores_named_other() {
+            anyhow::bail!(
+                "a flow with bindings scored where another value was named is format \
+                 {FLOW_THRESHOLDS_VERSION}"
+            );
         }
         crate::program::FlowProgram::new(&flow)?;
         Ok(flow)
@@ -992,6 +1006,30 @@ pub struct Bindings {
     /// the agent's calls in training, `(agreed, calls)`, when its pick was
     /// not (`[0]`) or was (`[1]`) mentioned by the customer.
     agreed: BTreeMap<String, [(usize, usize); 2]>,
+    /// Per lookup, `(used, picks)`: where the customer had mentioned a value
+    /// at the lookup's sources and the binding would pass another, such as
+    /// a second reservation after the customer asked about one, how many of
+    /// the distinct values it would pass there the agent went on to pass
+    /// itself. The binding's chance there is `(used + 2c) / (picks + 2)`,
+    /// where `c` is its chance when nothing was mentioned: few picks keep
+    /// it near that, and many decide it.
+    /// Empty in flows learned before it was counted, which give such picks
+    /// the chance of an unmentioned one.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    named_other: BTreeMap<String, (usize, usize)>,
+}
+
+/// Whether the customer had mentioned the values a binding picks.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Mention {
+    /// Some value picked was not mentioned, and neither was any other value
+    /// at its sources.
+    None,
+    /// Every value picked was.
+    Picked,
+    /// Some value picked was not, while another value at its sources was:
+    /// the customer named a record, and this is a different one.
+    Other,
 }
 
 /// How one lookup's arguments are bound, for review ([`Bindings::review`]).
@@ -1007,6 +1045,11 @@ pub struct LookupBinding {
     /// the binding gave the agent's arguments, when the customer had not
     /// mentioned the values picked and when they had.
     pub agreed: [(usize, usize); 2],
+    /// Where the customer had mentioned another value at the sources and
+    /// not the one picked, `(used, picks)`: how many of the values the
+    /// binding would pass there the agent went on to pass. `None` for a flow
+    /// without the count, which gives such picks the unmentioned chance.
+    pub named_other: Option<(usize, usize)>,
 }
 
 /// Where one required argument of a lookup comes from, for review.
@@ -1040,6 +1083,14 @@ impl LookupBinding {
         let smoothed = |(agreed, n): (usize, usize)| (agreed as f64 + 1.0) / (n as f64 + 2.0);
         let [a, b] = self.agreed;
         [smoothed(a), smoothed(b), smoothed((a.0 + b.0, a.1 + b.1))]
+    }
+
+    /// The chance where the customer had mentioned another value at the
+    /// sources, if the flow scores it apart (see [`Bindings::bind`]).
+    pub fn chance_named_other(&self) -> Option<f64> {
+        let unmentioned = self.chance()[0];
+        self.named_other
+            .map(|(used, n)| named_other_chance(used, n, unmentioned))
     }
 }
 
@@ -1090,6 +1141,7 @@ impl Bindings {
                     calls: *calls,
                     arguments,
                     agreed: self.agreed.get(tool).copied().unwrap_or_default(),
+                    named_other: self.named_other.get(tool).copied(),
                 }
             })
             .collect()
@@ -1169,14 +1221,63 @@ impl Bindings {
                     let same = args
                         .iter()
                         .all(|(k, v)| c.arguments.get(k).map(value_text) == Some(value_text(v)));
-                    let tally = &mut agreed.entry(c.name.clone()).or_default()[mentioned as usize];
+                    let named = usize::from(mentioned == Mention::Picked);
+                    let tally = &mut agreed.entry(c.name.clone()).or_default()[named];
                     tally.0 += same as usize;
                     tally.1 += 1;
                 }
             }
         }
         b.agreed = agreed;
+        b.named_other = b.named_other_use(&episodes);
         b
+    }
+
+    /// Per lookup, `(used, picks)` over the training episodes: after each
+    /// successful result, every distinct value the binding would pass where
+    /// the customer had mentioned another value at its sources, and whether
+    /// the agent went on to pass it. Scored at the agent's own calls, as
+    /// `agreed` is, such picks look right, since an agent that reads a
+    /// second record picks it as the binding does; what they miss is that
+    /// the agent mostly reads only the record the customer named.
+    fn named_other_use(&self, episodes: &[&Episode]) -> BTreeMap<String, (usize, usize)> {
+        let mut tally: BTreeMap<String, (usize, usize)> = BTreeMap::new();
+        for ep in episodes {
+            let mut seen: BTreeSet<(String, String)> = BTreeSet::new();
+            for (i, e) in ep.events.iter().enumerate() {
+                if !matches!(e, Event::ToolResult { error: false, .. }) {
+                    continue;
+                }
+                for tool in self.args.keys() {
+                    let Ok((args, Mention::Other)) = self.pick(tool, &ep.events[..=i], &[]) else {
+                        continue;
+                    };
+                    let text = serde_json::to_string(&args).unwrap_or_default();
+                    if !seen.insert((tool.clone(), text)) {
+                        continue;
+                    }
+                    let used = ep.events[i + 1..].iter().any(|e| match e {
+                        Event::Assistant { calls, .. } => calls.iter().any(|c| {
+                            c.name == *tool
+                                && args.iter().all(|(k, v)| {
+                                    c.arguments.get(k).map(value_text) == Some(value_text(v))
+                                })
+                        }),
+                        _ => false,
+                    });
+                    let t = tally.entry(tool.clone()).or_default();
+                    t.0 += used as usize;
+                    t.1 += 1;
+                }
+            }
+        }
+        tally
+    }
+
+    /// Whether picks where the customer had named another value are scored
+    /// apart (`named_other`), as flows learned by this build do.
+    pub(crate) fn scores_named_other(&self) -> bool {
+        !self.named_other.is_empty()
     }
 
     /// Per lookup: how often the binding picked the agent's own arguments in
@@ -1279,18 +1380,27 @@ impl Bindings {
         let chance = if args.is_empty() {
             1.0
         } else {
-            let (agreed, n) = self
-                .agreed
-                .get(tool)
-                .map_or((0, 0), |a| a[mentioned as usize]);
-            (agreed as f64 + 1.0) / (n as f64 + 2.0)
+            let tallies = self.agreed.get(tool).copied().unwrap_or_default();
+            let smoothed = |(agreed, n): (usize, usize)| (agreed as f64 + 1.0) / (n as f64 + 2.0);
+            match mentioned {
+                Mention::None => smoothed(tallies[0]),
+                Mention::Picked => smoothed(tallies[1]),
+                // Where the customer named another value: how often the agent
+                // went on to pass one it had not named, if training counted
+                // it; else as an unmentioned pick, as older flows did.
+                Mention::Other => match self.named_other.get(tool) {
+                    Some(&(used, n)) => named_other_chance(used, n, smoothed(tallies[0])),
+                    None => smoothed(tallies[0]),
+                },
+            }
         };
         Ok((Value::Object(args), chance))
     }
 
     /// Arguments for a call to `tool` after `events` (and `also`, calls
     /// already made in the same turn), and whether the customer mentioned
-    /// every value picked; or why there are none. Each required argument
+    /// every value picked, or another value at its sources instead; or why
+    /// there are none. Each required argument
     /// takes the first value found at one of its sources (most recent output
     /// first, in document order) that has not been passed to it already,
     /// preferring a value the customer mentioned (or one whose record they
@@ -1301,7 +1411,7 @@ impl Bindings {
         tool: &str,
         events: &[Event],
         also: &[ToolCall],
-    ) -> std::result::Result<(serde_json::Map<String, Value>, bool), String> {
+    ) -> std::result::Result<(serde_json::Map<String, Value>, Mention), String> {
         let Some((calls, args)) = self.args.get(tool) else {
             return Err("never called in training".to_string());
         };
@@ -1344,11 +1454,12 @@ impl Bindings {
             return if called {
                 Err("already looked up".to_string())
             } else {
-                Ok((Default::default(), true))
+                Ok((Default::default(), Mention::Picked))
             };
         }
         let mut bound = serde_json::Map::new();
         let mut all_mentioned = true;
+        let mut other_named = false;
         for arg in required {
             let Some(Traced {
                 values,
@@ -1363,18 +1474,22 @@ impl Bindings {
                 .map(|(s, _)| s)
                 .collect();
             let mut candidates: Vec<(String, bool)> = Vec::new();
+            // Whether the customer mentioned any value at the sources, one
+            // already passed included.
+            let mut any_mentioned = false;
             for (source, out) in outputs.iter().rev() {
                 for (_, path) in rules.iter().filter(|(t, _)| t == source) {
                     for (value, siblings) in at_path(out, path) {
+                        let mentioned = mentions(&customer, &value)
+                            || siblings.iter().any(|s| {
+                                s.chars().count() >= MIN_MENTION && mentions(&customer, s)
+                            });
+                        any_mentioned |= mentioned;
                         if used.contains(&(arg.as_str(), value.clone()))
                             || candidates.iter().any(|(v, _)| *v == value)
                         {
                             continue;
                         }
-                        let mentioned = mentions(&customer, &value)
-                            || siblings.iter().any(|s| {
-                                s.chars().count() >= MIN_MENTION && mentions(&customer, s)
-                            });
                         candidates.push((value, mentioned));
                     }
                 }
@@ -1387,6 +1502,7 @@ impl Bindings {
             match pick {
                 Some((v, mentioned)) => {
                     all_mentioned &= mentioned;
+                    other_named |= !mentioned && any_mentioned;
                     bound.insert(arg.clone(), Value::String(v));
                 }
                 None if rules.is_empty() => {
@@ -1395,8 +1511,22 @@ impl Bindings {
                 None => return Err(format!("nothing left to pass as `{arg}`")),
             }
         }
-        Ok((bound, all_mentioned))
+        let mention = if all_mentioned {
+            Mention::Picked
+        } else if other_named {
+            Mention::Other
+        } else {
+            Mention::None
+        };
+        Ok((bound, mention))
     }
+}
+
+/// The chance of a pick where the customer named another value: `used` of
+/// `picks` such values the agent went on to pass, shrunk towards the
+/// unmentioned chance by two picks' worth.
+fn named_other_chance(used: usize, picks: usize, unmentioned: f64) -> f64 {
+    (used as f64 + 2.0 * unmentioned) / (picks as f64 + 2.0)
 }
 
 /// A tool result as JSON, or as one string if it is not JSON.
@@ -1681,6 +1811,64 @@ pub(crate) mod tests {
         assert!((chance - 7.0 / 8.0).abs() < 1e-9, "{chance}");
         // A user id comes from the customer, never from an output: no rule.
         assert!(b.bind("get_user_details", &live(vec![])).is_err());
+    }
+
+    #[test]
+    fn a_record_the_customer_did_not_name_is_scored_by_use() {
+        // In training the customer names one of three orders, and the agent
+        // reads only that one.
+        let training: Vec<Episode> = (0..4)
+            .map(|_| {
+                episode(vec![
+                    Event::User {
+                        text: "my order W2 never came".to_string(),
+                    },
+                    call("a", "get_user_details", json!({"user_id": "ann_1"})),
+                    result("a", "get_user_details", user(&["#W1", "#W2", "#W3"])),
+                    call("b", "get_order_details", json!({"order_id": "#W2"})),
+                    result("b", "get_order_details", json!({"order_id": "#W2"})),
+                ])
+            })
+            .collect();
+        let b = Bindings::learn(&training, &manifest());
+        // At the agent's own lookups the binding picked the named order.
+        assert_eq!(b.agreement()["get_order_details"], [(0, 0), (4, 4)]);
+        // After it, the binding would pass #W1, which no agent read.
+        assert_eq!(b.named_other.get("get_order_details"), Some(&(0, 4)));
+        let live = |extra: Vec<Event>| {
+            let mut events = vec![
+                Event::User {
+                    text: "where is W8?".to_string(),
+                },
+                call("a", "get_user_details", json!({"user_id": "bob_2"})),
+                result("a", "get_user_details", user(&["#W7", "#W8", "#W9"])),
+            ];
+            events.extend(extra);
+            episode(events)
+        };
+        // The named order first, at the chance of a named pick.
+        let (args, chance) = b.bind("get_order_details", &live(vec![])).unwrap();
+        assert_eq!(args, json!({"order_id": "#W8"}));
+        assert!((chance - 5.0 / 6.0).abs() < 1e-9, "{chance}");
+        // Then another, at the chance that the agent reads one it was not
+        // asked about.
+        let after = live(vec![
+            call("b", "get_order_details", json!({"order_id": "#W8"})),
+            result("b", "get_order_details", json!({"order_id": "#W8"})),
+        ]);
+        let (args, chance) = b.bind("get_order_details", &after).unwrap();
+        assert_eq!(args, json!({"order_id": "#W7"}));
+        assert!((chance - 1.0 / 6.0).abs() < 1e-9, "{chance}");
+        // A flow learned before the count gives it the unmentioned chance.
+        let older = Bindings {
+            named_other: BTreeMap::new(),
+            ..b.clone()
+        };
+        let (_, chance) = older.bind("get_order_details", &after).unwrap();
+        assert!((chance - 0.5).abs() < 1e-9, "{chance}");
+        // And a flow with the count is written as format 2.
+        assert!(b.scores_named_other());
+        assert!(!older.scores_named_other());
     }
 
     #[test]

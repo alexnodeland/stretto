@@ -1285,6 +1285,11 @@ fn featured(
         }
         None => None,
     };
+    // The format version follows the fields the flow uses.
+    let flow = flow.map(|mut f| {
+        f.stretto_flow = f.format_version();
+        f
+    });
     let input = |i: usize| {
         let (p, enc) = replayed[i];
         let answers = shadow.as_ref().map(|run| &run.raw[i]);

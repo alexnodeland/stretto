@@ -121,6 +121,7 @@ How the flow fills a lookup's arguments, learned from the agent's own lookups in
 - `args`: for each lookup, `[calls, {argument: calls that passed it}]`. An argument passed in at least 90% of the calls is required. The flow passes only required arguments.
 - `sources`: `[[lookup, argument], {"values": n, "found": [[[tool, path], count], …]}]`: of the `n` string values the argument took, how many were found in an earlier successful output of `tool` at the JSON path `path` (`$` is the whole output, `[*]` any element). An output that is not JSON is read as one string, or, when it has several lines, as the list of its lines, so `$[*]` is one line of it. The flow binds each required argument to the first value at one of its sources that it has not passed already, starting with the most recent output. It prefers a value the customer mentioned, or one whose record they mentioned by another of its fields. It uses only sources found at least twice that account for at least 10% of the values. A lookup with no required arguments is made once per session.
 - `agreed`: for each lookup, `[[agreed, calls], [agreed, calls]]`: at the agent's own lookups in training, how often the binding picked the agent's arguments, first when the customer had not mentioned the values picked, then when they had. The binding's chance is `(agreed + 1) / (calls + 2)`.
+- `named_other` (written only when training counted any): for each lookup, `[used, picks]`: where the customer had mentioned a value at the lookup's sources and the binding would pass another, such as a second reservation after the customer asked about one, how many of the distinct values it would pass there the agent went on to pass itself. Its chance there is `(used + 2c) / (picks + 2)`, where `c` is the unmentioned chance. Scored at the agent's own lookups, as `agreed` is, such picks look right, since an agent that reads a second record picks it as the binding does; what that misses is that the agent mostly reads only the record the customer named. A flow without it gives such picks the unmentioned chance.
 
 ### `model`
 
@@ -203,7 +204,7 @@ A flow's arbiter on its own, to serve with a habit learned elsewhere ([data/arbi
 
 Every reader checks the version field first and refuses any other version, with a message naming both. Before the first release, fields added, such as `every_read`, kept version 1. Since it:
 
-- **Flow version 2** adds `thresholds`, which a build that reads only version 1 would ignore and must not. A flow is written as version 2 only when it has thresholds, and this build reads versions 1 and 2.
+- **Flow version 2** adds `thresholds`, and `bindings.named_other`, which a build that reads only version 1 would ignore and must not: it would give a record the customer did not ask about the chance of any other. A flow is written as version 2 only when it has either, and this build reads versions 1 and 2.
 
 The rules:
 
