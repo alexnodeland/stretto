@@ -3,18 +3,24 @@
 No LLM runs. Each recorded conversation is written to a fresh episode as it
 happened, and each of the agent's recorded calls goes through `tau2_mcp.py`
 (over MCP, as the agent's would) with `stretto flow-serve` behind it. A
-recorded call the flow has already made (same tool and arguments) is
-skipped, as an agent that reads the flow's results would skip it. A recorded
-turn whose calls were all skipped is an LLM turn the flow saves, had the
-agent otherwise done the same (the offline projection's assumption, with
-the live flow's own argument bindings); a flow lookup the agent never made
-is a detour.
+recorded call is skipped when a flow lookup answers it, as an agent that
+reads the flow's results would skip it: the same tool and arguments, a
+lookup no recorded call has used yet, that returned what the recorded call
+returned (with no write since, the agent's or the customer's, it did). A
+recorded turn whose calls were all skipped is an LLM turn the flow saves,
+had the agent otherwise done the same (the offline projection's assumption,
+with the live flow's own argument bindings); a flow lookup that answered no
+call is a detour. The agent's own repeated calls are made again, as they
+were. `--legacy` replays with the rule used before 2026-09-26, which skipped
+any recorded call already made, the agent's own repeats included.
 
 With `--flow-oracle mock` this checks the plumbing for free; with `jev` it
 asks the real questions (one per flow step), and with `replay` it reads them
 from the cache only. `--flow-decider habit` replays the habit alone, which
 never asks the System-One model (arm C: at a high `--flow-threshold` it goes
-on only where training shows no branch).
+on only where training shows no branch), and `--flow-decider reach` the
+chance that the agent makes a lookup before its next write, from a flow
+learned with those counts.
 
     python check_flow.py runs/pilot/baseline/task-90 --oracle-cache CACHE
     python check_flow.py --results glm-5_retail.json --oracle-cache CACHE \\
@@ -29,10 +35,11 @@ stay exact.
 
 `--explore EPSILON` serves the flow exploring (`stretto serve --explore`)
 and writes every decision with each option's outcome to `decisions.jsonl`,
-for `stretto evaluate`: `used` if the agent makes the lookup later (a
-recorded call not yet made), `detour` if it never makes it, and `turn`, one
-over the calls of the recorded turn the lookup spares a call of. `--explore
-0` explores nothing and still writes them.
+for `stretto evaluate` and `scripts/calibration.py`: `used` if the agent
+makes the lookup later, before its next write, and it is not made yet;
+`detour` if it does not; `turn`, one over the calls of the recorded turn the
+lookup spares a call of; and `next` if it is the agent's very next call.
+`--explore 0` explores nothing and still writes them.
 
 By default each episode's tools run in their own `tau2_mcp.py` process over
 MCP, as the agent's would, and episodes replay one at a time. Most of that
@@ -122,6 +129,22 @@ def same(text: str) -> str:
 
 # Set by --same-result.
 SAME_RESULT = False
+# Set by --legacy: skip any recorded call already made, by the flow or by the
+# agent, at any time (the rule the replays before 2026-09-26 18:00 UTC used).
+LEGACY = False
+# The domain's tools that change state (τ²-bench's writes), set by main().
+WRITES: set[str] = set()
+
+
+def write_tools(domain: str, solo: bool = False) -> set[str]:
+    """The tools of a τ²-bench domain that change state: the agent's and the
+    customer's writes, whose calls may change what an earlier lookup returned."""
+    from tau2.environment.toolkit import ToolType
+    from tau2.registry import registry
+
+    env = registry.get_env_constructor(domain)(solo_mode=True) if solo else registry.get_env_constructor(domain)()
+    kits = [env.tools] + ([env.user_tools] if getattr(env, "user_tools", None) is not None else [])
+    return {name for kit in kits for name in kit.get_tools() if kit.tool_type(name) == ToolType.WRITE}
 
 # tau2_mcp.py's own defaults for a server started as above.
 MAX_CALLS, FLOW_MAX, FLOW_BUDGET = 60, 8, 40
@@ -170,21 +193,32 @@ def exploring(args) -> bool:
     return getattr(args, "explore", None) is not None
 
 
-def label(answer: dict, made: set, recorded: set, turn_of: dict, name: str) -> dict:
-    """A flow answer with each option's outcome, for `stretto evaluate`."""
+def label(answer: dict, made: set, recorded: set, turn_of: dict, name: str,
+          ahead: set | None = None, following: tuple | None = None) -> dict:
+    """A flow answer with each option's outcome, for `stretto evaluate`:
+    `used` if the agent makes the lookup later and it is not made yet; with
+    `ahead` (the agent's calls before its next write) only those count, as
+    §2.2's replay rule has it. `next` if it is the agent's very next call."""
     labels = []
     for o in answer["policy"]["options"]:
         if o.get("arguments") is None:
-            labels.append({"used": False, "detour": False, "turn": 0.0})
+            labels.append({"used": False, "detour": False, "turn": 0.0, "next": False})
             continue
         k = key(o["tool"], o["arguments"])
-        used = k in recorded and k not in made
-        labels.append({"used": used, "detour": k not in recorded, "turn": 1.0 / turn_of[k] if used else 0.0})
+        pool = recorded if ahead is None or LEGACY else ahead
+        used = k in pool and k not in made
+        labels.append({"used": used, "detour": k not in pool, "turn": 1.0 / turn_of[k] if used else 0.0,
+                       "next": k == following})
     return {**answer, "labels": labels, "episode": name}
 
 
 async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
-    """Replay the recorded calls through `call`, skipping those the flow made."""
+    """Replay the recorded calls through `call`, skipping those a flow lookup
+    answered: the same call, made by the flow and not yet used by a recorded
+    call, that returned what the recorded call returned (with no write since,
+    the agent's or the customer's, it did). A lookup that answers none is a
+    detour. The agent's own repeated calls are made again, as they were. With
+    --legacy, any recorded call already made is skipped."""
     trajectory = episode / "trajectory.jsonl"
     agent = [m for m in messages if m["role"] == "assistant"]
     recorded = {key(c["name"], c["arguments"]) for m in agent for c in m.get("tool_calls") or []}
@@ -200,12 +234,50 @@ async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
     decisions: list[dict] = []
     made: set[tuple[str, str]] = set()
     by_flow: list[tuple[str, str]] = []
+    # The flow's lookups, each {"key", "out", "used", "stale"}: each answers
+    # one recorded call that returned what it did; a write since makes it
+    # stale, and then only an equal result shows it still holds.
+    fresh: list[dict] = []
+    used = 0
+    # What each of the agent's recorded calls returned: results name their
+    # call by id, or, where a trajectory leaves ids out, follow the calls (the
+    # customer's too, in telecom) in order.
+    recorded_out: dict[tuple[int, int], str] = {}
+    waiting: list[tuple[int, int, str | None, str]] = []
+    for i, m in enumerate(messages):
+        if m["role"] in ("assistant", "user"):
+            waiting.extend((i, j, c.get("id"), m["role"]) for j, c in enumerate(m.get("tool_calls") or []))
+        elif m["role"] == "tool" and waiting:
+            n = next((x for x, w in enumerate(waiting) if w[2] is not None and w[2] == m.get("id")), 0)
+            i2, j2, _, who = waiting.pop(n)
+            if who == "assistant":
+                recorded_out[(i2, j2)] = same(m.get("content") or "")
     # With --same-result: what each flow lookup returned, by tool, and the
     # lookups a recorded call with other arguments returned the same as.
     results = {m.get("id"): m.get("content") for m in messages if m["role"] == "tool"}
     returned: dict[str, list[tuple[tuple[str, str], str]]] = {}
     twins: set[tuple[str, str]] = set()
     pairs: list[list] = []
+    # Each recorded call of the agent in order, with what follows it: the
+    # agent's calls before its next write (the agent's or the customer's),
+    # and its very next call, for the exploration labels.
+    flat = []  # (message index, call index, key, write)
+    for i, m in enumerate(messages):
+        for j, c in enumerate(m.get("tool_calls") or []):
+            flat.append((i, j, key(c["name"], c["arguments"]) if m["role"] == "assistant" else None, c["name"] in WRITES))
+    ahead_of: dict[tuple[int, int], set] = {}
+    next_of: dict[tuple[int, int], tuple | None] = {}
+    for n, (i, j, k, _) in enumerate(flat):
+        if k is None:
+            continue
+        later = set()
+        for _, _, k2, w in flat[n + 1:]:
+            if w:
+                break
+            if k2 is not None:
+                later.add(k2)
+        ahead_of[(i, j)] = later
+        next_of[(i, j)] = next((k2 for _, _, k2, _ in flat[n + 1:] if k2 is not None), None)
     turns = tool_turns = saved = calls = skipped = 0
     for i, m in enumerate(messages):
         if m["role"] == "tool":
@@ -217,18 +289,38 @@ async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
         # In telecom the customer calls tools on their own phone; those are
         # the customer's turn, recorded as they happened, not replayed.
         if not m.get("tool_calls") or m["role"] != "assistant":
+            # The customer's own write (paying a bill) may change a result too.
+            if not LEGACY and any(c.get("name") in WRITES for c in m.get("tool_calls") or []):
+                for f in fresh:
+                    f["stale"] = True
             with open(trajectory, "a") as f:
                 f.write(json.dumps(m) + "\n")
             continue
         tool_turns += 1
         left = 0
-        for c in m["tool_calls"]:
+        for j, c in enumerate(m["tool_calls"]):
             calls += 1
             k = key(c["name"], c["arguments"])
-            if k in made:
+            if not LEGACY:
+                r = recorded_out.get((i, j))
+                hit = next((f for f in fresh if not f["used"] and f["key"] == k
+                            and (not f["stale"] or (r is not None and f["out"] == r))), None)
+                if hit is None and SAME_RESULT and results.get(c.get("id")) is not None:
+                    r = same(results[c.get("id")])
+                    hit = next((f for f in fresh if not f["used"] and f["key"][0] == c["name"] and f["out"] == r
+                                and agree(json.loads(f["key"][1]), c["arguments"])), None)
+                    if hit is not None:
+                        pairs.append([list(k), list(hit["key"])])
+                if hit is not None:
+                    hit["used"] = True
+                    used += 1
+                    made.add(k)
+                    skipped += 1
+                    continue
+            elif k in made:
                 skipped += 1
                 continue
-            if SAME_RESULT and results.get(c.get("id")) is not None:
+            if LEGACY and SAME_RESULT and results.get(c.get("id")) is not None:
                 r = same(results[c.get("id")])
                 twin = next(
                     (f for f, out in returned.get(c["name"], []) if out == r and agree(json.loads(f[1]), c["arguments"])),
@@ -243,6 +335,9 @@ async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
             left += 1
             text = await call(c["name"], c["arguments"])
             made.add(k)
+            if c["name"] in WRITES:
+                for f in fresh:
+                    f["stale"] = True
             # The flow's decisions after this call, each with what was made
             # by then: the call, then each lookup before it.
             if answers.exists():
@@ -252,14 +347,17 @@ async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
                 for line in new:
                     answer = json.loads(line)["answer"]
                     if "policy" in answer:
-                        decisions.append(label(answer, chain, recorded, turn_of, episode.name))
+                        decisions.append(label(answer, chain, recorded, turn_of, episode.name,
+                                               ahead_of.get((i, j)), next_of.get((i, j))))
                     if answer.get("action") == "lookup":
                         chain.add(key(answer["tool"], answer.get("arguments") or {}))
+            outs = dict(flow_results(text))
             for f in flow_calls(text):
                 made.add(f)
                 by_flow.append(f)
+                fresh.append({"key": f, "out": outs.get(f), "used": False, "stale": False})
             if SAME_RESULT:
-                for f, out in flow_results(text):
+                for f, out in outs.items():
                     returned.setdefault(f[0], []).append((f, out))
         saved += left == 0
     if pairs:
@@ -275,7 +373,7 @@ async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
         "calls_skipped": skipped,
         "flow_lookups": state.get("flow_lookups"),
         "flow_queries": state.get("flow_queries"),
-        "detours": sum(1 for f in by_flow if f not in recorded and f not in twins),
+        "detours": sum(1 for f in by_flow if f not in recorded and f not in twins) if LEGACY else len(by_flow) - used,
     }
 
 
@@ -356,7 +454,7 @@ def main() -> None:
     parser.add_argument("--flow-oracle", default="mock", choices=["jev", "replay", "mock"])
     parser.add_argument("--flow-threshold", type=float, default=0.3)
     parser.add_argument(
-        "--flow-decider", default="arbiter", choices=["arbiter", "habit"],
+        "--flow-decider", default="arbiter", choices=["arbiter", "habit", "reach"],
         help="`habit`: the habit alone, never asking the System-One model (arm C)",
     )
     parser.add_argument("--flow", type=Path, help="a compiled flow (`stretto compile`), else compiled here")
@@ -371,9 +469,15 @@ def main() -> None:
         "--same-result", action="store_true",
         help="a recorded call returning what a flow lookup of the same tool returned counts as made",
     )
+    parser.add_argument(
+        "--legacy", action="store_true",
+        help="skip any recorded call already made, by the agent too, as the replays before 2026-09-26 18:00 UTC did",
+    )
     args = parser.parse_args()
-    global SAME_RESULT
+    global SAME_RESULT, LEGACY, WRITES
     SAME_RESULT = args.same_result
+    LEGACY = args.legacy
+    WRITES = write_tools(args.domain, getattr(args, "solo", False))
     episodes = recorded_episodes(args)
     if not episodes:
         parser.error("nothing to replay")
