@@ -61,9 +61,10 @@ struct Cli {
     #[arg(help_heading = "Flows", value_name = "P", long, default_value_t = 0.3)]
     flow_threshold: f64,
     /// Where the tool's probability comes from: `arbiter` (the habit, the
-    /// System-One model's answers and the predicates, combined) or `habit`
+    /// System-One model's answers and the predicates, combined), `habit`
     /// (the habit alone, which never asks a System-One model and needs no
-    /// key).
+    /// key), or `reach` (the habit's counts for whether the agent makes the
+    /// lookup before its next write; no key either).
     #[arg(help_heading = "Flows", long, value_enum, default_value_t = DeciderArg::Arbiter)]
     flow_decider: DeciderArg,
     /// Lookups appended to one result, at most.
@@ -216,6 +217,7 @@ enum OracleArg {
 enum DeciderArg {
     Arbiter,
     Habit,
+    Reach,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -308,6 +310,7 @@ fn active(cli: &Cli) -> Result<Active> {
             let decider = match cli.flow_decider {
                 DeciderArg::Arbiter => Decider::Arbiter,
                 DeciderArg::Habit => Decider::Habit,
+                DeciderArg::Reach => Decider::Reach,
             };
             if decider == Decider::Arbiter && !flow.has_arbiter() {
                 bail!(
@@ -315,9 +318,16 @@ fn active(cli: &Cli) -> Result<Active> {
                     path.display()
                 );
             }
+            if decider == Decider::Reach && !flow.has_reach() {
+                bail!(
+                    "{} was learned before flows counted what comes before the next write: learn it \
+                     again for --flow-decider reach",
+                    path.display()
+                );
+            }
             // The habit alone asks no one, so it needs no key.
             let mut sc = ShadowConfig::new(match (decider, cli.oracle) {
-                (Decider::Habit, _) | (_, OracleArg::Mock) => OracleKind::Mock,
+                (Decider::Habit | Decider::Reach, _) | (_, OracleArg::Mock) => OracleKind::Mock,
                 (_, OracleArg::Jev) => OracleKind::Jev,
                 (_, OracleArg::Replay) => OracleKind::Replay,
             });

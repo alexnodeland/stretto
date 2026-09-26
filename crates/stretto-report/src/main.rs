@@ -64,9 +64,11 @@ enum Command {
         )]
         threshold: f64,
         /// Where each option's probability comes from: `arbiter` (the
-        /// habit, the System-One model and the predicates, combined: arm D0)
-        /// or `habit` (the habit alone, never asking the System-One model:
-        /// a flow compiled from traces only, arm C at a high threshold).
+        /// habit, the System-One model and the predicates, combined: arm D0),
+        /// `habit` (the habit alone, never asking the System-One model: a
+        /// flow compiled from traces only, arm C at a high threshold), or
+        /// `reach` (the habit's counts for whether the agent makes the lookup
+        /// before its next write, now or later; a flow learned with them).
         #[arg(help_heading = "Serving", long, value_enum, default_value_t = DeciderArg::Arbiter)]
         decider: DeciderArg,
         /// Stop asking the System-One model after this many live questions.
@@ -245,9 +247,11 @@ enum Command {
         )]
         threshold: f64,
         /// Where each option's probability comes from: `arbiter` (the
-        /// habit, the System-One model and the predicates, combined: arm D0)
-        /// or `habit` (the habit alone, never asking the System-One model:
-        /// a flow compiled from traces only, arm C at a high threshold).
+        /// habit, the System-One model and the predicates, combined: arm D0),
+        /// `habit` (the habit alone, never asking the System-One model: a
+        /// flow compiled from traces only, arm C at a high threshold), or
+        /// `reach` (the habit's counts for whether the agent makes the lookup
+        /// before its next write, now or later; a flow learned with them).
         #[arg(help_heading = "Serving", long, value_enum, default_value_t = DeciderArg::Arbiter)]
         decider: DeciderArg,
         /// Stop asking the System-One model after this many live questions.
@@ -449,9 +453,10 @@ enum Command {
         )]
         oracle_cache: PathBuf,
         /// How the flow decides: `arbiter` (weighing the System-One model's
-        /// answers) or `habit` (the habit alone, asking nothing). Default:
-        /// the arbiter, or the habit for a flow without one (`learn
-        /// --habit-only`).
+        /// answers), `habit` (the habit alone, asking nothing) or `reach`
+        /// (the chance of each lookup before the agent's next write, asking
+        /// nothing). Default: the arbiter, or the habit for a flow without
+        /// one (`learn --habit-only`).
         #[arg(help_heading = "The System-One model", long, value_enum)]
         decider: Option<DeciderArg>,
         /// Write the Markdown report here (default: stdout).
@@ -690,7 +695,7 @@ enum Command {
             default_value = ".oracle-cache"
         )]
         oracle_cache: PathBuf,
-        /// How the flow decides: `arbiter` or `habit`. Default: the
+        /// How the flow decides: `arbiter`, `habit` or `reach`. Default: the
         /// arbiter, or the habit for a flow without one.
         #[arg(help_heading = "The System-One model", long, value_enum)]
         decider: Option<DeciderArg>,
@@ -1085,6 +1090,7 @@ enum QuestionArg {
 enum DeciderArg {
     Arbiter,
     Habit,
+    Reach,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -1107,6 +1113,7 @@ impl From<DeciderArg> for Decider {
         match d {
             DeciderArg::Arbiter => Decider::Arbiter,
             DeciderArg::Habit => Decider::Habit,
+            DeciderArg::Reach => Decider::Reach,
         }
     }
 }
@@ -1310,6 +1317,12 @@ fn main() -> Result<()> {
                     "this flow was learned without a System-One model: serve it with --decider habit"
                 );
             }
+            if decider == DeciderArg::Reach && !flow.has_reach() {
+                anyhow::bail!(
+                    "this flow was learned before flows counted what comes before the next write: \
+                     learn it again for --decider reach"
+                );
+            }
             let mut sc = ShadowConfig::new(oracle_kind(oracle));
             sc.cache_dir = oracle_cache;
             let oracle = sc.build()?;
@@ -1493,6 +1506,9 @@ fn main() -> Result<()> {
             let decider = decider.map_or(flow.default_decider(), Decider::from);
             if decider == Decider::Arbiter && !flow.has_arbiter() {
                 anyhow::bail!("the flow has no arbiter: audit it with --decider habit");
+            }
+            if decider == Decider::Reach && !flow.has_reach() {
+                anyhow::bail!("the flow has no counts for --decider reach: learn it again");
             }
             let audit =
                 stretto_report::audit::audit_with(&flow, &episodes, oracle.as_ref(), decider);
@@ -1802,6 +1818,9 @@ fn main() -> Result<()> {
             let decider = decider.map_or(flow.default_decider(), Decider::from);
             if decider == Decider::Arbiter && !flow.has_arbiter() {
                 anyhow::bail!("the flow has no arbiter: promote it with --decider habit");
+            }
+            if decider == Decider::Reach && !flow.has_reach() {
+                anyhow::bail!("the flow has no counts for --decider reach: learn it again");
             }
             let scored = stretto_report::promote::score(
                 &flow,

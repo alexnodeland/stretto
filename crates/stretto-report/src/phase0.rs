@@ -1080,6 +1080,14 @@ fn featured(
     let code = variant(config, vocab, train.clone(), &test, alpha_used);
     let a = code.alpha_used;
     let intent_habit = GroupedModel::fit(config.order, a, a, vocab.len(), &train);
+    // The same contexts, counted for what came before the next write.
+    let reach = BackoffModel::fit_reach(
+        config.order,
+        a,
+        vocab.len(),
+        &train,
+        |id| matches!(vocab.action(id), Some(Action::Tool(t)) if manifest.is_write(t)),
+    );
     let code_and_intent = VariantStats {
         alpha: None,
         alpha_used: a,
@@ -1282,6 +1290,7 @@ fn featured(
                 promoted: None,
                 thresholds: BTreeMap::new(),
                 contracts: BTreeMap::new(),
+                reach: Some(reach.clone()),
             })
         }
         None => None,

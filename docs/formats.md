@@ -39,6 +39,7 @@ A flow makes read-only calls on the agent's behalf, so a review asks what it may
 | `promoted` | Where the flow may act, once promoted; absent until `stretto promote` writes it |
 | `thresholds` | Per-site thresholds, in place of the served one at those sites; absent unless a search set them |
 | `contracts` | Each tool's input contract when the flow was learned from recorded sessions: `{tool: "order_id:string!, reason:string"}`, each argument with its JSON type and `!` when required. `stretto-proxy` makes no lookup of a tool whose server lists another. Absent for a flow compiled from τ²-bench results |
+| `reach` | Over the habit's histories, how often each action came before the agent's next write, for `--decider reach`; absent in a flow learned before flows counted it |
 
 ### `provenance`
 
@@ -87,6 +88,16 @@ and `P_{-1}` uniform over the vocabulary, so a history never seen in training fa
 - `base.levels`: one list per history length, 0 to `order`. Each entry is `[history, counts]`, where `counts` is `{"by_action": [[action id, count], …], "total": count}`. A history is a list of step symbols; a symbol is `(action id × 4 + outcome) × 4096 + feature id`, where the outcome is 0 for a tool call that succeeded, 1 for one that failed, 2 for a message the customer answered and 3 for one that ended the episode. So `8192` is a message to the customer that they answered.
 - `beta`: the concentration of the layer conditioned on `group`, equal to α.
 - `top`: that layer's counts, `[[group, history], counts]`, over histories of `order` steps. In a goal-free flow they repeat the longest level's.
+
+### `reach`
+
+The habit's histories counted for another event: not which action came next, but whether an action came at all before the agent's next write (`stretto_model::world::BackoffModel::fit_reach`). It has the fields of `habit.base`, and each history's `total` counts the steps that followed it, where `by_action` counts, for each action, the steps from which that action came before the next write. Each action is then its own Beta–Bernoulli, backed off as the habit is:
+
+```text
+R_j(a | c_j) = (m(c_j, a) + α · R_{j-1}(a | c_{j-1})) / (n(c_j) + α)
+```
+
+A read's result stays current until the next write, so `R` is the chance that a lookup made now answers a call the agent will make, and `--decider reach` takes it in place of the habit's next-step probability. The chances need not sum to one. A build that does not know the field serves the flow as before, so it keeps the format version.
 
 ### `sites`
 

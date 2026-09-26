@@ -291,6 +291,7 @@ pub fn audit_with(
         decider: match decider {
             Decider::Arbiter => "arbiter",
             Decider::Habit => "habit",
+            Decider::Reach => "reach",
         }
         .to_string(),
         episodes: episodes.len(),

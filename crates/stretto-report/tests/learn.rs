@@ -267,6 +267,37 @@ fn a_habit_only_flow_learns_from_every_session_and_has_no_arbiter() {
 }
 
 #[test]
+fn a_learned_flow_counts_what_comes_before_the_next_write() {
+    let episodes: Vec<Episode> = (0..60).map(session).collect();
+    let mut config = Config::new(PathBuf::new());
+    config.alpha_samples = 0;
+    let flow = compile_habit_flow_from_episodes(&config, &episodes, &manifest()).unwrap();
+    assert!(flow.has_reach());
+    let live = new_customer();
+    // A lookup the agent makes next is one it makes before its next write,
+    // so the reach decider takes it too.
+    let habit = flow.next_with(&live, &MOCK, 0.3, Decider::Habit).unwrap();
+    let reach = flow.next_with(&live, &MOCK, 0.3, Decider::Reach).unwrap();
+    assert_eq!(reach.proposal, habit.proposal, "{reach:?}");
+    assert!(reach.prob.unwrap() > 0.99, "{reach:?}");
+    // Above every chance, it hands back.
+    let high = flow.next_with(&live, &MOCK, 1.01, Decider::Reach).unwrap();
+    assert!(
+        matches!(high.proposal, Proposal::HandBack { .. }),
+        "{high:?}"
+    );
+    // The counts survive the IR, and a flow without them refuses the decider.
+    let back =
+        stretto_report::flow::Flow::from_json(&serde_json::to_string(&flow).unwrap()).unwrap();
+    assert!(back.has_reach());
+    let mut ir: Value = serde_json::to_value(&flow).unwrap();
+    ir.as_object_mut().unwrap().remove("reach");
+    let old = stretto_report::flow::Flow::from_json(&ir.to_string()).unwrap();
+    assert!(!old.has_reach());
+    assert!(old.next_with(&live, &MOCK, 0.3, Decider::Reach).is_err());
+}
+
+#[test]
 fn a_refitted_flow_keeps_its_arbiter_and_learns_its_habit_from_every_session() {
     let three: Vec<Episode> = (0..3).map(session).collect();
     let split = compile_flow_from_episodes(&mock_config(), &three, &manifest(), &MOCK).unwrap();

@@ -11,6 +11,12 @@
 //! Dirichlet language model, with one concentration `α` shared across levels
 //! (see [`crate::alpha`] for its posterior). Contexts never seen in training fall
 //! through to the level below, so predictions degrade gracefully with sparsity.
+//!
+//! The same counts answer a second question ([`BackoffModel::fit_reach`]):
+//! not which action comes next, but whether an action comes at all before
+//! the next step of some kind (a write). Each action is then its own
+//! Beta–Bernoulli, `n(c_j, a)` counting the steps after `c_j` from which `a`
+//! came before the next write, backed off level by level as above.
 
 use crate::abstraction::{Step, Vocab};
 use serde::{Deserialize, Serialize};
@@ -167,14 +173,54 @@ impl BackoffModel {
 
     /// Record that `action` followed `history`.
     pub fn observe(&mut self, history: &[Symbol], action: u32) {
+        self.observe_set(history, [action]);
+    }
+
+    /// Record that each of `actions` (distinct) came after `history`: one
+    /// observation of the context, one success for each action.
+    pub fn observe_set(
+        &mut self,
+        history: &[Symbol],
+        actions: impl IntoIterator<Item = u32> + Clone,
+    ) {
         for j in 0..=self.order {
             let c = self.levels[j]
                 .0
                 .entry(Self::context(history, j))
                 .or_default();
-            *c.by_action.entry(action).or_insert(0.0) += 1.0;
+            for action in actions.clone() {
+                *c.by_action.entry(action).or_insert(0.0) += 1.0;
+            }
             c.total += 1.0;
         }
+    }
+
+    /// A model of what comes before the next write, trained on `episodes`:
+    /// at each step, the actions from that step up to the first that `write`
+    /// accepts. Its [`BackoffModel::predict`] gives each action's chance of
+    /// coming before the next write, each its own Beta–Bernoulli backed off
+    /// as the next-action model is; the chances do not sum to one.
+    pub fn fit_reach(
+        order: usize,
+        alpha: f64,
+        vocab_size: usize,
+        episodes: &[EncodedEpisode],
+        write: impl Fn(u32) -> bool,
+    ) -> Self {
+        let mut m = Self::new(order, alpha, vocab_size);
+        for ep in episodes {
+            for t in 0..ep.actions.len() {
+                let mut before: Vec<u32> = ep.actions[t..]
+                    .iter()
+                    .copied()
+                    .take_while(|&a| !write(a))
+                    .collect();
+                before.sort_unstable();
+                before.dedup();
+                m.observe_set(&ep.symbols[..t], before);
+            }
+        }
+        m
     }
 
     /// Posterior predictive over every action id, given `history`.
@@ -573,6 +619,26 @@ mod tests {
         assert!(after_one[2] > 0.9);
         let unseen = m.predict(&[12, 12]);
         assert!((unseen.iter().sum::<f64>() - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn reach_counts_what_comes_before_the_next_write() {
+        // 1 then 2 then the write 3, then 2 again: after "1", action 2 always
+        // comes before the next write, though never next.
+        let data = vec![ep(&[1, 0, 2, 3, 2]); 10];
+        let write = |a: u32| a == 3;
+        let next = BackoffModel::fit(1, 0.5, 4, &data);
+        let reach = BackoffModel::fit_reach(1, 0.5, 4, &data, write);
+        let after_one = &data[0].symbols[..1];
+        assert!(next.prob(after_one, 2) < 0.1);
+        assert!(reach.prob(after_one, 2) > 0.9);
+        // The write itself never comes before the next write.
+        assert!(reach.prob(after_one, 3) < 0.1);
+        // After the write, 2 comes before any further write in every episode.
+        assert!(reach.prob(&data[0].symbols[..4], 2) > 0.9);
+        // Each action is its own chance: they need not sum to one.
+        let z: f64 = reach.predict(after_one).iter().sum();
+        assert!(z > 1.5, "{z}");
     }
 
     #[test]

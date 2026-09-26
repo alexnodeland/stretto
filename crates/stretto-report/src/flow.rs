@@ -30,8 +30,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use stretto_model::features::{step_outputs, FeatureMap, FOLDS};
-use stretto_model::world::Predictor;
-use stretto_model::{steps, EncodedEpisode, GroupedModel, Vocab};
+use stretto_model::world::{BackoffModel, Predictor};
+use stretto_model::{steps, Action, EncodedEpisode, GroupedModel, Vocab};
 use stretto_oracle::{request_key, Oracle, Question};
 use stretto_trace::{Episode, Event, ToolCall, ToolKind, ToolManifest};
 
@@ -197,6 +197,12 @@ pub struct Flow {
     /// now lists another. Empty for a flow compiled from τ²-bench results.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub(crate) contracts: BTreeMap<String, String>,
+    /// What the agent did before its next write, counted over the habit's
+    /// contexts ([`BackoffModel::fit_reach`]), for [`Decider::Reach`]. A build
+    /// that does not know it serves the flow as before, so it needs no new
+    /// format version.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) reach: Option<BackoffModel>,
 }
 
 /// Where a flow may act (RFC-001 §3.7), from `stretto promote`: each site
@@ -260,6 +266,14 @@ pub enum Decider {
     /// only where training shows no branch, and hands every branch back, as
     /// TraceCompiler does (arm C).
     Habit,
+    /// The habit's counts, read for the event a lookup pays off on: the
+    /// agent makes the call before its next write, now or later, not only
+    /// next ([`BackoffModel::fit_reach`]). A read's result stays current
+    /// until a write, so this is the probability the decision needs; the
+    /// habit's next-step probability understates it wherever the agent
+    /// reads after a reply or after another read. Needs a flow learned with
+    /// these counts ([`Flow::has_reach`]).
+    Reach,
 }
 
 /// Exploration at a flow's decisions (RFC-001 §3.7): with probability
@@ -332,6 +346,22 @@ impl PolicyView {
     /// times its binding's chance, reach the threshold.
     pub fn rule(&self, habit: bool, threshold: f64) -> Option<usize> {
         let p = |o: &OptionView| if habit { o.habit } else { o.p };
+        if !habit && self.decider == "reach" {
+            // As [`Flow::rule_set`]: of the lookups that bind, the best by
+            // probability times its binding's chance.
+            let (best, v) = self
+                .options
+                .iter()
+                .enumerate()
+                .filter_map(|(i, o)| Some((i, o.p, o.binding?)))
+                .filter(|&(_, q, _)| q >= threshold)
+                .map(|(i, q, c)| (i, q * c))
+                .fold(None::<(usize, f64)>, |best, (i, v)| match best {
+                    Some((_, w)) if w >= v => best,
+                    _ => Some((i, v)),
+                })?;
+            return (v >= threshold).then_some(best);
+        }
         let (best, pb) = self.options.iter().enumerate().fold(
             None::<(usize, f64)>,
             |best, (i, o)| match best {
@@ -485,6 +515,12 @@ impl Flow {
     /// and decides with the habit alone.
     pub fn has_arbiter(&self) -> bool {
         !self.folds.is_empty()
+    }
+
+    /// Whether the flow holds what its agents did before each next write,
+    /// which [`Decider::Reach`] reads.
+    pub fn has_reach(&self) -> bool {
+        self.reach.is_some()
     }
 
     /// The sites where the flow may make a lookup.
@@ -766,7 +802,7 @@ impl Flow {
             EncodedEpisode::encode_with_features(&st, Some(&features), &self.vocab, false)
                 .with_group(self.group);
         let predicted = self.habit.predict_at(&encoded, st.len());
-        if decider == Decider::Habit {
+        if decider != Decider::Arbiter {
             let Some(Question::Choice { criteria, .. }) = request.questions.get("next") else {
                 return hand_back(next, "the site offers no options".to_string());
             };
@@ -774,9 +810,30 @@ impl Flow {
             let Some(prior) = habit_prior(&options, &predicted, &self.vocab) else {
                 return hand_back(next, "handing back was not an option".to_string());
             };
+            let probs = match (decider, &self.reach) {
+                (Decider::Reach, Some(reach)) => {
+                    let before = reach.predict(&encoded.symbols[..st.len()]);
+                    // Handing back is no event of its own here; the rule
+                    // never takes it for a lookup.
+                    options
+                        .iter()
+                        .map(|o| {
+                            if o == RESPOND {
+                                0.0
+                            } else {
+                                before[self.vocab.id(&Action::Tool(o.clone())) as usize]
+                            }
+                        })
+                        .collect()
+                }
+                (Decider::Reach, None) => {
+                    anyhow::bail!("this flow was learned without the counts --decider reach reads")
+                }
+                _ => prior.clone(),
+            };
             let chosen = Chosen {
                 options: &options,
-                probs: &prior,
+                probs: &probs,
                 habit: &prior,
                 decider,
             };
@@ -853,7 +910,11 @@ impl Flow {
         threshold: f64,
         explore: Option<Explore>,
     ) -> Result<Next> {
-        let mut next = self.rule(next, episode, chosen.options, chosen.probs, threshold)?;
+        let mut next = if chosen.decider == Decider::Reach {
+            self.rule_set(next, episode, chosen.options, chosen.probs, threshold)?
+        } else {
+            self.rule(next, episode, chosen.options, chosen.probs, threshold)?
+        };
         let Some(explore) = explore else {
             return Ok(next);
         };
@@ -918,6 +979,7 @@ impl Flow {
             decider: match chosen.decider {
                 Decider::Arbiter => "arbiter",
                 Decider::Habit => "habit",
+                Decider::Reach => "reach",
             }
             .to_string(),
             threshold,
@@ -1001,6 +1063,59 @@ impl Flow {
             }
             Err(why) => hand_back(next, format!("{tool}: {why}")),
         }
+    }
+}
+
+impl Flow {
+    /// The rule for [`Decider::Reach`], where each lookup is judged on its
+    /// own: a read's result stays current until the next write, so the agent
+    /// can use it whenever it gets to it, and whether one lookup pays off
+    /// does not depend on the others. Of the lookups that bind, the one
+    /// whose probability times its binding's chance is highest, if that
+    /// reaches the threshold; the next decision weighs the rest again.
+    fn rule_set(
+        &self,
+        mut next: Next,
+        episode: &Episode,
+        options: &[String],
+        probs: &[f64],
+        threshold: f64,
+    ) -> Result<Next> {
+        next.probs = options.iter().cloned().zip(probs.iter().copied()).collect();
+        let mut best: Option<(&String, f64, Value, f64)> = None;
+        let mut why = "no lookup to make".to_string();
+        for (tool, &p) in options.iter().zip(probs) {
+            if tool.as_str() == RESPOND || p < threshold {
+                continue;
+            }
+            match self.bind_lookup(tool, episode) {
+                Ok((arguments, chance)) => {
+                    if best.as_ref().is_none_or(|b| p * chance > b.1 * b.3) {
+                        best = Some((tool, p, arguments, chance));
+                    }
+                }
+                Err(e) => why = format!("{tool}: {e}"),
+            }
+        }
+        let Some((tool, p, arguments, chance)) = best else {
+            next.proposal = Proposal::HandBack { reason: why };
+            return Ok(next);
+        };
+        next.prob = Some(p);
+        next.binding = Some(chance);
+        if p * chance < threshold {
+            next.proposal = Proposal::HandBack {
+                reason: format!(
+                    "{tool} at {p:.2}, times {chance:.2} for its arguments, below {threshold}"
+                ),
+            };
+            return Ok(next);
+        }
+        next.proposal = Proposal::Lookup {
+            tool: tool.clone(),
+            arguments,
+        };
+        Ok(next)
     }
 }
 
@@ -2478,6 +2593,7 @@ pub(crate) mod tests {
             promoted: None,
             thresholds: BTreeMap::new(),
             contracts: BTreeMap::new(),
+            reach: None,
         }
     }
 
