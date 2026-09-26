@@ -344,6 +344,7 @@ class State:
         self.ticket = {f"ticket: {g}" for g in words(ticket) & vocab}
         self.text = ticket
         self.outputs = []  # (tool, parsed result), for --symbolic
+        self.named = {}  # per tool, the record the ticket names, for --symbolic
 
     def result(self, tool, content, error):
         try:
@@ -355,10 +356,28 @@ class State:
                 value = json.loads(value)
             except (ValueError, TypeError):
                 pass
-        self.latest[tool] = anatomy.features({"last": (tool, error, value), "used": set(), "lists": {}})
         self.site = tool + ("!" if error else "")
         if not error:
             self.outputs.append((tool, value))
+        # With --symbolic, a tool's state follows the record the ticket names:
+        # another record of the same kind (the same fields) read after it,
+        # such as the customer's next line, does not replace it.
+        kept = self.named.get(tool)
+        if SYMBOLIC and not error and isinstance(value, dict) and isinstance(kept, dict) \
+                and set(value) == set(kept) and not self.names(value):
+            return
+        self.latest[tool] = anatomy.features({"last": (tool, error, value), "used": set(), "lists": {}})
+        if isinstance(value, dict) and self.names(value):
+            self.named[tool] = value
+        elif isinstance(value, dict) and isinstance(kept, dict) and set(value) == set(kept):
+            pass
+        else:
+            self.named.pop(tool, None)
+
+    def names(self, value):
+        """Whether a result holds a value the ticket gives (an id, a number)."""
+        given = {g for g in re.findall(r"[\w.@-]*\d[\w.@-]*", self.text) if keyish(g)}
+        return bool(given & {str(x) for x in anatomy_leaves(value)})
 
     def whole(self):
         out = set(self.ticket) | {f"called {t}" for t in self.called} | {f"made {a}" for a in self.fixes}
