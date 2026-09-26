@@ -25,6 +25,13 @@ keeps, per task, the shortest run its own check of the ticket's criterion
 says resolved (a transfer is not kept). It is refitted on the demonstrations
 and those runs, and scored on the test tasks after each round.
 
+With --symbolic, an action's identifiers (arguments of at least four
+characters with a digit: ids, phone numbers) are learned as where they came
+from, the path of an earlier result or the ticket, and bound again when the
+workflow runs; with --rename, the test tasks run for a customer none of the
+traces saw: John Smith's name, ids and phone numbers renamed throughout
+τ²-bench's database, the phone's and each task.
+
 usage: telecom_workflow.py RESULTS.json... [--tau2 DIR] [--sure] [--json OUT]
 """
 
@@ -43,14 +50,179 @@ import anatomy  # noqa: E402
 
 STOP = "stop"
 MAX_CALLS = 50  # the successful training episodes made at most 38
+SYMBOLIC = False  # --symbolic: identifiers as where they came from
+RENAME = None  # --rename: a function renaming John Smith's identifiers
 
 
-def label(name, args):
+def keyish(v):
+    return isinstance(v, str) and len(v) >= 4 and re.search(r"\d", v) is not None
+
+
+def paths(value, target, path="$"):
+    """The paths at which `target` is a string of `value`, lists as [*]."""
+    if isinstance(value, str):
+        return [path] if value == target else []
+    if isinstance(value, dict):
+        return [p for k, v in value.items() for p in paths(v, target, f"{path}.{k}")]
+    if isinstance(value, list):
+        return [p for v in value for p in paths(v, target, f"{path}[*]")]
+    return []
+
+
+def at(value, path):
+    """The strings of `value` at `path`, in document order."""
+    if path in ("", "$"):
+        return [value] if isinstance(value, str) else []
+    rest = path[1:] if path.startswith("$") else path
+    if rest.startswith("[*]"):
+        return [x for v in value for x in at(v, "$" + rest[3:])] if isinstance(value, list) else []
+    if rest.startswith("."):
+        key = re.match(r"\.([^.\[]+)", rest).group(1)
+        return at(value.get(key), "$" + rest[1 + len(key):]) if isinstance(value, dict) else []
+    return []
+
+
+def select(value, path):
+    """Everything in `value` at `path`, lists as [*]."""
+    if path in ("", "$"):
+        return [value]
+    rest = path[1:] if path.startswith("$") else path
+    if rest.startswith("[*]"):
+        return [x for v in value for x in select(v, "$" + rest[3:])] if isinstance(value, list) else []
+    if rest.startswith("."):
+        key = re.match(r"\.([^.\[]+)", rest).group(1)
+        return select(value.get(key), "$" + rest[1 + len(key):]) if isinstance(value, dict) else []
+    return []
+
+
+def members(value, path):
+    """For a path through a list of records, each value at the path with its
+    record: `(value, record)`, in document order."""
+    head, _, tail = path.rpartition("[*]")
+    return [(v, e) for e in select(value, head + "[*]") for v in at(e, "$" + tail) if isinstance(e, dict)]
+
+
+def which(record, others):
+    """The fields that set a record apart from the others of its list (a
+    bill's status): short values, no identifiers."""
+    return {k: x for k, x in record.items()
+            if isinstance(x, (str, bool)) and not keyish(x) and any(o.get(k) != x for o in others)}
+
+
+def symbol(v, outputs, ticket):
+    """Where an identifier came from: the path of the most recent result that
+    holds it (with, in a list of records, the fields that set its record
+    apart), else the ticket (by its shape), else itself."""
+    for tool, value in reversed(outputs):
+        found = paths(value, v)
+        if found:
+            path = found[0]
+            if "[*]" in path:
+                listed = members(value, path)
+                chosen = [e for x, e in listed if x == v]
+                if chosen:
+                    apart = which(chosen[0], [e for x, e in listed if x != v])
+                    if apart:
+                        return f"@{tool}{path}?" + json.dumps(apart, sort_keys=True)
+            return f"@{tool}{path}"
+    if v in ticket:
+        return "@ticket" + re.sub(r"(?:\\d)+", lambda m: "\\d{%d}" % (len(m.group()) // 2),
+                                  re.sub(r"\d", r"\\d", re.escape(v)))
+    return v
+
+
+def renaming():
+    """A function renaming, in any text, the base tasks' customer (John
+    Smith): name, email, customer, line, bill and device ids, and phone
+    numbers, to ones τ²-bench's database does not hold."""
+    from tau2.domains.telecom.data_model import TelecomDB
+    from tau2.domains.telecom.environment import TELECOM_DB_PATH
+
+    db = json.loads(TelecomDB.load(TELECOM_DB_PATH).model_dump_json())
+    customer = next(c for c in db["customers"] if c["full_name"] == "John Smith")
+    lines = [line for line in db["lines"] if line["line_id"] in customer["line_ids"]]
+    ids = [customer["customer_id"], *customer["line_ids"], *customer.get("bill_ids", []),
+           *[line["device_id"] for line in lines if line.get("device_id")]]
+    phones = {customer["phone_number"], *[line["phone_number"] for line in lines]}
+    mapping = {i: re.sub(r"\d+", lambda m: str(int(m.group()) + 6000), i) for i in ids}
+    mapping.update({ph: re.sub(r"^(\d{3})-\d{3}-\d{2}", r"\1-987-65", ph) for ph in phones})
+    mapping.update({"John Smith": "Maria Lopez", "john.smith@example.com": "maria.lopez@example.com"})
+    text = json.dumps(db)
+    assert not any(new in text for new in mapping.values()), mapping
+    pattern = re.compile(r"(?<![\w.-])(" + "|".join(map(re.escape, sorted(mapping, key=len, reverse=True))) + r")(?![\w-])")
+    return lambda t: pattern.sub(lambda m: mapping[m.group()], t)
+
+
+def renamed_environment(rename):
+    """τ²-bench's telecom environment with the customer renamed."""
+    from tau2.domains.telecom.data_model import TelecomDB
+    from tau2.domains.telecom.environment import TELECOM_DB_PATH, TELECOM_USER_DB_PATH, get_environment
+    from tau2.domains.telecom.user_data_model import TelecomUserDB
+
+    db = rename(TelecomDB.load(TELECOM_DB_PATH).model_dump_json())
+    user = rename(TelecomUserDB.load(TELECOM_USER_DB_PATH).model_dump_json())
+
+    def make(**kw):
+        return get_environment(db=TelecomDB.model_validate_json(db), user_db=TelecomUserDB.model_validate_json(user),
+                               policy_type="workflow", **kw)
+
+    return make
+
+
+def resolve(sym, outputs, ticket, passed):
+    """Bind a symbol again: the ticket's first match of its shape, or the most
+    recent result of its tool with a value at its path, the first in a list
+    not yet passed as this argument."""
+    if not (isinstance(sym, str) and sym.startswith("@")):
+        return sym
+    if sym.startswith("@ticket"):
+        m = re.search(sym[len("@ticket"):], ticket)
+        return m.group() if m else None
+    tool, path = re.match(r"@([^$]+)(\$.*)", sym).groups()
+    path, _, apart = path.partition("?")
+    apart = json.loads(apart) if apart else {}
+    found = []
+    for name, value in reversed(outputs):
+        if name != tool:
+            continue
+        values = [v for v in at(value, path) if not ("[*]" in path and v in passed)]
+        if apart:
+            # The record like the one the demonstrator chose, if one is.
+            like = [x for x, e in members(value, path)
+                    if x not in passed and all(e.get(k) == want for k, want in apart.items())]
+            values = like + [v for v in values if v not in like]
+        if values:
+            found.append((value, values[0]))
+    if not found:
+        return None
+    # A field of one record: the record that holds what the ticket gives (the
+    # line with the customer's number) before the most recent.
+    if "[*]" not in path:
+        given = {g for g in re.findall(r"[\w.@-]*\d[\w.@-]*", ticket) if keyish(g)}
+        for value, v in found:
+            if given & set(str(x) for x in anatomy_leaves(value)):
+                return v
+    return found[0][1]
+
+
+def anatomy_leaves(value):
+    """Every string and number under a result."""
+    if isinstance(value, dict):
+        return [x for v in value.values() for x in anatomy_leaves(v)]
+    if isinstance(value, list):
+        return [x for v in value for x in anatomy_leaves(v)]
+    return [value] if isinstance(value, (str, int, float)) and not isinstance(value, bool) else []
+
+
+def label(name, args, outputs=None, ticket=""):
     """A call as an action: its tool and arguments, numbers as integers where
-    they are whole. A hand-off's summary is free text and is left out."""
+    they are whole. A hand-off's summary is free text and is left out. With
+    --symbolic and the results so far, identifiers as where they came from."""
     if name == "transfer_to_human_agents":
         return name
     args = {k: int(v) if isinstance(v, float) and v.is_integer() else v for k, v in (args or {}).items()}
+    if SYMBOLIC and outputs is not None:
+        args = {k: symbol(v, outputs, ticket) if keyish(v) else v for k, v in args.items()}
     return name + json.dumps(args, sort_keys=True) if args else name
 
 
@@ -75,6 +247,8 @@ class State:
         self.fixes = set()  # the writes made, with their arguments
         self.site = "start"
         self.ticket = {f"ticket: {g}" for g in words(ticket) & vocab}
+        self.text = ticket
+        self.outputs = []  # (tool, parsed result), for --symbolic
 
     def result(self, tool, content, error):
         try:
@@ -88,6 +262,8 @@ class State:
                 pass
         self.latest[tool] = anatomy.features({"last": (tool, error, value), "used": set(), "lists": {}})
         self.site = tool + ("!" if error else "")
+        if not error:
+            self.outputs.append((tool, value))
 
     def whole(self):
         out = set(self.ticket) | {f"called {t}" for t in self.called} | {f"made {a}" for a in self.fixes}
@@ -111,10 +287,11 @@ def decisions(sim, ticket, vocab):
                 out.append({"site": state.site, "state": state.whole(), "action": STOP})
                 continue
             for c in calls:
-                out.append({"site": state.site, "state": state.whole(), "action": label(c["name"], c.get("arguments"))})
+                action = label(c["name"], c.get("arguments"), state.outputs, state.text)
+                out.append({"site": state.site, "state": state.whole(), "action": action})
                 state.called.add(c["name"])
                 if c["name"] not in anatomy.READ["telecom"]:
-                    state.fixes.add(label(c["name"], c.get("arguments")))
+                    state.fixes.add(action)
                 pending[c.get("id")] = c["name"]
                 order.append(c.get("id"))
         elif m["role"] == "tool":
@@ -160,7 +337,7 @@ def repeats(action, calls, since_write):
     return action in calls
 
 
-def run(task, predict, vocab, sure, guard, tau2, rng=None, record=None):
+def run(task, predict, vocab, sure, guard, tau2, rng=None, record=None, constructor=None):
     """Run the workflow on one task in τ²-bench's environment; its reward,
     its calls, and whether it handed back. With `rng`, each call is drawn
     from the leaf's calls by their counts; `record` collects the decisions."""
@@ -170,7 +347,7 @@ def run(task, predict, vocab, sure, guard, tau2, rng=None, record=None):
     from tau2.evaluator.evaluator_action import ActionEvaluator
     from tau2.evaluator.evaluator_env import EnvironmentEvaluator
 
-    constructor = partial(get_environment, policy_type="workflow")
+    constructor = constructor or partial(get_environment, policy_type="workflow")
     env = constructor(solo_mode=True)
     init = task.initial_state
     env.set_state(
@@ -181,14 +358,31 @@ def run(task, predict, vocab, sure, guard, tau2, rng=None, record=None):
     state = State(task.ticket or "", vocab)
     messages, calls, handed = [], [], False
     since_write = set()  # reads made since the last write
+    passed = collections.defaultdict(set)  # (tool, argument) -> values passed
+
+    def concrete(action):
+        """The call an action makes here: with --symbolic, its identifiers
+        bound again from this run's results and ticket (None if one cannot be)."""
+        if action == STOP or not SYMBOLIC:
+            return action
+        name, args = unlabel(action)
+        bound = {}
+        for k, v in args.items():
+            bound[k] = resolve(v, state.outputs, state.text, passed[(name, k)])
+            if bound[k] is None:
+                return None
+        return label(name, bound) if name != "transfer_to_human_agents" else action
+
     for i in range(MAX_CALLS):
         _, _, support, tally = predict({"site": state.site, "state": state.whole()})
         # The leaf's likeliest action that is not a repeat: a read made since
         # the last write returns what it returned, and a fix made once is made.
-        allowed = [(a, k) for a, k in tally.most_common() if not (guard and repeats(a, calls, since_write))]
-        action, k = allowed[0] if allowed else (STOP, 0)
+        options = [(a, k, concrete(a)) for a, k in tally.most_common()]
+        allowed = [(a, k, c) for a, k, c in options
+                   if c is not None and not (guard and repeats(c, calls, since_write))]
+        action, k, made = allowed[0] if allowed else (STOP, 0, STOP)
         if rng is not None and allowed:
-            action, k = rng.choices(allowed, weights=[k for _, k in allowed])[0]
+            action, k, made = rng.choices(allowed, weights=[k for _, k, _ in allowed])[0]
         share = k / support if support else 0.0
         if sure and not (share >= sure and support >= 10):
             handed = True
@@ -197,13 +391,16 @@ def run(task, predict, vocab, sure, guard, tau2, rng=None, record=None):
             record.append({"site": state.site, "state": state.whole(), "action": action})
         if action == STOP:
             break
-        name, args = unlabel(action)
+        name, args = unlabel(made)
         call = ToolCall(id=f"call_{i}", name=name, arguments=args, requestor="assistant")
         messages.append(AssistantMessage(role="assistant", content=None, tool_calls=[call]))
         response = env.get_response(call)
         messages.append(response)
-        calls.append(action)
-        since_write = since_write | {action} if name in anatomy.READ["telecom"] else set()
+        calls.append(made)
+        for key, value in args.items():
+            if isinstance(value, (str, int, float)):
+                passed[(name, key)].add(value)
+        since_write = since_write | {made} if name in anatomy.READ["telecom"] else set()
         state.called.add(name)
         if name not in anatomy.READ["telecom"]:
             state.fixes.add(action)
@@ -289,6 +486,10 @@ def main():
                     help="then learn from its own runs on every training task's ticket that its own check says resolved")
     ap.add_argument("--rollouts", type=int, default=8, help="runs per training task and round drawn from the leaves' counts (8)")
     ap.add_argument("--seed", type=int, default=0, help="seed for --self-train's draws and --bag's resamples")
+    ap.add_argument("--symbolic", action="store_true",
+                    help="learn identifiers as where they came from (a result's path, the ticket) and bind them when run")
+    ap.add_argument("--rename", action="store_true",
+                    help="run the test tasks for a customer no trace saw: John Smith's name, ids and numbers renamed")
     ap.add_argument("--bag", type=int, default=0, metavar="N",
                     help="fit N trees, each on a resample of the episodes, and take the call their leaves' shares favour")
     ap.add_argument("--keep", choices=["shortest", "first"], default="shortest",
@@ -296,12 +497,21 @@ def main():
     ap.add_argument("--verifier", choices=["own", "evaluator"], default="own",
                     help="keep a run on its own check (the default), or on τ²-bench's evaluator, an oracle a deployment lacks")
     args = ap.parse_args()
+    global SYMBOLIC, RENAME
+    SYMBOLIC = args.symbolic
+    from tau2.data_model.tasks import Task
     from tau2.domains.telecom.environment import get_tasks
 
     tasks = {t.id: t for t in get_tasks("base")}
     split = json.loads((Path(args.tau2) / "data/tau2/domains/telecom/split_tasks.json").read_text())
     train, test = set(split["train"]), set(split["test"])
     tickets = sorted(train)  # every training task's ticket, for --self-train
+    test_environment = None
+    if args.rename:
+        RENAME = renaming()
+        test_environment = renamed_environment(RENAME)
+        for tid in test:
+            tasks[tid] = Task.model_validate_json(RENAME(tasks[tid].model_dump_json()))
     if args.train_share < 1:
         # A fixed sample of the training tasks, each smaller share inside every larger one.
         ranked = sorted(train, key=lambda t: hashlib.sha256(t.encode()).hexdigest())
@@ -335,7 +545,8 @@ def main():
     def on_test(predict):
         rows = []
         for tid in sorted(test):
-            reward, calls, handed, resolved = run(tasks[tid], predict, vocab, args.sure, not args.no_guard, args.tau2)
+            reward, calls, handed, resolved = run(tasks[tid], predict, vocab, args.sure, not args.no_guard, args.tau2,
+                                                  constructor=test_environment)
             rows.append({"task_id": tid, "reward": reward, "handed_back": handed, "own_check": resolved, "calls": calls})
         return rows
 

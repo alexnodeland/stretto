@@ -2,7 +2,7 @@
 
 [The telecom anatomy](telecom-anatomy-2026-09-26.md) found that, where the agent operates the phone itself, a decision tree over the tool results predicts most of its steps. This page runs that tree as the agent. It is fitted once on the successful training episodes of τ²-bench's own solo runs, then run with no model on the 40 held-out test tasks in τ²-bench's environment, and scored by τ²-bench's evaluator.
 
-It passed 31 of the 40 held-out tasks (77.5%), and 25–31 (mean 71%) when refitted on ten resamples of its training episodes. The LLM agents whose traces it was fitted on passed 49–78% of the same tasks, and the tree made no LLM call; each of them made 15–18 per episode. Its own check of the ticket's stated outcome caught every one of its failures, so handing only those to an agent projects 87.5–89.4%, with a model in one episode in five. The same check lets it learn from its own tries: fitted on a quarter or half of the demonstrations, then trying each training ticket 17 times and keeping the shortest run the check verified, it went from 18 to 22–23 of 40.
+It passed 31 of the 40 held-out tasks (77.5%), and 25–31 (mean 71%) when refitted on ten resamples of its training episodes. The LLM agents whose traces it was fitted on passed 49–78% of the same tasks, and the tree made no LLM call; each of them made 15–18 per episode. Its own check of the ticket's stated outcome caught every one of its failures, so handing only those to an agent projects 87.5–89.4%, with a model in one episode in five. The same check lets it learn from its own tries: fitted on a quarter or half of the demonstrations, then trying each training ticket 17 times and keeping the shortest run the check verified, it went from 18 to 22–23 of 40. Learned as where they came from, its identifiers bind for a customer no trace saw: renamed throughout, it passed the same 32 of 40 as for the original customer, where constants pass 16.
 
 ## The workflow
 
@@ -96,6 +96,26 @@ Test tasks passed, of 40; one run per seed, the mean with its range.
 - **Its check served as well as the evaluator.** Kept on the evaluator's reward instead, the runs taught it no more (21 in the fourth round, one seed). Of the up to 67 runs the check kept each round, 0–4 failed the evaluator, and over every configuration's last round, no run the check called unresolved had passed.
 - **It cannot learn what no demonstrator did.** The draws come from its own leaves. Fitted on 7 tasks, its leaves hold 44 of the 62 calls the demonstrators made on all 74; it kept runs on 34 tickets and passed 13–14. With every demonstration, its own runs added nothing: 26–35 across the rounds, a mean of 30.5 against 31, about as far as a refit on resampled demonstrations moves it (25–31).
 
+## A customer no trace saw
+
+Every base task has one customer, so the workflow above learned John Smith's ids and phone number as constants. To see whether a compiled workflow can bind them, `--rename` runs the test tasks for a customer no trace saw: his name, email, customer, line, bill and device ids and phone numbers renamed throughout τ²-bench's database, the phone's and each task (Maria Lopez, `C7001`, `L7002`, `555-987-6502`). `--symbolic` learns each identifier a call passes (four characters or more, with a digit) as where it came from: the path of the most recent result that held it, or the ticket, by its shape. When the workflow runs, it binds the identifier again from that run's results. That is the ticket's first match, or a field of the most recent record of that tool, preferring the record that holds a value the ticket gives (the line with the customer's number), or the next value of a list not yet passed. For a list of records, it also learns the fields that set the chosen record apart from the others, such as a bill's `status: Overdue`, and prefers a record that has them.
+
+| Workflow | The base tasks | Renamed | Refitted on five resamples, renamed |
+|---|---|---|---|
+| Identifiers as constants | 31 | 16 | 13–16 |
+| **Identifiers as where they came from** | **32** | **32** | 26–30, as on the base tasks |
+| Without the fields that set the record apart | 29 | 29 | |
+| Nor preferring the record the ticket's value is in | 24 | 24 | |
+
+Held-out test tasks passed, of 40 ([the runs](telecom-workflow-2026-09-26-binding.json)).
+
+- **Constants break on the account.** They still pass 16 renamed tasks, because most fixes are on the phone and take no id. Every fix on the account (a payment, roaming, a data refuel) names a customer that no longer exists.
+- **Bound again, nothing changes.** For the renamed customer the workflow passed exactly the tasks it passed for the original, on every fit. The identifiers were all it had learned about him.
+- **What binding takes is what the agents' choice depends on.** The agents act on the customer's line, the one carrying the ticket's number (24 to 29 of 40 once preferred), and pay the overdue bill (29 to 32 with the record's distinguishing fields). A person could state both rules; here they were learned from the traces.
+- **Its check still separates.** All 7 runs it called unresolved had failed, and 32 of the 33 it called done or transferred had passed. Handing the unresolved to an agent projects 88.7–90.0%.
+
+It is one renamed customer, the database otherwise the same, so this tests binding, not an account in another state: a real second customer would bring other plans and faults.
+
 ## What it says
 
 Compiling once works when three things hold: the procedure branches on what the tools return, the agent runs the tools itself, and the arguments come from a closed set or from earlier results. In τ²-bench telecom's solo mode all three hold. A decision tree fitted on successful traces then does the whole job as well as the agents that made the traces, with no model. In retail and airline, and in telecom with the customer holding the phone, the procedure branches on what the customer says, and what a compiled workflow can take is [the read skeleton](anatomy-2026-09-26.md), which stretto's flows already take.
@@ -106,7 +126,7 @@ The closest prior work: decision mining fits a tree at each of a process's branc
 
 ## Caveats
 
-- **One customer.** All 114 base tasks share one customer and one line, so every argument of every call is a constant of the task set, and the workflow's steps are whole calls. A deployment with many customers needs the arguments bound from the ticket and earlier results, as stretto's flows bind them.
+- **One customer.** All 114 base tasks share one customer and one line, so every argument of every call is a constant of the task set, and the workflow's steps are whole calls. A deployment with many customers needs the arguments bound from the ticket and earlier results, as stretto's flows bind them; [renamed](#a-customer-no-trace-saw), the workflow bound them and passed the same tasks.
 - **A known success signal.** The workflow learns only from successful episodes. A deployment knows which of its sessions succeeded only through its own signal.
 - **Many demonstrations.** 730 successful episodes of 74 tasks; with 37 tasks it passed 18 of 40.
 - **One run per task** against the agents' four trials, on 40 tasks: a difference of a task or two is noise.
@@ -126,4 +146,4 @@ python3 scripts/telecom_workflow.py \
   --tau2 ../tau2-bench --json telecom-workflow.json
 ```
 
-`--no-guard`, `--sure [SHARE]`, `--train-share`, `--bootstrap SEED` and `--bag N` give the other rows, and `--show FILE` writes the rules. `--self-train 4 --rollouts 16` (with `--seed`, `--keep first` or `--verifier evaluator`) gives the self-training rows, whose rounds are in [telecom-workflow-2026-09-26-self.json](telecom-workflow-2026-09-26-self.json); four rounds take about ten minutes. The runs, call by call, are in [telecom-workflow-2026-09-26.json](telecom-workflow-2026-09-26.json). Scored this way, GPT-4.1's recorded test episodes (first trial) get the rewards τ²-bench recorded for all 40 of them.
+`--no-guard`, `--sure [SHARE]`, `--train-share`, `--bootstrap SEED` and `--bag N` give the other rows, and `--show FILE` writes the rules. `--self-train 4 --rollouts 16` (with `--seed`, `--keep first` or `--verifier evaluator`) gives the self-training rows, whose rounds are in [telecom-workflow-2026-09-26-self.json](telecom-workflow-2026-09-26-self.json); four rounds take about ten minutes. `--symbolic` and `--rename` give the renamed customer's rows ([the runs](telecom-workflow-2026-09-26-binding.json)). The runs, call by call, are in [telecom-workflow-2026-09-26.json](telecom-workflow-2026-09-26.json). Scored this way, GPT-4.1's recorded test episodes (first trial) get the rewards τ²-bench recorded for all 40 of them.
