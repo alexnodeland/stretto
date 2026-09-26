@@ -32,7 +32,8 @@ workflow runs; with --rename, the test tasks run for a customer none of the
 traces saw: John Smith's name, ids and phone numbers renamed throughout
 τ²-bench's database, the phone's and each task. With --as-customer ID they
 run for another customer of the database, whose first line takes John's
-line's state, keeping the tasks whose own gold actions still solve them.
+line's state, keeping the tasks whose own gold actions still solve them and
+whose faults the account still shows.
 
 usage: telecom_workflow.py RESULTS.json... [--tau2 DIR] [--sure] [--json OUT]
 """
@@ -245,6 +246,26 @@ def gold_passes(task, constructor):
     if RewardType.ACTION in task.evaluation_criteria.reward_basis:
         reward *= ActionEvaluator.calculate_reward(task=task, full_trajectory=messages).reward
     return reward == 1
+
+
+# The flags τ²-bench derives from the account for the ticket's line.
+FAULT_FLAGS = ("line_active", "roaming_allowed", "mobile_data_usage_exceeded")
+
+
+def flags(task, constructor):
+    """The line's flags once the task is set up (active, roaming allowed,
+    data used up), which τ²-bench derives from the account: a moved task
+    keeps its faults only where they match the original's. None where the
+    setup does not fit the account."""
+    env = constructor(solo_mode=True)
+    init = task.initial_state
+    try:
+        env.set_state(initialization_data=init.initialization_data if init else None,
+                      initialization_actions=init.initialization_actions if init else None, message_history=[])
+    except ValueError:
+        return None
+    env.sync_tools()
+    return {f: getattr(env.user_tools.db.surroundings, f) for f in FAULT_FLAGS}
 
 
 def resolve(sym, outputs, ticket, passed):
@@ -605,7 +626,8 @@ def main():
     ap.add_argument("--rename", action="store_true",
                     help="run the test tasks for a customer no trace saw: John Smith's name, ids and numbers renamed")
     ap.add_argument("--as-customer", metavar="ID",
-                    help="run the test tasks for another customer of the database (C1003), keeping those its gold actions still solve")
+                    help="run the test tasks for another customer of the database (C1003), keeping those its gold actions still solve"
+                         " and whose faults the account still shows")
     ap.add_argument("--bag", type=int, default=0, metavar="N",
                     help="fit N trees, each on a resample of the episodes, and take the call their leaves' shares favour")
     ap.add_argument("--keep", choices=["shortest", "first"], default="shortest",
@@ -629,12 +651,19 @@ def main():
         for tid in test:
             tasks[tid] = Task.model_validate_json(RENAME(tasks[tid].model_dump_json()))
     if args.as_customer:
+        from tau2.domains.telecom.environment import get_environment
+
         RENAME, test_environment = as_customer(args.as_customer)
+        original = {tid: tasks[tid] for tid in test}
         for tid in test:
             tasks[tid] = Task.model_validate_json(RENAME(tasks[tid].model_dump_json()))
         solvable = {tid for tid in test if gold_passes(tasks[tid], test_environment)}
-        print(f"as {args.as_customer}: the gold actions solve {len(solvable)} of {len(test)} test tasks", file=sys.stderr)
-        test = solvable
+        # A task whose faults the account does not show (usage below a larger
+        # plan's limit) would demand a fix the ticket no longer needs.
+        faithful = {tid for tid in solvable if flags(tasks[tid], test_environment) == flags(original[tid], get_environment)}
+        print(f"as {args.as_customer}: the gold actions solve {len(solvable)} of {len(test)} test tasks,"
+              f" and {len(faithful)} keep their faults", file=sys.stderr)
+        test = faithful
     if args.train_share < 1:
         # A fixed sample of the training tasks, each smaller share inside every larger one.
         ranked = sorted(train, key=lambda t: hashlib.sha256(t.encode()).hexdigest())
