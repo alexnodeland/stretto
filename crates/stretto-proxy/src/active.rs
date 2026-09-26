@@ -976,11 +976,18 @@ impl<'a, W: Write> Engine<'a, W> {
                 !cc.second_shadow,
             ));
         }
+        // The model-free check beside the judge, logged only: values whose
+        // record the confirmation chose another of.
+        let proposal_check: Vec<Value> = confirm::contradicted(episode, call)
+            .into_iter()
+            .map(|(argument, value)| json!({"argument": argument, "value": value}))
+            .collect();
         let mut entry = json!({
             "tool": call.name,
             "arguments": call.arguments,
             "word_list": word_list,
             "enforced": cc.enforce,
+            "proposal_check": proposal_check,
         });
         if cc.second_shadow {
             entry["second_shadow"] = json!(true);

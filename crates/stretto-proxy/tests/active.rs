@@ -873,10 +873,14 @@ fn the_confirmation_judge_refuses_writes_the_customer_did_not_confirm() {
             assert_eq!(judged[2]["unknown"], true);
             assert_eq!(judged[2]["fails"], false);
         }
-        // Every judgment names the question it asked.
+        // Every judgment names the question it asked, and carries the
+        // proposal check, which finds no other order named here.
         assert!(judged
             .iter()
             .all(|j| j["key"].as_str().is_some_and(|k| k.len() == 64)));
+        assert!(judged
+            .iter()
+            .all(|j| j["proposal_check"].as_array().is_some_and(Vec::is_empty)));
     }
     fs::remove_dir_all(&dir).unwrap();
 }

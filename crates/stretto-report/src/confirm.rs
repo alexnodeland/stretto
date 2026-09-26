@@ -632,6 +632,211 @@ pub fn markdown(audits: &[ConfirmAudit]) -> String {
     s
 }
 
+// ---- the proposal check ------------------------------------------------------------------
+
+/// The values of `call` whose record the confirmation chose another of, with
+/// no model: the check of `scripts/proposal_check.py`
+/// ([results](../../../docs/results/proposal-check-2026-09-26.md)), as
+/// `(argument, value)` pairs.
+///
+/// Each value is looked for among the lists of records in the episode's
+/// earlier tool results (a user's orders, an order's items, the payment
+/// methods), latest first. The customer's last message chooses the records
+/// it names, by a value no other record of the list holds; failing that,
+/// the agent's proposal does, if it names only one. The value is flagged
+/// when a record was chosen, the value's record is not among them, and the
+/// call passes none of their fields. Only values with a digit are checked:
+/// ids carry digits, and a closed choice (a reason, a cabin) is not a
+/// record the customer picks.
+pub fn contradicted(episode: &Episode, call: &ToolCall) -> Vec<(String, String)> {
+    let (proposal, customer) = exchange(episode);
+    let (proposal, customer) = (proposal.to_lowercase(), customer.to_lowercase());
+    let mut groups: Vec<Vec<Record>> = Vec::new();
+    for e in &episode.events {
+        if let Event::ToolResult {
+            content,
+            error: false,
+            ..
+        } = e
+        {
+            if let Ok(value) = serde_json::from_str::<serde_json::Value>(content) {
+                record_lists(&value, &mut groups);
+            }
+        }
+    }
+    let mut passed = Vec::new();
+    scalars(&call.arguments, &mut passed);
+    let mut out = Vec::new();
+    let Some(arguments) = call.arguments.as_object() else {
+        return out;
+    };
+    for (arg, value) in arguments {
+        let mut values = Vec::new();
+        scalars(value, &mut values);
+        for v in values {
+            if !v.chars().any(|c| c.is_ascii_digit()) {
+                continue;
+            }
+            for group in groups.iter().rev() {
+                let mine: Vec<usize> = (0..group.len())
+                    .filter(|&i| group[i].fields.contains(&v))
+                    .collect();
+                if mine.is_empty() {
+                    continue;
+                }
+                let named = |text: &str| -> Vec<usize> {
+                    (0..group.len())
+                        .filter(|&i| names(group, i, text))
+                        .collect()
+                };
+                let mut chosen = named(&customer);
+                if chosen.is_empty() {
+                    let offered = named(&proposal);
+                    if offered.len() == 1 {
+                        chosen = offered;
+                    }
+                }
+                // A record the call passes too is not another: an exchange
+                // passes the old item and the new one.
+                let passes_chosen = chosen
+                    .iter()
+                    .any(|&i| group[i].fields.iter().any(|f| passed.contains(f)));
+                if !chosen.is_empty() && !mine.iter().any(|i| chosen.contains(i)) && !passes_chosen
+                {
+                    out.push((arg.clone(), v.clone()));
+                }
+                break;
+            }
+        }
+    }
+    out
+}
+
+/// One record of a list: its own scalar fields, and every scalar under it.
+struct Record {
+    fields: Vec<String>,
+    all: Vec<String>,
+}
+
+/// Every list of two or more records in `value`: arrays, and objects whose
+/// values are all objects (records keyed by id).
+fn record_lists(value: &serde_json::Value, out: &mut Vec<Vec<Record>>) {
+    use serde_json::Value;
+    let members: Option<Vec<&Value>> = match value {
+        Value::Array(items) => Some(items.iter().collect()),
+        Value::Object(m) if m.len() > 1 && m.values().all(Value::is_object) => {
+            Some(m.values().collect())
+        }
+        _ => None,
+    };
+    if let Some(members) = members.filter(|m| m.len() > 1) {
+        let records: Vec<Record> = members
+            .iter()
+            .filter_map(|m| match m {
+                Value::Object(o) => {
+                    let mut fields = Vec::new();
+                    for v in o.values() {
+                        if !v.is_object() && !v.is_array() {
+                            scalars(v, &mut fields);
+                        }
+                    }
+                    let mut all = Vec::new();
+                    scalars(m, &mut all);
+                    Some(Record { fields, all })
+                }
+                Value::String(_) | Value::Number(_) => {
+                    let mut fields = Vec::new();
+                    scalars(m, &mut fields);
+                    Some(Record {
+                        all: fields.clone(),
+                        fields,
+                    })
+                }
+                _ => None,
+            })
+            .collect();
+        out.push(records);
+    }
+    match value {
+        Value::Array(items) => items.iter().for_each(|v| record_lists(v, out)),
+        Value::Object(m) => m.values().for_each(|v| record_lists(v, out)),
+        _ => {}
+    }
+}
+
+/// Every scalar under `value` but booleans and nulls, trimmed and lowercase,
+/// whole numbers without a decimal point.
+fn scalars(value: &serde_json::Value, out: &mut Vec<String>) {
+    use serde_json::Value;
+    match value {
+        Value::Array(items) => items.iter().for_each(|v| scalars(v, out)),
+        Value::Object(m) => m.values().for_each(|v| scalars(v, out)),
+        Value::String(s) => out.push(s.trim().to_lowercase()),
+        Value::Number(n) => out.push(match n.as_f64() {
+            Some(f) if f.fract() == 0.0 && f.abs() < 1e15 && !n.is_i64() && !n.is_u64() => {
+                format!("{}", f as i64)
+            }
+            _ => n.to_string(),
+        }),
+        Value::Bool(_) | Value::Null => {}
+    }
+}
+
+/// Whether `text` names record `i` of `group`: it states a value of at least
+/// four characters that no other record of the group holds.
+fn names(group: &[Record], i: usize, text: &str) -> bool {
+    let mut seen = Vec::new();
+    group[i].all.iter().any(|v| {
+        if v.chars().count() < 4 || seen.contains(v) {
+            return false;
+        }
+        seen.push(v.clone());
+        group.iter().filter(|r| r.all.contains(v)).count() == 1 && said(v, text)
+    })
+}
+
+/// Whether `text` states `value`: a number as a number (not inside a longer
+/// one), an id such as `credit_card_4196779` also by its digits, anything
+/// else as written, an order id also without its `#`.
+fn said(value: &str, text: &str) -> bool {
+    if value.is_empty() {
+        return true;
+    }
+    let bounded = |needle: &str, hay: &str, before: &dyn Fn(char) -> bool| {
+        hay.match_indices(needle).any(|(at, _)| {
+            let prev = hay[..at].chars().next_back();
+            let next = hay[at + needle.len()..].chars().next();
+            !prev.is_some_and(before) && !next.is_some_and(|c| c.is_ascii_digit())
+        })
+    };
+    let unsigned = value.strip_prefix('-').unwrap_or(value);
+    if !unsigned.is_empty()
+        && unsigned
+            .chars()
+            .all(|c| c.is_ascii_digit() || matches!(c, '.' | ','))
+    {
+        let number = if value.contains('.') {
+            value.trim_end_matches('0').trim_end_matches('.')
+        } else {
+            value
+        };
+        let plain = text.replace(',', "");
+        return !number.is_empty()
+            && bounded(number, &plain, &|c: char| c.is_ascii_digit() || c == '.');
+    }
+    if let Some((head, digits)) = value.rsplit_once('_') {
+        if digits.len() >= 4
+            && digits.chars().all(|c| c.is_ascii_digit())
+            && !head.is_empty()
+            && head.chars().all(|c| c.is_ascii_lowercase() || c == '_')
+            && bounded(digits, text, &|c: char| c.is_ascii_digit())
+        {
+            return true;
+        }
+    }
+    text.contains(value) || text.contains(value.trim_start_matches('#'))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -744,5 +949,59 @@ mod tests {
         let md = markdown(&[a]);
         assert!(md.contains("| Judge fails | Two questions fail |"), "{md}");
         assert!(md.contains("P(proposed) = 0.20"), "{md}");
+    }
+
+    #[test]
+    fn a_write_to_another_record_than_the_one_confirmed_is_flagged() {
+        let methods = r#"{"payment_methods": {
+            "credit_card_4196779": {"source": "credit_card", "brand": "mastercard", "last_four": "2732", "id": "credit_card_4196779"},
+            "gift_card_1234567": {"source": "gift_card", "balance": 40, "id": "gift_card_1234567"}}}"#;
+        let ep = |customer: &str| Episode {
+            id: "e".to_string(),
+            task_id: "1".to_string(),
+            trial: 0,
+            domain: "retail".to_string(),
+            agent_model: "m".to_string(),
+            reward: 1.0,
+            events: vec![
+                Event::User {
+                    text: "Refund my order please.".to_string(),
+                },
+                Event::ToolResult {
+                    call_id: "a".to_string(),
+                    name: "get_user_details".to_string(),
+                    error: false,
+                    content: methods.to_string(),
+                },
+                Event::Assistant {
+                    text: Some("Where should the refund go?".to_string()),
+                    calls: vec![],
+                    usage: None,
+                },
+                Event::User {
+                    text: customer.to_string(),
+                },
+            ],
+        };
+        let refund = |to: &str| ToolCall {
+            id: "w".to_string(),
+            name: "return_delivered_order_items".to_string(),
+            arguments: json!({"order_id": "#W1", "payment_method_id": to}),
+        };
+        let asked = ep("To my Mastercard ending in 2732, please.");
+        assert_eq!(
+            contradicted(&asked, &refund("gift_card_1234567")),
+            vec![(
+                "payment_method_id".to_string(),
+                "gift_card_1234567".to_string()
+            )]
+        );
+        assert!(contradicted(&asked, &refund("credit_card_4196779")).is_empty());
+        // Naming nothing of the list chooses nothing, so nothing is flagged.
+        assert!(contradicted(&ep("Yes, go ahead."), &refund("gift_card_1234567")).is_empty());
+        // An id is named by its digits too.
+        assert!(said("credit_card_4196779", "the card 4196779 please"));
+        assert!(!said("2732", "card 27320"));
+        assert!(said("20.50", "about 20.5 dollars"));
     }
 }
