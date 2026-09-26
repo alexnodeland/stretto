@@ -44,10 +44,11 @@ agent, and the episode scored as τ²-bench scores solo runs (its environment
 assertions, and the required actions where the task asks). As in τ²-bench,
 the episode ends when the agent calls `done`, and a turn that ends with
 neither `done` nor a transfer to a human is an agent error. With `--handback
-RUNS.json` (`scripts/telecom_workflow.py --json`) the agent takes over from
-the compiled workflow: the workflow's calls on the task are made first, with
-their effects in place, and the agent is told what they returned and that
-the workflow's own check of the ticket's outcome failed (the cascade).
+RUNS.json` (`scripts/telecom_workflow.py --json`, or one run of
+`stretto-procedure`) the agent takes over from the compiled workflow: the
+workflow's calls on the task are made first, with their effects in place,
+and the agent is told what they returned and that the workflow's own check
+of the ticket's outcome failed (the cascade).
 
 `--agent-cli claude` runs the agent on a Claude model instead
 (`claude-agent.sh`, with `--model`), and `--customer-cli claude
@@ -153,11 +154,17 @@ def handback(runs: Path, task, env) -> tuple[list[dict], str]:
     import telecom_workflow
     from tau2.data_model.message import ToolCall
 
-    row = next((r for r in json.loads(runs.read_text())["runs"] if r["task_id"] == str(task.id)), None)
-    if row is None:
-        raise SystemExit(f"no workflow run for task {task.id} in {runs}")
-    calls = [dict(zip(("name", "arguments"), telecom_workflow.unlabel(c))) for c in row["calls"]]
-    probe = next((p for phrase, p, *_ in telecom_workflow.RESOLVED if phrase in (task.ticket or "").lower()), None)
+    data = json.loads(runs.read_text())
+    if "verdict" in data:
+        # One run of `stretto-procedure`: its calls, then its check's read.
+        calls = [{"name": c["tool"], "arguments": c["arguments"]} for c in data["calls"]]
+        probe = data["check"][0] if data.get("check") else None
+    else:
+        row = next((r for r in data["runs"] if r["task_id"] == str(task.id)), None)
+        if row is None:
+            raise SystemExit(f"no workflow run for task {task.id} in {runs}")
+        calls = [dict(zip(("name", "arguments"), telecom_workflow.unlabel(c))) for c in row["calls"]]
+        probe = next((p for phrase, p, *_ in telecom_workflow.RESOLVED if phrase in (task.ticket or "").lower()), None)
     if probe:
         calls.append({"name": probe, "arguments": {}})
     init = task.initial_state
@@ -225,7 +232,8 @@ def main() -> None:
     parser.add_argument("--solo", action="store_true", help="τ²-bench's no-user mode (telecom): no customer")
     parser.add_argument(
         "--handback", type=Path, metavar="RUNS.json",
-        help="solo: take over from the compiled workflow's run on the task (scripts/telecom_workflow.py --json)",
+        help="solo: take over from the compiled workflow's run on the task (scripts/telecom_workflow.py --json, "
+        "or a stretto-procedure run)",
     )
     parser.add_argument(
         "--read-only-hints", action="store_true",
