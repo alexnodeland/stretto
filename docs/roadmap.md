@@ -55,6 +55,8 @@ These cost Jev dollars, CPU time or people's time, and no LLM runs.
 | [#35](https://github.com/alexnodeland/stretto/issues/35) | Staged learning: update flows as sessions arrive, evaluate in the background, commit explicitly | Served sessions teach a flow as much as clean ones, and relearning on its own sessions holds with the named-other count ([results](results/served-sessions-2026-09-26.md)). What changes a flow's lookups or bindings still needs review (`flow-diff`) |
 | [#36](https://github.com/alexnodeland/stretto/issues/36) | A web app: a sanctioned container and a UI for flows, servers and commits | Reviewing a flow, its diff and its pinned inputs, and managing the servers behind the proxy |
 | [#37](https://github.com/alexnodeland/stretto/issues/37) | Macros that write: flows that prepare a write sequence for one confirmation | RFC-001 §3.5's plan/commit; a write-bearing flow is judged on pass rate and compliance, not turns ([the anatomy](results/anatomy-2026-09-26.md)) |
+| [#38](https://github.com/alexnodeland/stretto/issues/38) | Compiled procedures for agents that work alone, handing back on the outcome | In telecom's solo mode a workflow compiled once from traces passed as many held-out tasks as the agents, with no model, and its outcome check caught every one of its failures ([results](results/telecom-workflow-2026-09-26.md)). Next: a solo workload whose arguments need binding |
+| [#39](https://github.com/alexnodeland/stretto/issues/39) | Stop reading once the described record is found | What is left of the detours on an agent a flow never trained on is a semantic stop ([results](results/detours-2026-09-26.md)): a question at the sites that iterate, scored per agent |
 
 ## Fixes and tooling
 
