@@ -110,9 +110,20 @@ def which(record, others):
 
 
 def symbol(v, outputs, ticket):
-    """Where an identifier came from: the path of the most recent result that
+    r"""Where an identifier came from: the path of the most recent result that
     holds it (with, in a list of records, the fields that set its record
-    apart), else the ticket (by its shape), else itself."""
+    apart), else the ticket (by its shape), else itself.
+
+    >>> outs = [("get_customer_by_phone", {"customer_id": "C1", "line_ids": ["L1", "L2"]}),
+    ...         ("get_bills_for_customer", [{"bill_id": "B1001", "status": "Paid"},
+    ...                                     {"bill_id": "B1234321", "status": "Overdue"}])]
+    >>> symbol("L2", outs, "")
+    '@get_customer_by_phone$.line_ids[*]'
+    >>> symbol("B1234321", outs, "")
+    '@get_bills_for_customer$[*].bill_id?{"status": "Overdue"}'
+    >>> symbol("555-123-2002", outs, "phone number: 555-123-2002")
+    '@ticket\\d{3}\\-\\d{3}\\-\\d{4}'
+    """
     for tool, value in reversed(outputs):
         found = paths(value, v)
         if found:
@@ -170,9 +181,26 @@ def renamed_environment(rename):
 
 
 def resolve(sym, outputs, ticket, passed):
-    """Bind a symbol again: the ticket's first match of its shape, or the most
+    r"""Bind a symbol again: the ticket's first match of its shape, or the most
     recent result of its tool with a value at its path, the first in a list
-    not yet passed as this argument."""
+    not yet passed as this argument.
+
+    >>> outs = [("get_customer_by_phone", {"customer_id": "C7", "line_ids": ["L7", "L8"]}),
+    ...         ("get_details_by_id", {"line_id": "L7", "phone_number": "555-0107"}),
+    ...         ("get_details_by_id", {"line_id": "L8", "phone_number": "555-0108"}),
+    ...         ("get_bills_for_customer", [{"bill_id": "B1", "status": "Paid"},
+    ...                                     {"bill_id": "B2", "status": "Overdue"}])]
+    >>> resolve("@get_customer_by_phone$.line_ids[*]", outs, "", {"L7"})
+    'L8'
+    >>> resolve("@get_details_by_id$.line_id", outs, "", set())  # the most recent
+    'L8'
+    >>> resolve("@get_details_by_id$.line_id", outs, "my number is 555-0107", set())
+    'L7'
+    >>> resolve('@get_bills_for_customer$[*].bill_id?{"status": "Overdue"}', outs, "", set())
+    'B2'
+    >>> resolve("@ticket\\d{3}-\\d{4}", outs, "call me at 555-0199", set())
+    '555-0199'
+    """
     if not (isinstance(sym, str) and sym.startswith("@")):
         return sym
     if sym.startswith("@ticket"):
