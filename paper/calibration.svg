@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1014 324" width="1014" height="324" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12">
+<style>svg{--bg:#fcfcfb;--ink:#0b0b0b;--muted:#52514e;--grid:#e4e3df;--a:#2a78d6;--b:#eb6834;}@media (prefers-color-scheme: dark){svg{--bg:#1a1a19;--ink:#ffffff;--muted:#c3c2b7;--grid:#3a3936;--a:#3987e5;--b:#d95926;}}.t{fill:var(--ink)}.m{fill:var(--muted)}</style>
+<rect width="1014" height="324" fill="var(--bg)"/>
+<line x1="56" x2="78" y1="16" y2="16" stroke="var(--a)" stroke-width="2"/>
+<circle cx="67" cy="16" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<text class="t" x="86" y="20">habit: chance the agent calls it next</text>
+<line x1="56" x2="78" y1="32" y2="32" stroke="var(--b)" stroke-width="2"/>
+<circle cx="67" cy="32" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<text class="t" x="86" y="36">reach: chance it calls it before its next write</text>
+<line x1="56" x2="256" y1="276.0" y2="276.0" stroke="var(--grid)"/>
+<text class="m" x="56.0" y="292" text-anchor="middle">0</text>
+<text class="m" x="48" y="280.0" text-anchor="end">0</text>
+<line x1="56" x2="256" y1="226.0" y2="226.0" stroke="var(--grid)"/>
+<text class="m" x="106.0" y="292" text-anchor="middle">0.25</text>
+<text class="m" x="48" y="230.0" text-anchor="end">0.25</text>
+<line x1="56" x2="256" y1="176.0" y2="176.0" stroke="var(--grid)"/>
+<text class="m" x="156.0" y="292" text-anchor="middle">0.5</text>
+<text class="m" x="48" y="180.0" text-anchor="end">0.5</text>
+<line x1="56" x2="256" y1="126.0" y2="126.0" stroke="var(--grid)"/>
+<text class="m" x="206.0" y="292" text-anchor="middle">0.75</text>
+<text class="m" x="48" y="130.0" text-anchor="end">0.75</text>
+<line x1="56" x2="256" y1="76.0" y2="76.0" stroke="var(--grid)"/>
+<text class="m" x="256.0" y="292" text-anchor="middle">1</text>
+<text class="m" x="48" y="80.0" text-anchor="end">1</text>
+<line x1="56" y1="276" x2="256" y2="76" stroke="var(--muted)" stroke-dasharray="3 3"/>
+<text class="t" x="56" y="52" font-weight="600">Retail</text>
+<text class="m" x="56" y="68">ECE 0.164 → 0.083</text>
+<polyline points="58.4,269.2 68.2,188.2 94.4,178.6 105.2,179.2 145.0,111.8 160.2,89.0 184.4,90.0 201.4,100.6 237.2,77.0" fill="none" stroke="var(--a)" stroke-width="2"/>
+<circle cx="58.4" cy="269.2" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="68.2" cy="188.2" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="94.4" cy="178.6" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="105.2" cy="179.2" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="145.0" cy="111.8" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="160.2" cy="89.0" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="184.4" cy="90.0" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="201.4" cy="100.6" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="237.2" cy="77.0" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<polyline points="59.2,272.8 73.0,266.0 83.2,234.0 106.8,236.4 121.6,140.4 147.0,118.2 160.0,91.0 206.6,98.0 235.6,85.4 242.8,89.4" fill="none" stroke="var(--b)" stroke-width="2"/>
+<circle cx="59.2" cy="272.8" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="73.0" cy="266.0" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="83.2" cy="234.0" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="106.8" cy="236.4" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="121.6" cy="140.4" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="147.0" cy="118.2" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="160.0" cy="91.0" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="206.6" cy="98.0" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="235.6" cy="85.4" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="242.8" cy="89.4" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<line x1="302" x2="502" y1="276.0" y2="276.0" stroke="var(--grid)"/>
+<text class="m" x="302.0" y="292" text-anchor="middle">0</text>
+<line x1="302" x2="502" y1="226.0" y2="226.0" stroke="var(--grid)"/>
+<text class="m" x="352.0" y="292" text-anchor="middle">0.25</text>
+<line x1="302" x2="502" y1="176.0" y2="176.0" stroke="var(--grid)"/>
+<text class="m" x="402.0" y="292" text-anchor="middle">0.5</text>
+<line x1="302" x2="502" y1="126.0" y2="126.0" stroke="var(--grid)"/>
+<text class="m" x="452.0" y="292" text-anchor="middle">0.75</text>
+<line x1="302" x2="502" y1="76.0" y2="76.0" stroke="var(--grid)"/>
+<text class="m" x="502.0" y="292" text-anchor="middle">1</text>
+<line x1="302" y1="276" x2="502" y2="76" stroke="var(--muted)" stroke-dasharray="3 3"/>
+<text class="t" x="302" y="52" font-weight="600">Airline</text>
+<text class="m" x="302" y="68">ECE 0.106 → 0.068</text>
+<polyline points="303.4,260.0 316.0,197.6 329.8,262.2 348.2,223.2 375.4,157.4 394.2,80.6 417.8,91.6 434.0,97.4" fill="none" stroke="var(--a)" stroke-width="2"/>
+<circle cx="303.4" cy="260.0" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="316.0" cy="197.6" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="329.8" cy="262.2" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="348.2" cy="223.2" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="375.4" cy="157.4" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="394.2" cy="80.6" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="417.8" cy="91.6" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="434.0" cy="97.4" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<polyline points="306.2,262.6 318.6,236.8 326.6,239.8 357.6,221.0 376.6,193.4 432.4,90.2 445.0,93.2" fill="none" stroke="var(--b)" stroke-width="2"/>
+<circle cx="306.2" cy="262.6" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="318.6" cy="236.8" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="326.6" cy="239.8" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="357.6" cy="221.0" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="376.6" cy="193.4" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="432.4" cy="90.2" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="445.0" cy="93.2" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<line x1="548" x2="748" y1="276.0" y2="276.0" stroke="var(--grid)"/>
+<text class="m" x="548.0" y="292" text-anchor="middle">0</text>
+<line x1="548" x2="748" y1="226.0" y2="226.0" stroke="var(--grid)"/>
+<text class="m" x="598.0" y="292" text-anchor="middle">0.25</text>
+<line x1="548" x2="748" y1="176.0" y2="176.0" stroke="var(--grid)"/>
+<text class="m" x="648.0" y="292" text-anchor="middle">0.5</text>
+<line x1="548" x2="748" y1="126.0" y2="126.0" stroke="var(--grid)"/>
+<text class="m" x="698.0" y="292" text-anchor="middle">0.75</text>
+<line x1="548" x2="748" y1="76.0" y2="76.0" stroke="var(--grid)"/>
+<text class="m" x="748.0" y="292" text-anchor="middle">1</text>
+<line x1="548" y1="276" x2="748" y2="76" stroke="var(--muted)" stroke-dasharray="3 3"/>
+<text class="t" x="548" y="52" font-weight="600">Telecom</text>
+<text class="m" x="548" y="68">ECE 0.069 → 0.049</text>
+<polyline points="549.0,269.0 560.6,247.4 582.8,197.6 594.8,207.0 623.0,210.6 631.8,89.8 659.2,201.2 705.8,93.2" fill="none" stroke="var(--a)" stroke-width="2"/>
+<circle cx="549.0" cy="269.0" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="560.6" cy="247.4" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="582.8" cy="197.6" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="594.8" cy="207.0" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="623.0" cy="210.6" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="631.8" cy="89.8" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="659.2" cy="201.2" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="705.8" cy="93.2" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<polyline points="550.4,275.0 562.6,268.8 582.0,236.2 598.6,251.8 616.4,208.4 633.0,198.6 683.4,89.0 692.4,82.4 708.6,82.0 741.0,168.0" fill="none" stroke="var(--b)" stroke-width="2"/>
+<circle cx="550.4" cy="275.0" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="562.6" cy="268.8" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="582.0" cy="236.2" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="598.6" cy="251.8" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="616.4" cy="208.4" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="633.0" cy="198.6" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="683.4" cy="89.0" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="692.4" cy="82.4" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="708.6" cy="82.0" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="741.0" cy="168.0" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<line x1="794" x2="994" y1="276.0" y2="276.0" stroke="var(--grid)"/>
+<text class="m" x="794.0" y="292" text-anchor="middle">0</text>
+<line x1="794" x2="994" y1="226.0" y2="226.0" stroke="var(--grid)"/>
+<text class="m" x="844.0" y="292" text-anchor="middle">0.25</text>
+<line x1="794" x2="994" y1="176.0" y2="176.0" stroke="var(--grid)"/>
+<text class="m" x="894.0" y="292" text-anchor="middle">0.5</text>
+<line x1="794" x2="994" y1="126.0" y2="126.0" stroke="var(--grid)"/>
+<text class="m" x="944.0" y="292" text-anchor="middle">0.75</text>
+<line x1="794" x2="994" y1="76.0" y2="76.0" stroke="var(--grid)"/>
+<text class="m" x="994.0" y="292" text-anchor="middle">1</text>
+<line x1="794" y1="276" x2="994" y2="76" stroke="var(--muted)" stroke-dasharray="3 3"/>
+<text class="t" x="794" y="52" font-weight="600">Telecom, solo</text>
+<text class="m" x="794" y="68">ECE 0.056 → 0.014</text>
+<polyline points="795.6,265.4 808.0,239.2 824.0,235.8 843.4,209.4 863.8,219.4 881.4,201.8 898.4,226.0 919.6,130.6 940.8,112.2 963.2,162.2" fill="none" stroke="var(--a)" stroke-width="2"/>
+<circle cx="795.6" cy="265.4" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="808.0" cy="239.2" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="824.0" cy="235.8" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="843.4" cy="209.4" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="863.8" cy="219.4" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="881.4" cy="201.8" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="898.4" cy="226.0" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="919.6" cy="130.6" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="940.8" cy="112.2" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="963.2" cy="162.2" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<polyline points="797.0,270.0 807.8,263.0 823.8,248.2 845.0,225.0 862.2,208.2 880.0,184.6 898.8,221.2 926.4,151.2 944.6,110.0 963.8,151.6" fill="none" stroke="var(--b)" stroke-width="2"/>
+<circle cx="797.0" cy="270.0" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="807.8" cy="263.0" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="823.8" cy="248.2" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="845.0" cy="225.0" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="862.2" cy="208.2" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="880.0" cy="184.6" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="898.8" cy="221.2" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="926.4" cy="151.2" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="944.6" cy="110.0" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<circle cx="963.8" cy="151.6" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<text class="m" x="535" y="316" text-anchor="middle">score of the lookup (bin mean)</text>
+<text class="m" transform="translate(14 176.0) rotate(-90)" text-anchor="middle">share used before the next write</text>
+</svg>

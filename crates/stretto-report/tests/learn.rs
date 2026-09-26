@@ -513,6 +513,7 @@ fn a_flow_shows_what_it_may_call_and_where_its_arguments_come_from() {
         // Only the customer knows their email.
         "| `find_account` | `email` | nothing: the flow never makes this lookup | — |",
         "It has no arbiter: it decides with the habit alone and asks no one.",
+        "It also counts how often each action came before the agent's next write (`reach`), which `--decider reach` serves.",
     ] {
         assert!(md.contains(line), "missing {line:?} in\n{md}");
     }

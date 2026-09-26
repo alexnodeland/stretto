@@ -8,13 +8,13 @@ A stdio [MCP](https://modelcontextprotocol.io) proxy that records what an agent 
 
 ```text
 stretto-proxy [--record <DIR>] [--domain <NAME>] [--agent-model <MODEL>]
-              [--flow <FILE> [--oracle jev|replay|mock] [--oracle-cache <DIR>] [--flow-decider arbiter|habit] ...]
+              [--flow <FILE> [--oracle jev|replay|mock] [--oracle-cache <DIR>] [--flow-decider arbiter|habit|reach] ...]
               [--guards [--confirm-judge log|enforce [--confirm-second proposed] ...]]
               [--commit] [--context <FILE>] -- <SERVER_COMMAND>...
 stretto-proxy [the same options] --upstream <URL> [--upstream-header NAME=VAR]...
 ```
 
-Install it with `cargo install --path crates/stretto-proxy`, which also installs `stretto-mcp-demo`. In the host's configuration, replace the server's command with `stretto-proxy` and put the original command after `--`:
+Install it with `cargo install --path crates/stretto-proxy`, which also installs `stretto-mcp-demo` and `stretto-procedure`, which runs a compiled procedure against an MCP server with no model ([formats](../../docs/formats.md#the-procedure-ir-stretto_procedure-1), [CLI](../../docs/cli.md)). In the host's configuration, replace the server's command with `stretto-proxy` and put the original command after `--`:
 
 ```json
 {

@@ -1174,6 +1174,24 @@ What this changes:
 
 ---
 
+### 3.27 Amendment 16: the probability that matters, and a procedure stretto runs (2026-09-26)
+
+Amendment 15 left two pieces of the design as scripts or hand-set numbers: the flow's probability, the habit's chance of the agent's next step, and its threshold, 0.3; and the compiled procedure, a Python script. This round derives both, and moves the procedure into stretto.
+
+- **Details:** [the working paper](../../paper/stretto.md) and [the round's results](../results/reach-2026-09-26.md).
+- **The replay counts only what a lookup answered.** `check_flow.py` skipped any recorded call already made, the agent's own repeats included, which counted 0.2–0.9% of turns per domain (3.3% for one agent) as saved. A recorded call is now skipped only when a flow lookup answers it: the same call, not yet used, that returned what the recorded call returned. `--legacy` reproduces the published numbers.
+- **The probability that matters.** Reads commute with each other and with the state until the next write, so the expected value of a set of lookups is a sum over lookups, and the best set is every lookup whose chance of being used *before the next write* clears δ/(β+δ), a detour's cost over a saved turn's value plus it. The habit's next-step chance understates that: labelled in replay, lookups the habit scored 0.4–0.6 were used 94–97% of the time, and its expected calibration error was 0.16–0.19 in retail. `learn` and `compile` now also count, over the habit's histories, which actions came before the agent's next write (`reach`, each action its own Beta–Bernoulli backed off as the habit is), and `--decider reach` makes, of the lookups that bind, the one with the highest chance times its binding's, when that clears the threshold. It is calibrated in every domain (expected calibration error 0.01–0.08, against the habit's 0.06–0.16).
+- **The threshold is a ratio of costs, measured and counted.** In the live paired run a detour carried 2,530 input tokens over the rest of its episode and a saved turn saved 6,000, so θ* ≈ 0.30. `scripts/costs.py` counts the same costs in recorded episodes, in each agent's own tokens, and gets 0.298 in retail, and 0.12–0.13 in airline and telecom, whose contexts are longer and results shorter. Swept from 0.1 to 0.8 and priced at those costs, the reach decider's utility peaks at θ* for four of six agent and domain pairs; the other two are agents the population's scores fit worst.
+- **Nine agents.** At 0.3, flows learned from the 2025 runs took 86.4% of retail's read-only ceiling across the nine leaderboard agents against the habit's 76.2%. Priced at each domain's own costs, the reach decider saves more input tokens per episode than the habit in every domain: 1.6 thousand in retail, 0.6 in telecom (for twice the detours, which telecom's short results make cheap), 1.7 in solo telecom, and 0.1 in airline.
+- **Live.** With no model of its own, the reach decider cut GLM-5.3's LLM turns by 27.9% (19.1–35.9%) on 28 retail and airline tasks against the paired run's recorded baseline, where D0 had cut 23.0% on the same tasks. It passed 21, against the baseline's 24 and D0's 21; in each of the four tasks lost, its lookups returned what the baseline agent's own reads had returned, and the episodes parted later, at the customer's choice or the agent's.
+- **A procedure stretto runs** ([#38](https://github.com/alexnodeland/stretto/issues/38)). The compiled telecom workflow is now data, the procedure IR, and `stretto-procedure` runs it against any MCP server: on all 40 held-out tasks it made exactly the script's calls, passed the same 35 and handed back the same 4. Live, GLM-5.3 took over each hand-back with the procedure's calls as context and resolved all 4 in both of two trials, at 4.75 LLM turns each; the cascade passes 39 of 40 at 0.48 LLM turns per ticket, where GLM-5.3 alone made 15.9.
+
+What this changes:
+
+- **§3.3's habit and §3.6's rule:** the flow's decision is per lookup, on its chance of use before the next write, at a threshold that is a ratio of measured costs. The next-step habit stays as the default decider for flows learned before, and as the comparison.
+- **§3.5's compile-once design:** a procedure is a product artifact with its own IR and runtime, for procedures an agent runs alone; the cascade hands a model what the procedure's own check cannot confirm.
+- **Next:** a threshold per decision, from the result's size and the turns left, both countable; and the procedure where accounts differ in their state.
+
 ## 4. Drawbacks
 
 - **Predictability has a ceiling.**

@@ -279,7 +279,7 @@ pub fn show(flow: &Flow, threshold: f64) -> String {
     let _ = writeln!(md, "# Flow: {}\n", flow.domain());
     let _ = writeln!(
         md,
-        "Written by stretto {} from {}. The habit learned from {} successful sessions or episodes. {}\n",
+        "Written by stretto {} from {}. The habit learned from {} successful sessions or episodes. {}{}\n",
         p.stretto,
         if p.sources.is_empty() {
             "no named source".to_string()
@@ -295,6 +295,11 @@ pub fn show(flow: &Flow, threshold: f64) -> String {
             )
         } else {
             "It has no arbiter: it decides with the habit alone and asks no one.".to_string()
+        },
+        if flow.has_reach() {
+            " It also counts how often each action came before the agent's next write (`reach`), which `--decider reach` serves."
+        } else {
+            ""
         }
     );
     let _ = writeln!(md, "## Tools\n");

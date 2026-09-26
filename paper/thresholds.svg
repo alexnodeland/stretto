@@ -1,0 +1,214 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 796 438" width="796" height="438" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12">
+<style>svg{--bg:#fcfcfb;--ink:#0b0b0b;--muted:#52514e;--grid:#e4e3df;--a:#2a78d6;--b:#eb6834;}@media (prefers-color-scheme: dark){svg{--bg:#1a1a19;--ink:#ffffff;--muted:#c3c2b7;--grid:#3a3936;--a:#3987e5;--b:#d95926;}}.t{fill:var(--ink)}.m{fill:var(--muted)}</style>
+<rect width="796" height="438" fill="var(--bg)"/>
+<line x1="64" x2="86" y1="16" y2="16" stroke="var(--a)" stroke-width="2"/>
+<circle cx="75" cy="16" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>
+<text class="t" x="94" y="20">next step</text>
+<line x1="64" x2="86" y1="32" y2="32" stroke="var(--b)" stroke-width="2"/>
+<circle cx="75" cy="32" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="2"/>
+<text class="t" x="94" y="36">use before write</text>
+<text class="t" x="64" y="54" font-weight="600">Sonnet 4.5, retail</text>
+<line x1="64" x2="264" y1="194.0" y2="194.0" stroke="var(--grid)"/>
+<text class="m" x="58" y="198.0" text-anchor="end">0</text>
+<line x1="64" x2="264" y1="150.7" y2="150.7" stroke="var(--grid)"/>
+<text class="m" x="58" y="154.7" text-anchor="end">1</text>
+<line x1="64" x2="264" y1="107.3" y2="107.3" stroke="var(--grid)"/>
+<text class="m" x="58" y="111.3" text-anchor="end">2</text>
+<line x1="64" x2="264" y1="64.0" y2="64.0" stroke="var(--grid)"/>
+<text class="m" x="58" y="68.0" text-anchor="end">3</text>
+<text class="m" x="64.0" y="210" text-anchor="middle">0.1</text>
+<text class="m" x="121.1" y="210" text-anchor="middle">0.3</text>
+<text class="m" x="178.3" y="210" text-anchor="middle">0.5</text>
+<text class="m" x="264.0" y="210" text-anchor="middle">0.8</text>
+<line x1="120.4" x2="120.4" y1="64" y2="194" stroke="var(--muted)" stroke-dasharray="3 3"/>
+<text class="m" x="124.4" y="188">θ* 0.30</text>
+<polyline points="64.0,105.4 78.3,105.3 92.6,100.5 121.1,99.3 149.7,99.3 178.3,111.6 206.9,149.8 235.4,180.0 264.0,187.9" fill="none" stroke="var(--a)" stroke-width="2"/>
+<circle cx="64.0" cy="105.4" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="78.3" cy="105.3" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="92.6" cy="100.5" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="121.1" cy="99.3" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="149.7" cy="99.3" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="178.3" cy="111.6" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="206.9" cy="149.8" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="235.4" cy="180.0" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="264.0" cy="187.9" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<polyline points="64.0,92.8 78.3,92.0 92.6,91.9 121.1,88.5 149.7,99.3 178.3,107.4 206.9,122.6 235.4,124.1 264.0,141.4" fill="none" stroke="var(--b)" stroke-width="2"/>
+<circle cx="64.0" cy="92.8" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="78.3" cy="92.0" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="92.6" cy="91.9" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="121.1" cy="88.5" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="149.7" cy="99.3" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="178.3" cy="107.4" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="206.9" cy="122.6" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="235.4" cy="124.1" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="264.0" cy="141.4" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<text class="t" x="320" y="54" font-weight="600">GLM-5, retail</text>
+<line x1="320" x2="520" y1="194.0" y2="194.0" stroke="var(--grid)"/>
+<text class="m" x="314" y="198.0" text-anchor="end">0</text>
+<line x1="320" x2="520" y1="129.0" y2="129.0" stroke="var(--grid)"/>
+<text class="m" x="314" y="133.0" text-anchor="end">1</text>
+<line x1="320" x2="520" y1="64.0" y2="64.0" stroke="var(--grid)"/>
+<text class="m" x="314" y="68.0" text-anchor="end">2</text>
+<text class="m" x="320.0" y="210" text-anchor="middle">0.1</text>
+<text class="m" x="377.1" y="210" text-anchor="middle">0.3</text>
+<text class="m" x="434.3" y="210" text-anchor="middle">0.5</text>
+<text class="m" x="520.0" y="210" text-anchor="middle">0.8</text>
+<line x1="376.4" x2="376.4" y1="64" y2="194" stroke="var(--muted)" stroke-dasharray="3 3"/>
+<text class="m" x="380.4" y="188">θ* 0.30</text>
+<polyline points="320.0,101.1 334.3,101.1 348.6,86.9 377.1,83.1 405.7,83.1 434.3,111.3 462.9,138.7 491.4,184.7 520.0,184.9" fill="none" stroke="var(--a)" stroke-width="2"/>
+<circle cx="320.0" cy="101.1" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="334.3" cy="101.1" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="348.6" cy="86.9" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="377.1" cy="83.1" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="405.7" cy="83.1" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="434.3" cy="111.3" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="462.9" cy="138.7" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="491.4" cy="184.7" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="520.0" cy="184.9" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<polyline points="320.0,77.8 334.3,75.7 348.6,75.9 377.1,67.3 405.7,83.1 434.3,105.2 462.9,121.2 491.4,121.2 520.0,132.7" fill="none" stroke="var(--b)" stroke-width="2"/>
+<circle cx="320.0" cy="77.8" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="334.3" cy="75.7" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="348.6" cy="75.9" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="377.1" cy="67.3" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="405.7" cy="83.1" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="434.3" cy="105.2" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="462.9" cy="121.2" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="491.4" cy="121.2" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="520.0" cy="132.7" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<text class="t" x="576" y="54" font-weight="600">Sonnet 4.5, airline</text>
+<line x1="576" x2="776" y1="194.0" y2="194.0" stroke="var(--grid)"/>
+<text class="m" x="570" y="198.0" text-anchor="end">0</text>
+<line x1="576" x2="776" y1="129.0" y2="129.0" stroke="var(--grid)"/>
+<text class="m" x="570" y="133.0" text-anchor="end">0.5</text>
+<line x1="576" x2="776" y1="64.0" y2="64.0" stroke="var(--grid)"/>
+<text class="m" x="570" y="68.0" text-anchor="end">1</text>
+<text class="m" x="576.0" y="210" text-anchor="middle">0.1</text>
+<text class="m" x="633.1" y="210" text-anchor="middle">0.3</text>
+<text class="m" x="690.3" y="210" text-anchor="middle">0.5</text>
+<text class="m" x="776.0" y="210" text-anchor="middle">0.8</text>
+<line x1="583.6" x2="583.6" y1="64" y2="194" stroke="var(--muted)" stroke-dasharray="3 3"/>
+<text class="m" x="587.6" y="188">θ* 0.13</text>
+<polyline points="576.0,85.3 590.3,81.9 604.6,81.2 633.1,83.2 661.7,99.9 690.3,138.4 718.9,141.4 747.4,194.0 776.0,194.0" fill="none" stroke="var(--a)" stroke-width="2"/>
+<circle cx="576.0" cy="85.3" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="590.3" cy="81.9" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="604.6" cy="81.2" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="633.1" cy="83.2" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="661.7" cy="99.9" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="690.3" cy="138.4" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="718.9" cy="141.4" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="747.4" cy="194.0" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="776.0" cy="194.0" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<polyline points="576.0,87.0 590.3,70.1 604.6,78.8 633.1,82.3 661.7,90.8 690.3,90.8 718.9,99.0 747.4,125.5 776.0,194.0" fill="none" stroke="var(--b)" stroke-width="2"/>
+<circle cx="576.0" cy="87.0" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="590.3" cy="70.1" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="604.6" cy="78.8" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="633.1" cy="82.3" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="661.7" cy="90.8" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="690.3" cy="90.8" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="718.9" cy="99.0" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="747.4" cy="125.5" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="776.0" cy="194.0" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<text class="t" x="64" y="254" font-weight="600">GLM-5, airline</text>
+<line x1="64" x2="264" y1="394.0" y2="394.0" stroke="var(--grid)"/>
+<text class="m" x="58" y="398.0" text-anchor="end">0</text>
+<line x1="64" x2="264" y1="329.0" y2="329.0" stroke="var(--grid)"/>
+<text class="m" x="58" y="333.0" text-anchor="end">0.2</text>
+<line x1="64" x2="264" y1="264.0" y2="264.0" stroke="var(--grid)"/>
+<text class="m" x="58" y="268.0" text-anchor="end">0.4</text>
+<text class="m" x="64.0" y="410" text-anchor="middle">0.1</text>
+<text class="m" x="121.1" y="410" text-anchor="middle">0.3</text>
+<text class="m" x="178.3" y="410" text-anchor="middle">0.5</text>
+<text class="m" x="264.0" y="410" text-anchor="middle">0.8</text>
+<line x1="71.6" x2="71.6" y1="264" y2="394" stroke="var(--muted)" stroke-dasharray="3 3"/>
+<text class="m" x="75.6" y="388">θ* 0.13</text>
+<polyline points="64.0,290.5 78.3,282.9 92.6,278.9 121.1,270.0 149.7,288.6 178.3,389.4 206.9,389.4 235.4,394.0 264.0,394.0" fill="none" stroke="var(--a)" stroke-width="2"/>
+<circle cx="64.0" cy="290.5" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="78.3" cy="282.9" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="92.6" cy="278.9" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="121.1" cy="270.0" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="149.7" cy="288.6" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="178.3" cy="389.4" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="206.9" cy="389.4" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="235.4" cy="394.0" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="264.0" cy="394.0" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<polyline points="64.0,337.5 78.3,279.1 92.6,276.6 121.1,270.0 149.7,268.0 178.3,268.0 206.9,288.6 235.4,355.0 264.0,394.0" fill="none" stroke="var(--b)" stroke-width="2"/>
+<circle cx="64.0" cy="337.5" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="78.3" cy="279.1" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="92.6" cy="276.6" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="121.1" cy="270.0" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="149.7" cy="268.0" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="178.3" cy="268.0" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="206.9" cy="288.6" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="235.4" cy="355.0" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="264.0" cy="394.0" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<text class="t" x="320" y="254" font-weight="600">Sonnet 4.5, telecom</text>
+<line x1="320" x2="520" y1="394.0" y2="394.0" stroke="var(--grid)"/>
+<text class="m" x="314" y="398.0" text-anchor="end">0</text>
+<line x1="320" x2="520" y1="329.0" y2="329.0" stroke="var(--grid)"/>
+<text class="m" x="314" y="333.0" text-anchor="end">2</text>
+<line x1="320" x2="520" y1="264.0" y2="264.0" stroke="var(--grid)"/>
+<text class="m" x="314" y="268.0" text-anchor="end">4</text>
+<text class="m" x="320.0" y="410" text-anchor="middle">0.1</text>
+<text class="m" x="377.1" y="410" text-anchor="middle">0.3</text>
+<text class="m" x="434.3" y="410" text-anchor="middle">0.5</text>
+<text class="m" x="520.0" y="410" text-anchor="middle">0.8</text>
+<line x1="324.7" x2="324.7" y1="264" y2="394" stroke="var(--muted)" stroke-dasharray="3 3"/>
+<text class="m" x="328.7" y="388">θ* 0.12</text>
+<polyline points="320.0,280.7 334.3,280.6 348.6,290.8 377.1,295.3 405.7,295.0 434.3,341.3 462.9,341.2 491.4,341.2 520.0,394.0" fill="none" stroke="var(--a)" stroke-width="2"/>
+<circle cx="320.0" cy="280.7" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="334.3" cy="280.6" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="348.6" cy="290.8" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="377.1" cy="295.3" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="405.7" cy="295.0" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="434.3" cy="341.3" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="462.9" cy="341.2" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="491.4" cy="341.2" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="520.0" cy="394.0" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<polyline points="320.0,278.1 334.3,283.8 348.6,286.6 377.1,288.4 405.7,290.0 434.3,295.0 462.9,294.8 491.4,335.4 520.0,341.2" fill="none" stroke="var(--b)" stroke-width="2"/>
+<circle cx="320.0" cy="278.1" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="334.3" cy="283.8" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="348.6" cy="286.6" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="377.1" cy="288.4" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="405.7" cy="290.0" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="434.3" cy="295.0" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="462.9" cy="294.8" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="491.4" cy="335.4" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="520.0" cy="341.2" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<text class="t" x="576" y="254" font-weight="600">GPT-5.2 (none), telecom</text>
+<line x1="576" x2="776" y1="394.0" y2="394.0" stroke="var(--grid)"/>
+<text class="m" x="570" y="398.0" text-anchor="end">0</text>
+<line x1="576" x2="776" y1="350.7" y2="350.7" stroke="var(--grid)"/>
+<text class="m" x="570" y="354.7" text-anchor="end">0.5</text>
+<line x1="576" x2="776" y1="307.3" y2="307.3" stroke="var(--grid)"/>
+<text class="m" x="570" y="311.3" text-anchor="end">1</text>
+<line x1="576" x2="776" y1="264.0" y2="264.0" stroke="var(--grid)"/>
+<text class="m" x="570" y="268.0" text-anchor="end">1.5</text>
+<text class="m" x="576.0" y="410" text-anchor="middle">0.1</text>
+<text class="m" x="633.1" y="410" text-anchor="middle">0.3</text>
+<text class="m" x="690.3" y="410" text-anchor="middle">0.5</text>
+<text class="m" x="776.0" y="410" text-anchor="middle">0.8</text>
+<line x1="580.7" x2="580.7" y1="264" y2="394" stroke="var(--muted)" stroke-dasharray="3 3"/>
+<text class="m" x="584.7" y="388">θ* 0.12</text>
+<polyline points="576.0,276.0 590.3,271.3 604.6,279.2 633.1,286.9 661.7,286.6 690.3,343.9 718.9,344.6 747.4,344.6 776.0,394.0" fill="none" stroke="var(--a)" stroke-width="2"/>
+<circle cx="576.0" cy="276.0" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="590.3" cy="271.3" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="604.6" cy="279.2" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="633.1" cy="286.9" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="661.7" cy="286.6" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="690.3" cy="343.9" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="718.9" cy="344.6" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="747.4" cy="344.6" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="776.0" cy="394.0" r="3.5" fill="var(--a)" stroke="var(--bg)" stroke-width="1.5"/>
+<polyline points="576.0,289.4 590.3,296.1 604.6,298.4 633.1,285.5 661.7,282.9 690.3,284.8 718.9,285.6 747.4,339.6 776.0,344.6" fill="none" stroke="var(--b)" stroke-width="2"/>
+<circle cx="576.0" cy="289.4" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="590.3" cy="296.1" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="604.6" cy="298.4" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="633.1" cy="285.5" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="661.7" cy="282.9" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="690.3" cy="284.8" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="718.9" cy="285.6" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="747.4" cy="339.6" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<circle cx="776.0" cy="344.6" r="3.5" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<text class="m" x="430" y="430" text-anchor="middle">threshold θ</text>
+<text class="m" transform="translate(16 229) rotate(-90)" text-anchor="middle">utility, millions of input tokens</text>
+</svg>
