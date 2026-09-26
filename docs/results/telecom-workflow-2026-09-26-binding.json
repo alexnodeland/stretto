@@ -3889,5 +3889,106 @@
    24,
    24
   ]
+ },
+ "half the demonstrations, identifiers as where they came from, self-trained on the original tickets, tested renamed": {
+  "arguments": "--symbolic --rename --train-share 0.5 --self-train 4 --rollouts 16 --seed SEED",
+  "rounds_by_seed": {
+   "0": [
+    {
+     "round": 0,
+     "test_passed": 17,
+     "kept_runs": 0,
+     "kept_that_pass": 0
+    },
+    {
+     "round": 1,
+     "test_passed": 25,
+     "kept_runs": 62,
+     "kept_that_pass": 61
+    },
+    {
+     "round": 2,
+     "test_passed": 26,
+     "kept_runs": 65,
+     "kept_that_pass": 64
+    },
+    {
+     "round": 3,
+     "test_passed": 25,
+     "kept_runs": 66,
+     "kept_that_pass": 65
+    },
+    {
+     "round": 4,
+     "test_passed": 26,
+     "kept_runs": 66,
+     "kept_that_pass": 65
+    }
+   ],
+   "1": [
+    {
+     "round": 0,
+     "test_passed": 17,
+     "kept_runs": 0,
+     "kept_that_pass": 0
+    },
+    {
+     "round": 1,
+     "test_passed": 22,
+     "kept_runs": 63,
+     "kept_that_pass": 62
+    },
+    {
+     "round": 2,
+     "test_passed": 28,
+     "kept_runs": 67,
+     "kept_that_pass": 66
+    },
+    {
+     "round": 3,
+     "test_passed": 28,
+     "kept_runs": 67,
+     "kept_that_pass": 66
+    },
+    {
+     "round": 4,
+     "test_passed": 21,
+     "kept_runs": 67,
+     "kept_that_pass": 66
+    }
+   ],
+   "2": [
+    {
+     "round": 0,
+     "test_passed": 17,
+     "kept_runs": 0,
+     "kept_that_pass": 0
+    },
+    {
+     "round": 1,
+     "test_passed": 23,
+     "kept_runs": 59,
+     "kept_that_pass": 59
+    },
+    {
+     "round": 2,
+     "test_passed": 25,
+     "kept_runs": 65,
+     "kept_that_pass": 64
+    },
+    {
+     "round": 3,
+     "test_passed": 25,
+     "kept_runs": 66,
+     "kept_that_pass": 65
+    },
+    {
+     "round": 4,
+     "test_passed": 27,
+     "kept_runs": 67,
+     "kept_that_pass": 66
+    }
+   ]
+  }
  }
 }
