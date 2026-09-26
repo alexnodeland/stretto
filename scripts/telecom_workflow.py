@@ -30,7 +30,9 @@ characters with a digit: ids, phone numbers) are learned as where they came
 from, the path of an earlier result or the ticket, and bound again when the
 workflow runs; with --rename, the test tasks run for a customer none of the
 traces saw: John Smith's name, ids and phone numbers renamed throughout
-τ²-bench's database, the phone's and each task.
+τ²-bench's database, the phone's and each task. With --as-customer ID they
+run for another customer of the database, whose first line takes John's
+line's state, keeping the tasks whose own gold actions still solve them.
 
 usage: telecom_workflow.py RESULTS.json... [--tau2 DIR] [--sure] [--json OUT]
 """
