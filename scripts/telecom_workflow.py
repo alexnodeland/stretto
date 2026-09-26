@@ -24,6 +24,7 @@ import argparse
 import collections
 import hashlib
 import json
+import random
 import re
 import sys
 from functools import partial
@@ -253,6 +254,7 @@ def main():
     ap.add_argument("--train-share", type=float, default=1.0, help="learn from this share of the training tasks")
     ap.add_argument("--json", help="write each test task's run here")
     ap.add_argument("--show", help="write the compiled workflow here, as rules (Markdown)")
+    ap.add_argument("--bootstrap", type=int, metavar="SEED", help="learn from a resample of the episodes, with replacement")
     args = ap.parse_args()
     from tau2.domains.telecom.environment import get_tasks
 
@@ -265,6 +267,8 @@ def main():
         train = set(ranked[: max(1, round(args.train_share * len(ranked)))])
     sims = [s for path in args.results for s in json.load(open(path))["simulations"]]
     good = [s for s in sims if s["task_id"] in train and (s.get("reward_info") or {}).get("reward") == 1]
+    if args.bootstrap is not None:
+        good = random.Random(args.bootstrap).choices(good, k=len(good))
     # Ticket words in between 5% and 95% of the training tickets.
     df = collections.Counter(g for t in train for g in words(tasks[t].ticket or ""))
     vocab = {g for g, n in df.items() if 0.05 * len(train) <= n <= 0.95 * len(train)}

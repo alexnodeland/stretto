@@ -2,7 +2,7 @@
 
 [The telecom anatomy](telecom-anatomy-2026-09-26.md) found that, where the agent operates the phone itself, a decision tree over the tool results predicts most of its steps. This page runs that tree as the agent. It is fitted once on the successful training episodes of τ²-bench's own solo runs, then run with no model on the 40 held-out test tasks in τ²-bench's environment, and scored by τ²-bench's evaluator.
 
-It passed 31 of the 40 held-out tasks (77.5%). The LLM agents whose traces it was fitted on passed 49–78% of the same tasks, and the tree made no LLM call; each of them made 15–18 per episode. Its own check of the ticket's stated outcome caught every one of its failures, so handing only those to an agent projects 87.5–89.4%, with a model in one episode in five.
+It passed 31 of the 40 held-out tasks (77.5%), and 25–31 (mean 71%) when refitted on ten resamples of its training episodes. The LLM agents whose traces it was fitted on passed 49–78% of the same tasks, and the tree made no LLM call; each of them made 15–18 per episode. Its own check of the ticket's stated outcome caught every one of its failures, so handing only those to an agent projects 87.5–89.4%, with a model in one episode in five.
 
 ## The workflow
 
@@ -31,6 +31,7 @@ It did better than every agent on MMS, where a task can stack up to nine faults,
 | Workflow fitted on | Passed |
 |---|---|
 | All four runs (above) | 31 of 40 |
+| All four, refitted on ten resamples of their episodes (with replacement) | 25–31, mean 28.4 |
 | All four, without the repeat guard | 22 |
 | All four, and the four runs where the agent was handed the task's plan (τ²-bench's `op`) | 31 |
 | GPT-4.1, workflow policy, alone | 26 |
@@ -59,7 +60,7 @@ Each ticket states when the customer will consider the issue resolved: an MMS se
 | Transferred to a human | 11 | 0 |
 | Not resolved | 0 | 8 |
 
-It knew when it had failed: every run its check called unresolved had failed, and 31 of the 32 it called done had passed. So the gate to hand back on is the outcome, not the tree's confidence. Hand the 8 unresolved episodes to an agent, which passes each as often as its four trials of that task did (assuming it does as well from where the workflow stopped as from the start), and the pair passes 87.5–89.4%, with a model in 8 episodes of 40: above any of the four agents alone (49–78%), because the workflow passes MMS tasks the agents often fail, and the agents pass the mobile-data tasks it does not.
+It knew when it had failed: every run its check called unresolved had failed, and 31 of the 32 it called done had passed. Over the ten refits' 400 runs, the check called 300 done, of which 16 had failed (5%), and 100 unresolved, every one of which had failed. So the gate to hand back on is the outcome, not the tree's confidence. Hand the 8 unresolved episodes to an agent, which passes each as often as its four trials of that task did (assuming it does as well from where the workflow stopped as from the start), and the pair passes 87.5–89.4% (86–88% on average over the refits, 79–96% at the extremes), with a model in 8 episodes of 40: above any of the four agents alone (49–78%), because the workflow passes MMS tasks the agents often fail, and the agents pass the mobile-data tasks it does not.
 
 | Workflow, then this agent where its check says unresolved | Projected pass rate | The agent alone |
 |---|---|---|
@@ -98,4 +99,4 @@ python3 scripts/telecom_workflow.py \
   --tau2 ../tau2-bench --json telecom-workflow.json
 ```
 
-`--no-guard`, `--sure [SHARE]` and `--train-share` give the other rows, and `--show FILE` writes the rules. The runs, call by call, are in [telecom-workflow-2026-09-26.json](telecom-workflow-2026-09-26.json). Scored this way, GPT-4.1's recorded test episodes (first trial) get the rewards τ²-bench recorded for all 40 of them.
+`--no-guard`, `--sure [SHARE]`, `--train-share` and `--bootstrap SEED` give the other rows, and `--show FILE` writes the rules. The runs, call by call, are in [telecom-workflow-2026-09-26.json](telecom-workflow-2026-09-26.json). Scored this way, GPT-4.1's recorded test episodes (first trial) get the rewards τ²-bench recorded for all 40 of them.

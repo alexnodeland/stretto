@@ -1332,5 +1332,197 @@
    "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.775,
    "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.781
   }
- }
+ },
+ "all four, refitted on bootstrap resamples of their episodes": [
+  {
+   "seed": 1,
+   "passed": 31,
+   "handed_to_agent": 6,
+   "own_check": {
+    "resolved, passed": 20,
+    "resolved, failed": 1,
+    "transferred, passed": 11,
+    "transferred, failed": 2,
+    "not resolved, passed": 0,
+    "not resolved, failed": 6
+   },
+   "workflow_then_agent": {
+    "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.875,
+    "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.887,
+    "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.9,
+    "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.9
+   }
+  },
+  {
+   "seed": 2,
+   "passed": 30,
+   "handed_to_agent": 9,
+   "own_check": {
+    "resolved, passed": 19,
+    "resolved, failed": 1,
+    "transferred, passed": 11,
+    "transferred, failed": 0,
+    "not resolved, passed": 0,
+    "not resolved, failed": 9
+   },
+   "workflow_then_agent": {
+    "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.912,
+    "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.875,
+    "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.9,
+    "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.894
+   }
+  },
+  {
+   "seed": 3,
+   "passed": 25,
+   "handed_to_agent": 10,
+   "own_check": {
+    "resolved, passed": 14,
+    "resolved, failed": 1,
+    "transferred, passed": 11,
+    "transferred, failed": 4,
+    "not resolved, passed": 0,
+    "not resolved, failed": 10
+   },
+   "workflow_then_agent": {
+    "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.806,
+    "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.8,
+    "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.8,
+    "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.787
+   }
+  },
+  {
+   "seed": 4,
+   "passed": 27,
+   "handed_to_agent": 12,
+   "own_check": {
+    "resolved, passed": 18,
+    "resolved, failed": 1,
+    "transferred, passed": 9,
+    "transferred, failed": 0,
+    "not resolved, passed": 0,
+    "not resolved, failed": 12
+   },
+   "workflow_then_agent": {
+    "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.887,
+    "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.85,
+    "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.894,
+    "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.887
+   }
+  },
+  {
+   "seed": 5,
+   "passed": 28,
+   "handed_to_agent": 11,
+   "own_check": {
+    "resolved, passed": 17,
+    "resolved, failed": 1,
+    "transferred, passed": 11,
+    "transferred, failed": 0,
+    "not resolved, passed": 0,
+    "not resolved, failed": 11
+   },
+   "workflow_then_agent": {
+    "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.85,
+    "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.831,
+    "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.863,
+    "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.869
+   }
+  },
+  {
+   "seed": 6,
+   "passed": 31,
+   "handed_to_agent": 8,
+   "own_check": {
+    "resolved, passed": 20,
+    "resolved, failed": 1,
+    "transferred, passed": 11,
+    "transferred, failed": 0,
+    "not resolved, passed": 0,
+    "not resolved, failed": 8
+   },
+   "workflow_then_agent": {
+    "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.912,
+    "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.894,
+    "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.894,
+    "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.894
+   }
+  },
+  {
+   "seed": 7,
+   "passed": 25,
+   "handed_to_agent": 14,
+   "own_check": {
+    "resolved, passed": 14,
+    "resolved, failed": 1,
+    "transferred, passed": 11,
+    "transferred, failed": 0,
+    "not resolved, passed": 0,
+    "not resolved, failed": 14
+   },
+   "workflow_then_agent": {
+    "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.812,
+    "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.8,
+    "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.806,
+    "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.819
+   }
+  },
+  {
+   "seed": 8,
+   "passed": 31,
+   "handed_to_agent": 8,
+   "own_check": {
+    "resolved, passed": 20,
+    "resolved, failed": 1,
+    "transferred, passed": 11,
+    "transferred, failed": 0,
+    "not resolved, passed": 0,
+    "not resolved, failed": 8
+   },
+   "workflow_then_agent": {
+    "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.963,
+    "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.938,
+    "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.963,
+    "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.963
+   }
+  },
+  {
+   "seed": 9,
+   "passed": 30,
+   "handed_to_agent": 8,
+   "own_check": {
+    "resolved, passed": 19,
+    "resolved, failed": 1,
+    "transferred, passed": 11,
+    "transferred, failed": 1,
+    "not resolved, passed": 0,
+    "not resolved, failed": 8
+   },
+   "workflow_then_agent": {
+    "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.906,
+    "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.881,
+    "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.9,
+    "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.894
+   }
+  },
+  {
+   "seed": 10,
+   "passed": 26,
+   "handed_to_agent": 14,
+   "own_check": {
+    "resolved, passed": 15,
+    "resolved, failed": 0,
+    "transferred, passed": 11,
+    "transferred, failed": 0,
+    "not resolved, passed": 0,
+    "not resolved, failed": 14
+   },
+   "workflow_then_agent": {
+    "gpt-4.1-2025-04-14_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.844,
+    "gpt-4.1-2025-04-14_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.819,
+    "o4-mini-2025-04-16_telecom-workflow_no-user_gpt-4.1-2025-04-14_4trials.json": 0.863,
+    "o4-mini-2025-04-16_telecom_no-user_gpt-4.1-2025-04-14_4trials.json": 0.869
+   }
+  }
+ ]
 }
