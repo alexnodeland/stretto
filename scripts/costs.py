@@ -18,10 +18,19 @@ tokens, in the agent's own tokens:
 Characters become tokens at the agent's own rate, fitted on how much its input
 grew between consecutive turns against the characters added in between.
 
-    costs.py RESULTS.json... --replays DIR [--solo] [--tau2 DIR] [--json OUT]
+Both are counted in input tokens unless `--price OUT,READ,WRITE` prices them as
+a provider bills, relative to an uncached input token: a saved turn also saves
+its output tokens (OUT each), and with prompt caching a turn's input is the
+previous turn's prompt read from the cache (READ each) and what came after it,
+written (WRITE each). Tokens that stay in later contexts, a detour's result and
+a saved turn's calls, are written once and read after. `--sweep` prices the
+threshold sweep's replays (the reach round's JSON) at the pooled costs and
+prints the threshold at which each agent's utility peaks.
 
-A results file's replay is `DIR/c-<domain>-<name>` (`c-solo-<name>` with
-`--solo`), as `pilot/check_flow.py --out` was given. Prints β, δ and θ* per
+    costs.py RESULTS.json... --replays DIR [--solo] [--tau2 DIR] [--price OUT,READ,WRITE] [--sweep ROWS] [--json OUT]
+
+A results file's replay is `DIR/c-<domain>-<name>` or `DIR/c-<domain>-<name>-reach`
+(`c-solo-<name>` with `--solo`), as `pilot/check_flow.py --out` was given. Prints β, δ and θ* per
 agent and pooled per domain (β weighted by ceiling turns, δ by detours).
 """
 
@@ -51,7 +60,13 @@ def chars_per_token(sims) -> float | None:
     return chars / grow if grow else None
 
 
-def count(path: Path, replays: Path, solo: bool, tau2: Path) -> dict | None:
+def carried(tokens: float, turns: float, read: float, write: float) -> float:
+    """Tokens in the next `turns` contexts: new in the first, read from the cache after."""
+    return tokens * (write * min(turns, 1) + read * max(turns - 1, 0))
+
+
+def count(path: Path, replays: Path, solo: bool, tau2: Path, price=(0.0, 1.0, 1.0)) -> dict | None:
+    out, read, write = price
     sims = json.loads(path.read_text())["simulations"]
     domain = ceiling.domain_of(sims)
     test = set(json.loads((tau2 / f"data/tau2/domains/{domain}/split_tasks.json").read_text())["test"])
@@ -79,10 +94,15 @@ def count(path: Path, replays: Path, solo: bool, tau2: Path) -> dict | None:
                     left_after[c["name"]].append(left)
                     j += 1
             if rows[k][2]:  # in the ceiling
-                beta_rows.append(msgs[i]["usage"]["prompt_tokens"] + len(json.dumps(calls)) / cpt * left)
+                u = msgs[i]["usage"]
+                cached = min(u["prompt_tokens"], msgs[idx[k - 1]]["usage"]["prompt_tokens"]) if k else 0
+                beta_rows.append(read * cached + write * (u["prompt_tokens"] - cached) + out * (u.get("completion_tokens") or 0)
+                                 + carried(len(json.dumps(calls)) / cpt, left, read, write))
     name = path.name.removesuffix(".json")
     label = "solo" if solo else domain
     decisions = replays / f"c-{label}-{name}" / "decisions.jsonl"
+    if not decisions.exists():  # scripts/bench/replay.sh names the decider
+        decisions = replays / f"c-{label}-{name}-reach" / "decisions.jsonl"
     if not decisions.exists() and solo:
         decisions = replays / f"c-solo-{name.split('_telecom')[0]}" / "decisions.jsonl"
     detours = []
@@ -96,7 +116,7 @@ def count(path: Path, replays: Path, solo: bool, tau2: Path) -> dict | None:
             continue
         rc, la = result_chars.get(d["tool"]), left_after.get(d["site"])
         if rc and la:
-            detours.append(statistics.mean(rc) / cpt * statistics.mean(la))
+            detours.append(carried(statistics.mean(rc) / cpt, statistics.mean(la), read, write))
     if not beta_rows or not detours:
         return None
     beta, delta = statistics.mean(beta_rows), statistics.mean(detours)
@@ -110,11 +130,16 @@ def main():
     ap.add_argument("--replays", type=Path, required=True, help="replays of these results with --explore 0")
     ap.add_argument("--solo", action="store_true", help="τ²-bench's no-user mode (telecom)")
     ap.add_argument("--tau2", type=Path, default=Path("../tau2-bench"))
+    ap.add_argument("--price", default="0,1,1", metavar="OUT,READ,WRITE",
+                    help="an output token, a cached input token and a cache write, per uncached input token "
+                         "(default 0,1,1: input tokens alone)")
+    ap.add_argument("--sweep", type=Path, help="the reach round's JSON: price its threshold sweep")
     ap.add_argument("--json", type=Path, help="write the rows here")
     args = ap.parse_args()
+    price = tuple(float(x) for x in args.price.split(","))
     out = {}
     for path in args.results:
-        row = count(path, args.replays, args.solo, args.tau2)
+        row = count(path, args.replays, args.solo, args.tau2, price)
         if row is None:
             print(f"{path.name}: no tokens reported, or no detours replayed", file=sys.stderr)
             continue
@@ -127,6 +152,18 @@ def main():
         d = sum(r["delta"] * r["detours"] for r in v) / sum(r["detours"] for r in v)
         out[f"{dom}/pooled"] = {"domain": dom, "agents": len(v), "beta": round(b), "delta": round(d), "theta": round(d / (b + d), 3)}
         print(f"== {dom}: {len(v)} agents, β {b:.0f}, δ {d:.0f}, θ* {d / (b + d):.3f}")
+    if args.sweep:
+        pooled = {k.split("/")[0]: (v["beta"], v["delta"]) for k, v in out.items() if k.endswith("/pooled")}
+        by = collections.defaultdict(dict)
+        for r in json.loads(args.sweep.read_text())["sweep"]:
+            if r["domain"] in pooled:
+                b, d = pooled[r["domain"]]
+                by[(r["domain"], r["agent"], r["decider"])][r["threshold"]] = b * r["turns_saved"] - d * r["detours"]
+        for (dom, agent, dec), u in sorted(by.items()):
+            best = max(u, key=u.get)
+            print(f"   sweep {dom:8s} {agent[:34]:34s} {dec:5s} peaks at {best:<4g} ({u[best] / 1e6:.2f}M), "
+                  f"at θ* {min(u, key=lambda t: abs(t - out[f'{dom}/pooled']['theta'])):<4g}")
+            out.setdefault("sweep", {})[f"{dom}/{agent}/{dec}"] = {"peak": best, "utility": {str(t): v for t, v in u.items()}}
     if args.json:
         args.json.write_text(json.dumps(out, indent=1) + "\n")
 

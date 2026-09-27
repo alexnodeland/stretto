@@ -56,6 +56,9 @@ python3 scripts/per_decision.py --replays $WORK/replays/perdec --results .data/t
     --tau2 $TAU2 --recalibrate 40
 # Saved turns in seconds and dollars, from the environment replays that name the turns they saved
 python3 scripts/priced.py --replays $WORK/replays/tau2-env --results .data/tau2-targets
+# θ* with output tokens and prompt caching priced (here Anthropic's ratios), and the sweep's utility at those prices
+python3 scripts/costs.py .data/tau2-targets/*.json --replays $WORK/replays/tau2-env --tau2 $TAU2 --price 5,0.1,1.25 \
+    --sweep docs/results/reach-2026-09-26.json
 # How often each recorded agent makes a read again with no write between
 python3 scripts/remade.py --results $WORK/dtap/dtap_telecom/*.json --tau2 $WORK/dtap/checkout
 ```

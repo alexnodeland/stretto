@@ -248,6 +248,19 @@ Changes are against θ* with the model's scores. Calibrating the sites removes m
 
 A turn that only reads generates less than one that replies, so a saved turn is worth less than the average turn, in seconds and in dollars. Per agent in retail, the saved turns are 17–26% of the generation time and 9–22% of the cost. GPT-5.2's share of the cost is lowest, since its reasoning makes its other turns dear. The costs are the benchmark's own records.
 
+### Priced as billed
+
+The paper's θ* = δ/(β+δ) counts both costs in input tokens (its Appendix B). Providers bill differently: an output token costs 4–8 times an input token, and with prompt caching a context's prefix is reread at about a tenth of the price. `scripts/costs.py --price OUT,READ,WRITE` counts both costs that way. A saved turn is worth its prompt, read from the cache up to the previous turn's prompt and written after it, plus its output tokens. A detour's result is written once and read from the cache in every later context. The sweep's replays are then priced at each domain's pooled costs (`--sweep`), for the six agent and domain pairs swept.
+
+| Pricing, per uncached input token | θ*, retail | θ*, airline | θ*, telecom | Utility kept at the served 0.3 / 0.15 / 0.1, worst pair | The utility's scale |
+|---|---|---|---|---|---|
+| Input tokens alone (the paper's) | 0.30 | 0.13 | 0.12 | 91% | 1 |
+| Output 5×, nothing cached | 0.27 | 0.11 | 0.11 | 94% | ×1.1–1.3 |
+| Anthropic's: output 5×, cache reads 0.1×, writes 1.25× | 0.29 | 0.07 | 0.11 | 97% | ÷2.2–3.9 |
+| OpenAI's: output 8×, cache reads 0.1×, writes 1× | 0.23 | 0.05 | 0.08 | 98% | ÷1.7–3.1 |
+
+Caching discounts a detour more than a saved turn. A detour is carried almost entirely as cache reads, while a saved turn's output and new input are never cached. θ* therefore falls, most in airline (from 0.13 to 0.05–0.07). The thresholds counted in input tokens stay near the best: in each of the six pairs they keep at least 94% of the use-before-write speculator's best swept utility, and at least 97% with caching. Caching shrinks the utility two- to fourfold in input-token terms, while a saved turn still spares the time its output takes to generate.
+
 ## What the binder learned
 
 ### Lists
@@ -281,6 +294,7 @@ With the count, the WorkBench flows make no lookup at all in the 13,869 turns of
 - **Counterfactual turns.** A replay counts what the flow would have spared an agent that otherwise acted as recorded. Live, GLM-5.3 made none of the flow's 101 lookups again (the paper, §6). The 72 agents here were never run with a flow. Six of DTap-Bench's seven agents repeated 18 of their 15,706 reads with no write between; gpt-oss-120b repeated a quarter, and its savings are upper bounds.
 - **Detours are lower bounds.** They are 55–72% of the environment's on τ²-bench, and the reach decider's lead in savings comes with more detours than these tables show. The paper's costs make one saved turn worth about 2.4 detours in retail and about 7 in airline and telecom.
 - **One trial each.** BFCL, AgentDojo, WorkBench and DTap-Bench publish one run per model and task (DTap-Bench's latest, where a task was run again), so their intervals are over tasks, with every agent's episode of a task drawn together.
+- **Benchmarks left out.** Gaia2's published results (facebook/omnilingual-gaia2-results: seven models in the OpenClaw and OpenCode harnesses) cut 68–70% of read results to 200 characters. They also record the apps' calls, not the model's turns. A replay could neither bind a lookup's arguments nor count turns, so Gaia2 is not among these benchmarks. Toolathlon's trajectories need a login.
 - **The converters are choices.** Results are rendered as JSON, a listing becomes a label and its items, and every write is labelled by hand from the source, or in DTap-Bench by its verb. Each converter's docstring says what it does, and the checkout's `tools.py` lists every label.
 
 ## Reproduce
@@ -329,6 +343,9 @@ python3 scripts/bench/tables.py --json rows.json
 python3 scripts/per_decision.py --replays $WORK/replays/perdec --results .data/tau2-targets --sweep $WORK/replays/sweep \
     --tau2 ../tau2-bench --recalibrate 40                              # a threshold per decision
 python3 scripts/priced.py --replays $WORK/replays/tau2-env --results .data/tau2-targets   # seconds and dollars
+for price in 0,1,1 5,1,1 5,0.1,1.25 8,0.1,1; do                     # θ* priced as billed, and the sweep at those prices
+  python3 scripts/costs.py .data/tau2-targets/*.json --replays $WORK/replays/tau2-env --tau2 ../tau2-bench \
+      --price $price --sweep docs/results/reach-2026-09-26.json; done
 ```
 
-The rows behind every table are in [benchmarks-2026-09-27.json](benchmarks-2026-09-27.json): the trace-versus-environment comparison, each agent's ceiling, every replay's totals and episodes, the calibration summaries, the list ablation, the WorkBench runs before bare calls were counted, DTap-Bench by the flow's source, and the per-decision evaluation. The flows every replay served are in [benchmarks-2026-09-27-flows.tar.gz](benchmarks-2026-09-27-flows.tar.gz).
+The rows behind every table are in [benchmarks-2026-09-27.json](benchmarks-2026-09-27.json): the trace-versus-environment comparison, each agent's ceiling, every replay's totals and episodes, the calibration summaries, the list ablation, the WorkBench runs before bare calls were counted, DTap-Bench by the flow's source, the per-decision evaluation, the saved turns priced in seconds and dollars, and θ* priced as billed (`costs_priced`). The flows every replay served are in [benchmarks-2026-09-27-flows.tar.gz](benchmarks-2026-09-27-flows.tar.gz).
