@@ -1,0 +1,188 @@
+/* ==========================================================================
+   BRAND TOKENS
+   Every brand color of the site is in this block, in light and dark. The values
+   are a placeholder palette; the brand kit (brand/tokens.css) replaces them.
+   ========================================================================== */
+
+:root {
+  --stretto-accent: #0d8a7c;
+
+  --vp-c-brand-1: #2d44a8;
+  --vp-c-brand-2: #3650c0;
+  --vp-c-brand-3: #4a61cf;
+  --vp-c-brand-soft: rgba(74, 97, 207, 0.14);
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: -webkit-linear-gradient(120deg, #3650c0 30%, #0d8a7c);
+  --vp-home-hero-image-background-image: linear-gradient(-45deg, #4a61cf 50%, #1bb39f 50%);
+  --vp-home-hero-image-filter: blur(44px);
+}
+
+.dark {
+  --stretto-accent: #4fd1bf;
+
+  --vp-c-brand-1: #a4b4ff;
+  --vp-c-brand-2: #8093f5;
+  --vp-c-brand-3: #4a61cf;
+  --vp-c-brand-soft: rgba(128, 147, 245, 0.16);
+
+  --vp-home-hero-name-background: -webkit-linear-gradient(120deg, #a4b4ff 30%, #4fd1bf);
+  --vp-home-hero-image-background-image: linear-gradient(-45deg, #4a61cf 50%, #1bb39f 50%);
+}
+
+/* ==========================================================================
+   End of the brand tokens. Everything below uses them.
+   ========================================================================== */
+
+@media (min-width: 640px) {
+  :root {
+    --vp-home-hero-image-filter: blur(56px);
+  }
+}
+
+@media (min-width: 960px) {
+  :root {
+    --vp-home-hero-image-filter: blur(68px);
+  }
+}
+
+/* The home page's sections below the features. */
+
+.VPHome .vp-doc h2 {
+  margin-top: 56px;
+  padding-top: 0;
+  border-top: 0;
+  font-size: 24px;
+  letter-spacing: -0.01em;
+}
+
+.VPHome .vp-doc .home-lead {
+  max-width: 720px;
+  font-size: 16px;
+  color: var(--vp-c-text-2);
+}
+
+.home-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 24px 0 8px;
+}
+
+.home-stats > a {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px;
+  border-radius: 12px;
+  background: var(--vp-c-bg-soft);
+  color: inherit;
+  text-decoration: none !important;
+  border: 1px solid transparent;
+  transition: border-color 0.25s;
+}
+
+.home-stats > a:hover {
+  border-color: var(--vp-c-brand-1);
+}
+
+.home-stats strong {
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 700;
+  color: var(--vp-c-brand-1);
+  letter-spacing: -0.02em;
+}
+
+.home-stats span {
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--vp-c-text-2);
+}
+
+@media (max-width: 959px) {
+  .home-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 479px) {
+  .home-stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Math: display equations scroll inside their own box on narrow screens. */
+
+.vp-doc mjx-container[display='true'] {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 0;
+}
+
+/* An inline formula wider than the column shrinks to fit it rather than widen the page. */
+.vp-doc mjx-container:not([display='true']) > svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* MathJax's hidden copy for screen readers is positioned absolutely, and as wide as the
+   formula: near the right edge it would widen the page. It stays readable at 1px. */
+.vp-doc mjx-assistive-mml {
+  width: 1px !important;
+  height: 1px !important;
+}
+
+/* Figures from the paper carry their own background. */
+
+.vp-doc img {
+  border-radius: 8px;
+}
+
+.vp-doc p > img:only-child {
+  display: block;
+  margin: 0 auto;
+}
+
+/* Wide tables scroll inside themselves (the default theme). On a phone, columns keep a
+   readable width, so that a number and its interval are not broken over three lines. */
+
+.vp-doc table {
+  scrollbar-width: thin;
+}
+
+@media (max-width: 639px) {
+  .vp-doc th,
+  .vp-doc td {
+    min-width: 7.5em;
+    padding: 8px 12px;
+  }
+}
+
+/* A table's first column names things (a command, a field, a variable): keep each whole. */
+.vp-doc td:first-child > code,
+.vp-doc td:first-child > a > code {
+  white-space: nowrap;
+}
+
+/* Command-line options read better unbroken; long ones may still wrap. */
+
+.vp-doc li > code:first-child {
+  white-space: nowrap;
+}
+
+@media (max-width: 639px) {
+  .vp-doc li > code:first-child {
+    white-space: normal;
+  }
+}
+
+/* A line under a page's title that says where its text lives in the repository. */
+
+.vp-doc .source-note {
+  margin-top: -8px;
+  font-size: 14px;
+  color: var(--vp-c-text-2);
+}

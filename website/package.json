@@ -1,0 +1,22 @@
+{
+  "name": "stretto-website",
+  "private": true,
+  "type": "module",
+  "description": "The stretto documentation site, built with VitePress.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "node scripts/copy-notebook.mjs && vitepress dev",
+    "build": "node scripts/copy-notebook.mjs && vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "github-slugger": "^2.0.0",
+    "markdown-it-mathjax3": "^4.3.2",
+    "mermaid": "^11.17.2",
+    "vitepress": "^1.6.4",
+    "vue": "^3.5.13"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

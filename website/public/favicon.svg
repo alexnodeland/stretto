@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Placeholder favicon. The brand kit replaces this file. -->
+  <rect width="64" height="64" rx="14" fill="#2d44a8"/>
+  <rect x="9" y="15" width="32" height="9" rx="4.5" fill="#ffffff"/>
+  <rect x="17" y="27.5" width="32" height="9" rx="4.5" fill="#c7d0ff"/>
+  <rect x="25" y="40" width="30" height="9" rx="4.5" fill="#4fd1bf"/>
+</svg>
