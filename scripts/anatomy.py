@@ -386,7 +386,7 @@ def walk(sim, domain, writes):
                     "anchored": anchored and bool(occ), "several": len({q for q, _ in occ}) > 1,
                 })
                 state["used"].add(norm(v))
-            call = {"tool": name, "kind": kind, "trigger": trigger, "args": args}
+            call = {"tool": name, "kind": kind, "trigger": trigger, "args": args, "said": customer}
             calls.append(call)
             turn_calls.append(call)
             key = c.get("id") or f"call {ncall}"

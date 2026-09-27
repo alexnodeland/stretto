@@ -18,7 +18,10 @@ A flow binds from results only, so its savings are bounded by the first. A
 third count, *with constants*, also admits an argument that takes one value
 in every call of its tool the agent made, at least five (`anatomy.py`'s
 constant, such as a page size an agent always passes), which a binding that
-learned constants could pass.
+learned constants could pass. A fourth, *by shape*, admits instead a value
+of the customer's that is the only one of its shape in what they wrote so far
+(the one email, id, number or date), which a speculator could take from the
+request with no model; names and free text need one.
 
     ceiling.py RESULTS.json... [--tau2 DIR] [--json OUT]
 
@@ -29,6 +32,7 @@ replays them.
 import argparse
 import collections
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -36,6 +40,29 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import anatomy  # noqa: E402
 
 COPY = {"copy, unique", "copy, select"}
+TOKEN = re.compile(r"[\w.@+#-]+")
+
+
+def shape(v: str):
+    """A value's shape, if it has one a pattern can find: an email, a date, a number or an id (letters and digits)."""
+    if re.fullmatch(r"[\w.+-]+@[\w-]+(\.[\w-]+)+", v):
+        return "email"
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", v):
+        return "date"
+    if re.fullmatch(r"\d+(\.\d+)?", v):
+        return "number"
+    if re.fullmatch(r"[#\w-]+", v) and re.search(r"\d", v) and re.search(r"[a-z]", v):
+        return "id"
+    return None
+
+
+def by_shape(value: str, said: str) -> bool:
+    """Whether `value` is the only value of its shape in what the customer wrote (`said`, lowercased)."""
+    kind = shape(value)
+    if kind is None:
+        return False
+    found = {t.strip(".,;:!?") for t in TOKEN.findall(said)}
+    return {t for t in found if shape(t) == kind} == {value}
 
 
 def domain_of(sims):
@@ -68,7 +95,7 @@ def classify(sim, domain, writes, fixed=frozenset()):
     responded_since_write = False
     for t in turns:
         if t["kind"] == "reply":
-            out.append(("reply", t["trigger"], False, False, False))
+            out.append(("reply", t["trigger"], False, False, False, False))
             continue
         calls = t["calls"]
         reads = all(c["kind"] == "read" for c in calls)
@@ -76,7 +103,9 @@ def classify(sim, domain, writes, fixed=frozenset()):
         words_ok = reads and responded_since_write and all(a["class"] in COPY | {"customer"} for c in calls for a in c["args"])
         const_ok = reads and responded_since_write and all(
             a["class"] in COPY or (a["class"] == "generated" and (c["tool"], a["arg"]) in fixed) for c in calls for a in c["args"])
-        out.append(("reads" if reads else "writes", t["trigger"], tool_ok, words_ok, const_ok))
+        shape_ok = reads and responded_since_write and all(
+            a["class"] in COPY or (a["class"] == "customer" and by_shape(a["value"], c.get("said", ""))) for c in calls for a in c["args"])
+        out.append(("reads" if reads else "writes", t["trigger"], tool_ok, words_ok, const_ok, shape_ok))
         # This turn's results come back before the next turn; a write in it
         # makes earlier lookups stale, and its own response is fresh.
         responded_since_write = True
@@ -109,12 +138,13 @@ def main():
         fixed = constants(sims, domain, writes)
         for s in sims:
             rows = classify(s, domain, writes, fixed)
-            for kind, trigger, tool_ok, words_ok, const_ok in rows:
+            for kind, trigger, tool_ok, words_ok, const_ok, shape_ok in rows:
                 tally["turns"] += 1
                 tally[f"{kind}, after {trigger}"] += 1
                 tally["ceiling, tool state"] += tool_ok
                 tally["ceiling, with words"] += words_ok
                 tally["ceiling, with constants"] += const_ok
+                tally["ceiling, words by shape"] += shape_ok
             # Named as the replays name episodes.
             per_episode[f"task-{s['task_id']}-{s.get('trial', 0)}"] = {
                 "turns": len(rows), "ceiling": sum(r[2] for r in rows), "ceiling_words": sum(r[3] for r in rows),
