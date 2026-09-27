@@ -295,8 +295,14 @@ With `--explore 0` each replay logs every lookup the flow weighed, with its scor
 | — other harnesses | 7,978 | −0.014 (−0.029 – −0.002) | −0.006 (−0.011 – −0.002) | +0.038 (+0.019 – +0.059) |
 | DTap-Bench medical, own runs | 2,579 | −0.008 (−0.021 – +0.005) | −0.002 (−0.003 – −0.000) | +0.056 (+0.037 – +0.074) |
 | — other harnesses | 9,815 | +0.002 (+0.001 – +0.002) | −0.000 (−0.000 – +0.000) | −0.024 (−0.072 – +0.005) |
+| DTap-Bench legal, own runs | 13,982 | −0.033 (−0.041 – −0.019) | −0.016 (−0.020 – −0.012) | +0.037 (+0.029 – +0.044) |
+| — other harnesses | 30,210 | +0.002 (−0.001 – +0.005) | +0.001 (0.000 – +0.002) | +0.020 (+0.009 – +0.032) |
+| DTap-Bench finance, own runs | 1,979 | −0.008 (−0.026 – +0.013) | −0.003 (−0.007 – 0.000) | +0.075 (+0.034 – +0.113) |
+| — other harnesses | 5,500 | −0.001 (−0.004 – +0.005) | 0.000 (0.000 – +0.002) | −0.024 (−0.044 – −0.010) |
+| DTap-Bench research, own runs | 123 | −0.022 (−0.037 – −0.010) | −0.008 (−0.017 – 0.000) | +0.001 (−0.074 – +0.072) |
+| — other harnesses | 142 | 0.000 (−0.008 – +0.007) | −0.001 (−0.004 – 0.000) | 0.000 (0.000 – 0.000) |
 
-WorkBench's flows weighed 4,154 lookups, all scored near zero, and the agents used none: there is nothing to calibrate. In DTap-Bench reach is better calibrated in customer service, telecom and the operating system's files, and alike in CRM and medical; in travel, as in AgentDojo's, it ranks lookups worse while saving more turns. As on τ²-bench, counting the right event helps most where agents read ahead of their next write in varied orders, as in τ-bench retail. In BFCL the differences have the same signs, with intervals that reach zero. Where the next call is nearly always the call that is used, as in airline, the two coincide.
+WorkBench's flows weighed 4,154 lookups, all scored near zero, and the agents used none: there is nothing to calibrate. In DTap-Bench reach is better calibrated in customer service, telecom, the operating system's files and, with the agents' own runs, legal (an expected calibration error of 0.009 against 0.042), and alike in CRM, medical and finance and in legal with the other harnesses' flows; research's flows weigh too few lookups to tell (123 and 142); in travel, as in AgentDojo's, it ranks lookups worse while saving more turns. As on τ²-bench, counting the right event helps most where agents read ahead of their next write in varied orders, as in τ-bench retail. In BFCL the differences have the same signs, with intervals that reach zero. Where the next call is nearly always the call that is used, as in airline, the two coincide.
 
 ## A threshold per decision
 
