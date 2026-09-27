@@ -42,7 +42,7 @@ META = {"List MCP Tools", "ToolSearch", "ListMcpResourcesTool", "ReadMcpResource
 BUILTIN = {"Bash", "Read", "Write", "Edit", "MultiEdit", "Glob", "Grep", "LS", "TodoWrite", "AskUserQuestion",
            "WebFetch", "WebSearch", "Task", "Skill", "NotebookEdit", "ExitPlanMode"}
 READ_WORDS = {"get", "list", "search", "find", "lookup", "view", "read", "fetch", "query", "count", "describe",
-              "retrieve", "show", "history", "inbox", "info", "health", "meta"}
+              "retrieve", "show", "history", "inbox", "info", "health", "meta", "tree"}
 WRITE_WORDS = {"create", "update", "add", "delete", "remove", "send", "reply", "forward", "grant", "cancel", "refund",
                "set", "post", "assign", "convert", "merge", "link", "unlink", "invite", "login", "logout", "join",
                "leave", "edit", "transition", "pause", "resume", "modify", "transfer", "apply", "book", "pay",

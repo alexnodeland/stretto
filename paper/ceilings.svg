@@ -1,25 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 630 612" width="630" height="612" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 630 694" width="630" height="694" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12">
 <style>svg{--bg:#fcfcfb;--ink:#0b0b0b;--muted:#52514e;--grid:#e4e3df;--a:#2a78d6;--b:#eb6834;--c:#1baf7a;}@media (prefers-color-scheme: dark){svg{--bg:#1a1a19;--ink:#ffffff;--muted:#c3c2b7;--grid:#3a3936;--a:#3987e5;--b:#d95926;--c:#199e70;}}.t{fill:var(--ink)}.m{fill:var(--muted)}</style>
-<rect width="630" height="612" fill="var(--bg)"/>
+<rect width="630" height="694" fill="var(--bg)"/>
 <rect x="150" y="10" width="14" height="10" fill="var(--a)"/>
 <text class="t" x="170" y="19">bound from tool results</text>
 <rect x="340" y="10" width="14" height="10" fill="var(--b)"/>
 <text class="t" x="360" y="19">also from the user's words</text>
-<line x1="150.0" x2="150.0" y1="38" y2="576" stroke="var(--grid)"/>
-<text class="m" x="150.0" y="592" text-anchor="middle">0</text>
-<line x1="220.0" x2="220.0" y1="38" y2="576" stroke="var(--grid)"/>
-<text class="m" x="220.0" y="592" text-anchor="middle">10</text>
-<line x1="290.0" x2="290.0" y1="38" y2="576" stroke="var(--grid)"/>
-<text class="m" x="290.0" y="592" text-anchor="middle">20</text>
-<line x1="360.0" x2="360.0" y1="38" y2="576" stroke="var(--grid)"/>
-<text class="m" x="360.0" y="592" text-anchor="middle">30</text>
-<line x1="430.0" x2="430.0" y1="38" y2="576" stroke="var(--grid)"/>
-<text class="m" x="430.0" y="592" text-anchor="middle">40</text>
-<line x1="500.0" x2="500.0" y1="38" y2="576" stroke="var(--grid)"/>
-<text class="m" x="500.0" y="592" text-anchor="middle">50</text>
-<line x1="570.0" x2="570.0" y1="38" y2="576" stroke="var(--grid)"/>
-<text class="m" x="570.0" y="592" text-anchor="middle">60</text>
-<text class="m" x="360" y="608" text-anchor="middle">LLM turns a read-only speculator could save (%)</text>
+<line x1="150.0" x2="150.0" y1="38" y2="658" stroke="var(--grid)"/>
+<text class="m" x="150.0" y="674" text-anchor="middle">0</text>
+<line x1="220.0" x2="220.0" y1="38" y2="658" stroke="var(--grid)"/>
+<text class="m" x="220.0" y="674" text-anchor="middle">10</text>
+<line x1="290.0" x2="290.0" y1="38" y2="658" stroke="var(--grid)"/>
+<text class="m" x="290.0" y="674" text-anchor="middle">20</text>
+<line x1="360.0" x2="360.0" y1="38" y2="658" stroke="var(--grid)"/>
+<text class="m" x="360.0" y="674" text-anchor="middle">30</text>
+<line x1="430.0" x2="430.0" y1="38" y2="658" stroke="var(--grid)"/>
+<text class="m" x="430.0" y="674" text-anchor="middle">40</text>
+<line x1="500.0" x2="500.0" y1="38" y2="658" stroke="var(--grid)"/>
+<text class="m" x="500.0" y="674" text-anchor="middle">50</text>
+<line x1="570.0" x2="570.0" y1="38" y2="658" stroke="var(--grid)"/>
+<text class="m" x="570.0" y="674" text-anchor="middle">60</text>
+<text class="m" x="360" y="690" text-anchor="middle">LLM turns a read-only speculator could save (%)</text>
 <text class="t" x="8" y="58" font-weight="600">τ²-bench</text>
 <text class="m" x="142" y="77" text-anchor="end">retail</text>
 <rect x="150" y="66" width="238.6" height="14" rx="2" fill="var(--a)"/>
@@ -104,4 +104,17 @@
 <rect x="150" y="556" width="79.6" height="14" rx="2" fill="var(--a)"/>
 <rect x="231.6" y="556" width="41.5" height="14" rx="2" fill="var(--b)"/>
 <text class="t" x="279.1" y="567">11.5 + 6.1</text>
+<text class="t" x="8" y="590" font-weight="600">MCPMark</text>
+<text class="m" x="142" y="609" text-anchor="end">filesystem</text>
+<rect x="150" y="598" width="75.2" height="14" rx="2" fill="var(--a)"/>
+<rect x="227.2" y="598" width="5.3" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="238.5" y="609">10.9 + 0.9</text>
+<text class="m" x="142" y="629" text-anchor="end">PostgreSQL</text>
+<rect x="150" y="618" width="33.4" height="14" rx="2" fill="var(--a)"/>
+<rect x="185.4" y="618" width="46.1" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="237.5" y="629">4.9 + 6.7</text>
+<text class="m" x="142" y="649" text-anchor="end">GitHub</text>
+<rect x="150" y="638" width="16.6" height="14" rx="2" fill="var(--a)"/>
+<rect x="168.6" y="638" width="49.0" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="223.6" y="649">2.5 + 7.1</text>
 </svg>

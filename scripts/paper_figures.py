@@ -205,10 +205,11 @@ def learning(rows: list[dict], turns: dict, path: Path) -> None:
 
 
 BENCHMARKS = [("tau2-bench", "τ²-bench"), ("tau-bench", "τ-bench"), ("bfcl", "BFCL"), ("agentdojo", "AgentDojo"),
-              ("workbench", "WorkBench"), ("dtap", "DTap-Bench")]
+              ("workbench", "WorkBench"), ("dtap", "DTap-Bench"), ("mcpmark", "MCPMark")]
 NAMES = {"customer_relationship_manager": "CRM", "project_management": "project mgmt", "multi_domain": "multi-domain",
          "bfcl": "multi-turn", "slack": "Slack", "customer_service": "customer service", "dtap_crm": "CRM",
-         "dtap_telecom": "telecom", "dtap_travel": "travel"}
+         "dtap_telecom": "telecom", "dtap_travel": "travel", "mcpmark_filesystem": "filesystem",
+         "mcpmark_postgres": "PostgreSQL", "mcpmark_github": "GitHub"}
 
 
 def ceilings(rows: list[dict], path: Path) -> None:
