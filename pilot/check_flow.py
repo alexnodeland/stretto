@@ -26,6 +26,11 @@ learned with those counts.
     python check_flow.py --results glm-5_retail.json --oracle-cache CACHE \\
         --flow-oracle jev
 
+Each row also splits the lookups that answered a call by when: `used_next`
+if the call came before the flow's next decision, that is, before any call
+of the agent's that no lookup answered, and `used_later` if one came between,
+so that a later decision could have made the lookup in time.
+
 `--same-result` also skips a recorded call whose recorded result is one a
 flow lookup of the same tool already returned, where the two agree on every
 argument both pass (an optional argument such as a `limit` that changes
@@ -278,7 +283,8 @@ async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
                 later.add(k2)
         ahead_of[(i, j)] = later
         next_of[(i, j)] = next((k2 for _, _, k2, _ in flat[n + 1:] if k2 is not None), None)
-    turns = tool_turns = saved = calls = skipped = 0
+    turns = tool_turns = saved = calls = skipped = used_next = used_later = 0
+    executed_in: list[int] = []  # the messages whose calls the replay made
     for i, m in enumerate(messages):
         if m["role"] == "tool":
             continue  # the server records its own results
@@ -314,6 +320,12 @@ async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
                 if hit is not None:
                     hit["used"] = True
                     used += 1
+                    # A call the replay made between the lookup and this use
+                    # would have brought another decision in time to make it.
+                    if any(hit["at"] < e < i for e in executed_in):
+                        used_later += 1
+                    else:
+                        used_next += 1
                     made.add(k)
                     skipped += 1
                     continue
@@ -333,6 +345,8 @@ async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
                     skipped += 1
                     continue
             left += 1
+            if not executed_in or executed_in[-1] != i:
+                executed_in.append(i)
             text = await call(c["name"], c["arguments"])
             made.add(k)
             if c["name"] in WRITES:
@@ -355,7 +369,7 @@ async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
             for f in flow_calls(text):
                 made.add(f)
                 by_flow.append(f)
-                fresh.append({"key": f, "out": outs.get(f), "used": False, "stale": False})
+                fresh.append({"key": f, "out": outs.get(f), "used": False, "stale": False, "at": i})
             if SAME_RESULT:
                 for f, out in outs.items():
                     returned.setdefault(f[0], []).append((f, out))
@@ -371,6 +385,8 @@ async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
         "turns_saved": saved,
         "calls": calls,
         "calls_skipped": skipped,
+        "used_next": used_next,
+        "used_later": used_later,
         "flow_lookups": state.get("flow_lookups"),
         "flow_queries": state.get("flow_queries"),
         "detours": sum(1 for f in by_flow if f not in recorded and f not in twins) if LEGACY else len(by_flow) - used,

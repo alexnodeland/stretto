@@ -4,6 +4,7 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ## Unreleased
 
+- `pilot/check_flow.py` splits each replay row's used lookups by when they were used: `used_next` before the flow's next decision (before any call of the agent's that no lookup answered), `used_later` after one, so that a later decision could have made the lookup in time. At 0.3, 94% of the reach decider's lookups that paid in retail, airline and telecom were used before its next decision ([results](docs/results/reach-2026-09-26.md#acting-at-once)).
 - `scripts/remade.py` checks the replay's assumption on live episodes: whether the agent made a flow's lookup again before the next write. On the reach arm's 28 live episodes, GLM-5.3 made none of the flow's 101 lookups again ([results](docs/results/reach-2026-09-26.md#live)).
 - `stretto flow-show` says when a flow carries the `reach` counts, which `--decider reach` serves.
 - `scripts/costs.py` counts a detour's cost and a saved turn's value in recorded episodes, in each agent's own input tokens, and so the threshold a read-only flow should use, θ* = δ/(β+δ). On τ²-bench's leaderboard episodes it gives 0.30 in retail, what the live paired run measured, and 0.12–0.13 in airline and telecom, whose contexts are longer and results shorter ([results](docs/results/reach-2026-09-26.md#the-threshold-is-a-ratio-of-costs)).

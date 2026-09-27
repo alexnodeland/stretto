@@ -1,0 +1,169 @@
+diff --git a/crates/stretto-model/src/world.rs b/crates/stretto-model/src/world.rs
+index 17291a3..56c904a 100644
+--- a/crates/stretto-model/src/world.rs
++++ b/crates/stretto-model/src/world.rs
+@@ -223,6 +223,27 @@ impl BackoffModel {
+         m
+     }
+ 
++    /// A model of the agent's next call: at each step, the first action from
++    /// that step on that is not `respond`. A reply is a step but not a
++    /// decision, since it returns no tool result, so this is the call a
++    /// lookup made now must answer if no later decision is to make it.
++    pub fn fit_next_call(
++        order: usize,
++        alpha: f64,
++        vocab_size: usize,
++        episodes: &[EncodedEpisode],
++        respond: u32,
++    ) -> Self {
++        let mut m = Self::new(order, alpha, vocab_size);
++        for ep in episodes {
++            for t in 0..ep.actions.len() {
++                let next = ep.actions[t..].iter().copied().find(|&a| a != respond);
++                m.observe_set(&ep.symbols[..t], next);
++            }
++        }
++        m
++    }
++
+     /// Posterior predictive over every action id, given `history`.
+     pub fn predict(&self, history: &[Symbol]) -> Vec<f64> {
+         let mut p = vec![1.0 / self.vocab_size as f64; self.vocab_size];
+diff --git a/crates/stretto-report/src/flow.rs b/crates/stretto-report/src/flow.rs
+index c0d8e09..4fa9096 100644
+--- a/crates/stretto-report/src/flow.rs
++++ b/crates/stretto-report/src/flow.rs
+@@ -203,6 +203,10 @@ pub struct Flow {
+     /// format version.
+     #[serde(default, skip_serializing_if = "Option::is_none")]
+     pub(crate) reach: Option<BackoffModel>,
++    /// The agent's next call, past replies, counted over the habit's
++    /// contexts ([`BackoffModel::fit_next_call`]). Experimental.
++    #[serde(default, skip_serializing_if = "Option::is_none")]
++    pub(crate) next_call: Option<BackoffModel>,
+ }
+ 
+ /// Where a flow may act (RFC-001 §3.7), from `stretto promote`: each site
+@@ -831,12 +835,33 @@ impl Flow {
+                 }
+                 _ => prior.clone(),
+             };
++            let waits: Option<Vec<f64>> = match (decider, &self.next_call) {
++                (Decider::Reach, Some(nc)) if std::env::var_os("STRETTO_DEFER").is_some() => {
++                    let n = nc.predict(&encoded.symbols[..st.len()]);
++                    Some(
++                        options
++                            .iter()
++                            .map(|o| {
++                                if o == RESPOND {
++                                    0.0
++                                } else {
++                                    n[self.vocab.id(&Action::Tool(o.clone())) as usize]
++                                }
++                            })
++                            .collect(),
++                    )
++                }
++                _ => None,
++            };
+             let chosen = Chosen {
+                 options: &options,
+                 probs: &probs,
+                 habit: &prior,
+                 decider,
+             };
++            if let Some(n) = waits {
++                return self.look_up_waiting(next, episode, chosen, &n, threshold);
++            }
+             return self.look_up(next, episode, chosen, threshold, explore);
+         }
+         if !self.has_arbiter() {
+@@ -994,6 +1019,58 @@ impl Flow {
+         Ok(next)
+     }
+ 
++    /// The set rule, acting now only on lookups that waiting would forfeit
++    /// (Proposition 4, the agent's next call settling the rest): of the
++    /// lookups that bind with `q = r·ρ ≥ θ` and `n·ρ·β ≥ (1 − q)·δ`, where
++    /// `δ/β = θ/(1 − θ)`, the best by `q`.
++    fn look_up_waiting(
++        &self,
++        mut next: Next,
++        episode: &Episode,
++        chosen: Chosen,
++        n: &[f64],
++        threshold: f64,
++    ) -> Result<Next> {
++        next.probs = chosen
++            .options
++            .iter()
++            .cloned()
++            .zip(chosen.probs.iter().copied())
++            .collect();
++        let ratio = threshold / (1.0 - threshold);
++        let mut best: Option<(&String, f64, Value, f64)> = None;
++        let mut why = "no lookup to make".to_string();
++        for ((tool, &p), &nc) in chosen.options.iter().zip(chosen.probs).zip(n) {
++            if tool.as_str() == RESPOND || p < threshold {
++                continue;
++            }
++            match self.bind_lookup(tool, episode) {
++                Ok((arguments, chance)) => {
++                    let q = p * chance;
++                    if q < threshold || nc * chance < (1.0 - q) * ratio {
++                        why = format!("{tool}: waits (q {q:.2}, next call {:.2})", nc * chance);
++                        continue;
++                    }
++                    if best.as_ref().is_none_or(|b| q > b.1 * b.3) {
++                        best = Some((tool, p, arguments, chance));
++                    }
++                }
++                Err(e) => why = format!("{tool}: {e}"),
++            }
++        }
++        let Some((tool, p, arguments, chance)) = best else {
++            next.proposal = Proposal::HandBack { reason: why };
++            return Ok(next);
++        };
++        next.prob = Some(p);
++        next.binding = Some(chance);
++        next.proposal = Proposal::Lookup {
++            tool: tool.clone(),
++            arguments,
++        };
++        Ok(next)
++    }
++
+     /// A lookup's arguments bound from `episode`, and the chance that they
+     /// are the agent's. One that training never made (offered from the
+     /// manifest) is bound by argument name.
+@@ -2594,6 +2671,7 @@ pub(crate) mod tests {
+             thresholds: BTreeMap::new(),
+             contracts: BTreeMap::new(),
+             reach: None,
++            next_call: None,
+         }
+     }
+ 
+diff --git a/crates/stretto-report/src/phase0.rs b/crates/stretto-report/src/phase0.rs
+index 24ea2e3..511dc46 100644
+--- a/crates/stretto-report/src/phase0.rs
++++ b/crates/stretto-report/src/phase0.rs
+@@ -1088,6 +1088,8 @@ fn featured(
+         &train,
+         |id| matches!(vocab.action(id), Some(Action::Tool(t)) if manifest.is_write(t)),
+     );
++    let next_call =
++        BackoffModel::fit_next_call(config.order, a, vocab.len(), &train, vocab.id(&Action::Respond));
+     let code_and_intent = VariantStats {
+         alpha: None,
+         alpha_used: a,
+@@ -1291,6 +1293,7 @@ fn featured(
+                 thresholds: BTreeMap::new(),
+                 contracts: BTreeMap::new(),
+                 reach: Some(reach.clone()),
++                next_call: Some(next_call.clone()),
+             })
+         }
+         None => None,
