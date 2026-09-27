@@ -258,7 +258,7 @@ dtap_const() { # each agent's own flow with its constants, in the two domains wh
 
 dtap() { # per domain: flows from the agent's own runs, its harness's other agents, the other harnesses, all
   local x=$WORK/dtap d h f agents same other
-  for d in customer_service dtap_crm dtap_telecom dtap_travel; do
+  for d in customer_service dtap_crm dtap_telecom dtap_travel dtap_os_filesystem dtap_medical; do
     mkdir -p "$FLOWS/dtap/$d"
     agents=$(cd "$x/$d" && ls -- *.json | sed 's/\.json$//')
     # shellcheck disable=SC2046,SC2086
@@ -308,7 +308,8 @@ ceilings() { # the replayed agents' test runs, per set
     sed "s|.*|$x/runs/&.json|") --tau2 "$x/checkout" --json "$c/bfcl.json" > /dev/null
   for spec in dojo:travel dojo:slack dojo:banking dojo:workspace wb:multi_domain wb:customer_relationship_manager \
     wb:project_management wb:email wb:calendar wb:analytics mcpm:mcpmark_filesystem mcpm:mcpmark_postgres \
-    mcpm:mcpmark_github mcpm:mcpmark_notion dtap:customer_service dtap:dtap_crm dtap:dtap_telecom dtap:dtap_travel; do
+    mcpm:mcpmark_github mcpm:mcpmark_notion dtap:customer_service dtap:dtap_crm dtap:dtap_telecom dtap:dtap_travel \
+    dtap:dtap_os_filesystem dtap:dtap_medical; do
     local set=${spec%%:*} d=${spec##*:}
     [ -f "$c/$set-$d.json" ] && continue
     # The agents replayed on the set's test runs.

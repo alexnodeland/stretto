@@ -287,7 +287,7 @@ def main():
     runs = replays(work / "replays/dtap")
     out["dtap_by_source"] = {}
     domains = sorted({s.split("-", 1)[0] for s, _, _ in runs})
-    for label, doms in [("all four", domains)] + [(d, [d]) for d in domains]:
+    for label, doms in [("all", domains)] + [(d, [d]) for d in domains]:
         for src in SOURCES:
             ps = pairs_at(runs, "0.3", keep=lambda s: s.split("-", 1)[0] in doms and s.endswith(f"-{src}"))
             c = compare(ps)

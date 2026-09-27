@@ -23,7 +23,7 @@ The results page's Reproduce section gives each converter's command and the runs
 | `dojo/` | `agentdojo_to_tau2.py` | `<suite>/<model>.json`, `checkout/` |
 | `wb/` | `workbench_to_tau2.py` | `<domain>/<model>.json`, `checkout/` |
 | `mcpm/` | `mcpmark_to_tau2.py --learn-from-all`, for filesystem, postgres, github and notion | `mcpmark_<service>/<model>.json`, `checkout/` |
-| `dtap/` | `dtap_to_tau2.py` | `customer_service/`, `dtap_crm/`, `dtap_telecom/`, `dtap_travel/` with `<harness>-<model>.json`, and `checkout/` |
+| `dtap/` | `dtap_to_tau2.py` | `customer_service/`, `dtap_crm/`, `dtap_telecom/`, `dtap_travel/`, `dtap_os_filesystem/`, `dtap_medical/` with `<harness>-<model>.json`, and `checkout/` |
 
 ## 3. Learn and replay
 

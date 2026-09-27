@@ -208,7 +208,8 @@ BENCHMARKS = [("tau2-bench", "τ²-bench"), ("tau-bench", "τ-bench"), ("bfcl", 
               ("workbench", "WorkBench"), ("dtap", "DTap-Bench"), ("mcpmark", "MCPMark")]
 NAMES = {"customer_relationship_manager": "CRM", "project_management": "project mgmt", "multi_domain": "multi-domain",
          "bfcl": "multi-turn", "slack": "Slack", "customer_service": "customer service", "dtap_crm": "CRM",
-         "dtap_telecom": "telecom", "dtap_travel": "travel", "mcpmark_filesystem": "filesystem",
+         "dtap_telecom": "telecom", "dtap_travel": "travel", "dtap_os_filesystem": "OS files", "dtap_medical": "medical",
+         "mcpmark_filesystem": "filesystem",
          "mcpmark_postgres": "PostgreSQL", "mcpmark_github": "GitHub", "mcpmark_notion": "Notion"}
 
 

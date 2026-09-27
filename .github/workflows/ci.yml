@@ -41,4 +41,4 @@ jobs:
       - run: bash -n scripts/bench/replay.sh
       - run: |
           python3 scripts/bench/tables.py --work scripts/bench/fixture --json /tmp/rows.json
-          python3 -c "import json; c = json.load(open('/tmp/rows.json'))['dtap_by_source']['all four|own']; assert (c['reach_saved'], c['habit_saved'], c['reach_detours']) == (31, 17, 2), c"
+          python3 -c "import json; c = json.load(open('/tmp/rows.json'))['dtap_by_source']['all|own']; assert (c['reach_saved'], c['habit_saved'], c['reach_detours']) == (31, 17, 2), c"
