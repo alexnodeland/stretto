@@ -12,9 +12,16 @@ Episodes are drawn whole, whether or not they succeeded, as sessions arrive;
 
 With --pool, the flow learns from other agents' sessions instead (the
 episodes of the files given to --pool), and is replayed on the agent's.
+With --prior, it learns from all of those other agents' training episodes
+plus the first n of the agent's own, as a deployment that started from other
+agents' sessions and adds its own as they arrive: every estimate is conjugate
+counts, so adding sessions adds counts (n = 0 is the prior's sessions alone).
+With --prior-n K as well, it learns from K of them, drawn at random: the
+other agents' sessions then weigh as K sessions do, a prior of bounded size,
+and the agent's own take over as they outnumber it.
 
     learning_curve.py RESULTS.json --domain D --n 30 60 100 200 --seeds 1 2 3 \\
-        --out DIR [--pool OTHER.json ...] [--bin target/release/stretto]
+        --out DIR [--pool OTHER.json ... | --prior OTHER.json ...] [--bin target/release/stretto]
 
 Each point is a row of DIR/curve.jsonl: n, seed, turns, turns saved, detours,
 lookups, and the replay folder, whose check.json has a row per episode.
@@ -49,6 +56,9 @@ def main():
     ap.add_argument("--n", type=int, nargs="+", required=True, help="numbers of sessions to learn from (0 = none)")
     ap.add_argument("--seeds", type=int, nargs="+", default=[1])
     ap.add_argument("--pool", type=Path, nargs="*", help="learn from these results' training episodes instead")
+    ap.add_argument("--prior", type=Path, nargs="*",
+                    help="also learn from all of these results' training episodes, before the agent's own first n")
+    ap.add_argument("--prior-n", type=int, help="with --prior: learn from this many of them, drawn at random")
     ap.add_argument("--tau2", type=Path, default=ROOT.parent / "tau2-bench")
     ap.add_argument("--bin", type=Path, default=ROOT / "target/release/stretto")
     ap.add_argument("--python", default=sys.executable, help="the Python with τ²-bench, for the replays")
@@ -59,8 +69,14 @@ def main():
     ap.add_argument("--threshold", type=float, default=0.3, help="the flow's threshold when replayed")
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
+    if args.pool and args.prior:
+        ap.error("--pool and --prior are exclusive")
     args.out.mkdir(parents=True, exist_ok=True)
     template, pool = train_episodes(args.pool or [args.results], args.tau2, args.domain)
+    if args.prior_n is not None and not args.prior:
+        ap.error("--prior-n needs --prior")
+    if args.prior_n is not None:
+        prior_template, prior_all = train_episodes(args.prior, args.tau2, args.domain)
     rows = args.out / "curve.jsonl"
     done = set()
     if rows.exists():
@@ -74,12 +90,21 @@ def main():
             n = min(n, len(order))
             point = args.out / f"s{seed}-n{n}"
             point.mkdir(exist_ok=True)
-            if n == 0:
+            if n == 0 and not args.prior:
                 row = {"seed": seed, "n": 0, "turns_saved": 0, "detours": 0, "flow_lookups": 0}
             else:
-                sample = dict(template, simulations=order[:n])
-                (point / "sessions.json").write_text(json.dumps(sample))
-                learn = [str(args.bin), "learn", "--results", str(point / "sessions.json"), "--tau2", str(args.tau2),
+                # Each file's episodes keep their own agent: the other agents'
+                # whole (or K of them), and the first n of this one's.
+                inputs = [f for path in args.prior or [] for f in ("--results", str(path))]
+                if args.prior_n is not None:
+                    drawn = random.Random(1000 + seed).sample(prior_all, min(args.prior_n, len(prior_all)))
+                    (point / "prior.json").write_text(json.dumps(dict(prior_template, simulations=drawn)))
+                    inputs = ["--results", str(point / "prior.json")]
+                if n:
+                    sample = dict(template, simulations=order[:n])
+                    (point / "sessions.json").write_text(json.dumps(sample))
+                    inputs += ["--results", str(point / "sessions.json")]
+                learn = [str(args.bin), "learn", *inputs, "--tau2", str(args.tau2),
                          "--domain", args.domain, "--habit-only", "--out", str(point / "flow.json")]
                 learned = subprocess.run(learn, capture_output=True, text=True)
                 if learned.returncode != 0:
@@ -106,9 +131,12 @@ def main():
                 total = json.loads(check[6:])
                 row = {"seed": seed, "n": n, **{k: total[k] for k in ("turns", "turns_saved", "detours", "flow_lookups", "episodes")},
                        "replay": str(point / "replay")}
-                # The replay's episodes, kept for intervals; its per-episode folders are not.
+                # The replay's episodes, kept for intervals; its per-episode folders are not,
+                # nor the sessions learned from, which the seed draws again.
                 for d in (point / "replay").glob("task-*"):
                     subprocess.run(["rm", "-rf", str(d)], check=True)
+                for name in ("sessions.json", "prior.json"):
+                    (point / name).unlink(missing_ok=True)
             with open(rows, "a") as f:
                 f.write(json.dumps(row) + "\n")
             print(json.dumps(row), flush=True)

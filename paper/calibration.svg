@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1014 324" width="1014" height="324" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12">
-<style>svg{--bg:#fcfcfb;--ink:#0b0b0b;--muted:#52514e;--grid:#e4e3df;--a:#2a78d6;--b:#eb6834;}@media (prefers-color-scheme: dark){svg{--bg:#1a1a19;--ink:#ffffff;--muted:#c3c2b7;--grid:#3a3936;--a:#3987e5;--b:#d95926;}}.t{fill:var(--ink)}.m{fill:var(--muted)}</style>
+<style>svg{--bg:#fcfcfb;--ink:#0b0b0b;--muted:#52514e;--grid:#e4e3df;--a:#2a78d6;--b:#eb6834;--c:#1baf7a;}@media (prefers-color-scheme: dark){svg{--bg:#1a1a19;--ink:#ffffff;--muted:#c3c2b7;--grid:#3a3936;--a:#3987e5;--b:#d95926;--c:#199e70;}}.t{fill:var(--ink)}.m{fill:var(--muted)}</style>
 <rect width="1014" height="324" fill="var(--bg)"/>
 <line x1="56" x2="78" y1="16" y2="16" stroke="var(--a)" stroke-width="2"/>
 <circle cx="67" cy="16" r="4" fill="var(--a)" stroke="var(--bg)" stroke-width="2"/>

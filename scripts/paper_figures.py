@@ -26,8 +26,8 @@ import math
 from pathlib import Path
 
 # Validated as a categorical pair (light on #fcfcfb, dark on #1a1a19).
-LIGHT = {"bg": "#fcfcfb", "ink": "#0b0b0b", "muted": "#52514e", "grid": "#e4e3df", "a": "#2a78d6", "b": "#eb6834"}
-DARK = {"bg": "#1a1a19", "ink": "#ffffff", "muted": "#c3c2b7", "grid": "#3a3936", "a": "#3987e5", "b": "#d95926"}
+LIGHT = {"bg": "#fcfcfb", "ink": "#0b0b0b", "muted": "#52514e", "grid": "#e4e3df", "a": "#2a78d6", "b": "#eb6834", "c": "#1baf7a"}
+DARK = {"bg": "#1a1a19", "ink": "#ffffff", "muted": "#c3c2b7", "grid": "#3a3936", "a": "#3987e5", "b": "#d95926", "c": "#199e70"}
 DOMAINS = [("retail", "Retail"), ("airline", "Airline"), ("telecom", "Telecom"), ("solo", "Telecom, solo")]
 MIN_BIN = 100  # lookups; smaller bins are not drawn
 
@@ -153,12 +153,16 @@ def learning(rows: list[dict], turns: dict, path: Path) -> None:
             continue
         by[(r["domain"], r["protocol"])][r["n"]].append((100 * r["turns_saved"] / t, r["detours"] / r.get("episodes", 160)))
     doms = [d for d, _ in DOMAINS if any(k[0] == d for k in by)]
-    pw, ph, gap, left, top, mid, bottom = 220, 150, 40, 60, 58, 44, 44
+    series = [("a", "own", "learned from the agent's own sessions", ""),
+              ("b", "pool", "learned from four other agents' sessions", ' stroke-dasharray="5 4"'),
+              ("c", "sample+own", "from 100 of the other agents' sessions, then the agent's own", ' stroke-dasharray="1.5 3"')]
+    series = [x for x in series if any(k[1] == x[1] for k in by)]
+    pw, ph, gap, left, bottom, mid = 220, 150, 40, 60, 44, 44
+    top = 26 + 16 * len(series)
     w = left + len(doms) * pw + (len(doms) - 1) * gap + 20
     h = top + 2 * ph + mid + bottom
     out = svg_open(w, h)
-    legend(out, left, 16, [("a", "learned from the agent's own sessions", ""),
-                           ("b", "learned from four other agents' sessions", ' stroke-dasharray="5 4"')])
+    legend(out, left, 16, [(key, label, dash) for key, _, label, dash in series])
     nmax = max((n for v in by.values() for n in v), default=1000)
     top_s = max((sum(x[0] for x in p) / len(p) for v in by.values() for p in v.values()), default=30)
     top_d = max((sum(x[1] for x in p) / len(p) for v in by.values() for p in v.values()), default=1)
@@ -183,7 +187,7 @@ def learning(rows: list[dict], turns: dict, path: Path) -> None:
                 out.append(f'<text class="m" transform="translate(16 {y0 + ph / 2}) rotate(-90)" text-anchor="middle">{label}</text>')
             if row == 0:
                 out.append(f'<text class="t" x="{x0}" y="{top - 8}" font-weight="600">{dict(DOMAINS)[dom]}</text>')
-            for key, proto, dash in (("a", "own", ""), ("b", "pool", ' stroke-dasharray="5 4"')):
+            for key, proto, _, dash in series:
                 pts = sorted(by.get((dom, proto), {}).items())
                 if not pts:
                     continue

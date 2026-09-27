@@ -4,6 +4,7 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ## Unreleased
 
+- `scripts/learning_curve.py --prior OTHER.json...` learns from those other agents' training sessions together with the first n of the agent's own, as a deployment that starts from other agents' sessions and adds its own; `--prior-n K` takes K of them, drawn at random, so that they weigh as K sessions do ([results](docs/results/reach-2026-09-26.md#how-fast-it-learns)).
 - `pilot/check_flow.py` splits each replay row's used lookups by when they were used: `used_next` before the flow's next decision (before any call of the agent's that no lookup answered), `used_later` after one, so that a later decision could have made the lookup in time. At 0.3, 94% of the reach decider's lookups that paid in retail, airline and telecom were used before its next decision ([results](docs/results/reach-2026-09-26.md#acting-at-once)).
 - `scripts/remade.py` checks the replay's assumption on live episodes: whether the agent made a flow's lookup again before the next write. On the reach arm's 28 live episodes, GLM-5.3 made none of the flow's 101 lookups again ([results](docs/results/reach-2026-09-26.md#live)).
 - `stretto flow-show` says when a flow carries the `reach` counts, which `--decider reach` serves.
