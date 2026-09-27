@@ -24,12 +24,13 @@ The results page's Reproduce section gives each converter's command and the runs
 | `wb/` | `workbench_to_tau2.py` | `<domain>/<model>.json`, `checkout/` |
 | `mcpm/` | `mcpmark_to_tau2.py --learn-from-all`, for filesystem, postgres, github and notion | `mcpmark_<service>/<model>.json`, `checkout/` |
 | `dtap/` | `dtap_to_tau2.py` | `customer_service/`, `dtap_crm/`, `dtap_telecom/`, `dtap_travel/`, `dtap_os_filesystem/`, `dtap_medical/` with `<harness>-<model>.json`, and `checkout/` |
+| `dtap-more/` | `dtap_to_tau2.py` | `dtap_legal/`, `dtap_finance/`, `dtap_research/` with `<harness>-<model>.json`, and `checkout/` |
 
 ## 3. Learn and replay
 
 ```bash
 scripts/bench/replay.sh all        # or any of: tau2 tau2-env sweep perdec v1 bfcl dojo wb mcpm mcpm-own mcpm-const
-                                   #   dtap dtap-const ceilings
+                                   #   dtap dtap-const dtap-more ceilings
 ```
 
 `replay.sh` learns each flow into `$WORK/flows/`. It writes each replay's totals and episodes to `$WORK/replays/<set>/<replay>/check.json`, and each set's read-only ceiling to `$WORK/ceilings/`. The script's header lists what each set replays. A replay that already has its `check.json` is skipped, so an interrupted batch resumes. The trace-only sets take minutes to an hour each with `JOBS=3`. The environment sets take hours.
@@ -45,7 +46,7 @@ This prints:
 - each set's anatomy and ceiling;
 - τ²-bench's trace-only replays against the environment's;
 - reach against the next-step decider per benchmark, threshold and domain, pooled over agents, with a paired bootstrap over tasks;
-- DTap-Bench by the flow's source, with each source's share of what the agent's own flow saves, over the agents that have both.
+- DTap-Bench by the flow's source, with each source's share of what the agent's own flow saves, over the agents that have both; the six domains (`dtap`) and legal, finance and research (`dtap-more`) apart.
 
 The other tables come from scripts that read the same replays:
 

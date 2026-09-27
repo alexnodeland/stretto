@@ -112,7 +112,7 @@ Test episodes of the agents each flow is replayed on. The ceiling counts every t
 - **WorkBench.** Each request names its customer, task or date; the agent searches for them, then writes. So nearly every read's arguments come from the request, which only reading language can bind.
 - **DTap-Bench.** In customer service each request names an order or a customer's email, and the agent walks the order, its shipment, its cases and the guidelines; in telecom it walks the customer's account, bills and tickets. How an agent groups its calls matters as much as the harness: in customer service and travel, Gemini on Google's ADK batches its reads into a few parallel turns (3.5 an episode in customer service, where the others make 8–11). A turn of parallel reads is saved only when every read in it is answered, so its ceiling there is 7.6% and 0.5%, against 13–34% for the other agents. In CRM and telecom it batches less, and its ceiling is 13.5% and 21.7%. In the operating system's files, each request names a path, and the agents list, read and check the files there: 11.2% of turns are in the ceiling, and the path the user wrote adds 2.7 points. In medical, the agents' calls order tests and question a simulated patient, and a test ordered is a write. Six agents make 0–8 reads in 642 runs, and 6 of their 14,657 test turns are in the ceiling. gpt-oss-120b makes 4,056: it lists the patients 824 times and asks for a patient's status 3,231 times, often by an id it made up (`patient_1`, `PLACEHOLDER`), and a quarter of its reads repeat one it made before. 14% of its turns are in the ceiling, nearly all of medical's 3.8%: the agent is part of the ceiling. DTap-Bench's browser and macOS domains (34 and 30 tasks, too few to learn from, so every task is counted) are screens: the calls click, type and navigate, and each returns the screen it leaves. 0.2% and 0.0% of the six frontier agents' turns are in the ceiling, and 0.5% and 0.1% with a screenshot or a page snapshot counted as a read, since they take those with their actions or first; gpt-oss-120b, which polls the page, 6.1% (45%).
 
-**DTap-Bench's other domains, counted but not replayed.** Legal, finance and research have enough tasks to learn from and are not yet replayed; browser and macOS have too few, so every task is counted. Their test episodes, as above:
+**DTap-Bench's other domains.** Legal, finance and research have enough tasks to learn from, and are replayed apart from the six domains, whose numbers stand as they are ([below](#across-harnesses)); browser and macOS have too few, so every task is counted. Their test episodes, as above:
 
 | Domain | Tasks counted | Turns | Reads | Ceiling | With the user's words |
 |---|---|---|---|---|---|
@@ -235,6 +235,30 @@ Turns saved by reach over the six domains, by the flow's source, with the share 
 - **Own flows overreach where sessions are few.** In customer service, learned from 96 runs of one agent, the flows score high and miss: of the reach flows' lookups scored 0.8–0.9, a quarter were used. Learned from all seven agents, they keep 90% of the own flows' turns with 60% of their detours (over the six domains, 92% with 91%).
 - **Reach leads in every domain with reads to take, least in CRM and the operating system's files**, whose ceilings are 11.5% and 11.2% (+0.1 to +1.1 points). With the agents' own runs it takes 86% of travel's ceiling and 38% of telecom's. In medical both deciders make the same lookups, gpt-oss-120b's, and save 49 of the domain's 20,062 turns.
 
+**Legal, finance and research**, replayed the same way, separately from the six domains (`replay.sh dtap-more`; `tables.py`'s `dtap_more_by_source`):
+
+| Domain | Source | Agents | Turns | Saved, reach | Saved, next-step | Reach minus next-step | Share of the ceiling, reach | Detours per episode, reach / next-step |
+|---|---|---|---|---|---|---|---|---|
+| All three | own runs | 21 | 18,430 | 3.3% | 2.7% | +0.54 (+0.44 – +0.64) | 31% | 0.05 / 0.03 |
+|  | harness-mates | 18 | 16,669 | 3.3% | 2.9% | +0.38 (+0.29 – +0.47) | 30% | 0.08 / 0.06 |
+|  | other harnesses | 21 | 18,430 | 2.8% | 2.7% | +0.17 (+0.10 – +0.25) | 27% | 0.08 / 0.08 |
+|  | all seven | 21 | 18,430 | 3.2% | 3.2% | −0.02 (−0.09 – +0.06) | 30% | 0.10 / 0.10 |
+| Legal | own runs | 7 | 11,436 | 4.7% | 3.9% | +0.81 (+0.68 – +0.95) | 31% | 0.13 / 0.04 |
+|  | harness-mates | 6 | 10,277 | 5.2% | 4.6% | +0.59 (+0.46 – +0.72) | 34% | 0.18 / 0.13 |
+|  | other harnesses | 7 | 11,436 | 4.3% | 4.0% | +0.27 (+0.17 – +0.38) | 29% | 0.15 / 0.13 |
+|  | all seven | 7 | 11,436 | 4.8% | 4.9% | −0.03 (−0.16 – +0.09) | 32% | 0.20 / 0.19 |
+| Finance | own runs | 7 | 4,497 | 1.1% | 0.9% | +0.13 (−0.02 – +0.29) | 23% | 0.02 / 0.02 |
+|  | harness-mates | 6 | 4,132 | 0.3% | 0.3% | +0.05 (−0.05 – +0.15) | 7% | 0.03 / 0.03 |
+|  | other harnesses | 7 | 4,497 | 0.6% | 0.6% | +0.02 (−0.13 – +0.16) | 12% | 0.08 / 0.09 |
+|  | all seven | 7 | 4,497 | 0.9% | 0.9% | +0.02 (+0.00 – +0.07) | 19% | 0.08 / 0.08 |
+| Research | own runs | 7 | 2,497 | 0.8% | 0.8% | +0.00 (+0.00 – +0.00) | 54% | 0.01 / 0.01 |
+|  | harness-mates | 6 | 2,260 | 0.0% | 0.0% | +0.00 (+0.00 – +0.00) | 0% | 0.00 / 0.00 |
+|  | other harnesses | 7 | 2,497 | 0.3% | 0.3% | +0.00 (+0.00 – +0.00) | 20% | 0.01 / 0.01 |
+|  | all seven | 7 | 2,497 | 0.0% | 0.0% | +0.00 (+0.00 – +0.00) | 0% | 0.00 / 0.00 |
+
+- **Legal, where reads are three quarters of turns, is where reach leads.** Its agents walk dockets, opinions and their citations by the ids each result names. With the agents' own runs reach saves 4.7% of turns against 3.9% (+0.8 points, 0.7–1.0), 31% of the ceiling, for 0.13 detours an episode against 0.04; GPT-5.4's own flow takes 66% of its ceiling (173 of 262 turns), next-step 47%. It leads with the harness-mates' flows too (+0.6, 0.5–0.7) and the other harnesses' (+0.3, 0.2–0.4), which keep 92% of what the agents' own flows save, with 115% of their detours, more than in the six domains (59%). Learned from all seven agents, the two tie (4.8% and 4.9%).
+- **Finance and research have little to take, and the two tie.** Finance's requests name the tickers (a 4.6% ceiling) and research's agents write their own queries (1.4%): reach and next-step make nearly the same lookups, with flows from any source (+0.13 points in finance with the agents' own, −0.02 to +0.29; none in research).
+
 **Do agents skip what they already have?** The replay assumes that an agent that sees a lookup's result does not make the call itself. The record shows how often an agent makes a read again that it already made, with no write between, as an agent that ignored a lookup's result would (`scripts/remade.py --results`). Six of the seven agents did so for 22 of their 21,524 reads over the six domains, in all three harnesses. gpt-oss-120b did so for 1,919 of its 8,471 (23%; 7 of 766 in the operating system's files, 995 of 4,056 in medical), so its replayed savings are upper bounds. Counted the same way for every replayed agent of every benchmark:
 
 | Benchmark | Agents | Reads | Made again, no write between | Most by one agent |
@@ -352,7 +376,7 @@ With the count, the WorkBench flows make no lookup at all in the 13,869 turns of
 ## What is next
 
 - **Reading the request.** A model that picks the value among the user's words takes 30–53% of what the words add in WorkBench, BFCL, AgentDojo and DTap-Bench, where a pattern takes 0–17% (above). A speculator that reads the request needs the conversation, which an MCP proxy does not see, and a model to read it; where a request names several values for one call, it would also need to know which the agent takes next.
-- **More domains.** DTap-Bench's legal, finance and research domains (200, 200 and 160 tasks) are counted for their ceilings (above) and not yet replayed; its browser and macOS domains have too few tasks to learn from. BFCL v4 also has agentic categories, web search and memory (their tasks are in `bfcl_eval`'s data); whether BFCL-Result publishes those runs' logs is not yet checked. A search whose results name the pages the agent then fetches is a listing of the kind flows bind from.
+- **More domains.** DTap-Bench's legal, finance and research domains (200, 200 and 160 tasks) are replayed separately from the six (above); pooling all nine is next. Its browser and macOS domains have too few tasks to learn from. BFCL v4 also has agentic categories, web search and memory (their tasks are in `bfcl_eval`'s data); whether BFCL-Result publishes those runs' logs is not yet checked. A search whose results name the pages the agent then fetches is a listing of the kind flows bind from.
 - **Compiling once beyond τ²-bench's solo telecom.** A procedure compiled once must bind every value of every call, writes included. `ceiling.py` counts the test episodes in which every value came from an earlier result, a constant or what the user wrote, with none the agent composed: 37% of AgentDojo's, 20% of BFCL's, 18% of WorkBench's, 10% of DTap-Bench's (84% of its telecom's) and 4% of MCPMark's. With none from what the user wrote either, at most 8%. There a procedure compiled once would need a model to read the request, and in most episodes one to write.
 - **Calibration per site.** A threshold per decision needs each lookup's score right where it is priced. Retail's lookups of an order's products are scored as the tool's chance (0.43) times the argument's (0.76) and used 64% of the time; counting each lookup's own use at its site would score them directly.
 - **Live, with other agents.** The replays assume an agent skips a call a lookup already answered, which GLM-5.3 did live. The DTap-Bench replays count what agents in three other harnesses would have skipped, not whether they would have. That six of the seven seldom repeat their own reads says they would; it remains to be checked live.
@@ -407,6 +431,7 @@ for d in legal finance research; do
   python3 scripts/dtap_to_tau2.py --runs dtap-runs --domain $d --name dtap_$d --out $WORK/dtap-more
   python3 scripts/ceiling.py $WORK/dtap-more/dtap_$d/*.json --tau2 $WORK/dtap-more/checkout
 done
+scripts/bench/replay.sh dtap-more   # their replays, apart from the six domains'; tables.py's dtap_more_by_source
 
 # The user's words read by a model: each set's questions, the model's picks (Jev, through `stretto ask`), the fifth count
 python3 scripts/ceiling.py $WORK/wb/multi_domain/*.json --tau2 $WORK/wb/checkout --questions q-wb-multi_domain.jsonl

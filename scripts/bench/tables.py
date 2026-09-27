@@ -30,8 +30,10 @@ BENCHMARKS = {  # replay set: (name, thresholds)
     "mcpm-const": ("MCPMark, own flows with constants", ["0.3"]),
     "dtap-const": ("DTap-Bench, own flows with constants", ["0.3"]),
     "dtap": ("DTap-Bench", ["0.3"]),
+    "dtap-more": ("DTap-Bench's legal, finance and research", ["0.3"]),
 }
 SOURCES = ["own", "same", "other", "all"]
+BY_SOURCE = {"dtap": "dtap_by_source", "dtap-more": "dtap_more_by_source"}  # sets with flows from four sources
 EP = ["episode", "task_id", "turns", "turns_saved", "detours", "flow_lookups", "unrecorded", "used_next", "used_later"]
 TOT = [
     "turns",
@@ -264,12 +266,12 @@ def main():
                 }
             )
         for th in ths:
-            ps = pairs_at(runs, th, keep=lambda s: key != "dtap" or s.endswith("-other"))
+            ps = pairs_at(runs, th, keep=lambda s: key not in BY_SOURCE or s.endswith("-other"))
             c = compare(ps)
             if not c:
                 continue
             ceil = sum(ceiling_of(cz, key, s) for s, _, _ in ps) or None
-            show(f"{name} at {th}" + (" (flows from other harnesses)" if key == "dtap" else ""), c, ceil)
+            show(f"{name} at {th}" + (" (flows from other harnesses)" if key in BY_SOURCE else ""), c, ceil)
             out["pooled"][f"{key}|{th}"] = c
             domains = sorted({s.split("-", 1)[0] for s, _, _ in ps})
             if th != "0.3" or len(domains) < 2:
@@ -280,19 +282,27 @@ def main():
                 show(f"   {d}", c, sum(ceiling_of(cz, key, s) for s, _, _ in dp) or None)
                 out["per_domain"][f"{key}|{d}|{th}"] = c
 
+    for key, field in BY_SOURCE.items():
+        by_source(work, key, field, out)
+    if args.json:
+        args.json.write_text(json.dumps(out, separators=(",", ":")) + "\n")
+
+
+def by_source(work: Path, key: str, field: str, out: dict):
+    """A DTap-Bench set at 0.3 by the flow's source, pooled and per domain, into out[field]."""
     print(
-        "== DTap-Bench at 0.3 by the flow's source: the agent's own runs, its harness's other agents, the other "
-        "harnesses', all"
+        f"== {BENCHMARKS[key][0]} at 0.3 by the flow's source: the agent's own runs, its harness's other agents, the "
+        "other harnesses', all"
     )
-    runs = replays(work / "replays/dtap")
-    out["dtap_by_source"] = {}
+    runs = replays(work / "replays" / key)
+    out[field] = {}
     domains = sorted({s.split("-", 1)[0] for s, _, _ in runs})
     for label, doms in [("all", domains)] + [(d, [d]) for d in domains]:
         for src in SOURCES:
             ps = pairs_at(runs, "0.3", keep=lambda s: s.split("-", 1)[0] in doms and s.endswith(f"-{src}"))
             c = compare(ps)
             if c:
-                out["dtap_by_source"][f"{label}|{src}"] = c
+                out[field][f"{label}|{src}"] = c
                 show(f"{label}, {src}", c)
         own = {
             s[: -len("-own")]: r
@@ -313,8 +323,6 @@ def main():
                     f"    reach with the {src} flows, against the agent's own over the {len(both)} agents with both: "
                     f"{kept:.0%} of the turns saved, {det:.0%} of the detours"
                 )
-    if args.json:
-        args.json.write_text(json.dumps(out, separators=(",", ":")) + "\n")
 
 
 if __name__ == "__main__":

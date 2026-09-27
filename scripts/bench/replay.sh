@@ -13,6 +13,8 @@
 #   bfcl dojo wb mcpm dtap
 #             flows learned from older agents' training runs, replayed trace-only on newer agents' test runs;
 #             DTap-Bench's from each agent's own runs, its harness's other agents, the other harnesses and all
+#   dtap-more DTap-Bench's legal, finance and research domains ($WORK/dtap-more), as dtap does, kept apart from
+#             the six domains' replays
 #   mcpm-own  MCPMark's newer models, each with a flow from its own training runs
 #   mcpm-const, dtap-const
 #             the same own flows learned with `learn --constants` (DTap-Bench's customer service, CRM and OS files)
@@ -256,42 +258,48 @@ dtap_const() { # each agent's own flow with its constants, in the domains whose 
   done
 }
 
-dtap() { # per domain: flows from the agent's own runs, its harness's other agents, the other harnesses, all
-  local x=$WORK/dtap d h f agents same other
-  for d in customer_service dtap_crm dtap_telecom dtap_travel dtap_os_filesystem dtap_medical; do
-    mkdir -p "$FLOWS/dtap/$d"
+dtap_domains() { # SET DOMAIN...: per domain, flows from the agent's own runs, its harness's other agents, the
+  # other harnesses and all, from the runs in $WORK/SET
+  local set=$1 x=$WORK/$1 d h f agents same other
+  shift
+  for d in "$@"; do
+    mkdir -p "$FLOWS/$set/$d"
     agents=$(cd "$x/$d" && ls -- *.json | sed 's/\.json$//')
     # shellcheck disable=SC2046,SC2086
-    learn "$FLOWS/dtap/$d/all.flow.json" "$d" "$x/checkout" $(files "$x/$d" $agents)
+    learn "$FLOWS/$set/$d/all.flow.json" "$d" "$x/checkout" $(files "$x/$d" $agents)
     for a in $agents; do
       h=${a%%-*} same=() other=()
       for b in $agents; do
         [ "$b" = "$a" ] && continue
         if [ "${b%%-*}" = "$h" ]; then same+=("$b"); else other+=("$b"); fi
       done
-      learn "$FLOWS/dtap/$d/own-$a.flow.json" "$d" "$x/checkout" "$x/$d/$a.json"
+      learn "$FLOWS/$set/$d/own-$a.flow.json" "$d" "$x/checkout" "$x/$d/$a.json"
       # shellcheck disable=SC2046
-      [ ${#same[@]} -gt 0 ] && learn "$FLOWS/dtap/$d/same-$a.flow.json" "$d" "$x/checkout" $(files "$x/$d" "${same[@]}")
+      [ ${#same[@]} -gt 0 ] && learn "$FLOWS/$set/$d/same-$a.flow.json" "$d" "$x/checkout" $(files "$x/$d" "${same[@]}")
       # shellcheck disable=SC2046
-      learn "$FLOWS/dtap/$d/other-$h.flow.json" "$d" "$x/checkout" $(files "$x/$d" "${other[@]}")
+      learn "$FLOWS/$set/$d/other-$h.flow.json" "$d" "$x/checkout" $(files "$x/$d" "${other[@]}")
     done
     for dec in reach habit; do
       for a in $agents; do
         h=${a%%-*}
         for src in own same other all; do
           case $src in
-            own | same) f=$FLOWS/dtap/$d/$src-$a.flow.json ;;
-            other) f=$FLOWS/dtap/$d/other-$h.flow.json ;;
-            all) f=$FLOWS/dtap/$d/all.flow.json ;;
+            own | same) f=$FLOWS/$set/$d/$src-$a.flow.json ;;
+            other) f=$FLOWS/$set/$d/other-$h.flow.json ;;
+            all) f=$FLOWS/$set/$d/all.flow.json ;;
           esac
           # A flow that failed to learn (no successful training runs) has no file; its replay is left out.
-          [ -f "$f" ] && replay "$WORK/replays/dtap/c-$d-$a-$src-$dec-0.3" "$d" "$x/$d/$a.json" "$f" "$dec" 0.3 \
+          [ -f "$f" ] && replay "$WORK/replays/$set/c-$d-$a-$src-$dec-0.3" "$d" "$x/$d/$a.json" "$f" "$dec" 0.3 \
             "$x/checkout" 0 --trace
         done
       done
     done
   done
 }
+
+dtap() { dtap_domains dtap customer_service dtap_crm dtap_telecom dtap_travel dtap_os_filesystem dtap_medical; }
+
+dtap_more() { dtap_domains dtap-more dtap_legal dtap_finance dtap_research; }
 
 ceilings() { # the replayed agents' test runs, per set
   local c=$WORK/ceilings x
@@ -328,7 +336,8 @@ run_set() {
     mcpm-own) mcpm_own ;;
     mcpm-const) LEARN_OPTS=(--constants) && mcpm_own mcpm-const && LEARN_OPTS=() ;;
     dtap-const) LEARN_OPTS=(--constants) && dtap_const && LEARN_OPTS=() ;;
-    all) for s in tau2 tau2-env sweep perdec v1 bfcl dojo wb mcpm mcpm-own mcpm-const dtap dtap-const ceilings; do run_set "$s"; done ;;
+    dtap-more) dtap_more ;;
+    all) for s in tau2 tau2-env sweep perdec v1 bfcl dojo wb mcpm mcpm-own mcpm-const dtap dtap-const dtap-more ceilings; do run_set "$s"; done ;;
     *) echo "unknown set: $1" >&2 && exit 2 ;;
   esac
 }
