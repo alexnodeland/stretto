@@ -1,0 +1,14 @@
+# The image is built from the workspace's manifests and crates, plus the
+# quickstart, the license and the README. Everything else stays out of the
+# build context: target/, the results and their archives, the paper, the
+# site, scratch data, and rust-toolchain.toml (see the Dockerfile).
+*
+!Cargo.toml
+!Cargo.lock
+!crates/
+!examples/quickstart/
+!LICENSE
+!README.md
+**/target/
+**/*.tar.gz
+**/.env
