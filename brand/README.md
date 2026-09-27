@@ -70,7 +70,7 @@ Both are under the [SIL Open Font License 1.1](fonts/LICENSE-Inter.txt) ([JetBra
 
 ## Explainer
 
-`explainer/index.html` explains stretto in seven steps: where the proxy sits, recording sessions, learning a flow, serving it, what a detour costs, the decision rule, and the results with their scope. It is one file with its styles, script, drawings and fonts inline (177 KB), so it can be served from anywhere, and it links out only to the paper, the claims ledger and the walkthrough on GitHub.
+`explainer/index.html` explains stretto in seven steps: where the proxy sits, recording sessions, learning a flow, serving it, what a detour costs, the decision rule, and the results with their scope. It is one file with its styles, script, drawings and fonts inline (178 KB), so it can be served from anywhere, and it links out only to the paper, the claims ledger and the walkthrough on GitHub.
 
 - **Controls:** play and pause, previous and next, a progress bar whose segments jump to a step; the arrow keys, Home and End; space or K to play and pause; swipes on touch screens. It starts playing once it is in view and stops after the last step.
 - **Accessibility:** it follows `prefers-reduced-motion` (no animation; Play still steps through), announces each step to screen readers when not playing, keeps inactive steps out of the tab order, and gives the results chart a data table.
@@ -81,7 +81,7 @@ Embed it at `/stretto/explainer/`:
 
 ```html
 <iframe src="/stretto/explainer/" title="How stretto works" loading="lazy"
-        style="width: 100%; height: 760px; border: 0;"></iframe>
+        style="width: 100%; height: 780px; border: 0;"></iframe>
 <script>
   // Optional: size the frame to its content, and pass the site's theme.
   const frame = document.querySelector('iframe[title="How stretto works"]');
@@ -92,22 +92,22 @@ Embed it at `/stretto/explainer/`:
 </script>
 ```
 
-It is 743 px tall at 1000 px wide and 772 px at 720 px, the same for every step; on a 390 px phone, where only the current step takes space, 785 to 1,069 px.
+It is 761 px tall at 1000 px wide and 877 px at 720 px, the same for every step; on a 390 px phone, where only the current step takes space, 785 to 1,174 px.
 
 ## Videos
 
 | File | Length | Size | Notes |
 |---|---|---|---|
-| `media/launch.mp4` | 87.2 s, 1920 × 1080, 30 fps | 4.5 MB | H.264 High, yuv420p, BT.709, faststart, no audio |
+| `media/launch.mp4` | 87.2 s, 1920 × 1080, 30 fps | 4.8 MB | H.264 High, yuv420p, BT.709, faststart, no audio |
 | `media/launch-poster.png` | 1920 × 1080 | 73 KB | The lockup and tagline, at 3.9 s |
-| `media/launch-teaser.gif` | 8 s loop, 1280 × 720, 15 fps | 0.43 MB | For the README |
-| `media/launch-teaser.webm` | 8 s loop, 1280 × 720 | 0.11 MB | For the site (VP9) |
-| `media/walkthrough.mp4` | 159.5 s, 1920 × 1080, 30 fps | 8.7 MB | The same encoding as the launch video |
+| `media/launch-teaser.gif` | 8 s loop, 1280 × 720, 15 fps | 0.45 MB | For the README |
+| `media/launch-teaser.webm` | 8 s loop, 1280 × 720 | 0.12 MB | For the site (VP9) |
+| `media/walkthrough.mp4` | 167.2 s, 1920 × 1080, 30 fps | 9.5 MB | The same encoding as the launch video |
 | `media/walkthrough-poster.png` | 1920 × 1080 | 172 KB | The served session: the two reads riding in the search's result |
 
 **The launch video** has no voice-over; titles and captions carry it: the problem (an LLM turn per call, many of them fixed by what the tools returned), the idea, how it works (record, learn, serve, the decision rule), the results with their scope, and how to start. Its source is `video/launch/`: `index.html` lays out a 1920 × 1080 stage and `timeline.js` keyframes every property as a function of time, so a frame at t is always the same frame. Preview it in a browser with `index.html?play`, or one frame with `index.html?t=42`.
 
-**The walkthrough** is a real terminal session: `docs/walkthrough.md`, run with the release binaries on the official MCP filesystem server, with a scripted agent standing in for the LLM, and no key. `video/walkthrough/script.sh` is the command list; `capture.py` runs it in a pseudo-terminal and records every byte of output with its timing to `walkthrough.cast` (asciicast v2, with markers for steps, captions and commands); `render.mjs` draws the cast as a terminal, with a title card per step, and pipes the frames to ffmpeg. The only change to the output is the working directory's path, shown as `/home/me` as in the docs.
+**The walkthrough** is a real terminal session, with the release binaries on the official MCP filesystem server, a scripted agent standing in for the LLM, and no key: `stretto doctor`, then `stretto init` printing Claude Code's configuration, then the loop `docs/walkthrough.md` runs (record, learn, review, audit, serve, learn again). `video/walkthrough/script.sh` is the command list; `capture.py` runs it in a pseudo-terminal, with a small allowlisted environment and the working directory as `HOME` (the binaries copied into its `.cargo/bin`, where `cargo install` puts them), and records every byte of output with its timing to `walkthrough.cast` (asciicast v2, with markers for steps, captions and commands); `render.mjs` draws the cast as a terminal, with a title card per step, and pipes the frames to ffmpeg. The only change to the output is the working directory's path, shown as `/home/me` as in the docs.
 
 ```html
 <video controls preload="none" poster="/stretto/media/launch-poster.png" width="1920" height="1080" style="width: 100%; height: auto;">
@@ -117,7 +117,7 @@ It is 743 px tall at 1000 px wide and 772 px at 720 px, the same for every step;
 
 ## Rebuilding
 
-Requirements: Node 18 or later, Python 3.10 or later, and for the walkthrough the stretto binaries and npx (the filesystem server comes from npm). No step needs a key.
+Requirements: Node 18 or later, Python 3.10 or later, and for the walkthrough the stretto binaries, npx (the filesystem server comes from npm) and jq. No step needs a key.
 
 ```sh
 cd brand
@@ -139,7 +139,7 @@ node video/walkthrough/render.mjs
 
 Frames are piped straight into ffmpeg; nothing is written to disk but the outputs. `--stills 12,40.5 --stills-dir DIR` on either renderer writes single frames instead, to check a change. Set `CHROMIUM_PATH` to use a Chromium other than Playwright's.
 
-**When the CLI changes,** edit `video/walkthrough/script.sh` and record again. A step is a `step TITLE CAPTION` line followed by `run COMMAND` lines (`note CAPTION` changes the caption between commands); a new step, such as `stretto init` or `stretto doctor`, is a new block in the order it belongs, and the capture and the renderer need no change. `bash video/walkthrough/script.sh` runs the same steps in a terminal, without recording.
+**When the CLI changes,** edit `video/walkthrough/script.sh` and record again. A step is a `step TITLE CAPTION` line followed by `run COMMAND` lines (`note CAPTION` changes the caption between commands); a new step is a new block in the order it belongs, and the capture and the renderer need no change. `bash video/walkthrough/script.sh` runs the same steps in a terminal, without recording, in a temporary directory that it makes `HOME`.
 
 ## For the docs site and the README
 
