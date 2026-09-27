@@ -1,68 +1,23 @@
 ---
-description: Install stretto from source today; release binaries, install scripts and a Docker image come with every release, from the first.
+description: Install stretto with the install script, a release archive, Docker or from source.
 ---
 
 # Installation
 
-stretto is four programs from two Rust packages. Until the first release is tagged, you build them from source. From then on, each release carries prebuilt binaries for Linux, macOS and Windows, install scripts that check each archive's checksum, and a Docker image ([every way to install](../../docs/install.md)).
+stretto is four programs from two Rust packages. Each release carries prebuilt binaries for Linux, macOS and Windows, install scripts that check each archive's checksum, and a Docker image; you can also build it from source ([every way to install](../../docs/install.md)).
 
 | Package | Installs |
 |---|---|
 | `stretto-report` | `stretto`: learn, review, audit, promote and redact flows and sessions, and measure agents |
 | `stretto-proxy` | `stretto-proxy`, the MCP proxy; `stretto-procedure`, which runs a compiled procedure; `stretto-mcp-demo`, a tiny server for trying the proxy |
 
-<!--
-  FIRST RELEASE: the three tabs marked "First release" hold what each release ships
-  (.github/workflows/release.yml and container.yml). When the first tag is published,
-  drop their badges and the notes, and make the install script the first tab.
--->
 <Tabs :tabs="[
-  { key: 'source', label: 'From source' },
-  { key: 'binaries', label: 'Release binaries', badge: 'First release' },
-  { key: 'script', label: 'Install script', badge: 'First release' },
-  { key: 'docker', label: 'Docker', badge: 'First release' }
+  { key: 'script', label: 'Install script' },
+  { key: 'binaries', label: 'Release binaries' },
+  { key: 'docker', label: 'Docker' },
+  { key: 'source', label: 'From source' }
 ]">
-<template #source>
-
-You need Rust 1.88 or later ([rustup](https://rustup.rs)) and git. Install both packages from the `main` branch:
-
-```sh
-cargo install --locked --git https://github.com/alexnodeland/stretto \
-  stretto-proxy stretto-report
-```
-
-Or from a checkout:
-
-```sh
-git clone https://github.com/alexnodeland/stretto
-cd stretto
-cargo install --locked --path crates/stretto-proxy
-cargo install --locked --path crates/stretto-report
-```
-
-Cargo puts the programs in `~/.cargo/bin`. Once releases are tagged, add `--tag vX.Y.Z` to the first command to build one.
-
-</template>
-<template #binaries>
-
-::: info From the first release
-Until the first release is tagged, install from source.
-:::
-
-Each release on [GitHub Releases](https://github.com/alexnodeland/stretto/releases) carries an archive of the four binaries for Linux (x86_64 and aarch64, glibc 2.35 or later), macOS (Apple silicon and Intel) and Windows x64, with `SHA256SUMS`:
-
-```sh
-sha256sum --ignore-missing --check SHA256SUMS
-tar -xzf stretto-x86_64-unknown-linux-gnu.tar.gz
-cp stretto-x86_64-unknown-linux-gnu/stretto* ~/.local/bin/
-```
-
-</template>
 <template #script>
-
-::: info From the first release
-Until the first release is tagged, install from source.
-:::
 
 The script picks the archive for your system, checks its checksum against the release's `SHA256SUMS`, and copies the binaries into `~/.local/bin`, changing nothing else:
 
@@ -77,11 +32,18 @@ irm https://github.com/alexnodeland/stretto/releases/latest/download/install.ps1
 ```
 
 </template>
-<template #docker>
+<template #binaries>
 
-::: info From the first release
-Until the first release is tagged, build the image from a checkout: `docker build -t stretto .`
-:::
+Each release on [GitHub Releases](https://github.com/alexnodeland/stretto/releases) carries an archive of the four binaries for Linux (x86_64 and aarch64, glibc 2.35 or later), macOS (Apple silicon and Intel) and Windows x64, with `SHA256SUMS`:
+
+```sh
+sha256sum --ignore-missing --check SHA256SUMS
+tar -xzf stretto-x86_64-unknown-linux-gnu.tar.gz
+cp stretto-x86_64-unknown-linux-gnu/stretto* ~/.local/bin/
+```
+
+</template>
+<template #docker>
 
 `ghcr.io/alexnodeland/stretto` is published for linux/amd64 and linux/arm64 with each release. It runs as a non-root user, with `/data` as its home: mount a volume there to keep `~/.stretto`.
 
@@ -89,6 +51,27 @@ Until the first release is tagged, build the image from a checkout: `docker buil
 docker run --rm ghcr.io/alexnodeland/stretto --help
 docker run --rm --entrypoint /usr/local/share/stretto/quickstart/run.sh ghcr.io/alexnodeland/stretto
 ```
+
+</template>
+<template #source>
+
+You need Rust 1.88 or later ([rustup](https://rustup.rs)) and git. Install both packages from a release tag:
+
+```sh
+cargo install --locked --git https://github.com/alexnodeland/stretto --tag v0.1.0 \
+  stretto-proxy stretto-report
+```
+
+Or from a checkout, to follow the `main` branch:
+
+```sh
+git clone https://github.com/alexnodeland/stretto
+cd stretto
+cargo install --locked --path crates/stretto-proxy
+cargo install --locked --path crates/stretto-report
+```
+
+Cargo puts the programs in `~/.cargo/bin`.
 
 </template>
 </Tabs>

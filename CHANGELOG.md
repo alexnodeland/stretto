@@ -4,6 +4,96 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ## Unreleased
 
+## 0.1.0 (2026-09-27)
+
+The first release: [RFC-001](docs/rfc/001-habit-compiler.md)'s design, built and measured, with release binaries, installers, a container image and a documentation site. [docs/results](docs/results/README.md) has every result, and [the working paper](paper/stretto.md) puts them together. The [development log](CHANGELOG.md#development-log-before-010) below lists every change on the way here.
+
+### Install and first run
+
+- Each release carries archives for five targets (Linux x86_64 and aarch64, macOS on Apple silicon and Intel, Windows x64) with their `SHA256SUMS`, `install.sh` and `install.ps1`, which check an archive's checksum before installing it, and a Homebrew formula. A container image, `ghcr.io/alexnodeland/stretto`, is published for amd64 and arm64; it runs as a non-root user, with `/data` as its home ([install](docs/install.md)).
+- `stretto init --host claude-code|claude-desktop|cursor|vscode -- <server…>` writes an MCP host's configuration for a server behind the proxy, and prints the steps to a served flow.
+- `stretto doctor` checks the installation: the binaries on PATH, `~/.stretto`, whether a key is set (never its value), and the flows and sessions. `stretto completions <shell>` prints shell completions.
+- [`examples/quickstart/`](examples/quickstart/README.md) records, learns, reviews and serves a flow on `stretto-mcp-demo`, with no key, in under a second; CI runs it.
+- Building from source needs Rust 1.88.
+
+### Measure an agent (`stretto phase0`)
+
+- How compressible an agent's behavior is, from τ²-bench's published trajectories, with no key: a hierarchical Dirichlet habit of the next tool call, its concentration fitted with fugue, coverage and agreement on held-out tasks, transfer between agents, macro-tool headroom and argument provenance.
+- With `--oracle`, System-One questions at every held-out decision (Phase 0b): `v1`, over every tool, and `v2`, read-only lookups with a state slice, a stop question, yes/no predicates (`data/predicates-v2.json`) and an arbiter that weighs the answers against the habit. Answers go through a replay cache, and published answer bundles replay without a key (`export-answers`, `import-answers`). `stretto ask` answers questions of your own through the same cache. `--domain telecom` measures τ²-bench's third domain.
+
+### Flows
+
+- `stretto compile` writes a flow (the flow IR, `stretto_flow: 1`) from τ²-bench results. `stretto learn` learns one from sessions the proxy recorded: with the habit alone (`--habit-only`), with an arbiter fitted on held-out sessions, or with a shipped arbiter (`--arbiter-from`). A flow's lookups bind their arguments from earlier results, including results that list values one per line.
+- `stretto serve` and `stretto flow-serve` answer a flow's decisions over a local port. `stretto export-arbiter` writes a flow's arbiter to its own file (`stretto_arbiter: 1`), and `stretto fit-arbiter` fits one on the decision logs of several compiles. `data/arbiters/` ships two, fitted on four agents' retail and airline decisions; they carry between those two domains, not to one unlike both.
+- `stretto audit` scores recorded sessions under a flow, run as a fugue program: agreement, calibration and surprise per site. A flow without an arbiter is audited with its habit.
+- `stretto promote` keeps a flow to the sites where its lookups were the agent's own, scored on recorded sessions or τ²-bench results; a promoted flow hands back after every other call. `stretto-proxy --flow-shadow` records the sessions to promote on: the flow decides and logs, but makes no lookups.
+- `stretto flow-show` renders a flow for review: the tools it may call, the lookups it may make after each call and where their arguments come from, and how it decides. `stretto flow-diff` lists what changed between two flows for a pull request, and exits with 1 when a change needs review ([reviewing flows](docs/review.md)).
+- **Deciders.** A flow decides with its arbiter where it has one, and otherwise with `reach`: the chance that the agent makes a lookup before its next write, counted from traces, times its binding's, against the threshold. It asks no model and needs no key. `serve`, `flow-serve`, `audit`, `promote`, `init` and `stretto-proxy --flow-decider` take `habit`, `reach` or `arbiter`.
+- **Bindings.** A lookup's arguments come from earlier results, tried in the order the agent used them at the site. `learn --constants` learns an argument the agent always passed with one value, never a string a user wrote with a digit or an @; a list argument takes every value at the path of an earlier result; a search the agent always narrows is not made bare; and a pick of a record other than the one the customer named is scored by how often the agent made it.
+- **Flow format 2** holds per-site thresholds, constants, lists and those counts; this release reads formats 1 and 2. A flow learned from recorded sessions pins each tool's input contract, and the proxy makes no lookup of a tool whose server now lists another.
+- `stretto evaluate` estimates what another rule would have done from a flow's exploring decisions (`--flow-explore`), directly and by IPS, self-normalized IPS and doubly robust estimates. `stretto refine` keeps candidate predicates that raise the arbiter's held-out likelihood. `stretto search` runs NSGA-II over each site's threshold and the decider.
+
+### Compiled procedures (`stretto-procedure`)
+
+- Where no user speaks, a whole workflow, writes included, compiled once from agents' traces is a file stretto runs: the procedure IR (`stretto_procedure: 1`, [formats](docs/formats.md#the-procedure-ir-stretto_procedure-1)), with a decision tree per site over the run's state, identifiers bound again at run time from where they came from, a guard against repeats, and the checks of each outcome a ticket may state.
+- `stretto-procedure --procedure FILE --ticket TEXT -- SERVER…` runs it against an MCP server with no model and prints its calls, its check of the ticket's outcome, and its verdict: `resolved`, `transferred`, or `hand_back` when the check failed and the ticket should go to a model.
+
+### Checks on writes
+
+- `stretto guards`: typed policy checks for τ²-bench's retail and airline domains, audited against the published trajectories.
+- `stretto confirm`: a System-One model judges whether the customer confirmed each write, with an optional second question. `stretto match` asks which record a customer means.
+
+### `stretto-proxy`
+
+- A stdio MCP proxy that forwards byte for byte and records sessions (`stretto_mcp_log: 2`). `--upstream URL` wraps a Streamable HTTP server instead of a command, with headers from the environment that are never logged.
+- Active mode: `--flow` runs a flow behind the agent's calls and appends its lookups to the result. `--guards` refuses writes a policy check fails. `--confirm-judge log|enforce` adds the confirmation judge, and `--confirm-second-shadow` asks its second question but only logs the answer. `--commit` adds a tool for confirmed writes in one call. `--context` reads the conversation the host writes.
+- Jev's key can come from a file: `TYPESAFE_API_KEY_FILE` names it when `TYPESAFE_API_KEY` is not set.
+- `stretto-mcp-demo`, a tiny server for trying it.
+- `--retain-days N` deletes, at start, the logs and cached answers older than N days.
+- Each run of a flow after one of the agent's calls is a fugue program ([`program.rs`](crates/stretto-report/src/program.rs), RFC-001 §3.2):
+  - **The sites.** A decision site `decide#i` comes before each lookup, and the flow's arbiter decides it. An outcome site `outcome#i` comes after, and takes the server's answer and scores it.
+  - **The program is in the flow.** The flow IR holds it as `program`, in fugue's serializable program format (RFC-001 §3.5), and it is checked when the flow loads. A flow written without one runs the standard run, which draws exactly what the Rust it replaced drew. `flow-show` prints the program, and `flow-diff` lists a change to it as needing review.
+  - **Its distributions.** The flow registers two, `Decide` and `Outcome`, from its own statistics: a flat Dirichlet's predictive over what the agent did next at a site, and a flat Beta's over how often a tool succeeded, from fugue's conjugate helpers. They carry their site as metadata (`WithMeta`).
+  - **Three interpreters.** The proxy runs the program with fugue's `run_async`. `PriorHandler` simulates a flow with it, and `ScoreGivenTrace` scores a recorded run.
+  - **The flow log.** Decision lines carry their `address`, and each run ends with a `run` line holding its trace and its surprise.
+- `--flow-tools TOOLS` names the only tools a flow may call on its own, and `--flow-explore EPSILON` explores at read-only sites for counterfactual evaluation.
+
+### Privacy
+
+- `stretto redact` writes a pseudonymized copy of recorded sessions: a value fewer than `--keep-shared` sessions contain becomes a salted hash, the same wherever it appears, and `--hash-field` hashes named fields however many sessions share them. A flow learned from the copy matches one learned from the originals, on synthetic sessions, 40 real ones and 5 with their conversation ([privacy](docs/privacy.md)).
+- `stretto learn --sessions` and `redact` skip the confirmation logs the proxy writes beside the sessions; they failed on them before.
+
+### Live runs and research tooling
+
+- The pilot harness runs a Claude model as the agent or the customer (`run_episode.py --agent-cli claude`, `--customer-cli claude --customer-model`, through `pilot/claude-agent.sh`), and Z.ai credits count the GLM side only. The guards arm takes the confirmation judge (`--confirm-judge`, `--confirm-second`, `--confirm-second-shadow`), with Jev's key handed to the proxy in a file, and `--label` names an arm's directory.
+- `pilot/run_paired.py` runs every test task of a domain in both arms, reusing a pilot's pairs, under a Z.ai credit budget that it checks against a ledger before each episode. `pilot/analyze_paired.py` reports on the result: paired pass rates with a bootstrap interval and McNemar's test, turns and tokens saved, detours and their token cost, and a pooled estimate across domains ([the paired run](docs/results/paired-2026-09-25.md)). Its `arms` command compares any arms run on the same tasks ([the cold start, live](docs/results/cold-start-live-2026-09-25.md)).
+- `pilot/run_episode.py --solo` runs τ²-bench's no-user mode live, and `--handback` has the agent take over from a compiled procedure. `--batch-reads` adds Anthropic's sample prompt for parallel tool calls to the agent's system prompt, the prompting baseline.
+- `pilot/run_trials.py` runs a paired design with Claude models as agent and customer, resumably, within a Claude Code subscription's five-hour and seven-day windows; `pilot/analyze_trials.py` reports pass^k, turns, tokens, cost and time per arm and compares the arms, and `pilot/analyze_recorded.py` compares arms recorded at different times.
+- `pilot/bench/` runs AgentDojo and BFCL tasks live, their tools served over MCP by the benchmarks' own code and each episode scored by the benchmark's check.
+- `scripts/` holds every analysis behind [the results](docs/results/README.md): the ceilings by where arguments come from (`ceiling.py`), the costs and the threshold (`costs.py`, `per_decision.py`, `priced.py`), learning curves, repeated reads, the replays of six more benchmarks from their published trajectories (`scripts/bench/`), and the paper's figures.
+
+### Documentation
+
+- [The walkthrough](docs/walkthrough.md) runs the whole loop on the official MCP filesystem server, and CI runs it.
+- [Reviewing flows](docs/review.md), with example diffs of real flows that a test keeps current.
+- [Privacy](docs/privacy.md): what each file holds, what is sent to the System-One model, retention and redaction.
+- [The file formats](docs/formats.md), [the CLI reference](docs/cli.md) (generated from the code, kept current by CI), [the design](docs/design.md) and [the roadmap](docs/roadmap.md).
+- The working paper, published at [alexnodeland.github.io/stretto](https://alexnodeland.github.io/stretto/notebook/) (now the research notebook; the site there is the documentation).
+- [The documentation site](https://alexnodeland.github.io/stretto/) (`website/`, VitePress): a guide, integrations, the reference, the research and the community pages.
+- [The brand kit](brand/README.md): the mark, color tokens, an interactive explainer, and the launch and walkthrough videos, narrated and captioned.
+- The working paper as an arXiv-ready LaTeX manuscript ([`paper/latex/`](paper/latex/README.md)), built from the Markdown.
+- `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CITATION.cff`, and issue and pull request templates.
+
+### Release
+
+- Install a release with `install.sh`, `install.ps1`, Homebrew or the container image ([install](docs/install.md)), or build the tag: `cargo install --locked --git https://github.com/alexnodeland/stretto --tag v0.1.0 stretto-proxy stretto-report`. It is not on crates.io: it depends on fugue's `program` feature, which is not in a fugue release yet.
+- The shipped arbiters stay in [`data/arbiters/`](data/arbiters/README.md); take them from a checkout or from the tag.
+- A version tag, or the release workflow run by hand, makes a GitHub release with that version's section of this file as its notes ([releasing](docs/releasing.md)).
+
+## Development log before 0.1.0
+
+Every change made before the first release, newest first, as it was logged.
+
 - **Install and first run.**
   - Each release now carries:
     - archives for five targets (Linux x86_64 and aarch64, macOS on Apple silicon and Intel, Windows x64), with `SHA256SUMS`;
@@ -103,63 +193,3 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 - `scripts/detours.py` says where a replayed flow's detours come from: a session hand-back simulated on the replay, each lookup's place in its chain against its probabilities and use, and, in airline, reads after a reservation the customer had described ([results](docs/results/detours-2026-09-26.md)).
 - `pilot/check_flow.py --same-result` also counts a recorded call as made when a flow lookup of the same tool, agreeing on every argument both pass, already returned its recorded result, as an optional argument that changes nothing does (a `limit` above the number of bills), and counts that lookup as used, not as a detour. Each such pair is written to the episode's `same-result.json`. Scoring by exact arguments stays the default ([results](docs/results/telecom-flows-2026-09-26.md#what-is-left-in-dual-control)).
 - `pilot/check_flow.py` names each recorded episode it replays after its folder, or, when two folders share a name (a task's trials, each in its own folder), after its path below their common parent. Such episodes shared one replay folder before, and with `--jobs` one trajectory, which the flow reads; the published replays were of τ²-bench results files, whose episodes are named by task and trial, and are unaffected.
-
-## 0.1.0 (2026-09-25)
-
-Everything so far: the first design of [RFC-001](docs/rfc/001-habit-compiler.md), built and measured. [docs/results](docs/results/README.md) has every result.
-
-### Measure an agent (`stretto phase0`)
-
-- How compressible an agent's behavior is, from τ²-bench's published trajectories, with no key: a hierarchical Dirichlet habit of the next tool call, its concentration fitted with fugue, coverage and agreement on held-out tasks, transfer between agents, macro-tool headroom and argument provenance.
-- With `--oracle`, System-One questions at every held-out decision (Phase 0b): `v1`, over every tool, and `v2`, read-only lookups with a state slice, a stop question, yes/no predicates (`data/predicates-v2.json`) and an arbiter that weighs the answers against the habit. Answers go through a replay cache, and published answer bundles replay without a key (`export-answers`, `import-answers`). `stretto ask` answers questions of your own through the same cache. `--domain telecom` measures τ²-bench's third domain.
-
-### Flows
-
-- `stretto compile` writes a flow (the flow IR, `stretto_flow: 1`) from τ²-bench results. `stretto learn` learns one from sessions the proxy recorded: with the habit alone (`--habit-only`), with an arbiter fitted on held-out sessions, or with a shipped arbiter (`--arbiter-from`). A flow's lookups bind their arguments from earlier results, including results that list values one per line.
-- `stretto serve` and `stretto flow-serve` answer a flow's decisions over a local port. `stretto export-arbiter` writes a flow's arbiter to its own file (`stretto_arbiter: 1`), and `stretto fit-arbiter` fits one on the decision logs of several compiles. `data/arbiters/` ships two, fitted on four agents' retail and airline decisions; they carry between those two domains, not to one unlike both.
-- `stretto audit` scores recorded sessions under a flow, run as a fugue program: agreement, calibration and surprise per site. A flow without an arbiter is audited with its habit.
-- `stretto promote` keeps a flow to the sites where its lookups were the agent's own, scored on recorded sessions or τ²-bench results; a promoted flow hands back after every other call. `stretto-proxy --flow-shadow` records the sessions to promote on: the flow decides and logs, but makes no lookups.
-- `stretto flow-show` renders a flow for review: the tools it may call, the lookups it may make after each call and where their arguments come from, and how it decides. `stretto flow-diff` lists what changed between two flows for a pull request, and exits with 1 when a change needs review ([reviewing flows](docs/review.md)).
-
-### Checks on writes
-
-- `stretto guards`: typed policy checks for τ²-bench's retail and airline domains, audited against the published trajectories.
-- `stretto confirm`: a System-One model judges whether the customer confirmed each write, with an optional second question. `stretto match` asks which record a customer means.
-
-### `stretto-proxy`
-
-- A stdio MCP proxy that forwards byte for byte and records sessions (`stretto_mcp_log: 2`). `--upstream URL` wraps a Streamable HTTP server instead of a command, with headers from the environment that are never logged.
-- Active mode: `--flow` runs a flow behind the agent's calls and appends its lookups to the result. `--guards` refuses writes a policy check fails. `--confirm-judge log|enforce` adds the confirmation judge, and `--confirm-second-shadow` asks its second question but only logs the answer. `--commit` adds a tool for confirmed writes in one call. `--context` reads the conversation the host writes.
-- Jev's key can come from a file: `TYPESAFE_API_KEY_FILE` names it when `TYPESAFE_API_KEY` is not set.
-- `stretto-mcp-demo`, a tiny server for trying it.
-- `--retain-days N` deletes, at start, the logs and cached answers older than N days.
-- Each run of a flow after one of the agent's calls is a fugue program ([`program.rs`](crates/stretto-report/src/program.rs), RFC-001 §3.2):
-  - **The sites.** A decision site `decide#i` comes before each lookup, and the flow's arbiter decides it. An outcome site `outcome#i` comes after, and takes the server's answer and scores it.
-  - **The program is in the flow.** The flow IR holds it as `program`, in fugue's serializable program format (RFC-001 §3.5), and it is checked when the flow loads. A flow written without one runs the standard run, which draws exactly what the Rust it replaced drew. `flow-show` prints the program, and `flow-diff` lists a change to it as needing review.
-  - **Its distributions.** The flow registers two, `Decide` and `Outcome`, from its own statistics: a flat Dirichlet's predictive over what the agent did next at a site, and a flat Beta's over how often a tool succeeded, from fugue's conjugate helpers. They carry their site as metadata (`WithMeta`).
-  - **Three interpreters.** The proxy runs the program with fugue's `run_async`. `PriorHandler` simulates a flow with it, and `ScoreGivenTrace` scores a recorded run.
-  - **The flow log.** Decision lines carry their `address`, and each run ends with a `run` line holding its trace and its surprise.
-
-### Privacy
-
-- `stretto redact` writes a pseudonymized copy of recorded sessions: a value fewer than `--keep-shared` sessions contain becomes a salted hash, the same wherever it appears, and `--hash-field` hashes named fields however many sessions share them. A flow learned from the copy matches one learned from the originals, on synthetic sessions, 40 real ones and 5 with their conversation ([privacy](docs/privacy.md)).
-- `stretto learn --sessions` and `redact` skip the confirmation logs the proxy writes beside the sessions; they failed on them before.
-
-### Live runs
-
-- The pilot harness runs a Claude model as the agent or the customer (`run_episode.py --agent-cli claude`, `--customer-cli claude --customer-model`, through `pilot/claude-agent.sh`), and Z.ai credits count the GLM side only. The guards arm takes the confirmation judge (`--confirm-judge`, `--confirm-second`, `--confirm-second-shadow`), with Jev's key handed to the proxy in a file, and `--label` names an arm's directory.
-- `pilot/run_paired.py` runs every test task of a domain in both arms, reusing a pilot's pairs, under a Z.ai credit budget that it checks against a ledger before each episode. `pilot/analyze_paired.py` reports on the result: paired pass rates with a bootstrap interval and McNemar's test, turns and tokens saved, detours and their token cost, and a pooled estimate across domains ([the paired run](docs/results/paired-2026-09-25.md)). Its `arms` command compares any arms run on the same tasks ([the cold start, live](docs/results/cold-start-live-2026-09-25.md)).
-
-### Documentation
-
-- [The walkthrough](docs/walkthrough.md) runs the whole loop on the official MCP filesystem server, and CI runs it.
-- [Reviewing flows](docs/review.md), with example diffs of real flows that a test keeps current.
-- [Privacy](docs/privacy.md): what each file holds, what is sent to the System-One model, retention and redaction.
-- [The file formats](docs/formats.md), [the CLI reference](docs/cli.md) (generated from the code, kept current by CI), [the design](docs/design.md) and [the roadmap](docs/roadmap.md).
-- The working paper, published at [alexnodeland.github.io/stretto](https://alexnodeland.github.io/stretto/notebook/) (now the research notebook; the site there is the documentation).
-
-### Release
-
-- Install from the tag: `cargo install --git https://github.com/alexnodeland/stretto --tag v0.1.0 stretto-proxy stretto-report`. It is not on crates.io yet: it depends on fugue's `program` feature, which is not in a fugue release yet.
-- The shipped arbiters stay in [`data/arbiters/`](data/arbiters/README.md); take them from a checkout or from the tag.
-- A version tag, or the release workflow run by hand, makes a GitHub release with that version's section of this file as its notes.

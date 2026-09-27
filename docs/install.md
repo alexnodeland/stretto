@@ -15,7 +15,7 @@ stretto is four binaries, installed together:
 | [Docker](#docker) | anywhere Docker runs, linux/amd64 and linux/arm64 | Docker |
 | [From source](#from-source) | anywhere Rust 1.88 or later runs | Rust |
 
-Release archives, `install.sh`, `install.ps1` and the container image come with every release, from 0.1.0 on; until 0.1.0 is tagged, [install from source](#from-source). Then [check the installation](#check-it-stretto-doctor) and [add shell completions](#shell-completions).
+Release archives, `install.sh`, `install.ps1` and the container image come with every release, from 0.1.0 on. Then [check the installation](#check-it-stretto-doctor) and [add shell completions](#shell-completions).
 
 ## Release binaries
 
