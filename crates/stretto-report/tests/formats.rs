@@ -59,6 +59,7 @@ const NOT_IN_EXAMPLES: &[&str] = &[
     "named_other",
     "contracts",
     "site_sources",
+    "lists",
     "site",
     "source",
     "arg",

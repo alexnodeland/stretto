@@ -561,6 +561,7 @@ impl Flow {
             && !self.bindings.scores_named_other()
             && !self.bindings.scores_described_read()
             && !self.bindings.orders_sources_by_site()
+            && !self.bindings.binds_lists()
         {
             FLOW_VERSION
         } else {
@@ -698,11 +699,13 @@ impl Flow {
         if flow.stretto_flow == FLOW_VERSION
             && (flow.bindings.scores_named_other()
                 || flow.bindings.scores_described_read()
-                || flow.bindings.orders_sources_by_site())
+                || flow.bindings.orders_sources_by_site()
+                || flow.bindings.binds_lists())
         {
             anyhow::bail!(
                 "a flow with bindings scored where another value was named or the described \
-                 record read, or with sources ordered by site, is format {FLOW_THRESHOLDS_VERSION}"
+                 record read, with sources ordered by site, or with lists bound, is format \
+                 {FLOW_THRESHOLDS_VERSION}"
             );
         }
         crate::program::FlowProgram::new(&flow)?;
@@ -1179,6 +1182,20 @@ pub struct Bindings {
     /// it just read. Empty in flows learned before it was counted.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) site_sources: Vec<SiteSource>,
+    /// Per lookup and argument that took lists of strings: where its lists
+    /// came from in training. A list is found at `(tool, path)` when every
+    /// value of it is a value at that path of one earlier output (the most
+    /// recent that holds them all), such as the names a city's hotel listing
+    /// gives, passed together to a lookup of their prices. The binding
+    /// passes every value at the path of the most recent such output, in
+    /// order. Empty in flows learned before lists were bound, which never
+    /// make a lookup that takes one.
+    #[serde(
+        default,
+        skip_serializing_if = "BTreeMap::is_empty",
+        with = "stretto_model::pairs"
+    )]
+    lists: BTreeMap<(String, String), Traced>,
 }
 
 /// How many values of a lookup's argument the agent took from one source at
@@ -1318,7 +1335,7 @@ impl LookupBinding {
 /// Where one lookup argument's values came from in training.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 struct Traced {
-    /// String values the argument took.
+    /// String values the argument took (for a list argument, lists).
     values: usize,
     /// How many of them were found in an earlier output of each
     /// `(tool, path)`.
@@ -1337,7 +1354,9 @@ impl Bindings {
                     .iter()
                     .filter(|(_, &n)| n as f64 >= REQUIRED_SHARE * *calls as f64)
                     .map(|(arg, _)| {
-                        let traced = self.sources.get(&(tool.clone(), arg.clone()));
+                        let key = (tool.clone(), arg.clone());
+                        let list = self.lists.get(&key);
+                        let traced = list.or_else(|| self.sources.get(&key));
                         let values = traced.map_or(0, |t| t.values);
                         let sources = traced
                             .map(|t| {
@@ -1346,7 +1365,15 @@ impl Bindings {
                                     .filter(|(_, &n)| {
                                         n >= 2 && n as f64 >= MIN_SOURCE_SHARE * values as f64
                                     })
-                                    .map(|((from, path), &n)| (from.clone(), path.clone(), n))
+                                    .map(|((from, path), &n)| {
+                                        // A list takes every value at the path.
+                                        let path = if list.is_some() {
+                                            format!("{path} (every value)")
+                                        } else {
+                                            path.clone()
+                                        };
+                                        (from.clone(), path, n)
+                                    })
                                     .collect()
                             })
                             .unwrap_or_default();
@@ -1409,6 +1436,15 @@ impl Bindings {
                                 *seen.1.entry(arg.clone()).or_insert(0) += 1;
                             }
                             for (arg, value) in args {
+                                if let Some(items) = strings(value) {
+                                    let entry =
+                                        b.lists.entry((c.name.clone(), arg.clone())).or_default();
+                                    entry.values += 1;
+                                    if let Some(source) = list_source(&outputs, &items) {
+                                        *entry.found.entry(source).or_insert(0) += 1;
+                                    }
+                                    continue;
+                                }
                                 let Value::String(value) = value else {
                                     continue;
                                 };
@@ -1556,6 +1592,12 @@ impl Bindings {
     /// (`site_sources`), as flows learned by this build do.
     pub(crate) fn orders_sources_by_site(&self) -> bool {
         !self.site_sources.is_empty()
+    }
+
+    /// Whether the binding passes whole lists (`lists`), as flows learned by
+    /// this build from lookups that took them do.
+    pub(crate) fn binds_lists(&self) -> bool {
+        !self.lists.is_empty()
     }
 
     /// For review: each lookup argument's sources at each site where the
@@ -1846,6 +1888,38 @@ impl Bindings {
         let mut other_named = false;
         let mut described = false;
         for arg in required {
+            if let Some(traced) = self.lists.get(&(tool.to_string(), arg.clone())) {
+                // Every value at the source's path of its most recent output
+                // that holds any, unless this lookup was already given them.
+                let rules = source_rules(traced);
+                let list = outputs.iter().rev().find_map(|(source, out)| {
+                    rules
+                        .iter()
+                        .filter(|(t, _)| t == source)
+                        .find_map(|(_, path)| {
+                            let values: Vec<String> =
+                                at_path(out, path).into_iter().map(|(v, _)| v).collect();
+                            let passed =
+                                Value::Array(values.iter().cloned().map(Value::String).collect());
+                            (!values.is_empty()
+                                && !used.contains(&(arg.as_str(), value_text(&passed))))
+                            .then_some((values, passed))
+                        })
+                });
+                match list {
+                    Some((values, passed)) => {
+                        all_mentioned &= values.iter().all(|v| mentions(&customer, v));
+                        bound.insert(arg.clone(), passed);
+                        continue;
+                    }
+                    None if rules.is_empty() => {
+                        return Err(format!(
+                            "no source for the list `{arg}` (the LLM supplies it)"
+                        ));
+                    }
+                    None => return Err(format!("no list left to pass as `{arg}`")),
+                }
+            }
             let Some(traced) = self.sources.get(&(tool.to_string(), arg.clone())) else {
                 return Err(format!("`{arg}` never took a string in training"));
             };
@@ -1963,6 +2037,31 @@ fn scalars(v: &Value, f: &mut impl FnMut(String)) {
         Value::Object(m) => m.values().for_each(|x| scalars(x, f)),
         _ => {}
     }
+}
+
+/// A list argument's values, if it is a non-empty list of strings.
+fn strings(v: &Value) -> Option<Vec<&str>> {
+    let Value::Array(items) = v else {
+        return None;
+    };
+    let values: Vec<&str> = items.iter().filter_map(Value::as_str).collect();
+    (!values.is_empty() && values.len() == items.len()).then_some(values)
+}
+
+/// Where a list argument came from: the most recent output with a path
+/// whose values include every value of the list, as `(tool, path)`.
+fn list_source(outputs: &[(&str, Value)], items: &[&str]) -> Option<(String, String)> {
+    outputs.iter().rev().find_map(|(tool, out)| {
+        let mut paths = Vec::new();
+        find(out, items[0], "$", &mut paths);
+        paths
+            .into_iter()
+            .find(|p| {
+                let at: BTreeSet<String> = at_path(out, p).into_iter().map(|(v, _)| v).collect();
+                items.iter().all(|i| at.contains(*i))
+            })
+            .map(|p| (tool.to_string(), p))
+    })
 }
 
 /// The chance of a pick where the customer named another value: `used` of
@@ -2473,6 +2572,75 @@ pub(crate) mod tests {
         // One line stays one value, as before.
         assert_eq!(parse("/n/only.md"), json!("/n/only.md"));
         assert_eq!(parse("{\"a\": 1}"), json!({"a": 1}));
+    }
+
+    #[test]
+    fn binds_a_whole_list_the_agent_passes_on() {
+        let manifest = ToolManifest {
+            domain: "travel".to_string(),
+            tools: BTreeMap::from([
+                ("get_all_hotels_in_city".to_string(), ToolKind::Read),
+                ("get_hotels_prices".to_string(), ToolKind::Read),
+            ]),
+            docs: BTreeMap::new(),
+        };
+        let listing = |id: &str, names: &[&str]| {
+            result(
+                id,
+                "get_all_hotels_in_city",
+                json!({ "Hotel Names": names }),
+            )
+        };
+        let prices = |id: &str, names: &[&str]| {
+            call(id, "get_hotels_prices", json!({ "hotel_names": names }))
+        };
+        let training: Vec<Episode> = [["Le Marais", "Good Night"], ["City Hub", "Park Hyatt"]]
+            .iter()
+            .map(|names| {
+                episode(vec![
+                    call("h", "get_all_hotels_in_city", json!({"city": "Paris"})),
+                    listing("h", names),
+                    prices("p", names),
+                    result("p", "get_hotels_prices", json!({})),
+                ])
+            })
+            .collect();
+        let b = Bindings::learn(&training, &manifest);
+        let live = |extra: Vec<Event>| {
+            let mut events = vec![
+                call("h", "get_all_hotels_in_city", json!({"city": "London"})),
+                listing("h", &["Savoy", "Ritz", "Claridge's"]),
+            ];
+            events.extend(extra);
+            episode(events)
+        };
+        let bound = b.bind("get_hotels_prices", &live(vec![]));
+        assert_eq!(
+            bound.as_ref().map(|(v, _)| v.clone()),
+            Ok(json!({"hotel_names": ["Savoy", "Ritz", "Claridge's"]}))
+        );
+        // Both training calls passed the whole listing: agreed twice of two.
+        assert_eq!(
+            b.agreement().get("get_hotels_prices"),
+            Some(&[(2, 2), (0, 0)])
+        );
+        // Given once, the list is not passed again.
+        let again = live(vec![
+            prices("p", &["Savoy", "Ritz", "Claridge's"]),
+            result("p", "get_hotels_prices", json!({})),
+        ]);
+        assert!(b.bind("get_hotels_prices", &again).is_err());
+        // The review shows where the list comes from.
+        let review = b.review();
+        let row = review
+            .iter()
+            .find(|l| l.tool == "get_hotels_prices")
+            .unwrap();
+        assert!(row.bindable());
+        assert_eq!(
+            row.arguments[0].sources[0].1,
+            "$.Hotel Names[*] (every value)"
+        );
     }
 
     #[test]
