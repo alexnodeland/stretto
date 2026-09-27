@@ -562,6 +562,7 @@ impl Flow {
             && !self.bindings.scores_described_read()
             && !self.bindings.orders_sources_by_site()
             && !self.bindings.binds_lists()
+            && !self.bindings.counts_bare()
         {
             FLOW_VERSION
         } else {
@@ -700,11 +701,12 @@ impl Flow {
             && (flow.bindings.scores_named_other()
                 || flow.bindings.scores_described_read()
                 || flow.bindings.orders_sources_by_site()
-                || flow.bindings.binds_lists())
+                || flow.bindings.binds_lists()
+                || flow.bindings.counts_bare())
         {
             anyhow::bail!(
                 "a flow with bindings scored where another value was named or the described \
-                 record read, with sources ordered by site, or with lists bound, is format \
+                 record read, with sources ordered by site, or with lists bound, or with bare calls counted, is format \
                  {FLOW_THRESHOLDS_VERSION}"
             );
         }
@@ -1196,6 +1198,16 @@ pub struct Bindings {
         with = "stretto_model::pairs"
     )]
     lists: BTreeMap<(String, String), Traced>,
+    /// Per lookup with no required argument that the agent called with some
+    /// argument in training: how many of its calls passed none. Such a
+    /// lookup is made with none, and is the agent's own call only when the
+    /// agent's is bare too: a search the agent always narrows by one of its
+    /// optional arguments never is. Its chance is `(bare + 1) / (calls + 2)`.
+    /// A lookup the agent always called bare, or that has a required
+    /// argument, is not listed, and one without arguments has the chance 1,
+    /// as in flows learned before this was counted.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    bare: BTreeMap<String, usize>,
 }
 
 /// How many values of a lookup's argument the agent took from one source at
@@ -1280,6 +1292,10 @@ pub struct LookupBinding {
     /// binding would pass another of its list, `(used, picks)`, as with
     /// `named_other`. `None` for a flow without the count.
     pub described_read: Option<(usize, usize)>,
+    /// For a lookup without required arguments that the agent sometimes
+    /// called with some, `(bare, calls)`: how many of its calls passed none,
+    /// which sets its chance. `None` otherwise: the chance is 1.
+    pub bare: Option<(usize, usize)>,
 }
 
 /// Where one required argument of a lookup comes from, for review.
@@ -1308,7 +1324,10 @@ impl LookupBinding {
     /// arguments.
     pub fn chance(&self) -> [f64; 3] {
         if self.arguments.is_empty() {
-            return [1.0; 3];
+            let c = self
+                .bare
+                .map_or(1.0, |(bare, n)| (bare as f64 + 1.0) / (n as f64 + 2.0));
+            return [c; 3];
         }
         let smoothed = |(agreed, n): (usize, usize)| (agreed as f64 + 1.0) / (n as f64 + 2.0);
         let [a, b] = self.agreed;
@@ -1391,6 +1410,7 @@ impl Bindings {
                     agreed: self.agreed.get(tool).copied().unwrap_or_default(),
                     named_other: self.named_other.get(tool).copied(),
                     described_read: self.described_read.get(tool).copied(),
+                    bare: self.bare.get(tool).map(|&bare| (bare, *calls)),
                 }
             })
             .collect()
@@ -1435,6 +1455,8 @@ impl Bindings {
                             for arg in args.keys() {
                                 *seen.1.entry(arg.clone()).or_insert(0) += 1;
                             }
+                            *b.bare.entry(c.name.clone()).or_insert(0) +=
+                                usize::from(args.is_empty());
                             for (arg, value) in args {
                                 if let Some(items) = strings(value) {
                                     let entry =
@@ -1476,6 +1498,17 @@ impl Bindings {
                 }
             }
         }
+        // Bare calls matter only for lookups with no required argument that
+        // the agent sometimes called with some.
+        let args = &b.args;
+        b.bare.retain(|tool, bare| {
+            args.get(tool).is_some_and(|(calls, seen)| {
+                *bare < *calls
+                    && seen
+                        .values()
+                        .all(|&n| (n as f64) < REQUIRED_SHARE * *calls as f64)
+            })
+        });
         // Kept only for arguments with more than one source, where the order
         // matters.
         let multi: BTreeSet<(String, String)> = b
@@ -1598,6 +1631,22 @@ impl Bindings {
     /// this build from lookups that took them do.
     pub(crate) fn binds_lists(&self) -> bool {
         !self.lists.is_empty()
+    }
+
+    /// Whether an argument-free lookup's chance is counted (`bare`), as in
+    /// flows learned by this build.
+    pub(crate) fn counts_bare(&self) -> bool {
+        !self.bare.is_empty()
+    }
+
+    /// The chance that a lookup of `tool` made with no arguments is the
+    /// agent's own call: for a lookup the agent sometimes called with some,
+    /// how often its calls passed none, Laplace-smoothed; else 1.
+    fn bare_chance(&self, tool: &str) -> f64 {
+        match (self.bare.get(tool), self.args.get(tool)) {
+            (Some(&bare), Some(&(calls, _))) => (bare as f64 + 1.0) / (calls as f64 + 2.0),
+            _ => 1.0,
+        }
     }
 
     /// For review: each lookup argument's sources at each site where the
@@ -1758,7 +1807,7 @@ impl Bindings {
     pub fn bind(&self, tool: &str, episode: &Episode) -> std::result::Result<(Value, f64), String> {
         let (args, mentioned) = self.pick(tool, &episode.events, &[])?;
         let chance = if args.is_empty() {
-            1.0
+            self.bare_chance(tool)
         } else {
             let tallies = self.agreed.get(tool).copied().unwrap_or_default();
             let smoothed = |(agreed, n): (usize, usize)| (agreed as f64 + 1.0) / (n as f64 + 2.0);
@@ -2641,6 +2690,45 @@ pub(crate) mod tests {
             row.arguments[0].sources[0].1,
             "$.Hotel Names[*] (every value)"
         );
+    }
+
+    #[test]
+    fn a_lookup_without_arguments_is_as_likely_as_the_agents_bare_calls() {
+        let manifest = ToolManifest {
+            domain: "work".to_string(),
+            tools: BTreeMap::from([
+                ("search_tasks".to_string(), ToolKind::Read),
+                ("get_current_day".to_string(), ToolKind::Read),
+            ]),
+            docs: BTreeMap::new(),
+        };
+        // The agent always narrows its search, each time by another argument,
+        // so none is required; it always asks for the day with no argument.
+        let training: Vec<Episode> = ["task_name", "assignee", "board", "due"]
+            .iter()
+            .map(|arg| {
+                episode(vec![
+                    call("d", "get_current_day", json!({})),
+                    result("d", "get_current_day", json!("2023-11-30")),
+                    call("s", "search_tasks", json!({ *arg: "x" })),
+                    result("s", "search_tasks", json!([])),
+                ])
+            })
+            .collect();
+        let b = Bindings::learn(&training, &manifest);
+        // A bare search was never the agent's call: 1/6.
+        let (args, chance) = b.bind("search_tasks", &episode(vec![])).unwrap();
+        assert_eq!(args, json!({}));
+        assert!((chance - 1.0 / 6.0).abs() < 1e-9);
+        // The day always was, and keeps the chance 1, unlisted.
+        let (_, chance) = b.bind("get_current_day", &episode(vec![])).unwrap();
+        assert_eq!(chance, 1.0);
+        let review = b.review();
+        let row = review.iter().find(|l| l.tool == "search_tasks").unwrap();
+        assert_eq!(row.bare, Some((0, 4)));
+        assert!((row.chance()[0] - 1.0 / 6.0).abs() < 1e-9);
+        let day = review.iter().find(|l| l.tool == "get_current_day").unwrap();
+        assert_eq!((day.bare, day.chance()[0]), (None, 1.0));
     }
 
     #[test]
