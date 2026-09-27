@@ -268,7 +268,8 @@ pub fn next_steps(setup: &Setup, init: &str) -> String {
                  configuration above with what this prints:\n\
                  {init} --flow {flow} --shadow -- {server}"
             ));
-            steps.push(promote_step(d, &flow, &promoted, false));
+            let shadow = Setup::default_record(d, true);
+            steps.push(promote_step(&flow, &shadow, &promoted, false));
             steps.push(serve_step(init, &promoted, &server));
         }
         Some(served) if served.shadow => {
@@ -277,7 +278,12 @@ pub fn next_steps(setup: &Setup, init: &str) -> String {
                  what the flow would have looked up (<session>.flow.jsonl).",
                 setup.record
             ));
-            steps.push(promote_step(d, &served.path, &promoted, served.arbiter));
+            steps.push(promote_step(
+                &served.path,
+                &setup.record,
+                &promoted,
+                served.arbiter,
+            ));
             steps.push(serve_step(init, &promoted, &server));
         }
         Some(served) => {
@@ -318,7 +324,8 @@ pub fn next_steps(setup: &Setup, init: &str) -> String {
     out
 }
 
-fn promote_step(domain: &str, flow: &str, promoted: &str, arbiter: bool) -> String {
+/// Promote `flow` on the shadow sessions in `sessions`.
+fn promote_step(flow: &str, sessions: &str, promoted: &str, arbiter: bool) -> String {
     // A flow with an arbiter replays the answers the proxy cached in shadow.
     let cache = if arbiter {
         " --oracle-cache ~/.stretto/oracle-cache"
@@ -327,8 +334,7 @@ fn promote_step(domain: &str, flow: &str, promoted: &str, arbiter: bool) -> Stri
     };
     format!(
         "Keep the flow to the calls where its lookups were the agent's own:\n\
-         stretto promote --flow {flow} --sessions {}{cache} --out {promoted}",
-        Setup::default_record(domain, true)
+         stretto promote --flow {flow} --sessions {sessions}{cache} --out {promoted}"
     )
 }
 
@@ -494,6 +500,14 @@ mod tests {
             "{shadow}"
         );
         assert!(shadow.contains("TYPESAFE_API_KEY"), "{shadow}");
+        let mut custom = setup(Some(Served {
+            path: "~/.stretto/notes.flow.json".to_string(),
+            arbiter: false,
+            shadow: true,
+        }));
+        custom.record = "/srv/shadow".to_string();
+        let custom = next_steps(&custom, INIT);
+        assert!(custom.contains("--sessions /srv/shadow --out"), "{custom}");
 
         let served = next_steps(
             &setup(Some(Served {
