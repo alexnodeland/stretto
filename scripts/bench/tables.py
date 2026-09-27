@@ -26,6 +26,7 @@ BENCHMARKS = {  # replay set: (name, thresholds)
     "dojo-nolists": ("AgentDojo travel, no lists", ["0.3"]),
     "wb": ("WorkBench", ["0.3", "0.1"]),
     "mcpm": ("MCPMark", ["0.3", "0.1"]),
+    "mcpm-own": ("MCPMark, own flows", ["0.3"]),
     "dtap": ("DTap-Bench", ["0.3"]),
 }
 SOURCES = ["own", "same", "other", "all"]
@@ -142,7 +143,8 @@ def ceilings(work: Path) -> dict:
 def ceiling_of(cz: dict, key: str, stem: str) -> int:
     """The read-only ceiling, in turns, of a replayed agent's test runs, from its set's ceilings."""
     domain, _, agent = stem.partition("-")
-    rows = cz.get(f"{key}-{domain}") or cz.get(key) or {}
+    # A set replaying another's agents on other flows (mcpm-own, dojo-nolists) shares its ceilings.
+    rows = cz.get(f"{key}-{domain}") or cz.get(f"{key.split('-')[0]}-{domain}") or cz.get(key) or {}
     agent = re.sub(r"-(own|same|other|all)$", "", agent)
     row = rows.get(agent) if agent else (next(iter(rows.values())) if len(rows) == 1 else None)
     return (row or {}).get("ceiling, tool state", 0)

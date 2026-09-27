@@ -15,8 +15,10 @@ read or a write, and a train/test split by task.
 of each task. The request opens the run. The assistant's message and the
 calls it makes before their results arrive are one turn. Results are paired
 with calls by id, and MCP text blocks, which hold Python reprs, are unwrapped
-to JSON as `dtap_to_tau2.py` does. Tools are marked as `dtap_to_tau2.py` marks
-them, by the first verb in the name. A tool that runs whatever the agent
+to JSON as `dtap_to_tau2.py` does. A name's hyphens become underscores (Notion's `API-post-search`
+is `API_post_search`), since τ²-bench's tools are Python functions. Tools are marked as `dtap_to_tau2.py` marks
+them, by the first verb in the name (Notion's searches and database queries
+are POST requests that read). A tool that runs whatever the agent
 writes, such as `execute_sql`, is a write. MCPMark's tasks are hard, and
 `learn` fits the habit on successful runs, so `--learn-from-all` gives every
 run a reward of 1 and keeps the verdict as `verified`: a read-only flow needs
@@ -83,7 +85,7 @@ def convert(items: list) -> list:
                 args = json.loads(it.get("arguments") or "{}")
             except ValueError:
                 args = {"_unparsed": it.get("arguments")}
-            turn["tool_calls"].append({"id": it.get("call_id"), "name": it.get("name") or "",
+            turn["tool_calls"].append({"id": it.get("call_id"), "name": (it.get("name") or "").replace("-", "_"),
                                        "arguments": args if isinstance(args, dict) else {"_value": args},
                                        "requestor": "assistant"})
         elif kind == "function_call_output":

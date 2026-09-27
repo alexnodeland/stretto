@@ -209,7 +209,7 @@ BENCHMARKS = [("tau2-bench", "τ²-bench"), ("tau-bench", "τ-bench"), ("bfcl", 
 NAMES = {"customer_relationship_manager": "CRM", "project_management": "project mgmt", "multi_domain": "multi-domain",
          "bfcl": "multi-turn", "slack": "Slack", "customer_service": "customer service", "dtap_crm": "CRM",
          "dtap_telecom": "telecom", "dtap_travel": "travel", "mcpmark_filesystem": "filesystem",
-         "mcpmark_postgres": "PostgreSQL", "mcpmark_github": "GitHub"}
+         "mcpmark_postgres": "PostgreSQL", "mcpmark_github": "GitHub", "mcpmark_notion": "Notion"}
 
 
 def ceilings(rows: list[dict], path: Path) -> None:

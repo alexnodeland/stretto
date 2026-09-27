@@ -57,8 +57,12 @@ def words(name: str) -> list[str]:
 
 def is_read(name: str) -> bool:
     """A read when the first verb in its name reads (`get`, `list`, `search`, ...); a name with no
-    verb it knows is a write, which a flow never calls."""
-    for w in words(name):
+    verb it knows is a write, which a flow never calls. An HTTP method's `post` is a write unless a
+    read verb follows it, as in Notion's `API-post-search` and `API-post-database-query`."""
+    ws = words(name)
+    for k, w in enumerate(ws):
+        if w == "post" and any(x in READ_WORDS for x in ws[k + 1:]):
+            continue
         if w in WRITE_WORDS:
             return False
         if w in READ_WORDS:

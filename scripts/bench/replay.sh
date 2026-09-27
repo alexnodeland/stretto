@@ -13,6 +13,7 @@
 #   bfcl dojo wb mcpm dtap
 #             flows learned from older agents' training runs, replayed trace-only on newer agents' test runs;
 #             DTap-Bench's from each agent's own runs, its harness's other agents, the other harnesses and all
+#   mcpm-own  MCPMark's newer models, each with a flow from its own training runs
 #   ceilings  each set's read-only ceiling (ceiling.py)
 #
 # Environment: WORK (default work), TAU2 (τ²-bench's checkout, default ../tau2-bench), PY (a Python with τ²-bench
@@ -42,6 +43,7 @@ learn() { # OUT DOMAIN CHECKOUT RESULTS...: a habit-only flow from the runs' tra
   local out=$1 domain=$2 checkout=$3 args=()
   shift 3
   [ -f "$out" ] && return
+  mkdir -p "$(dirname "$out")"
   for r in "$@"; do args+=(--results "$r"); done
   "$S" learn "${args[@]}" --tau2 "$checkout" --domain "$domain" --habit-only --out "$out" 2>&1 | tail -1
 }
@@ -199,22 +201,38 @@ wb() {
   done
 }
 
+MCPM_TARGETS=(claude-sonnet-4 claude-opus-4-1 gpt-5-low gpt-5-mini-low o3 gemini-2-5-pro grok-4 kimi-k2-0905 qwen-3-max)
+
 mcpm() {
   local x=$WORK/mcpm d
   local pool=(gpt-4-1 gpt-4-1-mini o4-mini gemini-2-5-flash deepseek-chat glm-4-5 kimi-k2-0711 qwen-3-coder-plus)
-  local targets=(claude-sonnet-4 claude-opus-4-1 gpt-5-low gpt-5-mini-low o3 gemini-2-5-pro grok-4 kimi-k2-0905 qwen-3-max)
-  for svc in filesystem postgres github; do
+  local targets=("${MCPM_TARGETS[@]}")
+  for svc in filesystem postgres github notion; do
     # shellcheck disable=SC2046
     learn "$FLOWS/mcpmark_$svc.flow.json" "mcpmark_$svc" "$x/checkout" $(files "$x/mcpmark_$svc" "${pool[@]}")
   done
   for th in 0.3 0.1; do
-    for svc in filesystem postgres github; do
+    for svc in filesystem postgres github notion; do
       d=mcpmark_$svc
       for t in "${targets[@]}"; do
         for dec in reach habit; do
           replay "$WORK/replays/mcpm/c-$d-$t-$dec-$th" "$d" "$x/$d/$t.json" "$FLOWS/$d.flow.json" "$dec" "$th" \
             "$x/checkout" 0 --trace
         done
+      done
+    done
+  done
+}
+
+mcpm_own() { # each newer model's flow from its own training runs, replayed on its test runs
+  local x=$WORK/mcpm d f
+  for svc in filesystem postgres github notion; do
+    d=mcpmark_$svc
+    for t in "${MCPM_TARGETS[@]}"; do
+      f=$FLOWS/mcpm-own/$d-$t.flow.json
+      learn "$f" "$d" "$x/checkout" "$x/$d/$t.json"
+      for dec in reach habit; do
+        [ -f "$f" ] && replay "$WORK/replays/mcpm-own/c-$d-$t-$dec-0.3" "$d" "$x/$d/$t.json" "$f" "$dec" 0.3 "$x/checkout" 0 --trace
       done
     done
   done
@@ -272,7 +290,7 @@ ceilings() { # the replayed agents' test runs, per set
     sed "s|.*|$x/runs/&.json|") --tau2 "$x/checkout" --json "$c/bfcl.json" > /dev/null
   for spec in dojo:travel dojo:slack dojo:banking dojo:workspace wb:multi_domain wb:customer_relationship_manager \
     wb:project_management wb:email wb:calendar wb:analytics mcpm:mcpmark_filesystem mcpm:mcpmark_postgres \
-    mcpm:mcpmark_github dtap:customer_service dtap:dtap_crm dtap:dtap_telecom dtap:dtap_travel; do
+    mcpm:mcpmark_github mcpm:mcpmark_notion dtap:customer_service dtap:dtap_crm dtap:dtap_telecom dtap:dtap_travel; do
     local set=${spec%%:*} d=${spec##*:}
     [ -f "$c/$set-$d.json" ] && continue
     # The agents replayed on the set's test runs.
@@ -288,10 +306,11 @@ run_set() {
     tau2) paper_batch tau2 --trace ;;
     tau2-env) paper_batch tau2-env --in-process ;;
     sweep | perdec | v1 | bfcl | dojo | wb | mcpm | dtap | ceilings) "$1" ;;
-    all) for s in tau2 tau2-env sweep perdec v1 bfcl dojo wb mcpm dtap ceilings; do run_set "$s"; done ;;
+    mcpm-own) mcpm_own ;;
+    all) for s in tau2 tau2-env sweep perdec v1 bfcl dojo wb mcpm mcpm-own dtap ceilings; do run_set "$s"; done ;;
     *) echo "unknown set: $1" >&2 && exit 2 ;;
   esac
 }
 
-[ $# -gt 0 ] || { sed -n '2,23p' "$ROOT/scripts/bench/replay.sh"; exit 2; }
+[ $# -gt 0 ] || { awk 'NR > 1 && !/^#/ { exit } NR > 1' "$ROOT/scripts/bench/replay.sh"; exit 2; }
 for set in "$@"; do run_set "$set"; done
