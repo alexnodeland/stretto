@@ -1,0 +1,4 @@
+node_modules
+.venv/
+# Scratch output of the render scripts' --frames and --check modes.
+video/*/out/
