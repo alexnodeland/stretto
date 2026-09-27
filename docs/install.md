@@ -15,7 +15,7 @@ stretto is four binaries, installed together:
 | [Docker](#docker) | anywhere Docker runs, linux/amd64 and linux/arm64 | Docker |
 | [From source](#from-source) | anywhere Rust 1.88 or later runs | Rust |
 
-Release archives, `install.sh`, `install.ps1` and the container image come with the releases after 0.1.0; for 0.1.0, install from source. Then [check the installation](#check-it-stretto-doctor) and [add shell completions](#shell-completions).
+Release archives, `install.sh`, `install.ps1` and the container image come with every release, from 0.1.0 on; until 0.1.0 is tagged, [install from source](#from-source). Then [check the installation](#check-it-stretto-doctor) and [add shell completions](#shell-completions).
 
 ## Release binaries
 
@@ -109,13 +109,15 @@ To build the image from a checkout: `docker build -t stretto .`. Behind a TLS-in
 
 ## From source
 
-With Rust 1.88 or later ([rustup](https://rustup.rs)); the ICU crates that `Cargo.lock` holds, through reqwest, need 1.88, although the crates declare 1.87:
+With Rust 1.88 or later ([rustup](https://rustup.rs)):
 
 ```sh
-cargo install --locked --git https://github.com/alexnodeland/stretto --tag v0.1.0 stretto-report stretto-proxy
+cargo install --locked --git https://github.com/alexnodeland/stretto stretto-report stretto-proxy
 ```
 
-`stretto-report` installs `stretto`, and `stretto-proxy` installs `stretto-proxy`, `stretto-procedure` and `stretto-mcp-demo`. `--tag` names a release; `--branch main` takes the latest code, which has `init`, `doctor` and `completions`. From a checkout:
+That builds `main`; add `--tag vX.Y.Z` to build a release.
+
+`stretto-report` installs `stretto`, and `stretto-proxy` installs `stretto-proxy`, `stretto-procedure` and `stretto-mcp-demo`. From a checkout:
 
 ```sh
 cargo install --locked --path crates/stretto-report

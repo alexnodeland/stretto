@@ -12,7 +12,7 @@ Nothing is published to crates.io ([below](#cratesio)). [docs/install.md](instal
 1. **Choose the version.** Before 1.0, bump the minor version for a change that a user must act on, such as a flow format this version no longer reads, and the patch version otherwise.
 2. **Bump it.** Set `version` in `[workspace.package]` in the root `Cargo.toml`; every crate inherits it. Run `cargo build`, which updates the crates' versions in `Cargo.lock`, and the checks CI runs: `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test --all-targets`.
 3. **Write the changelog section.** In `CHANGELOG.md`, turn `## Unreleased` into `## X.Y.Z (YYYY-MM-DD)` and start an empty `## Unreleased` above it. The release notes are the lines under the heading that starts with `## X.Y.Z `, up to the next `## `; relative links in them are rewritten to point at the tag.
-4. **Update the lines that name a tag,** such as `cargo install --git … --tag v0.1.0` in README.md and docs/install.md.
+4. **Update the lines that name a version** in README.md and docs/install.md (`grep -n 'v0\.\|0\.[0-9]\.[0-9]' README.md docs/install.md`).
 5. **Merge to `main`** with CI green.
 6. **Tag it and push the tag:**
 
