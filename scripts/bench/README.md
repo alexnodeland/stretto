@@ -64,4 +64,6 @@ python3 scripts/costs.py .data/tau2-targets/*.json --replays $WORK/replays/tau2-
 python3 scripts/remade.py --results $WORK/dtap/dtap_telecom/*.json --tau2 $WORK/dtap/checkout
 ```
 
+`fixture/` holds two replays of DTap-Bench's telecom (GPT-5.1's own flow, both deciders at 0.3) and that domain's ceilings, which CI runs `tables.py` on.
+
 The results JSON also keeps WorkBench's first replays, from before bare calls were counted. Those came from an earlier binary and are not rebuilt here.

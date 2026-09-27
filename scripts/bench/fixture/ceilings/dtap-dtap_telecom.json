@@ -1,0 +1,80 @@
+{
+ "claudesdk-claude-opus-4-6": {
+  "domain": "dtap_telecom",
+  "episodes": 48,
+  "turns": 122,
+  "reads, after customer": 48,
+  "ceiling, tool state": 20,
+  "ceiling, with words": 20,
+  "reply, after tool": 48,
+  "reads, after tool": 20,
+  "writes, after tool": 6
+ },
+ "claudesdk-claude-sonnet-4-5": {
+  "domain": "dtap_telecom",
+  "episodes": 48,
+  "turns": 126,
+  "reads, after customer": 47,
+  "ceiling, tool state": 18,
+  "ceiling, with words": 18,
+  "reply, after tool": 47,
+  "reads, after tool": 18,
+  "writes, after tool": 13,
+  "reply, after customer": 1
+ },
+ "googleadk-gemini-3-pro-preview": {
+  "domain": "dtap_telecom",
+  "episodes": 48,
+  "turns": 143,
+  "reads, after customer": 48,
+  "ceiling, tool state": 31,
+  "ceiling, with words": 31,
+  "reads, after tool": 32,
+  "reply, after tool": 48,
+  "writes, after tool": 15
+ },
+ "openaisdk-gpt-5.1": {
+  "domain": "dtap_telecom",
+  "episodes": 48,
+  "turns": 182,
+  "reads, after customer": 48,
+  "ceiling, tool state": 67,
+  "ceiling, with words": 70,
+  "reply, after tool": 48,
+  "reads, after tool": 72,
+  "writes, after tool": 14
+ },
+ "openaisdk-gpt-5.2": {
+  "domain": "dtap_telecom",
+  "episodes": 48,
+  "turns": 184,
+  "reads, after customer": 48,
+  "ceiling, tool state": 66,
+  "ceiling, with words": 68,
+  "reply, after tool": 48,
+  "reads, after tool": 73,
+  "writes, after tool": 15
+ },
+ "openaisdk-gpt-5.4": {
+  "domain": "dtap_telecom",
+  "episodes": 48,
+  "turns": 178,
+  "reads, after customer": 48,
+  "ceiling, tool state": 61,
+  "ceiling, with words": 63,
+  "reply, after tool": 48,
+  "reads, after tool": 63,
+  "writes, after tool": 19
+ },
+ "openaisdk-gpt-oss-120b": {
+  "domain": "dtap_telecom",
+  "episodes": 48,
+  "turns": 294,
+  "reads, after customer": 48,
+  "ceiling, tool state": 158,
+  "ceiling, with words": 160,
+  "reads, after tool": 186,
+  "reply, after tool": 48,
+  "writes, after tool": 12
+ }
+}
