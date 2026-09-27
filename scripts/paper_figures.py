@@ -15,6 +15,10 @@
   saved and the detours per episode against the sessions learned from (log
   scale), from the agent's own sessions and from other agents'. Each point is
   the mean over agents and seeds.
+- `ceilings.svg` (with `--benchmarks`, the rows of
+  docs/results/benchmarks-2026-09-27.json): the read-only ceiling per
+  benchmark and domain, the turns a speculator binding from tool results
+  could save, and on top what binding the user's words would add.
 
 The SVGs carry their own light and dark palettes (`prefers-color-scheme`).
 """
@@ -200,13 +204,67 @@ def learning(rows: list[dict], turns: dict, path: Path) -> None:
     path.write_text("\n".join(out) + "\n")
 
 
+BENCHMARKS = [("tau2-bench", "τ²-bench"), ("tau-bench", "τ-bench"), ("bfcl", "BFCL"), ("agentdojo", "AgentDojo"),
+              ("workbench", "WorkBench")]
+NAMES = {"customer_relationship_manager": "CRM", "project_management": "project mgmt", "multi_domain": "multi-domain",
+         "bfcl": "multi-turn", "slack": "Slack"}
+
+
+def ceilings(rows: list[dict], path: Path) -> None:
+    by = collections.defaultdict(lambda: [0, 0, 0])  # (benchmark, domain) -> turns, tool state, with words
+    for r in rows:
+        k = (r["benchmark"], r.get("domain") or r["benchmark"])
+        by[k][0] += r["turns"]
+        by[k][1] += r["ceiling, tool state"]
+        by[k][2] += r["ceiling, with words"]
+    groups = []
+    for bench, label in BENCHMARKS:
+        doms = sorted((d for b, d in by if b == bench), key=lambda d: -by[(bench, d)][1] / by[(bench, d)][0])
+        if doms:
+            groups.append((label, [(d, *[100 * v / by[(bench, d)][0] for v in by[(bench, d)][1:]]) for d in doms]))
+    left, right, bar, gap, head, top = 150, 60, 14, 6, 22, 44
+    pw = 420
+    h = top + sum(head + len(ds) * (bar + gap) for _, ds in groups) + 36
+    w = left + pw + right
+    out = svg_open(w, h)
+    out.append(f'<rect x="{left}" y="10" width="14" height="10" fill="var(--a)"/>')
+    out.append(f'<text class="t" x="{left + 20}" y="19">bound from tool results</text>')
+    out.append(f'<rect x="{left + 190}" y="10" width="14" height="10" fill="var(--b)"/>')
+    out.append(f'<text class="t" x="{left + 210}" y="19">also from the user\'s words</text>')
+    xmax = 60
+    sx = lambda v: left + pw * v / xmax  # noqa: E731
+    body = top + sum(head + len(ds) * (bar + gap) for _, ds in groups)
+    for v in range(0, xmax + 1, 10):
+        out.append(f'<line x1="{sx(v):.1f}" x2="{sx(v):.1f}" y1="{top - 6}" y2="{body}" stroke="var(--grid)"/>')
+        out.append(f'<text class="m" x="{sx(v):.1f}" y="{body + 16}" text-anchor="middle">{v}</text>')
+    out.append(f'<text class="m" x="{left + pw / 2:.0f}" y="{h - 4}" text-anchor="middle">LLM turns a read-only speculator could save (%)</text>')
+    y = top
+    for label, doms in groups:
+        out.append(f'<text class="t" x="8" y="{y + 14}" font-weight="600">{label}</text>')
+        y += head
+        for d, tool, words in doms:
+            out.append(f'<text class="m" x="{left - 8}" y="{y + bar - 3}" text-anchor="end">{NAMES.get(d, d)}</text>')
+            if tool > 0:
+                out.append(f'<rect x="{left}" y="{y}" width="{max(sx(tool) - left - 1, 0.5):.1f}" height="{bar}" rx="2" fill="var(--a)"/>')
+            if words - tool > 0.05:
+                out.append(f'<rect x="{sx(tool) + 1:.1f}" y="{y}" width="{max(sx(words) - sx(tool) - 1, 0.5):.1f}" height="{bar}" rx="2" fill="var(--b)"/>')
+            value = f"{tool:.1f} + {words - tool:.1f}" if words - tool > 0.05 else f"{tool:.1f}"
+            out.append(f'<text class="t" x="{sx(words) + 6:.1f}" y="{y + bar - 3}">{value}</text>')
+            y += bar + gap
+    out.append("</svg>")
+    path.write_text("\n".join(out) + "\n")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("rows", type=Path, help="docs/results/reach-2026-09-26.json")
     ap.add_argument("--out", type=Path, default=Path("paper"))
+    ap.add_argument("--benchmarks", type=Path, help="docs/results/benchmarks-2026-09-27.json, for ceilings.svg")
     args = ap.parse_args()
     data = json.loads(args.rows.read_text())
     args.out.mkdir(parents=True, exist_ok=True)
+    if args.benchmarks:
+        ceilings(json.loads(args.benchmarks.read_text())["ceilings"], args.out / "ceilings.svg")
     calibration(data["calibration"], args.out / "calibration.svg")
     counted = data["costs"].get("counted", {})
     costs = {k.split("/")[0]: (v["beta"], v["delta"]) for k, v in counted.items() if k.endswith("/pooled")}

@@ -1194,6 +1194,25 @@ What this changes:
 - **§3.5's compile-once design:** a procedure is a product artifact with its own IR and runtime, for procedures an agent runs alone; the cascade hands a model what the procedure's own check cannot confirm.
 - **Next:** a threshold per decision, from the result's size and the turns left, both countable; and the procedure where accounts differ in their state.
 
+### 3.28 Amendment 17: five benchmarks, replayed from the record (2026-09-27)
+
+Every result through Amendment 16 was on τ²-bench. This round takes the flow to four more benchmarks, whose authors published their agents' trajectories with every call's result: τ-bench, BFCL's multi-turn tasks, AgentDojo and WorkBench. That adds 65 agents and 11 domains.
+
+- **Details:** [the round's results](../results/benchmarks-2026-09-27.md) and [the working paper](../../paper/stretto.md), §3, §4.1–4.2 and Appendix D.
+- **Replay from the record** (`check_flow.py --trace`). A lookup the agent's own later call answers, before its next write, gets that call's recorded result, which is exact. Any other lookup gets a stand-in and never counts as a saving. On τ²-bench's paper batch it counts 96.7% of the environment replay's saved turns and 91% of the reach decider's lead, and 55–72% of the detours, so its detours are lower bounds.
+- **The ceiling is the domain's.** The read-only ceiling runs from 3.5% of turns in WorkBench, where each request names what to read, to 47% in AgentDojo's travel suite, where one listing names what every later read takes. τ-bench's turns divide as τ²-bench's do, to within two points, with other agents in another harness. Binding the user's words would add 5–7 points in BFCL, AgentDojo and WorkBench, against under two in τ²-bench and τ-bench.
+- **The deciders.** Reach saves more than next-step where agents read ahead of their next write: +1.4 points of τ-bench retail's turns (0.8–2.1), and +0.85 points of BFCL's (0.35–1.45), twice next-step's savings. The two tie in τ-bench airline and AgentDojo (−0.5 points, −1.7 to 0.0). On WorkBench, whose ceiling is 3.5%, neither saves or costs a turn: the flows make no lookup at all.
+- **Results are data.** Read as AgentDojo prints them, YAML and Python literals, its results hold few values a parser can find, and the ceiling is 10.0%; read as JSON, it is 22.1%. A deployment's MCP servers usually return JSON; one that returns text needs the same care.
+- **Lists.** AgentDojo's travel lookups take lists, such as every hotel a listing named. `bindings.lists` traces a list argument to the path of an earlier result that holds it, and passes every value there. Travel's flow saved nothing without lists. Flows without lists replay byte-identically. A flow with lists is format 2.
+- **Bare searches.** WorkBench's searches take one of several optional filters, so none was required, and the flows searched with none, which no agent does: 289 detours for one saved turn. `bindings.bare` counts the agent's calls that passed no argument, and a lookup made with none is only that likely. Format 2 too.
+- **Prior weight.** The prior of other agents' sessions matters little in size: with 30 or 300 of them, the flow saves within a point of what it saves with 100, at a hundred of the agent's own sessions.
+
+What this changes:
+
+- **§3.3's bindings:** an argument may be a list, bound whole from one path of one earlier result; and a lookup without required arguments is scored by how often the agent's own calls had none.
+- **§3.7's evaluation:** a benchmark's published trajectories are enough to replay a flow on, with no environment, which makes every agent that publishes its runs a test set.
+- **Next:** reading the request, since where arguments come from the user's words, as in WorkBench, a flow binding from results has nothing to take; and a live check that agents other than GLM-5.3, in other harnesses, skip the calls a flow has answered.
+
 ## 4. Drawbacks
 
 - **Predictability has a ceiling.**
