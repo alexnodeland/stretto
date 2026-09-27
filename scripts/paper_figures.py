@@ -214,26 +214,29 @@ NAMES = {"customer_relationship_manager": "CRM", "project_management": "project 
 
 
 def ceilings(rows: list[dict], path: Path) -> None:
-    by = collections.defaultdict(lambda: [0, 0, 0])  # (benchmark, domain) -> turns, tool state, with words
+    # (benchmark, domain) -> turns, tool state, with the words a small model picks, with words
+    by = collections.defaultdict(lambda: [0, 0, 0, 0])
     for r in rows:
         k = (r["benchmark"], r.get("domain") or r["benchmark"])
         by[k][0] += r["turns"]
         by[k][1] += r["ceiling, tool state"]
-        by[k][2] += r["ceiling, with words"]
+        by[k][2] += r.get("ceiling, words by model", r["ceiling, tool state"])
+        by[k][3] += r["ceiling, with words"]
     groups = []
     for bench, label in BENCHMARKS:
         doms = sorted((d for b, d in by if b == bench), key=lambda d: -by[(bench, d)][1] / by[(bench, d)][0])
         if doms:
             groups.append((label, [(d, *[100 * v / by[(bench, d)][0] for v in by[(bench, d)][1:]]) for d in doms]))
-    left, right, bar, gap, head, top = 150, 60, 14, 6, 22, 44
+    left, right, bar, gap, head, top = 150, 60, 14, 6, 22, 60
     pw = 420
     h = top + sum(head + len(ds) * (bar + gap) for _, ds in groups) + 36
     w = left + pw + right
     out = svg_open(w, h)
-    out.append(f'<rect x="{left}" y="10" width="14" height="10" fill="var(--a)"/>')
-    out.append(f'<text class="t" x="{left + 20}" y="19">bound from tool results</text>')
-    out.append(f'<rect x="{left + 190}" y="10" width="14" height="10" fill="var(--b)"/>')
-    out.append(f'<text class="t" x="{left + 210}" y="19">also from the user\'s words</text>')
+    for x, y, key, label in ((left, 10, "a", "bound from tool results"),
+                             (left + 190, 10, "c", "the user's words a small model picks"),
+                             (left + 190, 28, "b", "the rest of the user's words")):
+        out.append(f'<rect x="{x}" y="{y}" width="14" height="10" fill="var(--{key})"/>')
+        out.append(f'<text class="t" x="{x + 20}" y="{y + 9}">{label}</text>')
     xmax = 60
     sx = lambda v: left + pw * v / xmax  # noqa: E731
     body = top + sum(head + len(ds) * (bar + gap) for _, ds in groups)
@@ -245,12 +248,14 @@ def ceilings(rows: list[dict], path: Path) -> None:
     for label, doms in groups:
         out.append(f'<text class="t" x="8" y="{y + 14}" font-weight="600">{label}</text>')
         y += head
-        for d, tool, words in doms:
+        for d, tool, model, words in doms:
             out.append(f'<text class="m" x="{left - 8}" y="{y + bar - 3}" text-anchor="end">{NAMES.get(d, d)}</text>')
             if tool > 0:
                 out.append(f'<rect x="{left}" y="{y}" width="{max(sx(tool) - left - 1, 0.5):.1f}" height="{bar}" rx="2" fill="var(--a)"/>')
-            if words - tool > 0.05:
-                out.append(f'<rect x="{sx(tool) + 1:.1f}" y="{y}" width="{max(sx(words) - sx(tool) - 1, 0.5):.1f}" height="{bar}" rx="2" fill="var(--b)"/>')
+            if model - tool > 0.05:
+                out.append(f'<rect x="{sx(tool) + 1:.1f}" y="{y}" width="{max(sx(model) - sx(tool) - 1, 0.5):.1f}" height="{bar}" rx="2" fill="var(--c)"/>')
+            if words - model > 0.05:
+                out.append(f'<rect x="{sx(model) + 1:.1f}" y="{y}" width="{max(sx(words) - sx(model) - 1, 0.5):.1f}" height="{bar}" rx="2" fill="var(--b)"/>')
             value = f"{tool:.1f} + {words - tool:.1f}" if words - tool > 0.05 else f"{tool:.1f}"
             out.append(f'<text class="t" x="{sx(words) + 6:.1f}" y="{y + bar - 3}">{value}</text>')
             y += bar + gap

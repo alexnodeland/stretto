@@ -1,131 +1,154 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 630 754" width="630" height="754" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 630 770" width="630" height="770" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12">
 <style>svg{--bg:#fcfcfb;--ink:#0b0b0b;--muted:#52514e;--grid:#e4e3df;--a:#2a78d6;--b:#eb6834;--c:#1baf7a;}@media (prefers-color-scheme: dark){svg{--bg:#1a1a19;--ink:#ffffff;--muted:#c3c2b7;--grid:#3a3936;--a:#3987e5;--b:#d95926;--c:#199e70;}}.t{fill:var(--ink)}.m{fill:var(--muted)}</style>
-<rect width="630" height="754" fill="var(--bg)"/>
+<rect width="630" height="770" fill="var(--bg)"/>
 <rect x="150" y="10" width="14" height="10" fill="var(--a)"/>
 <text class="t" x="170" y="19">bound from tool results</text>
-<rect x="340" y="10" width="14" height="10" fill="var(--b)"/>
-<text class="t" x="360" y="19">also from the user's words</text>
-<line x1="150.0" x2="150.0" y1="38" y2="718" stroke="var(--grid)"/>
-<text class="m" x="150.0" y="734" text-anchor="middle">0</text>
-<line x1="220.0" x2="220.0" y1="38" y2="718" stroke="var(--grid)"/>
-<text class="m" x="220.0" y="734" text-anchor="middle">10</text>
-<line x1="290.0" x2="290.0" y1="38" y2="718" stroke="var(--grid)"/>
-<text class="m" x="290.0" y="734" text-anchor="middle">20</text>
-<line x1="360.0" x2="360.0" y1="38" y2="718" stroke="var(--grid)"/>
-<text class="m" x="360.0" y="734" text-anchor="middle">30</text>
-<line x1="430.0" x2="430.0" y1="38" y2="718" stroke="var(--grid)"/>
-<text class="m" x="430.0" y="734" text-anchor="middle">40</text>
-<line x1="500.0" x2="500.0" y1="38" y2="718" stroke="var(--grid)"/>
-<text class="m" x="500.0" y="734" text-anchor="middle">50</text>
-<line x1="570.0" x2="570.0" y1="38" y2="718" stroke="var(--grid)"/>
-<text class="m" x="570.0" y="734" text-anchor="middle">60</text>
-<text class="m" x="360" y="750" text-anchor="middle">LLM turns a read-only speculator could save (%)</text>
-<text class="t" x="8" y="58" font-weight="600">τ²-bench</text>
-<text class="m" x="142" y="77" text-anchor="end">retail</text>
-<rect x="150" y="66" width="238.6" height="14" rx="2" fill="var(--a)"/>
-<rect x="390.6" y="66" width="6.4" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="403.0" y="77">34.2 + 1.1</text>
-<text class="m" x="142" y="97" text-anchor="end">airline</text>
-<rect x="150" y="86" width="205.2" height="14" rx="2" fill="var(--a)"/>
-<rect x="357.2" y="86" width="6.9" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="370.1" y="97">29.5 + 1.1</text>
-<text class="m" x="142" y="117" text-anchor="end">telecom</text>
-<rect x="150" y="106" width="172.0" height="14" rx="2" fill="var(--a)"/>
-<rect x="324.0" y="106" width="0.5" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="330.1" y="117">24.7 + 0.2</text>
-<text class="t" x="8" y="140" font-weight="600">τ-bench</text>
-<text class="m" x="142" y="159" text-anchor="end">retail</text>
-<rect x="150" y="148" width="210.0" height="14" rx="2" fill="var(--a)"/>
-<rect x="362.0" y="148" width="7.5" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="375.5" y="159">30.1 + 1.2</text>
-<text class="m" x="142" y="179" text-anchor="end">airline</text>
-<rect x="150" y="168" width="169.2" height="14" rx="2" fill="var(--a)"/>
-<rect x="321.2" y="168" width="13.0" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="340.2" y="179">24.3 + 2.0</text>
-<text class="t" x="8" y="202" font-weight="600">BFCL</text>
-<text class="m" x="142" y="221" text-anchor="end">multi-turn</text>
-<rect x="150" y="210" width="91.5" height="14" rx="2" fill="var(--a)"/>
-<rect x="243.5" y="210" width="36.3" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="285.9" y="221">13.2 + 5.3</text>
-<text class="t" x="8" y="244" font-weight="600">AgentDojo</text>
-<text class="m" x="142" y="263" text-anchor="end">travel</text>
-<rect x="150" y="252" width="328.6" height="14" rx="2" fill="var(--a)"/>
-<rect x="480.6" y="252" width="34.7" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="521.3" y="263">47.1 + 5.1</text>
-<text class="m" x="142" y="283" text-anchor="end">Slack</text>
-<rect x="150" y="272" width="150.3" height="14" rx="2" fill="var(--a)"/>
-<rect x="302.3" y="272" width="23.1" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="331.4" y="283">21.6 + 3.4</text>
-<text class="m" x="142" y="303" text-anchor="end">banking</text>
-<rect x="150" y="292" width="70.4" height="14" rx="2" fill="var(--a)"/>
-<text class="t" x="227.4" y="303">10.2</text>
-<text class="m" x="142" y="323" text-anchor="end">workspace</text>
-<rect x="150" y="312" width="40.7" height="14" rx="2" fill="var(--a)"/>
-<rect x="192.7" y="312" width="57.1" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="255.8" y="323">6.0 + 8.3</text>
-<text class="t" x="8" y="346" font-weight="600">WorkBench</text>
-<text class="m" x="142" y="365" text-anchor="end">project mgmt</text>
-<rect x="150" y="354" width="43.5" height="14" rx="2" fill="var(--a)"/>
-<rect x="195.5" y="354" width="90.3" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="291.7" y="365">6.4 + 13.0</text>
-<text class="m" x="142" y="385" text-anchor="end">multi-domain</text>
-<rect x="150" y="374" width="39.8" height="14" rx="2" fill="var(--a)"/>
-<rect x="191.8" y="374" width="55.5" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="253.3" y="385">5.8 + 8.1</text>
-<text class="m" x="142" y="405" text-anchor="end">CRM</text>
-<rect x="150" y="394" width="28.3" height="14" rx="2" fill="var(--a)"/>
-<rect x="180.3" y="394" width="101.5" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="287.8" y="405">4.2 + 14.6</text>
-<text class="m" x="142" y="425" text-anchor="end">email</text>
-<rect x="150" y="414" width="2.8" height="14" rx="2" fill="var(--a)"/>
-<rect x="154.8" y="414" width="43.9" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="204.6" y="425">0.5 + 6.4</text>
-<text class="m" x="142" y="445" text-anchor="end">calendar</text>
-<rect x="150" y="434" width="0.5" height="14" rx="2" fill="var(--a)"/>
-<rect x="152.0" y="434" width="14.1" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="172.1" y="445">0.1 + 2.2</text>
-<text class="m" x="142" y="465" text-anchor="end">analytics</text>
-<rect x="151.0" y="454" width="0.6" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="157.6" y="465">0.0 + 0.2</text>
-<text class="t" x="8" y="488" font-weight="600">DTap-Bench</text>
-<text class="m" x="142" y="507" text-anchor="end">telecom</text>
-<rect x="150" y="496" width="238.8" height="14" rx="2" fill="var(--a)"/>
-<rect x="390.8" y="496" width="4.1" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="400.9" y="507">34.3 + 0.7</text>
-<text class="m" x="142" y="527" text-anchor="end">customer service</text>
-<rect x="150" y="516" width="168.1" height="14" rx="2" fill="var(--a)"/>
-<rect x="320.1" y="516" width="65.1" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="391.2" y="527">24.2 + 9.4</text>
-<text class="m" x="142" y="547" text-anchor="end">travel</text>
-<rect x="150" y="536" width="137.6" height="14" rx="2" fill="var(--a)"/>
-<rect x="289.6" y="536" width="50.8" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="346.4" y="547">19.8 + 7.4</text>
-<text class="m" x="142" y="567" text-anchor="end">CRM</text>
-<rect x="150" y="556" width="79.6" height="14" rx="2" fill="var(--a)"/>
-<rect x="231.6" y="556" width="41.5" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="279.1" y="567">11.5 + 6.1</text>
-<text class="m" x="142" y="587" text-anchor="end">OS files</text>
-<rect x="150" y="576" width="77.4" height="14" rx="2" fill="var(--a)"/>
-<rect x="229.4" y="576" width="17.7" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="253.0" y="587">11.2 + 2.7</text>
-<text class="m" x="142" y="607" text-anchor="end">medical</text>
-<rect x="150" y="596" width="25.6" height="14" rx="2" fill="var(--a)"/>
-<text class="t" x="182.6" y="607">3.8</text>
-<text class="t" x="8" y="630" font-weight="600">MCPMark</text>
-<text class="m" x="142" y="649" text-anchor="end">filesystem</text>
-<rect x="150" y="638" width="75.2" height="14" rx="2" fill="var(--a)"/>
-<rect x="227.2" y="638" width="5.3" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="238.5" y="649">10.9 + 0.9</text>
-<text class="m" x="142" y="669" text-anchor="end">Notion</text>
-<rect x="150" y="658" width="54.6" height="14" rx="2" fill="var(--a)"/>
-<rect x="206.6" y="658" width="9.3" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="221.9" y="669">7.9 + 1.5</text>
-<text class="m" x="142" y="689" text-anchor="end">PostgreSQL</text>
-<rect x="150" y="678" width="33.4" height="14" rx="2" fill="var(--a)"/>
-<rect x="185.4" y="678" width="46.1" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="237.5" y="689">4.9 + 6.7</text>
-<text class="m" x="142" y="709" text-anchor="end">GitHub</text>
-<rect x="150" y="698" width="16.6" height="14" rx="2" fill="var(--a)"/>
-<rect x="168.6" y="698" width="49.0" height="14" rx="2" fill="var(--b)"/>
-<text class="t" x="223.6" y="709">2.5 + 7.1</text>
+<rect x="340" y="10" width="14" height="10" fill="var(--c)"/>
+<text class="t" x="360" y="19">the user's words a small model picks</text>
+<rect x="340" y="28" width="14" height="10" fill="var(--b)"/>
+<text class="t" x="360" y="37">the rest of the user's words</text>
+<line x1="150.0" x2="150.0" y1="54" y2="734" stroke="var(--grid)"/>
+<text class="m" x="150.0" y="750" text-anchor="middle">0</text>
+<line x1="220.0" x2="220.0" y1="54" y2="734" stroke="var(--grid)"/>
+<text class="m" x="220.0" y="750" text-anchor="middle">10</text>
+<line x1="290.0" x2="290.0" y1="54" y2="734" stroke="var(--grid)"/>
+<text class="m" x="290.0" y="750" text-anchor="middle">20</text>
+<line x1="360.0" x2="360.0" y1="54" y2="734" stroke="var(--grid)"/>
+<text class="m" x="360.0" y="750" text-anchor="middle">30</text>
+<line x1="430.0" x2="430.0" y1="54" y2="734" stroke="var(--grid)"/>
+<text class="m" x="430.0" y="750" text-anchor="middle">40</text>
+<line x1="500.0" x2="500.0" y1="54" y2="734" stroke="var(--grid)"/>
+<text class="m" x="500.0" y="750" text-anchor="middle">50</text>
+<line x1="570.0" x2="570.0" y1="54" y2="734" stroke="var(--grid)"/>
+<text class="m" x="570.0" y="750" text-anchor="middle">60</text>
+<text class="m" x="360" y="766" text-anchor="middle">LLM turns a read-only speculator could save (%)</text>
+<text class="t" x="8" y="74" font-weight="600">τ²-bench</text>
+<text class="m" x="142" y="93" text-anchor="end">retail</text>
+<rect x="150" y="82" width="238.6" height="14" rx="2" fill="var(--a)"/>
+<rect x="390.6" y="82" width="2.7" height="14" rx="2" fill="var(--c)"/>
+<rect x="394.3" y="82" width="2.8" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="403.0" y="93">34.2 + 1.1</text>
+<text class="m" x="142" y="113" text-anchor="end">airline</text>
+<rect x="150" y="102" width="205.2" height="14" rx="2" fill="var(--a)"/>
+<rect x="357.2" y="102" width="3.5" height="14" rx="2" fill="var(--c)"/>
+<rect x="361.7" y="102" width="2.4" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="370.1" y="113">29.5 + 1.1</text>
+<text class="m" x="142" y="133" text-anchor="end">telecom</text>
+<rect x="150" y="122" width="172.0" height="14" rx="2" fill="var(--a)"/>
+<rect x="324.0" y="122" width="0.5" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="330.1" y="133">24.7 + 0.2</text>
+<text class="t" x="8" y="156" font-weight="600">τ-bench</text>
+<text class="m" x="142" y="175" text-anchor="end">retail</text>
+<rect x="150" y="164" width="210.0" height="14" rx="2" fill="var(--a)"/>
+<rect x="362.0" y="164" width="3.5" height="14" rx="2" fill="var(--c)"/>
+<rect x="366.5" y="164" width="3.0" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="375.5" y="175">30.1 + 1.2</text>
+<text class="m" x="142" y="195" text-anchor="end">airline</text>
+<rect x="150" y="184" width="169.2" height="14" rx="2" fill="var(--a)"/>
+<rect x="321.2" y="184" width="7.5" height="14" rx="2" fill="var(--c)"/>
+<rect x="329.7" y="184" width="4.5" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="340.2" y="195">24.3 + 2.0</text>
+<text class="t" x="8" y="218" font-weight="600">BFCL</text>
+<text class="m" x="142" y="237" text-anchor="end">multi-turn</text>
+<rect x="150" y="226" width="91.5" height="14" rx="2" fill="var(--a)"/>
+<rect x="243.5" y="226" width="17.4" height="14" rx="2" fill="var(--c)"/>
+<rect x="262.0" y="226" width="17.9" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="285.9" y="237">13.2 + 5.3</text>
+<text class="t" x="8" y="260" font-weight="600">AgentDojo</text>
+<text class="m" x="142" y="279" text-anchor="end">travel</text>
+<rect x="150" y="268" width="328.6" height="14" rx="2" fill="var(--a)"/>
+<rect x="480.6" y="268" width="33.0" height="14" rx="2" fill="var(--c)"/>
+<rect x="514.6" y="268" width="0.7" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="521.3" y="279">47.1 + 5.1</text>
+<text class="m" x="142" y="299" text-anchor="end">Slack</text>
+<rect x="150" y="288" width="150.3" height="14" rx="2" fill="var(--a)"/>
+<rect x="302.3" y="288" width="23.1" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="331.4" y="299">21.6 + 3.4</text>
+<text class="m" x="142" y="319" text-anchor="end">banking</text>
+<rect x="150" y="308" width="70.4" height="14" rx="2" fill="var(--a)"/>
+<text class="t" x="227.4" y="319">10.2</text>
+<text class="m" x="142" y="339" text-anchor="end">workspace</text>
+<rect x="150" y="328" width="40.7" height="14" rx="2" fill="var(--a)"/>
+<rect x="192.7" y="328" width="19.9" height="14" rx="2" fill="var(--c)"/>
+<rect x="213.6" y="328" width="36.2" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="255.8" y="339">6.0 + 8.3</text>
+<text class="t" x="8" y="362" font-weight="600">WorkBench</text>
+<text class="m" x="142" y="381" text-anchor="end">project mgmt</text>
+<rect x="150" y="370" width="43.5" height="14" rx="2" fill="var(--a)"/>
+<rect x="195.5" y="370" width="23.0" height="14" rx="2" fill="var(--c)"/>
+<rect x="219.5" y="370" width="66.3" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="291.7" y="381">6.4 + 13.0</text>
+<text class="m" x="142" y="401" text-anchor="end">multi-domain</text>
+<rect x="150" y="390" width="39.8" height="14" rx="2" fill="var(--a)"/>
+<rect x="191.8" y="390" width="35.6" height="14" rx="2" fill="var(--c)"/>
+<rect x="228.4" y="390" width="18.8" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="253.3" y="401">5.8 + 8.1</text>
+<text class="m" x="142" y="421" text-anchor="end">CRM</text>
+<rect x="150" y="410" width="28.3" height="14" rx="2" fill="var(--a)"/>
+<rect x="180.3" y="410" width="17.0" height="14" rx="2" fill="var(--c)"/>
+<rect x="198.3" y="410" width="83.5" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="287.8" y="421">4.2 + 14.6</text>
+<text class="m" x="142" y="441" text-anchor="end">email</text>
+<rect x="150" y="430" width="2.8" height="14" rx="2" fill="var(--a)"/>
+<rect x="154.8" y="430" width="13.7" height="14" rx="2" fill="var(--c)"/>
+<rect x="169.4" y="430" width="29.2" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="204.6" y="441">0.5 + 6.4</text>
+<text class="m" x="142" y="461" text-anchor="end">calendar</text>
+<rect x="150" y="450" width="0.5" height="14" rx="2" fill="var(--a)"/>
+<rect x="152.0" y="450" width="0.5" height="14" rx="2" fill="var(--c)"/>
+<rect x="153.1" y="450" width="13.0" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="172.1" y="461">0.1 + 2.2</text>
+<text class="m" x="142" y="481" text-anchor="end">analytics</text>
+<rect x="151.0" y="470" width="0.5" height="14" rx="2" fill="var(--c)"/>
+<rect x="151.8" y="470" width="0.5" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="157.6" y="481">0.0 + 0.2</text>
+<text class="t" x="8" y="504" font-weight="600">DTap-Bench</text>
+<text class="m" x="142" y="523" text-anchor="end">telecom</text>
+<rect x="150" y="512" width="238.8" height="14" rx="2" fill="var(--a)"/>
+<rect x="390.8" y="512" width="0.5" height="14" rx="2" fill="var(--c)"/>
+<rect x="391.4" y="512" width="3.6" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="400.9" y="523">34.3 + 0.7</text>
+<text class="m" x="142" y="543" text-anchor="end">customer service</text>
+<rect x="150" y="532" width="168.1" height="14" rx="2" fill="var(--a)"/>
+<rect x="320.1" y="532" width="40.1" height="14" rx="2" fill="var(--c)"/>
+<rect x="361.2" y="532" width="24.0" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="391.2" y="543">24.2 + 9.4</text>
+<text class="m" x="142" y="563" text-anchor="end">travel</text>
+<rect x="150" y="552" width="137.6" height="14" rx="2" fill="var(--a)"/>
+<rect x="289.6" y="552" width="1.7" height="14" rx="2" fill="var(--c)"/>
+<rect x="292.3" y="552" width="48.1" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="346.4" y="563">19.8 + 7.4</text>
+<text class="m" x="142" y="583" text-anchor="end">CRM</text>
+<rect x="150" y="572" width="79.6" height="14" rx="2" fill="var(--a)"/>
+<rect x="231.6" y="572" width="9.3" height="14" rx="2" fill="var(--c)"/>
+<rect x="242.0" y="572" width="31.1" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="279.1" y="583">11.5 + 6.1</text>
+<text class="m" x="142" y="603" text-anchor="end">OS files</text>
+<rect x="150" y="592" width="77.4" height="14" rx="2" fill="var(--a)"/>
+<rect x="229.4" y="592" width="6.8" height="14" rx="2" fill="var(--c)"/>
+<rect x="237.2" y="592" width="9.8" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="253.0" y="603">11.2 + 2.7</text>
+<text class="m" x="142" y="623" text-anchor="end">medical</text>
+<rect x="150" y="612" width="25.6" height="14" rx="2" fill="var(--a)"/>
+<text class="t" x="182.6" y="623">3.8</text>
+<text class="t" x="8" y="646" font-weight="600">MCPMark</text>
+<text class="m" x="142" y="665" text-anchor="end">filesystem</text>
+<rect x="150" y="654" width="75.2" height="14" rx="2" fill="var(--a)"/>
+<rect x="227.2" y="654" width="0.5" height="14" rx="2" fill="var(--c)"/>
+<rect x="227.6" y="654" width="4.9" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="238.5" y="665">10.9 + 0.9</text>
+<text class="m" x="142" y="685" text-anchor="end">Notion</text>
+<rect x="150" y="674" width="54.6" height="14" rx="2" fill="var(--a)"/>
+<rect x="206.6" y="674" width="9.3" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="221.9" y="685">7.9 + 1.5</text>
+<text class="m" x="142" y="705" text-anchor="end">PostgreSQL</text>
+<rect x="150" y="694" width="33.4" height="14" rx="2" fill="var(--a)"/>
+<rect x="185.4" y="694" width="0.5" height="14" rx="2" fill="var(--c)"/>
+<rect x="186.8" y="694" width="44.7" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="237.5" y="705">4.9 + 6.7</text>
+<text class="m" x="142" y="725" text-anchor="end">GitHub</text>
+<rect x="150" y="714" width="16.6" height="14" rx="2" fill="var(--a)"/>
+<rect x="168.6" y="714" width="0.5" height="14" rx="2" fill="var(--c)"/>
+<rect x="169.1" y="714" width="48.5" height="14" rx="2" fill="var(--b)"/>
+<text class="t" x="223.6" y="725">2.5 + 7.1</text>
 </svg>

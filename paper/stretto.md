@@ -165,9 +165,9 @@ Over 39,298 LLM turns of nine agents' test episodes (§3), 46.8% reply to the us
 
 Brackets give the range over suites or domains.
 
-![The read-only ceiling per benchmark and domain: the share of LLM turns a speculator binding from tool results could save, and what binding the user's words would add](ceilings.svg)
+![The read-only ceiling per benchmark and domain: the share of LLM turns a speculator binding from tool results could save, and what binding the user's words would add, split into the values a small model picks from the request and the rest](ceilings.svg)
 
-*Figure 2. The read-only ceiling by benchmark and domain (test episodes of the replayed agents, §3), and on top what a speculator that also bound values from the user's words could add. Where the agent walks records, results bind the arguments; where each request names what to read, only language does.*
+*Figure 2. The read-only ceiling by benchmark and domain (test episodes of the replayed agents, §3), and on top what a speculator that also bound values from the user's words could add: in green the values a small model, shown the user's words and the call, picks among them (Appendix D), and in orange the rest. Where the agent walks records, results bind the arguments; where each request names what to read, only language does.*
 
 ### 4.2 Speculation in replay
 
