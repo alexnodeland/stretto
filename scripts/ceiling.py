@@ -14,7 +14,11 @@ in the state. Two ceilings follow:
 - *with the customer's words*: an argument may also be a value the customer
   wrote, which a speculator that reads language could bind.
 
-A flow binds from results only, so its savings are bounded by the first.
+A flow binds from results only, so its savings are bounded by the first. A
+third count, *with constants*, also admits an argument that takes one value
+in every call of its tool the agent made, at least five (`anatomy.py`'s
+constant, such as a page size an agent always passes), which a binding that
+learned constants could pass.
 
     ceiling.py RESULTS.json... [--tau2 DIR] [--json OUT]
 
@@ -42,22 +46,37 @@ def domain_of(sims):
     return "retail"
 
 
-def classify(sim, domain, writes):
+def constants(sims, domain, writes) -> set:
+    """The (tool, argument) pairs whose every call over the episodes, at least five, took one value."""
+    values, counts = collections.defaultdict(set), collections.Counter()
+    for s in sims:
+        for t in anatomy.walk(s, domain, writes)[0]:
+            for c in t.get("calls") or []:
+                for a in c["args"]:
+                    values[(c["tool"], a["arg"])].add(json.dumps(a["value"], sort_keys=True, default=str))
+                    counts[(c["tool"], a["arg"])] += 1
+    return {k for k, v in values.items() if len(v) == 1 and counts[k] >= 5}
+
+
+def classify(sim, domain, writes, fixed=frozenset()):
     """Per LLM turn: (kind, trigger, speculable from the tool state, from the
-    tool state and the customer's words). Kinds: reply, reads, writes."""
+    tool state and the customer's words, from the tool state and the `fixed`
+    constants). Kinds: reply, reads, writes."""
     turns, _, _ = anatomy.walk(sim, domain, writes)
     out = []
     # A lookup is current from the first tool response after the last write.
     responded_since_write = False
     for t in turns:
         if t["kind"] == "reply":
-            out.append(("reply", t["trigger"], False, False))
+            out.append(("reply", t["trigger"], False, False, False))
             continue
         calls = t["calls"]
         reads = all(c["kind"] == "read" for c in calls)
         tool_ok = reads and responded_since_write and all(a["class"] in COPY for c in calls for a in c["args"])
         words_ok = reads and responded_since_write and all(a["class"] in COPY | {"customer"} for c in calls for a in c["args"])
-        out.append(("reads" if reads else "writes", t["trigger"], tool_ok, words_ok))
+        const_ok = reads and responded_since_write and all(
+            a["class"] in COPY or (a["class"] == "generated" and (c["tool"], a["arg"]) in fixed) for c in calls for a in c["args"])
+        out.append(("reads" if reads else "writes", t["trigger"], tool_ok, words_ok, const_ok))
         # This turn's results come back before the next turn; a write in it
         # makes earlier lookups stale, and its own response is fresh.
         responded_since_write = True
@@ -87,13 +106,15 @@ def main():
                   if c["name"] not in anatomy.READ[domain] | anatomy.PURE | anatomy.HANDOFF}
         tally = collections.Counter()
         per_episode = {}
+        fixed = constants(sims, domain, writes)
         for s in sims:
-            rows = classify(s, domain, writes)
-            for kind, trigger, tool_ok, words_ok in rows:
+            rows = classify(s, domain, writes, fixed)
+            for kind, trigger, tool_ok, words_ok, const_ok in rows:
                 tally["turns"] += 1
                 tally[f"{kind}, after {trigger}"] += 1
                 tally["ceiling, tool state"] += tool_ok
                 tally["ceiling, with words"] += words_ok
+                tally["ceiling, with constants"] += const_ok
             # Named as the replays name episodes.
             per_episode[f"task-{s['task_id']}-{s.get('trial', 0)}"] = {
                 "turns": len(rows), "ceiling": sum(r[2] for r in rows), "ceiling_words": sum(r[3] for r in rows),
