@@ -123,6 +123,7 @@ const research: DefaultTheme.SidebarItem[] = [
       { text: 'Claims and evidence', link: '/research/claims' },
       { text: 'Results index', link: '/research/results' },
       { text: 'Seven benchmarks', link: '/research/benchmarks' },
+      { text: 'Frontier models, live', link: '/research/frontier' },
       { text: 'Live on AgentDojo and BFCL', link: '/research/live' },
       { text: 'Reproduce the results', link: '/research/reproduce' },
       { text: 'Research notebook', link: '/notebook/', target: '_self' }

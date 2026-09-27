@@ -29,7 +29,7 @@ features:
     link: /guide/concepts/lookups
     linkText: Lookups and detours
   - title: No model of its own
-    details: The reach decider scores each lookup by its chance of use before the agent's next write, counted from traces. It needs no key. Live, GLM-5.3 took 27.9% fewer LLM turns (19.1–35.9%) on 28 τ²-bench tasks.
+    details: The reach decider scores each lookup by its chance of use before the agent's next write, counted from traces. It needs no key. Live on 28 τ²-bench tasks, it cut Claude Sonnet 5's LLM turns by 20.5%, Claude Haiku 4.5's by 22.4% and GLM-5.3's by 27.9%.
     link: /guide/concepts/deciders
     linkText: Deciders
   - title: A flow is a file you review
@@ -79,9 +79,9 @@ The agent made 1 call where it had made 3. [The walkthrough](/guide/walkthrough)
 <p class="home-lead">Every number comes with the kind of evidence behind it, and the script that recomputes it.</p>
 
 <div class="home-stats">
-  <a href="research/claims">
-    <strong>27.9%</strong>
-    <span>fewer LLM turns for GLM-5.3 on 28 τ²-bench retail and airline tasks (19.1–35.9%), live, with no model of its own</span>
+  <a href="research/frontier">
+    <strong>20.5%</strong>
+    <span>fewer LLM turns for Claude Sonnet 5 on 28 τ²-bench retail and airline tasks (16.5–24.4%), live and pre-registered, three trials; 22.4% for Claude Haiku 4.5 and 27.9% for GLM-5.3</span>
   </a>
   <a href="research/results">
     <strong>10.1%</strong>

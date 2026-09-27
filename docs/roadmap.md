@@ -7,6 +7,7 @@ Every piece of the first design is built: the flow compiler, the MCP proxy, the 
 - live runs with Claude models as the agent and as the customer, on ten retail tasks and fewer ([results](results/claude-models-2026-09-25.md));
 - a paired run on every retail and airline test task: 80 pairs, with 25.5% fewer LLM turns and the pass rate within −7.5 to +6.25 points ([results](results/paired-2026-09-25.md)).
 - a flow deciding on the chance of use before the next write, with no model, on 28 of those tasks: 27.9% fewer LLM turns (19.1% to 35.9%) ([results](results/reach-2026-09-26.md#live)).
+- the same flow and tasks with Claude Sonnet 5 and Claude Haiku 4.5, three trials, pre-registered: 20.5% and 22.4% fewer LLM turns, where Anthropic's prompt for parallel tool calls saved 3.4% and 5.9% ([results](results/frontier-2026-09-27.md)).
 - the same flow live in AgentDojo's and BFCL's own environments, with GLM-5.3 and Claude Haiku 4.5: 10.1% fewer LLM turns (5.8% to 14.0%) in the AgentDojo suites where the replay found reads to take, with passes unchanged, and no effect in BFCL, as its replay projected ([results](results/live-benchmarks-2026-09-27.md)).
 
 What is left is tracked in GitHub issues, all of them sub-issues of [#1](https://github.com/alexnodeland/stretto/issues/1). This page groups them and says why each matters. The changes RFC-001 §3.9 asks of fugue itself are tracked in fugue's [#61](https://github.com/alexnodeland/fugue/issues/61).

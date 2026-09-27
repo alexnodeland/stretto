@@ -17,6 +17,8 @@ The headline numbers, each with its evidence in [the claims ledger](./claims):
 | Claim | Number | Evidence |
 |---|---|---|
 | It works live with no model of its own | GLM-5.3 took 27.9% fewer LLM turns (19.1–35.9%) on 28 retail and airline tasks; 21 passed, against 24 | Live |
+| It works on frontier models | Pre-registered, three trials of 28 τ²-bench tasks: Claude Sonnet 5 took 20.5% fewer LLM turns (16.5–24.4%) and Claude Haiku 4.5 22.4% (15.8–29.4%), with passes 65 → 69 and 58 → 62 of 84 | Live |
+| A prompt does not get what it gets | Anthropic's sample prompt for parallel tool calls saved 3.4–7.6% of turns; with the prompt in both arms, the flow still saved 22.9% (Sonnet 5) and 17.2% (Haiku 4.5) | Live |
 | It holds live beyond τ²-bench | In AgentDojo's Slack and travel suites, GLM-5.3 and Claude Haiku 4.5 took 10.1% fewer LLM turns (5.8–14.0%), with passes unchanged; 6.0% over all 41 tasks, where the replay projected 7.2%. BFCL, projected at 1.6%, shows none | Live, in the benchmarks' own environments |
 | The speculator takes most of retail's ceiling | 86.4% of it [80.2, 93.1], 10.2 points more than the next-step speculator [6.7, 14.2] | Replay, nine agents it never saw |
 | The ceiling is the domain's | 3.5% of turns in WorkBench to 47.1% in AgentDojo's travel suite; 29.0% in τ²-bench | Record, 89 more agents on six benchmarks |

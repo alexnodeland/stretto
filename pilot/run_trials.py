@@ -17,7 +17,8 @@ of a task run minutes apart. Each episode lands in OUT/DOMAIN/trial-K/ARM/
 task-ID; one with a result.json is not run again, so a stopped run resumes
 where it left off. An episode whose agent failed on the API (an error result,
 or its process died) is run once more at the end; the first attempt is kept
-beside it as ARM/task-ID.failed-N.
+beside it as ARM/task-ID.failed-N, as is an attempt a stopped run left
+unfinished.
 
 The subscription reports its windows in the agent's stream
 (`rate_limit_event`): the share of the five-hour and of the seven-day
@@ -191,6 +192,9 @@ def run_one(args, limits: Limits, key: tuple, attempt: int) -> str:
     ] + ARMS[arm]
     if "reach" in arm:
         command += ["--flow", str(FLOWS[domain]), "--flow-oracle", "mock", "--flow-threshold", str(args.threshold)]
+    if path.exists():
+        # An attempt a stopped run left unfinished: kept beside, never read.
+        set_aside(path)
     path.mkdir(parents=True, exist_ok=True)
     with open(path / "run.log", "w") as out:
         done = subprocess.run(command, stdout=out, stderr=subprocess.STDOUT, cwd=HERE, check=False)
@@ -222,12 +226,17 @@ def run_one(args, limits: Limits, key: tuple, attempt: int) -> str:
     )
     if status != "ok":
         # Keep the attempt beside the episode, and clear the way for the next.
-        with lock:
-            n = 1
-            while (path.parent / f"{path.name}.failed-{n}").exists():
-                n += 1
-            shutil.move(str(path), str(path.parent / f"{path.name}.failed-{n}"))
+        set_aside(path)
     return status
+
+
+def set_aside(path: Path) -> None:
+    """Move an episode's attempt to ARM/task-ID.failed-N."""
+    with lock:
+        n = 1
+        while (path.parent / f"{path.name}.failed-{n}").exists():
+            n += 1
+        shutil.move(str(path), str(path.parent / f"{path.name}.failed-{n}"))
 
 
 def main() -> None:

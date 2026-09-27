@@ -82,7 +82,7 @@ MARK = "TABLELABEL{}ENDLABEL"
 
 def pandoc(markdown: str) -> str:
     done = subprocess.run(
-        ["pandoc", "-f", "markdown+tex_math_dollars+autolink_bare_uris", "-t", "latex", "--natbib",
+        ["pandoc", "-f", "markdown+tex_math_dollars+autolink_bare_uris+lists_without_preceding_blankline", "-t", "latex", "--natbib",
          "--wrap=none", "--columns=10000", "--top-level-division=section"],
         input=markdown, capture_output=True, text=True, check=True,
     )
@@ -228,10 +228,16 @@ def svg_to_pdf(svg: Path, pdf: Path) -> None:
     s = re.sub(r"@media \(prefers-color-scheme: dark\)\{svg\{[^}]*\}\}", "", s)
     s = re.sub(r"var\(--([\w-]+)\)", lambda m: light[m.group(1)], s)
     s = re.sub(r'font-family="[^"]*"', 'font-family="Latin Modern Sans, DejaVu Sans, sans-serif"', s)
+    # Dated by the SVG's last commit, so an unchanged figure converts to the same bytes.
+    env = dict(os.environ)
+    if "SOURCE_DATE_EPOCH" not in env:
+        stamp = subprocess.run(["git", "log", "-1", "--format=%ct", "--", str(svg)], cwd=HERE,
+                               capture_output=True, text=True).stdout.strip()
+        env["SOURCE_DATE_EPOCH"] = stamp or "0"
     with tempfile.NamedTemporaryFile("w", suffix=".svg", delete=False) as f:
         f.write(s)
     try:
-        subprocess.run(["rsvg-convert", "-f", "pdf", "-o", str(pdf), f.name], check=True)
+        subprocess.run(["rsvg-convert", "-f", "pdf", "-o", str(pdf), f.name], check=True, env=env)
     finally:
         os.unlink(f.name)
 

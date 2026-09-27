@@ -29,7 +29,7 @@ stretto learns, from your agent's recorded tool calls, which reads it makes next
 - **No model of its own.** The reach decider counts. It makes a lookup when the chance that the agent uses it before its next write clears a threshold set by costs. It needs no key, and a decision takes under a millisecond.
 - **Reviewable.** A flow is a JSON file of counts and bindings. `stretto flow-show` renders it for a reviewer, and `flow-diff` shows what changed. Shadow mode and `stretto promote` keep a flow to the lookups that paid.
 - **Measured, with its scope.** Live:
-  - GLM-5.3 took 27.9% fewer LLM turns (95% CI 19.1–35.9%) on 28 τ²-bench retail and airline tasks.
+  - On 28 τ²-bench retail and airline tasks, pre-registered, three trials each: Claude Sonnet 5 took 20.5% fewer LLM turns (95% CI 16.5–24.4%) and Claude Haiku 4.5 22.4% fewer (15.8–29.4%), with passes 65 → 69 and 58 → 62 of 84. Anthropic's own prompt for parallel tool calls saved them 3.4% and 5.9%; with it in both arms, the flow still saved 22.9% and 17.2%. GLM-5.3 took 27.9% fewer (19.1–35.9%).
   - In AgentDojo's own environment, GLM-5.3 and Claude Haiku 4.5 took 10.1% fewer (5.8–14.0%) in the suites with reads to take, with passes unchanged.
 
   How much there is to take depends on the domain ([results](#research)).
@@ -103,6 +103,7 @@ stretto is also a research project. The paper, [*Compile What the Environment De
 
 | Evidence | Result |
 |---|---|
+| Live, Claude Sonnet 5 and Claude Haiku 4.5, 28 τ²-bench retail and airline tasks, three trials, pre-registered | 20.5% (95% CI 16.5–24.4%) and 22.4% (15.8–29.4%) fewer LLM turns; passes 65 → 69 and 58 → 62 of 84; a prompt for parallel tool calls saved 3.4% and 5.9% |
 | Live, GLM-5.3, 28 τ²-bench retail and airline tasks | 27.9% fewer LLM turns (95% CI 19.1–35.9%); 21 passed, against 24 |
 | Live, GLM-5.3 and Claude Haiku 4.5, AgentDojo's Slack and travel suites | 10.1% fewer LLM turns (5.8–14.0%); 27 of 34 passed in both arms |
 | Replay, nine agents it never saw, τ²-bench retail | 86.4% of the read-only ceiling, 10.2 points more than a next-step speculator |

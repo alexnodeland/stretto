@@ -1,10 +1,11 @@
 """Report on a run of paired trials (run_trials.py): each arm, and each pair of arms.
 
-    python analyze_trials.py OUT [--json FILE] [--markdown]
+    python analyze_trials.py OUT [OUT...] [--json FILE] [--markdown]
 
 OUT is run_trials.py's output: OUT/DOMAIN/trial-K/ARM/task-ID episodes (an
-attempt kept as `task-ID.failed-N` is left out). For each arm, in each domain
-and in both:
+attempt kept as `task-ID.failed-N` is left out). Several OUTs are read as one
+design, as when a model's later arms were run into a directory of their own.
+For each arm, in each domain and in both:
 
 - pass^1, the share of episodes that passed τ²-bench's database check, and
   pass^k for every k up to the trials each task ran: the chance that k
@@ -239,13 +240,13 @@ def markdown(report: dict) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("out", type=Path)
-    parser.add_argument("--json", type=Path, help="write the report here (default OUT/analysis.json)")
+    parser.add_argument("out", type=Path, nargs="+")
+    parser.add_argument("--json", type=Path, help="write the report here (default: the first OUT's analysis.json)")
     parser.add_argument("--markdown", action="store_true", help="print the tables as Markdown")
     args = parser.parse_args()
-    rows = episodes(args.out)
+    rows = [r for out in args.out for r in episodes(out)]
     if not rows:
-        sys.exit(f"no episodes under {args.out}")
+        sys.exit(f"no episodes under {' '.join(map(str, args.out))}")
     arms = [a for a in ("baseline", "reach", "batch", "batch-reach") if any(r["arm"] == a for r in rows)]
     scopes = {d: [r for r in rows if r["domain"] == d] for d in sorted({r["domain"] for r in rows})}
     scopes["both"] = rows
@@ -261,7 +262,7 @@ def main() -> None:
         },
         "episodes": [{k: v for k, v in r.items() if k != "episode"} for r in rows],
     }
-    (args.json or args.out / "analysis.json").write_text(json.dumps(report, indent=1) + "\n")
+    (args.json or args.out[0] / "analysis.json").write_text(json.dumps(report, indent=1) + "\n")
     if args.markdown:
         print(markdown(report))
     else:

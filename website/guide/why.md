@@ -44,6 +44,7 @@ where $\delta$ is a detour's cost and $\beta$ a saved turn's value. The threshol
 
 | Claim | Number | Evidence |
 |---|---|---|
+| It works on frontier models | Claude Sonnet 5 took 20.5% fewer LLM turns (16.5–24.4%) and Claude Haiku 4.5 22.4% (15.8–29.4%) on 28 τ²-bench tasks, three trials, pre-registered; a prompt for parallel tool calls saved 3.4% and 5.9% | Live, arms side by side |
 | It works live with no model of its own | GLM-5.3 took 27.9% fewer LLM turns (19.1–35.9%) on 28 τ²-bench retail and airline tasks; 21 passed, against 24 | Live, paired with the recorded baseline |
 | Counting the right event calibrates the probability of use | expected calibration error 0.01–0.08 in every τ²-bench domain, against 0.06–0.16 for the next-step probability | Replay, nine agents |
 | It takes most of retail's ceiling | 86.4% of it [80.2, 93.1], 10.2 points more than the next-step speculator [6.7, 14.2] | Replay, nine agents it never saw |

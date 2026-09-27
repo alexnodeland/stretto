@@ -27,6 +27,7 @@ The evidence, from [the claims ledger](/research/claims):
 - **Calibrated.** Counting use before the next write gave an expected calibration error of 0.01–0.08 in every τ²-bench domain, against 0.06–0.16 for the next-step probability (replay, nine agents).
 - **More of the ceiling.** Across nine agents it never saw, it took 86.4% of retail's read-only ceiling [80.2, 93.1], 10.2 points more than a next-step decider [6.7, 14.2] (replay).
 - **Live, with no model.** GLM-5.3 took 27.9% fewer LLM turns (19.1–35.9%) on 28 τ²-bench retail and airline tasks; 21 passed, against the baseline's 24. In the four tasks lost, the flow's lookups returned what the agent's own reads had.
+- **On frontier models.** Pre-registered, three trials of the same tasks: Claude Sonnet 5 took 20.5% fewer LLM turns (16.5–24.4%) and Claude Haiku 4.5 22.4% fewer (15.8–29.4%), with passes 65 → 69 and 58 → 62 of 84 ([results](/research/frontier)).
 
 It needs a flow that carries these counts. Every flow `stretto learn` writes today does, and `stretto flow-show` says so; a flow learned by an older build cannot serve `reach` until it is learned again.
 

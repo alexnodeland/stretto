@@ -1,6 +1,6 @@
 # RFC-001: Habit compiler — compiling agent behavior into System-One flows
 
-- **Status:** Accepted (2026-09-23, [fugue#51](https://github.com/alexnodeland/fugue/pull/51)). Amended the same day with what Phase 0 found (§3.12, [fugue#52](https://github.com/alexnodeland/fugue/pull/52)) and with Phase 0b v2's read-only flows and arbitration (§3.13, [fugue#53](https://github.com/alexnodeland/fugue/pull/53)), and on 2026-09-24 with the first live form and pilot (§3.14, [fugue#54](https://github.com/alexnodeland/fugue/pull/54)), with the built implementation, the airline pilot, policy guards and the flow audit (§3.15, [fugue#55](https://github.com/alexnodeland/fugue/pull/55)), with the arms measured before building macro-tools (§3.16, [fugue#56](https://github.com/alexnodeland/fugue/pull/56)), with the habit alone live, fewer traces and Jev as a confirmation judge (§3.17, [fugue#58](https://github.com/alexnodeland/fugue/pull/58)), with a cold start from an agent's own sessions, options from the manifest, a second confirmation question and matching descriptions to records (§3.18, [fugue#59](https://github.com/alexnodeland/fugue/pull/59)), and with an arbiter shipped with the compiler (§3.19, [fugue#60](https://github.com/alexnodeland/fugue/pull/60)). On 2026-09-25 it was amended here with the paired run on every test task (§3.20), the cold start live (§3.21), and counterfactual evaluation, the confirmation judge enforced, the cold start in airline and Claude models (§3.22), with one round of predicate refinement (§3.23), and with one round of flow search in each domain (§3.24). On 2026-09-26 it was amended with what compiling once can take, and a flow that learns from its own sessions (§3.25), with where compiling once works and what is left of the detours (§3.26), and with the probability that matters and a procedure stretto runs (§3.27). On 2026-09-27 it was amended with five benchmarks replayed from the record (§3.28), with agents across harnesses and a threshold per decision (§3.29), and with live runs on AgentDojo and BFCL (§3.30). The design was iterated with @alexnodeland on 2026-09-23; the decisions are in §3.11. On 2026-09-25 it moved from fugue's decision log to stretto ([fugue#68](https://github.com/alexnodeland/fugue/pull/68)), where it is amended from now on. [Fugue's copy](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md) keeps fugue's side of it: the mapping onto fugue (§3.2), what fugue decided about its own scope and the six changes to `fugue-ppl` (§3.9), and the spike (Appendix A).
+- **Status:** Accepted (2026-09-23, [fugue#51](https://github.com/alexnodeland/fugue/pull/51)). Amended the same day with what Phase 0 found (§3.12, [fugue#52](https://github.com/alexnodeland/fugue/pull/52)) and with Phase 0b v2's read-only flows and arbitration (§3.13, [fugue#53](https://github.com/alexnodeland/fugue/pull/53)), and on 2026-09-24 with the first live form and pilot (§3.14, [fugue#54](https://github.com/alexnodeland/fugue/pull/54)), with the built implementation, the airline pilot, policy guards and the flow audit (§3.15, [fugue#55](https://github.com/alexnodeland/fugue/pull/55)), with the arms measured before building macro-tools (§3.16, [fugue#56](https://github.com/alexnodeland/fugue/pull/56)), with the habit alone live, fewer traces and Jev as a confirmation judge (§3.17, [fugue#58](https://github.com/alexnodeland/fugue/pull/58)), with a cold start from an agent's own sessions, options from the manifest, a second confirmation question and matching descriptions to records (§3.18, [fugue#59](https://github.com/alexnodeland/fugue/pull/59)), and with an arbiter shipped with the compiler (§3.19, [fugue#60](https://github.com/alexnodeland/fugue/pull/60)). On 2026-09-25 it was amended here with the paired run on every test task (§3.20), the cold start live (§3.21), and counterfactual evaluation, the confirmation judge enforced, the cold start in airline and Claude models (§3.22), with one round of predicate refinement (§3.23), and with one round of flow search in each domain (§3.24). On 2026-09-26 it was amended with what compiling once can take, and a flow that learns from its own sessions (§3.25), with where compiling once works and what is left of the detours (§3.26), and with the probability that matters and a procedure stretto runs (§3.27). On 2026-09-27 it was amended with five benchmarks replayed from the record (§3.28), with agents across harnesses and a threshold per decision (§3.29), with live runs on AgentDojo and BFCL (§3.30), and with frontier models and a prompting baseline, live (§3.31). The design was iterated with @alexnodeland on 2026-09-23; the decisions are in §3.11. On 2026-09-25 it moved from fugue's decision log to stretto ([fugue#68](https://github.com/alexnodeland/fugue/pull/68)), where it is amended from now on. [Fugue's copy](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md) keeps fugue's side of it: the mapping onto fugue (§3.2), what fugue decided about its own scope and the six changes to `fugue-ppl` (§3.9), and the spike (Appendix A).
 - **Authors:** @alexnodeland (drafted with Claude Code)
 - **Created:** 2026-09-23
 - **Updated:** 2026-09-27
@@ -1275,6 +1275,35 @@ What this changes:
   - Promotion scored against what the proxy can see: the calls in flight, and a turn's streamed calls.
   - Several runs per arm, with the arms run apart, to resolve cost.
   - A flow learned from these agents' own sessions.
+
+### 3.31 Amendment 20: frontier models and a prompting baseline, live (2026-09-27)
+
+Every live τ²-bench result with the reach decider had GLM-5.3 as the agent, and the obvious objection had not been tested: that telling the agent to make its independent calls at once would get the same savings. This round answers both, under a plan pushed before its first episode.
+
+- **Details:** [the plan](../results/frontier-2026-09-27-plan.md), [the round's results](../results/frontier-2026-09-27.md), and [the working paper](../../paper/stretto.md)'s §4.4 (Table 5c) and §6.
+- **The harness.**
+  - `run_episode.py --batch-reads` ends the system prompt with Anthropic's sample prompt for parallel tool calls, word for word.
+  - `run_trials.py` runs a paired design resumably, and stops before a Claude Code subscription's windows run out.
+  - `analyze_trials.py` reports pass^k, turns, tokens, cost at list prices and time.
+- **The run.**
+  - Agents: Claude Sonnet 5 and Claude Haiku 4.5, with Claude Haiku 4.5 as the customer.
+  - The reach round's 28 tasks, three trials of each task and arm, arms side by side: 672 episodes, none failed, $46.92 at list prices.
+  - GLM-5.3's prompt arm was compared with its recorded arms.
+- **The flow saved turns on both models.** −20.5% (−24.4% to −16.5%) and −22.4% (−29.4% to −15.8%), fewer on 25 of 28 tasks each. Passes went from 65 to 69 and from 58 to 62 of 84, and no pass rate fell.
+- **The prompt did not get what the flow gets.**
+  - It saved 3.4%, 5.9% and, for GLM-5.3, 7.6%.
+  - It barely changed how often the Claude models call in parallel (1.51 and 1.42 calls per tool turn), and it raised GLM-5.3's from 1.04 to 1.2–1.5.
+  - With the prompt in both arms, the flow saved 22.9% and 17.2%. Its reads take arguments from results the agent has not seen, which a prompt cannot batch.
+- **Cost fell less than turns.** At list prices, with prompt caching, the agent's cost fell 11.8% and 8.7%, and its input tokens 17.7% and 20.6%. Nine tenths of the input is read from the cache, and the tokens written to it, the lookups' results among them, barely fell.
+- **Airline.** Where the models make the most calls at once, the savings (5.3% and 8.5%) are not distinguishable from none. A flow spares a turn only when it makes all of that turn's calls.
+
+What this changes:
+
+- **§3.7's evaluation:** a live claim for a new model family now comes with a plan fixed in advance, three trials, and a prompting baseline.
+- **§2's motivation:** the case for a flow over a prompt is measured. A prompt batches what the agent already knows it needs; a flow makes the reads that depend on results the agent has not yet read.
+- **Next:**
+  - Site-level promotion on each Claude model's own airline sessions, where parallel calls leave a flow little to spare and detours cost more.
+  - Pricing the threshold per model at list prices with caching (Appendix B of the paper).
 
 ## 4. Drawbacks
 
