@@ -460,7 +460,7 @@
       <div class="caption">
         <h2>Serve it</h2>
         <p>Served, the flow runs after each of the agent's calls. It makes the lookups it expects the agent to need, with arguments bound from the results so far, and they ride in the same tool result. The agent sees them before it would ask, so it spends fewer LLM turns. There is no new tool and no change to the prompt.</p>
-        <p class="scope">Each block is an LLM turn; the outlined ones are the turns the lookups save. Run a flow in shadow first (<code>--flow-shadow</code>), then promote the sites whose lookups were the agent's own.</p>
+        <p class="scope">Each block is an LLM turn; the outlined ones are the turns the lookups save. Run a flow in shadow first (<code>stretto init --flow FILE --shadow</code>): it decides and logs, but looks nothing up. Then <code>stretto promote</code> keeps the sites whose lookups were the agent's own.</p>
       </div>
     </section>
 
