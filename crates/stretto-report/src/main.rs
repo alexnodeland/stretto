@@ -165,6 +165,12 @@ enum Command {
         /// flow has no arbiter (serve it with `--decider habit`).
         #[arg(help_heading = "The arbiter", long)]
         habit_only: bool,
+        /// Also pass, as the agent did, each argument it passed with one value
+        /// in every call of a lookup, at least five, and in at least half of
+        /// them, such as a page size, so that the flow's lookups are the
+        /// agent's own calls.
+        #[arg(help_heading = "The bindings", long)]
+        constants: bool,
         /// Once the arbiter is fitted on the held-out sessions, learn the
         /// habit, the sites and the bindings again from every session.
         #[arg(help_heading = "The arbiter", long, conflicts_with = "habit_only")]
@@ -1197,6 +1203,7 @@ fn main() -> Result<()> {
             train_tasks,
             trials,
             habit_only,
+            constants,
             refit_habit,
             arbiter_from,
             manifest_options,
@@ -1258,6 +1265,7 @@ fn main() -> Result<()> {
             let mut config = phase0::Config::new(PathBuf::new());
             config.domains = vec![domain.clone()];
             config.refit_habit = refit_habit;
+            config.constants = constants;
             let flow = if let Some(path) = arbiter_from {
                 let habit =
                     phase0::compile_habit_flow_from_episodes(&config, &episodes, &manifest)?;

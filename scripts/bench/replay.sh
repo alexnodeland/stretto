@@ -14,6 +14,8 @@
 #             flows learned from older agents' training runs, replayed trace-only on newer agents' test runs;
 #             DTap-Bench's from each agent's own runs, its harness's other agents, the other harnesses and all
 #   mcpm-own  MCPMark's newer models, each with a flow from its own training runs
+#   mcpm-const, dtap-const
+#             the same own flows learned with `learn --constants` (DTap-Bench's customer service and CRM)
 #   ceilings  each set's read-only ceiling (ceiling.py)
 #
 # Environment: WORK (default work), TAU2 (τ²-bench's checkout, default ../tau2-bench), PY (a Python with τ²-bench
@@ -39,13 +41,15 @@ files() { # DIR NAME...: DIR/NAME.json for each name
   for n in "$@"; do echo "$dir/$n.json"; done
 }
 
+LEARN_OPTS=() # more options for learn, such as --constants
+
 learn() { # OUT DOMAIN CHECKOUT RESULTS...: a habit-only flow from the runs' training tasks
   local out=$1 domain=$2 checkout=$3 args=()
   shift 3
   [ -f "$out" ] && return
   mkdir -p "$(dirname "$out")"
   for r in "$@"; do args+=(--results "$r"); done
-  "$S" learn "${args[@]}" --tau2 "$checkout" --domain "$domain" --habit-only --out "$out" 2>&1 | tail -1
+  "$S" learn "${args[@]}" --tau2 "$checkout" --domain "$domain" --habit-only ${LEARN_OPTS[@]+"${LEARN_OPTS[@]}"} --out "$out" 2>&1 | tail -1
 }
 
 replay() { # OUT DOMAIN RESULTS FLOW DECIDER THRESHOLD CHECKOUT TRIALS [OPTION...]
@@ -224,15 +228,29 @@ mcpm() {
   done
 }
 
-mcpm_own() { # each newer model's flow from its own training runs, replayed on its test runs
-  local x=$WORK/mcpm d f
+mcpm_own() { # [SET]: each newer model's flow from its own training runs, replayed on its test runs
+  local set=${1:-mcpm-own} x=$WORK/mcpm d f
   for svc in filesystem postgres github notion; do
     d=mcpmark_$svc
     for t in "${MCPM_TARGETS[@]}"; do
-      f=$FLOWS/mcpm-own/$d-$t.flow.json
+      f=$FLOWS/$set/$d-$t.flow.json
       learn "$f" "$d" "$x/checkout" "$x/$d/$t.json"
       for dec in reach habit; do
-        [ -f "$f" ] && replay "$WORK/replays/mcpm-own/c-$d-$t-$dec-0.3" "$d" "$x/$d/$t.json" "$f" "$dec" 0.3 "$x/checkout" 0 --trace
+        [ -f "$f" ] && replay "$WORK/replays/$set/c-$d-$t-$dec-0.3" "$d" "$x/$d/$t.json" "$f" "$dec" 0.3 "$x/checkout" 0 --trace
+      done
+    done
+  done
+}
+
+dtap_const() { # each agent's own flow with its constants, in the two domains whose ceiling they raise
+  local x=$WORK/dtap d f
+  for d in customer_service dtap_crm; do
+    for a in $(cd "$x/$d" && ls -- *.json | sed 's/\.json$//'); do
+      f=$FLOWS/dtap-const/$d/own-$a.flow.json
+      learn "$f" "$d" "$x/checkout" "$x/$d/$a.json"
+      for dec in reach habit; do
+        [ -f "$f" ] && replay "$WORK/replays/dtap-const/c-$d-$a-own-$dec-0.3" "$d" "$x/$d/$a.json" "$f" "$dec" 0.3 \
+          "$x/checkout" 0 --trace
       done
     done
   done
@@ -307,7 +325,9 @@ run_set() {
     tau2-env) paper_batch tau2-env --in-process ;;
     sweep | perdec | v1 | bfcl | dojo | wb | mcpm | dtap | ceilings) "$1" ;;
     mcpm-own) mcpm_own ;;
-    all) for s in tau2 tau2-env sweep perdec v1 bfcl dojo wb mcpm mcpm-own dtap ceilings; do run_set "$s"; done ;;
+    mcpm-const) LEARN_OPTS=(--constants) && mcpm_own mcpm-const && LEARN_OPTS=() ;;
+    dtap-const) LEARN_OPTS=(--constants) && dtap_const && LEARN_OPTS=() ;;
+    all) for s in tau2 tau2-env sweep perdec v1 bfcl dojo wb mcpm mcpm-own mcpm-const dtap dtap-const ceilings; do run_set "$s"; done ;;
     *) echo "unknown set: $1" >&2 && exit 2 ;;
   esac
 }

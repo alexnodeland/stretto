@@ -226,6 +226,10 @@ Usage: stretto learn [OPTIONS] --domain <NAME> --out <FILE>
 - `--oracle-budget <DOLLARS>` (default `1`; not with `--habit-only`, `--arbiter-from`): Refuse to start if uncached questions could cost more than this many dollars.
 - `--predicates <FILE>` (not with `--habit-only`, `--arbiter-from`): Yes/no predicates to ask and weigh (see `data/predicates-v2.json`). An arbiter from `--arbiter-from` brings its own.
 
+**The bindings**
+
+- `--constants`: Also pass, as the agent did, each argument it passed with one value in every call of a lookup, at least five, and in at least half of them, such as a page size, so that the flow's lookups are the agent's own calls.
+
 **Output**
 
 - `--out <FILE>` (required): Where to write the flow.

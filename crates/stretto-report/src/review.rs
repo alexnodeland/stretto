@@ -414,6 +414,17 @@ pub fn show(flow: &Flow, threshold: f64) -> String {
     for b in bound.values() {
         binding_rows(&mut md, b, named_other, described);
     }
+    let constants = flow.bindings.constants();
+    if !constants.is_empty() {
+        let _ = writeln!(md, "\n## Constants\n");
+        let _ = writeln!(
+            md,
+            "Arguments the agent passed with one value in every call of a lookup (`learn --constants`), which the binding passes as it did:\n"
+        );
+        for ((tool, arg), value) in constants {
+            let _ = writeln!(md, "- `{tool}` `{arg}`: `{value}`");
+        }
+    }
     let orders = flow.bindings.site_orders();
     if !orders.is_empty() {
         let _ = writeln!(md, "\n## Sources by site\n");

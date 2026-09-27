@@ -22,13 +22,14 @@ The results page's Reproduce section gives each converter's command and the runs
 | `bfcl/` | `bfcl_to_tau2.py --runs` | `runs/<model>.json`, `bfcl_ground_truth.json`, `checkout/` |
 | `dojo/` | `agentdojo_to_tau2.py` | `<suite>/<model>.json`, `checkout/` |
 | `wb/` | `workbench_to_tau2.py` | `<domain>/<model>.json`, `checkout/` |
-| `mcpm/` | `mcpmark_to_tau2.py --learn-from-all` | `mcpmark_<service>/<model>.json`, `checkout/` |
+| `mcpm/` | `mcpmark_to_tau2.py --learn-from-all`, for filesystem, postgres, github and notion | `mcpmark_<service>/<model>.json`, `checkout/` |
 | `dtap/` | `dtap_to_tau2.py` | `customer_service/`, `dtap_crm/`, `dtap_telecom/`, `dtap_travel/` with `<harness>-<model>.json`, and `checkout/` |
 
 ## 3. Learn and replay
 
 ```bash
-scripts/bench/replay.sh all        # or any of: tau2 tau2-env sweep perdec v1 bfcl dojo wb mcpm dtap ceilings
+scripts/bench/replay.sh all        # or any of: tau2 tau2-env sweep perdec v1 bfcl dojo wb mcpm mcpm-own mcpm-const
+                                   #   dtap dtap-const ceilings
 ```
 
 `replay.sh` learns each flow into `$WORK/flows/`. It writes each replay's totals and episodes to `$WORK/replays/<set>/<replay>/check.json`, and each set's read-only ceiling to `$WORK/ceilings/`. The script's header lists what each set replays. A replay that already has its `check.json` is skipped, so an interrupted batch resumes. The trace-only sets take minutes to an hour each with `JOBS=3`. The environment sets take hours.

@@ -111,6 +111,9 @@ pub struct Config {
     /// every task, as stacking refits its base model: the arbiter's weights
     /// stay fitted out of sample, and the habit it weighs uses every session.
     pub refit_habit: bool,
+    /// Learn the arguments the agent passed with one value every time as
+    /// constants the bindings pass (`learn --constants`).
+    pub constants: bool,
 }
 
 /// A results file for a transfer target, optionally relabeled.
@@ -173,6 +176,7 @@ impl Config {
             train_tasks: Vec::new(),
             pooled_arbiter: false,
             refit_habit: false,
+            constants: false,
         }
     }
 }
@@ -1284,7 +1288,11 @@ fn featured(
                 predicates: parts.predicates,
                 weighed: parts.weighed,
                 folds: parts.folds,
-                bindings: Bindings::learn(habit_set.iter().map(|p| p.ep), manifest),
+                bindings: Bindings::learn_with(
+                    habit_set.iter().map(|p| p.ep),
+                    manifest,
+                    config.constants,
+                ),
                 model: parts.model,
                 program: crate::program::standard(),
                 promoted: None,

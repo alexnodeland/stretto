@@ -41,6 +41,9 @@ const MIN_SOURCE_SHARE: f64 = 0.1;
 /// An argument the lookup took in at least this share of its training calls
 /// is required.
 const REQUIRED_SHARE: f64 = 0.9;
+/// Calls of a lookup that must all pass one value of an argument for the
+/// binding to learn it as a constant (`learn --constants`).
+const MIN_CONSTANT_CALLS: usize = 5;
 /// Sibling values shorter than this are not matched against what the
 /// customer said.
 const MIN_MENTION: usize = 4;
@@ -563,6 +566,7 @@ impl Flow {
             && !self.bindings.orders_sources_by_site()
             && !self.bindings.binds_lists()
             && !self.bindings.counts_bare()
+            && !self.bindings.binds_constants()
         {
             FLOW_VERSION
         } else {
@@ -702,12 +706,13 @@ impl Flow {
                 || flow.bindings.scores_described_read()
                 || flow.bindings.orders_sources_by_site()
                 || flow.bindings.binds_lists()
-                || flow.bindings.counts_bare())
+                || flow.bindings.counts_bare()
+                || flow.bindings.binds_constants())
         {
             anyhow::bail!(
                 "a flow with bindings scored where another value was named or the described \
-                 record read, with sources ordered by site, or with lists bound, or with bare calls counted, is format \
-                 {FLOW_THRESHOLDS_VERSION}"
+                 record read, with sources ordered by site, with lists bound, with bare calls counted, or with \
+                 constants, is format {FLOW_THRESHOLDS_VERSION}"
             );
         }
         crate::program::FlowProgram::new(&flow)?;
@@ -1208,6 +1213,19 @@ pub struct Bindings {
     /// as in flows learned before this was counted.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     bare: BTreeMap<String, usize>,
+    /// Per lookup argument that took one value in every call of the lookup
+    /// that passed it in training, at least five, in at least half of the
+    /// lookup's calls, and was never found in an earlier output: that value,
+    /// such as a page size an agent always passes. The binding passes it as
+    /// the agent did, so that the lookup is the agent's own call. Learned
+    /// only with `learn --constants`; empty otherwise, as in flows learned
+    /// before it was, which make their lookups without such arguments.
+    #[serde(
+        default,
+        skip_serializing_if = "BTreeMap::is_empty",
+        with = "stretto_model::pairs"
+    )]
+    constants: BTreeMap<(String, String), Value>,
 }
 
 /// How many values of a lookup's argument the agent took from one source at
@@ -1424,10 +1442,24 @@ impl Bindings {
         episodes: impl IntoIterator<Item = &'a Episode>,
         manifest: &ToolManifest,
     ) -> Self {
+        Self::learn_with(episodes, manifest, false)
+    }
+
+    /// As [`Bindings::learn`], and with `constants`, also the arguments
+    /// the agent passed with one value every time ([`Bindings::constants`]).
+    pub fn learn_with<'a>(
+        episodes: impl IntoIterator<Item = &'a Episode>,
+        manifest: &ToolManifest,
+        constants: bool,
+    ) -> Self {
         let episodes: Vec<&Episode> = episodes.into_iter().collect();
         let is_read = |c: &ToolCall| manifest.tools.get(&c.name) == Some(&ToolKind::Read);
         let mut b = Bindings::default();
         let mut by_site: BTreeMap<(String, String, String, (String, String)), usize> =
+            BTreeMap::new();
+        // Per lookup argument: the calls that passed it, its distinct values
+        // (as JSON), and one of them.
+        let mut values_of: BTreeMap<(String, String), (usize, BTreeSet<String>, Value)> =
             BTreeMap::new();
         for ep in &episodes {
             let mut outputs: Vec<(&str, Value)> = Vec::new();
@@ -1457,6 +1489,13 @@ impl Bindings {
                             }
                             *b.bare.entry(c.name.clone()).or_insert(0) +=
                                 usize::from(args.is_empty());
+                            for (arg, value) in args {
+                                let seen = values_of
+                                    .entry((c.name.clone(), arg.clone()))
+                                    .or_insert_with(|| (0, BTreeSet::new(), value.clone()));
+                                seen.0 += 1;
+                                seen.1.insert(value.to_string());
+                            }
                             for (arg, value) in args {
                                 if let Some(items) = strings(value) {
                                     let entry =
@@ -1528,6 +1567,21 @@ impl Bindings {
                 values,
             })
             .collect();
+        if constants {
+            for ((tool, arg), (n, distinct, value)) in values_of {
+                let calls = b.args.get(&tool).map_or(0, |(calls, _)| *calls);
+                let key = (tool, arg);
+                let traced = |t: Option<&Traced>| t.is_some_and(|t| !t.found.is_empty());
+                if n >= MIN_CONSTANT_CALLS
+                    && distinct.len() == 1
+                    && 2 * n >= calls
+                    && !traced(b.sources.get(&key))
+                    && !traced(b.lists.get(&key))
+                {
+                    b.constants.insert(key, value);
+                }
+            }
+        }
         let mut agreed: BTreeMap<String, [(usize, usize); 2]> = BTreeMap::new();
         for ep in &episodes {
             for (i, e) in ep.events.iter().enumerate() {
@@ -1637,6 +1691,11 @@ impl Bindings {
     /// flows learned by this build.
     pub(crate) fn counts_bare(&self) -> bool {
         !self.bare.is_empty()
+    }
+
+    /// Whether the flow passes constants the agent always passed (`constants`).
+    pub(crate) fn binds_constants(&self) -> bool {
+        !self.constants.is_empty()
     }
 
     /// The chance that a lookup of `tool` made with no arguments is the
@@ -1929,7 +1988,7 @@ impl Bindings {
             return if called {
                 Err("already looked up".to_string())
             } else {
-                Ok((Default::default(), Mention::Picked))
+                Ok((self.constants_of(tool), Mention::Picked))
             };
         }
         let mut bound = serde_json::Map::new();
@@ -1937,6 +1996,10 @@ impl Bindings {
         let mut other_named = false;
         let mut described = false;
         for arg in required {
+            if let Some(value) = self.constants.get(&(tool.to_string(), arg.clone())) {
+                bound.insert(arg.clone(), value.clone());
+                continue;
+            }
             if let Some(traced) = self.lists.get(&(tool.to_string(), arg.clone())) {
                 // Every value at the source's path of its most recent output
                 // that holds any, unless this lookup was already given them.
@@ -2058,6 +2121,9 @@ impl Bindings {
                 None => return Err(format!("nothing left to pass as `{arg}`")),
             }
         }
+        for (arg, value) in self.constants_of(tool) {
+            bound.entry(arg).or_insert(value);
+        }
         let mention = if all_mentioned {
             Mention::Picked
         } else if other_named {
@@ -2068,6 +2134,21 @@ impl Bindings {
             Mention::None
         };
         Ok((bound, mention))
+    }
+
+    /// The constants the agent passed to `tool` ([`Bindings::constants`]).
+    fn constants_of(&self, tool: &str) -> serde_json::Map<String, Value> {
+        self.constants
+            .iter()
+            .filter(|((t, _), _)| t == tool)
+            .map(|((_, a), v)| (a.clone(), v.clone()))
+            .collect()
+    }
+
+    /// Per lookup and argument, the value the binding passes as the agent
+    /// always did ([`Bindings::constants`]).
+    pub fn constants(&self) -> &BTreeMap<(String, String), Value> {
+        &self.constants
     }
 }
 
@@ -3086,5 +3167,62 @@ pub(crate) mod tests {
         assert_eq!(found[1], ("p2".to_string(), vec!["Desk Lamp".to_string()]));
         assert!(mentions("the desk lamp i bought\n", "Desk Lamp"));
         assert_eq!(at_path(&json!("u1"), "$"), vec![("u1".to_string(), vec![])]);
+    }
+
+    #[test]
+    fn passes_the_constants_the_agent_always_passed_when_learned() {
+        // The agent reads each order with a page size it always sets.
+        let training: Vec<Episode> = (0..3)
+            .map(|_| {
+                episode(vec![
+                    Event::User {
+                        text: "help with my orders".to_string(),
+                    },
+                    call("a", "get_user_details", json!({"user_id": "ann_1"})),
+                    result("a", "get_user_details", user(&["#W1", "#W2"])),
+                    call(
+                        "b",
+                        "get_order_details",
+                        json!({"order_id": "#W1", "page_size": 100}),
+                    ),
+                    result("b", "get_order_details", json!({"order_id": "#W1"})),
+                    call(
+                        "c",
+                        "get_order_details",
+                        json!({"order_id": "#W2", "page_size": 100}),
+                    ),
+                    result("c", "get_order_details", json!({"order_id": "#W2"})),
+                ])
+            })
+            .collect();
+        let live = episode(vec![
+            Event::User {
+                text: "I want to cancel something".to_string(),
+            },
+            call("a", "get_user_details", json!({"user_id": "bob_2"})),
+            result("a", "get_user_details", user(&["#W7", "#W8"])),
+        ]);
+        let args = |b: &Bindings| b.bind("get_order_details", &live).map(|(v, _)| v);
+        // As before unless asked: every call passed a page size, so it is
+        // required, and a number the binding cannot trace makes no lookup.
+        let plain = Bindings::learn(&training, &manifest());
+        assert!(plain.constants().is_empty());
+        assert!(args(&plain).is_err());
+        // Six calls passed 100: the lookup passes it too, and is the agent's call.
+        let with = Bindings::learn_with(&training, &manifest(), true);
+        assert_eq!(
+            args(&with),
+            Ok(json!({"order_id": "#W7", "page_size": 100}))
+        );
+        // Three calls of get_user_details are too few to call its user a constant.
+        assert_eq!(with.constants().len(), 1);
+        // A value that changes is no constant.
+        let mut varied = training.clone();
+        if let Event::Assistant { calls, .. } = &mut varied[0].events[3] {
+            calls[0].arguments = json!({"order_id": "#W1", "page_size": 50});
+        }
+        assert!(Bindings::learn_with(&varied, &manifest(), true)
+            .constants()
+            .is_empty());
     }
 }

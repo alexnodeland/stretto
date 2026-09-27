@@ -27,6 +27,8 @@ BENCHMARKS = {  # replay set: (name, thresholds)
     "wb": ("WorkBench", ["0.3", "0.1"]),
     "mcpm": ("MCPMark", ["0.3", "0.1"]),
     "mcpm-own": ("MCPMark, own flows", ["0.3"]),
+    "mcpm-const": ("MCPMark, own flows with constants", ["0.3"]),
+    "dtap-const": ("DTap-Bench, own flows with constants", ["0.3"]),
     "dtap": ("DTap-Bench", ["0.3"]),
 }
 SOURCES = ["own", "same", "other", "all"]

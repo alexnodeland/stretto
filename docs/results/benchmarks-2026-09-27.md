@@ -143,6 +143,16 @@ BFCL's flow takes only 12% of its ceiling. BFCL's 200 base tasks are 200 differe
 
 On MCPMark's Notion server, the agents walk a page's blocks by the ids each listing returns, and whether that is in the ceiling depends on the agent: 22–34% of the Claude models' and Gemini 2.5 Pro's turns are, and at most 4% of the other six models'. GPT-5 and o3 pass a page size with every read of a block, a constant that a flow binding from results does not pass; counted in, constants would raise Notion's ceiling from 7.9% to 13.2%. The flows learn the walk: after a block's children, the agents' next call is for another block's children 55% of the time. They cannot tell which block: a binding picks the agent's block 38% of the time, so at 0.3 they hand back. At 0.1 they take 43% of the Claude models' and Gemini's ceiling there, at 14 detours an episode. Learned from each model's own 16 training runs, they save 0.6% of Notion's turns at 2.6 detours an episode; o3's own flow makes 173 detours, since its lookups leave out the page size its calls pass. Over MCPMark's four servers, each model's own flows save 0.44% of turns at 0.3, twice the pooled flows' 0.20%, and 6% of the ceiling.
 
+Learned with `learn --constants`, each own flow also passes the arguments its agent passed with one value every time. At 0.3, own flows before and after:
+
+| Own flows, use before write | Turns saved, without / with constants | Detours per episode, without / with |
+|---|---|---|
+| MCPMark Notion (9 models) | 13 / 21 | 2.58 / 1.60 |
+| DTap-Bench CRM (7 agents) | 62 / 82 | 0.02 / 0.03 |
+| DTap-Bench customer service; MCPMark filesystem, PostgreSQL, GitHub | unchanged | unchanged |
+
+o3's lookups now pass the page size it always passes, and its detours fall from 173 to 23. GPT-5's page size was a required argument the flow could not bind, so it made no block lookups; now it makes them, and saves 6 turns at 43 detours. In CRM, GPT-5.4's own flow saves 18 turns instead of 4. Over MCPMark's four servers, the own flows save 0.57% of turns with constants, against 0.44% without. Most of what constants add to Notion's ceiling is still the walk's: which block comes next.
+
 ### Across harnesses
 
 DTap-Bench runs the same tasks under three agent SDKs, so a flow can be learned under one and served under another. In each of four domains (customer service, CRM, telecom and travel), each agent's test episodes are replayed with four flows: learned from its own training runs, from its harness's other agents, from the other harnesses' agents, and from all seven. Both deciders at θ = 0.3; intervals are 95%, from a bootstrap over tasks, a task's episodes of every agent drawn together.
@@ -288,7 +298,6 @@ With the count, the WorkBench flows make no lookup at all in the 13,869 turns of
 ## What is next
 
 - **Reading the request.** Binding the user's words would add 5–9 points of turns in BFCL, AgentDojo, WorkBench and DTap-Bench. That takes a speculator that reads the request for the values a search takes, such as a customer's name or a date, where this one reads only results.
-- **Constants.** GPT-5 and o3 pass a page size with every read of a Notion block, the same value every time. A binding that learned such constants could make these lookups. Counted in the ceiling (`scripts/ceiling.py`'s third count), constants would add 5.2 points of Notion's turns, 2.0 of DTap-Bench CRM's, 0.8 of customer service's and 0.1 of BFCL's, and nothing in the other domains. AgentDojo banking's agents pass a different number of transactions from task to task, in each episode's first call.
 - **More domains.** DTap-Bench has ten more domains with the same agents and harnesses, among them finance, medical and legal, and they fit the trace replay.
 - **Calibration per site.** A threshold per decision needs each lookup's score right where it is priced. Retail's lookups of an order's products are scored as the tool's chance (0.43) times the argument's (0.76) and used 64% of the time; counting each lookup's own use at its site would score them directly.
 - **Live, with other agents.** The replays assume an agent skips a call a lookup already answered, which GLM-5.3 did live. The DTap-Bench replays count what agents in three other harnesses would have skipped, not whether they would have. That six of the seven seldom repeat their own reads says they would; it remains to be checked live.
@@ -298,6 +307,7 @@ With the count, the WorkBench flows make no lookup at all in the 13,869 turns of
 - **Counterfactual turns.** A replay counts what the flow would have spared an agent that otherwise acted as recorded. Live, GLM-5.3 made none of the flow's 101 lookups again (the paper, §6). The 72 agents here were never run with a flow. Six of DTap-Bench's seven agents repeated 18 of their 15,706 reads with no write between; gpt-oss-120b repeated a quarter, and its savings are upper bounds.
 - **Detours are lower bounds.** They are 55–72% of the environment's on τ²-bench, and the reach decider's lead in savings comes with more detours than these tables show. The paper's costs make one saved turn worth about 2.4 detours in retail and about 7 in airline and telecom.
 - **One trial each.** BFCL, AgentDojo, WorkBench and DTap-Bench publish one run per model and task (DTap-Bench's latest, where a task was run again), so their intervals are over tasks, with every agent's episode of a task drawn together.
+- **Constants.** Counted in the ceiling (`scripts/ceiling.py`'s third count), arguments an agent passes with one value every time would add 5.2 points of Notion's turns, 2.0 of DTap-Bench CRM's, 0.8 of customer service's and 0.1 of BFCL's, and nothing in the other domains. `learn --constants` learns them; AgentDojo banking's agents pass a different number of transactions from task to task.
 - **Benchmarks left out.** Gaia2's published results (facebook/omnilingual-gaia2-results: seven models in the OpenClaw and OpenCode harnesses) cut 68–70% of read results to 200 characters. They also record the apps' calls, not the model's turns. A replay could neither bind a lookup's arguments nor count turns, so Gaia2 is not among these benchmarks. Toolathlon's trajectories need a login.
 - **The converters are choices.** Results are rendered as JSON, a listing becomes a label and its items, and every write is labelled by hand from the source, or in DTap-Bench by its verb. Each converter's docstring says what it does, and the checkout's `tools.py` lists every label.
 
