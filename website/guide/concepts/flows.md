@@ -9,7 +9,8 @@ A *flow* is what stretto serves behind an agent: a JSON file that says, for one 
 ## Learn one
 
 ```sh
-stretto learn --sessions ~/.stretto/logs --domain orders --habit-only --out orders.flow.json
+stretto learn --sessions ~/.stretto/logs/orders --domain orders \
+  --habit-only --out ~/.stretto/orders.flow.json
 ```
 
 - `--sessions DIR` reads the session logs `stretto-proxy --record` wrote.

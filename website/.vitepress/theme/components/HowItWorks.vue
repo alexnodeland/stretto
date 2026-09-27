@@ -5,14 +5,14 @@ import { withBase } from 'vitepress'
 const steps = [
   {
     title: 'Record',
-    text: 'Put stretto-proxy in your MCP host’s config in place of the server’s command. It forwards every message and logs each session.',
-    code: 'stretto-proxy --record ~/.stretto/logs -- <server>',
+    text: 'stretto init prints your MCP host’s config, with stretto-proxy in place of the server’s command. The proxy forwards every message and logs each session.',
+    code: 'stretto init --host cursor --domain orders -- <server>',
     link: '/guide/concepts/sessions'
   },
   {
     title: 'Learn',
     text: 'stretto learn counts which reads followed which calls, and where each argument came from. Learning is counting: no model, no key.',
-    code: 'stretto learn --sessions ~/.stretto/logs --habit-only …',
+    code: 'stretto learn --sessions ~/.stretto/logs/orders --habit-only …',
     link: '/guide/concepts/flows'
   },
   {
@@ -24,7 +24,7 @@ const steps = [
   {
     title: 'Serve',
     text: 'After each of the agent’s calls, the flow’s lookups ride in the same tool result, so the agent skips the turns it would have spent asking.',
-    code: '--flow orders.flow.json --flow-decider reach',
+    code: 'stretto init --host cursor --flow orders.flow.json -- <server>',
     link: '/guide/concepts/lookups'
   }
 ]

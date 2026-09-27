@@ -44,7 +44,7 @@ The salt `stretto redact` hashes values with. `--salt-env` names another variabl
 
 ### `HOME`
 
-Where a leading `~` in the proxy's path options points (`USERPROFILE` when `HOME` is not set).
+Where a leading `~` points in the proxy's path options and in `stretto init --flow`, and where `stretto doctor` looks for `~/.stretto`. `USERPROFILE` stands in when `HOME` is not set.
 
 ### `STRETTO_BLESS`
 
