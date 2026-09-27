@@ -2,6 +2,7 @@
 //
 //   node render.mjs                        # brand/media/walkthrough.mp4 and walkthrough-poster.png
 //   node render.mjs --cast other.cast      # from another recording (default: walkthrough.cast)
+//   node render.mjs --poster-only          # only the poster
 //   node render.mjs --stills 12,40.5 --stills-dir /tmp/stills   # check frames, as PNG
 //
 // Record the session first with capture.py (see brand/README.md). term.html
@@ -37,9 +38,11 @@ if (stills) {
   }
 } else {
   fs.mkdirSync(media, { recursive: true });
-  const out = path.join(media, 'walkthrough.mp4');
-  await encode({ frame, fps: FPS, from: 0, to: duration, outArgs: h264Args(out, FPS, 20), label: 'walkthrough' });
-  report(out, root);
+  if (!args.includes('--poster-only')) {
+    const out = path.join(media, 'walkthrough.mp4');
+    await encode({ frame, fps: FPS, from: 0, to: duration, outArgs: h264Args(out, FPS, 20), label: 'walkthrough' });
+    report(out, root);
+  }
   const poster = path.join(media, 'walkthrough-poster.png');
   fs.writeFileSync(poster, await frame(posterT));
   report(poster, root);

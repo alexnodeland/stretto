@@ -68,7 +68,8 @@
         const lines = c.out.map(o => o[1]).join('').split('\n').length;
         x.end = x.outEnd + hold(lines, c.caption !== lastCaption);
         lastCaption = c.caption;
-        if (!poster && c.text.includes('--flow ')) poster = x.outEnd + 1.2;
+        // The poster: the agent's first session with a flow, once its result is on screen.
+        if (!poster && /^\.\/agent\b.*--flow /.test(c.text)) poster = x.outEnd + 1.2;
         scene.cmds.push(x);
         promptAt = x.outEnd;
         t = x.end;
