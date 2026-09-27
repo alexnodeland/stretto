@@ -1,0 +1,8 @@
+# Python tools for the brand kit: font subsets, the wordmark's outlines,
+# favicon.ico, and ffmpeg for the video renders.
+#   python3 -m venv .venv && .venv/bin/pip install -r brand/tools/requirements.txt
+fonttools==4.66.0
+brotli==1.2.0
+uharfbuzz==0.56.2
+pillow==12.3.0
+imageio-ffmpeg==0.6.0

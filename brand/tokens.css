@@ -1,0 +1,110 @@
+/*
+ * stretto brand tokens.
+ *
+ * One accent (petrol, OKLCH hue 200) and neutrals biased towards the same cool
+ * hue (215-220). Light is the default; dark follows prefers-color-scheme, and a
+ * page can force either with <html data-theme="light|dark">.
+ *
+ * Contrast (WCAG 2.2) is checked by `node brand/tools/contrast.mjs`, which reads
+ * this file; the ratios are recorded in brand/palette.md. In short:
+ *   --stretto-text, -text-muted, -text-subtle, -accent: body text, >= 4.5:1 on
+ *     --stretto-bg, -surface, -surface-2 and -accent-soft in both themes.
+ *   --stretto-accent-graphic: marks, bars and icons, >= 3:1 (non-text contrast).
+ *   --stretto-on-accent: text on --stretto-accent-fill, >= 4.5:1.
+ *   --stretto-border-strong: control outlines, >= 3:1 on the backgrounds.
+ *   --stretto-chart-baseline and -chart-accent: >= 3:1 as graphics, and apart in
+ *     lightness, so a chart's two series survive color-vision deficiencies.
+ *   --stretto-border: hairlines only; it carries no meaning on its own.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --stretto-bg: #f8fbfb;            /* oklch(0.985 0.003 215) paper */
+  --stretto-surface: #ffffff;       /* oklch(1 0 0) */
+  --stretto-surface-2: #eff3f4;     /* oklch(0.962 0.005 215) code, wells */
+  --stretto-border: #dae1e3;        /* oklch(0.905 0.008 215) hairline */
+  --stretto-border-strong: #7e888b; /* oklch(0.62 0.012 215) control outline */
+
+  /* Text */
+  --stretto-text: #141c1e;          /* oklch(0.22 0.012 215) ink */
+  --stretto-text-muted: #4a5557;    /* oklch(0.44 0.014 215) */
+  --stretto-text-subtle: #646e70;   /* oklch(0.53 0.013 215) */
+
+  /* Accent: petrol */
+  --stretto-accent: #02767b;        /* oklch(0.515 0.087 200) links, accent text */
+  --stretto-accent-hover: #015f63;  /* oklch(0.44 0.074 200) */
+  --stretto-accent-graphic: #039298;/* oklch(0.6 0.101 200) marks, bars, icons */
+  --stretto-accent-soft: #e0f5f6;   /* oklch(0.955 0.022 200) tinted wells */
+  --stretto-accent-fill: #02767b;   /* buttons, badges */
+  --stretto-on-accent: #ffffff;     /* text on --stretto-accent-fill */
+  --stretto-focus: #02767b;
+
+  /* Charts: the emphasis pair. The baseline differs from the accent in lightness,
+     so the two stay apart for color-blind readers (checked, see palette.md). */
+  --stretto-chart-baseline: #4a5557;
+  --stretto-chart-accent: #039298;
+
+  /* Brand constants: the same in both themes (logo files use these). */
+  --stretto-ink: #141c1e;
+  --stretto-paper: #f8fbfb;
+  --stretto-petrol: #02767b;        /* favicon and app-icon tile */
+  --stretto-petrol-light: #039298;  /* the mark's accent on light */
+  --stretto-petrol-dark: #33c0c7;   /* the mark's accent on dark */
+
+  /* Type */
+  --stretto-font-sans: "Inter", "InterVariable", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --stretto-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    Consolas, "Liberation Mono", monospace;
+
+  /* Shape */
+  --stretto-radius-sm: 6px;
+  --stretto-radius-md: 10px;
+  --stretto-radius-lg: 14px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --stretto-bg: #0b0f11;            /* oklch(0.165 0.008 220) */
+    --stretto-surface: #121719;       /* oklch(0.2 0.009 220) */
+    --stretto-surface-2: #191f21;     /* oklch(0.235 0.01 220) */
+    --stretto-border: #272f32;        /* oklch(0.3 0.012 220) */
+    --stretto-border-strong: #606b6f; /* oklch(0.52 0.014 220) */
+    --stretto-text: #eceff0;          /* oklch(0.95 0.004 215) */
+    --stretto-text-muted: #b3bcbf;    /* oklch(0.79 0.011 215) */
+    --stretto-text-subtle: #909a9d;   /* oklch(0.68 0.012 215) */
+    --stretto-accent: #5dd2d8;        /* oklch(0.8 0.105 200) */
+    --stretto-accent-hover: #93e5e9;  /* oklch(0.87 0.08 200) */
+    --stretto-accent-graphic: #33c0c7;/* oklch(0.74 0.115 200) */
+    --stretto-accent-soft: #0b292c;   /* oklch(0.26 0.035 205) */
+    --stretto-accent-fill: #33c0c7;
+    --stretto-on-accent: #0b0f11;
+    --stretto-focus: #5dd2d8;
+    --stretto-chart-baseline: #606b6f;
+    --stretto-chart-accent: #33c0c7;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --stretto-bg: #0b0f11;
+  --stretto-surface: #121719;
+  --stretto-surface-2: #191f21;
+  --stretto-border: #272f32;
+  --stretto-border-strong: #606b6f;
+  --stretto-text: #eceff0;
+  --stretto-text-muted: #b3bcbf;
+  --stretto-text-subtle: #909a9d;
+  --stretto-accent: #5dd2d8;
+  --stretto-accent-hover: #93e5e9;
+  --stretto-accent-graphic: #33c0c7;
+  --stretto-accent-soft: #0b292c;
+  --stretto-accent-fill: #33c0c7;
+  --stretto-on-accent: #0b0f11;
+  --stretto-focus: #5dd2d8;
+  --stretto-chart-baseline: #606b6f;
+  --stretto-chart-accent: #33c0c7;
+}

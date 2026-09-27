@@ -1,0 +1,15 @@
+{
+  "name": "stretto-brand",
+  "private": true,
+  "type": "module",
+  "description": "Sources and render scripts for stretto's brand kit, explainer and videos.",
+  "scripts": {
+    "contrast": "node tools/contrast.mjs --check",
+    "assets": "node tools/render_assets.mjs",
+    "launch": "node video/launch/render.mjs",
+    "walkthrough": "node video/walkthrough/render.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}
