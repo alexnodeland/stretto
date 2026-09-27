@@ -49,3 +49,23 @@ jobs:
       - run: |
           python3 scripts/bench/tables.py --work scripts/bench/fixture --json /tmp/rows.json
           python3 -c "import json; c = json.load(open('/tmp/rows.json'))['dtap_by_source']['all|own']; assert (c['reach_saved'], c['habit_saved'], c['reach_detours']) == (31, 17, 2), c"
+
+  # The release builds for macOS and Windows, which the jobs above do not run:
+  # each binary is built as release.yml builds it, and answers --version.
+  platforms:
+    name: build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --locked -p stretto-report -p stretto-proxy
+      - shell: bash
+        run: |
+          for bin in stretto stretto-proxy stretto-procedure stretto-mcp-demo; do
+            "target/debug/$bin" --version
+          done
