@@ -179,7 +179,7 @@ Turns saved by reach over the four domains, by the flow's source, with the share
 | gpt-oss-120b (OpenAI Agents SDK), no travel | 22 | 28 | 23 |
 
 - **A flow carries across harnesses at about two thirds of the agent's own.** Over the 27 agent-domain pairs with a flow of their own, a flow from the other harnesses keeps 64% of its turns, with 52% of its detours; one from the agent's harness-mates keeps 85%. Each SDK runs one vendor's models here, so harness and model family go together: the GPT-5 models keep 91% from each other, and Opus 4.6 keeps as much from the other harnesses' agents as from Sonnet 4.5 in its own.
-- **Own flows overreach where sessions are few.** In customer service, learned from 96 runs of one agent, the flows score high and miss: of the reach flows' lookups scored 0.8–0.9, a quarter were used. Learned from all seven agents, the flows keep 94% of the own flows' turns with 79% of their detours.
+- **Own flows overreach where sessions are few.** In customer service, learned from 96 runs of one agent, the flows score high and miss: of the reach flows' lookups scored 0.8–0.9, a quarter were used. Learned from all seven agents, they keep 90% of the own flows' turns with 60% of their detours (over the four domains, 94% with 79%).
 - **Reach leads in every domain, least in CRM**, whose ceiling is 11.5% (+0.1 to +0.8 points). With the agents' own runs it takes 86% of travel's ceiling and 38% of telecom's.
 
 **Do agents skip what they already have?** The replay assumes that an agent that sees a lookup's result does not make the call itself. The record shows how often an agent makes a read again that it already made, with no write between, as an agent that ignored a lookup's result would (`scripts/remade.py --results`). Six of the seven agents did so for 18 of their 15,706 reads, in all three harnesses. gpt-oss-120b did so for 917 of its 3,649 (25%), so its replayed savings are upper bounds.
@@ -285,49 +285,50 @@ With the count, the WorkBench flows make no lookup at all in the 13,869 turns of
 
 ## Reproduce
 
-The benchmarks' runs are public, and nothing here needs an API key. From the repository root, with the benchmarks' data in `$DATA`:
+The benchmarks' runs are public, and nothing here needs an API key. From the repository root, with the benchmarks' data in `$DATA` and the converted runs written to `$WORK` (`scripts/bench/README.md`):
 
 ```bash
+export WORK=work; mkdir -p $WORK/v1
 # τ-bench: github.com/sierra-research/tau-bench, historical_trajectories/
 python3 scripts/taubench_v1_to_tau2.py $DATA/tau-bench/historical_trajectories/gpt-4o-retail.json \
-    --domain retail --agent gpt-4o --out v1/gpt-4o-retail.json      # and the other three files
+    --domain retail --agent gpt-4o --out $WORK/v1/gpt-4o-retail.json      # and the other three files
 
 # BFCL: the bfcl-eval wheel unpacked in $DATA/bfcl (with mpmath), and a BFCL-Result snapshot
-python3 scripts/bfcl_to_tau2.py --bfcl $DATA/bfcl --out bfcl --runs $DATA/BFCL-Result/2025-12-16 \
+python3 scripts/bfcl_to_tau2.py --bfcl $DATA/bfcl --out $WORK/bfcl --runs $DATA/BFCL-Result/2025-12-16 \
     --models gpt-4.1-2025-04-14-FC claude-opus-4-5-20251101-FC ...     # the 18 models above
 
 # AgentDojo: github.com/ethz-spylab/agentdojo, runs/
-python3 scripts/agentdojo_to_tau2.py --runs $DATA/agentdojo/runs --out dojo
+python3 scripts/agentdojo_to_tau2.py --runs $DATA/agentdojo/runs --out $WORK/dojo
 
 # WorkBench: github.com/olly-styles/WorkBench, data/results/
-python3 scripts/workbench_to_tau2.py --results $DATA/WorkBench/data/results --out wb
+python3 scripts/workbench_to_tau2.py --results $DATA/WorkBench/data/results --out $WORK/wb
 
 # MCPMark: huggingface.co/datasets/Jakumetsu/mcpmark-trajectory-log, mcpmark-v1-0905/<model>__<service>/run-1/<task>/,
 #   messages.json and meta.json in mcpm-runs/<model>__<service>/<task>/
-for s in filesystem postgres github; do python3 scripts/mcpmark_to_tau2.py --runs mcpm-runs --service $s --out mcpm --learn-from-all; done
+for s in filesystem postgres github; do python3 scripts/mcpmark_to_tau2.py --runs mcpm-runs --service $s --out $WORK/mcpm --learn-from-all; done
 
 # DTap-Bench: huggingface.co/datasets/AI-Secure/DTap-Bench-Agent-Trajectories, each config's
 #   <harness>/<model>/<domain>/benign/<task>/: the latest <time>.json as traj.json, and judge_result.json as judge.json,
 #   in dtap-runs/<domain>/<harness>__<model>/<task>/
-python3 scripts/dtap_to_tau2.py --runs dtap-runs --domain customer-service --out dtap
-for d in crm telecom travel; do python3 scripts/dtap_to_tau2.py --runs dtap-runs --domain $d --name dtap_$d --out dtap; done
-python3 scripts/remade.py --results dtap/dtap_telecom/*.json --tau2 dtap/checkout      # repeated reads
+python3 scripts/dtap_to_tau2.py --runs dtap-runs --domain customer-service --out $WORK/dtap
+for d in crm telecom travel; do python3 scripts/dtap_to_tau2.py --runs dtap-runs --domain $d --name dtap_$d --out $WORK/dtap; done
+python3 scripts/remade.py --results $WORK/dtap/dtap_telecom/*.json --tau2 $WORK/dtap/checkout      # repeated reads
 
 # Learn from the older agents, replay the newer ones from the record (here AgentDojo's travel suite)
-target/release/stretto learn --results dojo/travel/gpt-4-0125-preview.json ... \
-    --tau2 dojo/checkout --domain travel --habit-only --out travel.flow.json
-python3 pilot/check_flow.py --domain travel --trials 0 --results dojo/travel/claude-3-5-sonnet-20241022.json \
+target/release/stretto learn --results $WORK/dojo/travel/gpt-4-0125-preview.json ... \
+    --tau2 $WORK/dojo/checkout --domain travel --habit-only --out travel.flow.json
+python3 pilot/check_flow.py --domain travel --trials 0 --results $WORK/dojo/travel/claude-3-5-sonnet-20241022.json \
     --flow travel.flow.json --flow-decider reach --flow-threshold 0.3 --flow-oracle replay --explore 0 \
-    --trace --tau2 dojo/checkout --out replays/c-travel-claude-3-5-sonnet-20241022-reach-0.3
-python3 scripts/ceiling.py dojo/travel/claude-3-5-sonnet-20241022.json --tau2 dojo/checkout
+    --trace --tau2 $WORK/dojo/checkout --out replays/c-travel-claude-3-5-sonnet-20241022-reach-0.3
+python3 scripts/ceiling.py $WORK/dojo/travel/claude-3-5-sonnet-20241022.json --tau2 $WORK/dojo/checkout
 python3 scripts/calibration.py replays/c-travel-*-habit-0.3 --versus replays/c-travel-*-reach-0.3
 
-# A threshold per decision: reach replays of τ²-bench at 0.1 with decisions logged, evaluated per decision
-python3 pilot/check_flow.py --domain retail --trials 0 1 2 3 --results .data/tau2-targets/glm-5_enabled_retail_gpt-5.2_4trials.json \
-    --flow pool-retail.flow.json --flow-decider reach --flow-threshold 0.1 --flow-oracle replay --explore 0 \
-    --in-process --tau2 ../tau2-bench --out perdec/c-retail-glm-5_enabled_retail_gpt-5.2_4trials   # each agent and domain
-python3 scripts/per_decision.py --replays perdec --results .data/tau2-targets --sweep sweep --tau2 ../tau2-bench --recalibrate 40
-python3 scripts/priced.py --replays priced --results .data/tau2-targets        # replays at 0.3, rerun with saved_at
+# Every replay behind this page, then its tables (scripts/bench/README.md): converted runs in $WORK as above
+scripts/bench/replay.sh all
+python3 scripts/bench/tables.py --json rows.json
+python3 scripts/per_decision.py --replays $WORK/replays/perdec --results .data/tau2-targets --sweep $WORK/replays/sweep \
+    --tau2 ../tau2-bench --recalibrate 40                              # a threshold per decision
+python3 scripts/priced.py --replays $WORK/replays/tau2-env --results .data/tau2-targets   # seconds and dollars
 ```
 
 The rows behind every table are in [benchmarks-2026-09-27.json](benchmarks-2026-09-27.json): the trace-versus-environment comparison, each agent's ceiling, every replay's totals and episodes, the calibration summaries, the list ablation, the WorkBench runs before bare calls were counted, DTap-Bench by the flow's source, and the per-decision evaluation. The flows every replay served are in [benchmarks-2026-09-27-flows.tar.gz](benchmarks-2026-09-27-flows.tar.gz).

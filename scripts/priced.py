@@ -57,6 +57,8 @@ def main():
             continue
         dom = d.name.split("-")[1]
         dec = d.name.rsplit("-", 1)[1]
+        if dom not in DELTA:
+            continue  # solo telecom, whose detours are not counted
         name = d.name[len(f"c-{dom}-"): -len(f"-{dec}")]
         sims = json.loads((args.results / f"{name}.json").read_text())["simulations"]
         by = {f"task-{s['task_id']}-{s.get('trial', 0)}": s for s in sims}
