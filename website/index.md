@@ -17,9 +17,6 @@ hero:
     - theme: alt
       text: Why stretto?
       link: /guide/why
-    - theme: alt
-      text: View on GitHub
-      link: https://github.com/alexnodeland/stretto
 
 features:
   - title: Any MCP server, any host
