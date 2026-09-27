@@ -10,7 +10,7 @@ one domain as τ²-bench's results file, and a checkout-shaped folder that
 stretto reads as τ²-bench's: the tools, marked a read or a write, and a
 train/test split by task.
 
-    dtap_to_tau2.py --runs DIR --domain customer-service --out DIR
+    dtap_to_tau2.py --runs DIR --domain customer-service --out DIR [--name NAME]
 
 `--runs` holds `<domain>/<harness>__<model>/<task>/{traj,judge}.json`, the
 latest trajectory of each task and its verdict. A run's steps are the agent's
@@ -21,34 +21,71 @@ results' tools wrongly, so names are not used to pair them. Calls that only
 list or load tools (`List MCP Tools`, the Claude Agent SDK's `ToolSearch`)
 belong to the harness, not to the domain. They are left out with their
 results, and so is a turn that made nothing else. OpenClaw's logs record no
-calls, so its runs are skipped. A tool is a read when its name starts with a
-reading verb (`get`, `list`, `search`, `find`, `lookup`, ...); every other
-tool is a write.
+calls, so its runs are skipped. The Claude Agent SDK's own tools (`Bash`,
+`Read`, `TodoWrite`, ...) stay as calls but are neither reads nor writes. A
+tool is a read when the first verb in its name reads (`get`, `list`,
+`search`, `find`, `lookup`, ..., in `getJiraIssue` or `meetings_get` alike);
+a name with a writing verb, or with none known, is a write, which a flow
+never calls.
 """
 
 import argparse
+import ast
 import json
+import re
 import sys
 from pathlib import Path
 
-META = {"List MCP Tools", "ToolSearch"}
-READ_VERBS = ("get_", "list_", "search_", "find_", "lookup_", "check_", "view_", "read_", "fetch_", "query_",
-              "count_", "describe_", "retrieve_", "show_", "lookup")
+# The harness's calls that list or load tools: left out, with their results.
+META = {"List MCP Tools", "ToolSearch", "ListMcpResourcesTool", "ReadMcpResourceTool"}
+# The Claude Agent SDK's own tools, which some agents call: kept as calls, but neither a read nor a write.
+BUILTIN = {"Bash", "Read", "Write", "Edit", "MultiEdit", "Glob", "Grep", "LS", "TodoWrite", "AskUserQuestion",
+           "WebFetch", "WebSearch", "Task", "Skill", "NotebookEdit", "ExitPlanMode"}
+READ_WORDS = {"get", "list", "search", "find", "lookup", "view", "read", "fetch", "query", "count", "describe",
+              "retrieve", "show", "history", "inbox", "info", "health", "meta"}
+WRITE_WORDS = {"create", "update", "add", "delete", "remove", "send", "reply", "forward", "grant", "cancel", "refund",
+               "set", "post", "assign", "convert", "merge", "link", "unlink", "invite", "login", "logout", "join",
+               "leave", "edit", "transition", "pause", "resume", "modify", "transfer", "apply", "book", "pay",
+               "schedule", "submit", "approve", "reject", "close", "mark", "move", "upload", "share", "archive",
+               "restore", "reset", "enable", "disable", "change", "suspend", "register", "issue", "process"}
+
+
+def words(name: str) -> list[str]:
+    """A tool's name as words: `getJiraIssue` and `meetings_get` alike."""
+    return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name).lower().replace("-", "_").split("_")
 
 
 def is_read(name: str) -> bool:
-    return name.startswith(READ_VERBS)
+    """A read when the first verb in its name reads (`get`, `list`, `search`, ...); a name with no
+    verb it knows is a write, which a flow never calls."""
+    for w in words(name):
+        if w in WRITE_WORDS:
+            return False
+        if w in READ_WORDS:
+            return True
+    return False
 
 
 def result(state) -> str:
-    """A tool's result as JSON: a harness that wraps it as {"result": "<json>"} is unwrapped."""
-    if isinstance(state, dict) and set(state) == {"result"}:
+    """A tool's result as JSON. A harness that wraps it as {"result": "<json>"} is unwrapped, and so is an
+    MCP text block, {"type": "text", "text": "<json>"}, which the OpenAI Agents SDK logs in some domains as
+    a Python repr."""
+    if isinstance(state, dict) and set(state) == {"result"} and isinstance(state["result"], str):
         state = state["result"]
     if isinstance(state, str):
         try:
             state = json.loads(state)
         except ValueError:
-            return state
+            try:
+                state = ast.literal_eval(state)
+            except (ValueError, SyntaxError, MemoryError, RecursionError):
+                return state
+            if not isinstance(state, (dict, list)):
+                return str(state)
+    if isinstance(state, dict) and state.get("type") == "text" and isinstance(state.get("text"), str):
+        return result(state["text"])
+    if isinstance(state, list) and len(state) == 1 and isinstance(state[0], dict) and state[0].get("type") == "text":
+        return result(state[0].get("text") or "")
     return json.dumps(state, ensure_ascii=False)
 
 
@@ -124,10 +161,12 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--runs", type=Path, required=True)
     ap.add_argument("--domain", default="customer-service")
+    ap.add_argument("--name", help="the domain's name in τ²-bench's layout (default: --domain with underscores); "
+                    "one that τ²-bench or another benchmark also has, such as telecom, takes a prefix")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--test-share", type=float, default=0.4, help="share of tasks held out, the same share of every ten in order")
     args = ap.parse_args()
-    domain = args.domain.replace("-", "_")
+    domain = args.name or args.domain.replace("-", "_")
     root = args.runs / args.domain
     names: set[str] = set()
     tasks: set[str] = set()
@@ -166,7 +205,7 @@ def main():
     (checkout / f"src/tau2/domains/{domain}").mkdir(parents=True, exist_ok=True)
     (checkout / f"data/tau2/domains/{domain}").mkdir(parents=True, exist_ok=True)
     lines = [f"# DTap-Bench's tools in its {args.domain} tasks, marked by their verbs (dtap_to_tau2.py).", ""]
-    for name in sorted(n for n in names if n.isidentifier()):
+    for name in sorted(n for n in names if n.isidentifier() and n not in BUILTIN):
         lines += [f"@is_tool(ToolType.{'READ' if is_read(name) else 'WRITE'})", f"def {name}(*args, **kwargs):", "    pass", ""]
     (checkout / f"src/tau2/domains/{domain}/tools.py").write_text("\n".join(lines))
     (checkout / f"data/tau2/domains/{domain}/split_tasks.json").write_text(json.dumps(split))

@@ -1,16 +1,16 @@
 # What the environment decides, on six benchmarks
 
-Every number before this round came from τ²-bench. Its three domains were built for coverage, and its users are LLMs. This round takes the flow to five more benchmarks, whose authors published their agents' trajectories: τ-bench, the Berkeley Function Calling Leaderboard's multi-turn tasks, AgentDojo, WorkBench and DTap-Bench. That is 72 more agents, from GPT-3.5 to models released this year, and 12 new domains. Seven of the agents are built on three agent SDKs: the Claude Agent SDK, the OpenAI Agents SDK and Google's ADK. In four of the benchmarks no simulated user speaks: the requests were written by the benchmarks' authors. None of these benchmarks can be re-run cheaply, so the replays answer the flow's lookups from the record itself. [The working paper](../../paper/stretto.md) states the method; this page holds the runs.
+Every number before this round came from τ²-bench. Its three domains were built for coverage, and its users are LLMs. This round takes the flow to five more benchmarks, whose authors published their agents' trajectories: τ-bench, the Berkeley Function Calling Leaderboard's multi-turn tasks, AgentDojo, WorkBench and DTap-Bench. That is 72 more agents, from GPT-3.5 to models released this year, and 15 new domains. Seven of the agents are built on three agent SDKs: the Claude Agent SDK, the OpenAI Agents SDK and Google's ADK. In four of the benchmarks no simulated user speaks: the requests were written by the benchmarks' authors. None of these benchmarks can be re-run cheaply, so the replays answer the flow's lookups from the record itself. [The working paper](../../paper/stretto.md) states the method; this page holds the runs.
 
 - **Replaying from the record.** A lookup the agent's own later call answers, before its next write, is answered by that call's recorded result, which is exact. Any other lookup is a detour whatever it returned, so it gets a stand-in and never counts as a saving. Checked against τ²-bench's environment on the paper's nine agents, this counts 96.7% of the turns the environment replay saves, and keeps 91% of the reach decider's lead over the next-step decider. It finds 55–72% of the detours, so its detours are lower bounds.
-- **The ceiling belongs to the domain.** The read-only ceiling is 3.5% of turns in WorkBench, whose requests name every entity. It is 13.2% in BFCL, 22.1% in AgentDojo (47.1% in its travel suite), 24.2% in DTap-Bench's customer service, 24–30% in τ-bench and 29.0% in τ²-bench. Where the user's words carry the arguments, a flow that binds from results has little to take. Reading the request would add 5–9 points in BFCL, AgentDojo, WorkBench and DTap-Bench, against 0.7 in τ²-bench.
+- **The ceiling belongs to the domain.** The read-only ceiling is 3.5% of turns in WorkBench, whose requests name every entity. It is 13.2% in BFCL, 22.1% in AgentDojo (47.1% in its travel suite), 11.5–34.3% in DTap-Bench's four domains, 24–30% in τ-bench and 29.0% in τ²-bench. Where the user's words carry the arguments, a flow that binds from results has little to take. Reading the request would add 5–9 points in BFCL, AgentDojo, WorkBench and DTap-Bench, against 0.7 in τ²-bench.
 - **Reach saves more where agents read ahead of their next write, and ties elsewhere.**
   - **τ-bench.** Flows learned from τ²-bench's 2025 runs save 22.9% of retail turns for GPT-4o and Claude 3.5 Sonnet, recorded in τ-bench's own harness a year earlier: 76% of the ceiling. Reach is +1.4 points ahead of the next-step decider (0.8–2.1); the two tie in airline.
   - **BFCL.** Learned from eight older models and replayed on ten late-2025 ones, reach saves twice what next-step does at every threshold: 134 turns against 62 at θ = 0.3, +0.85 points of all turns (0.35–1.45).
   - **AgentDojo.** The two tie (−0.5 points, −1.7 to 0.0). In Slack they make the same lookups and take 78% of the ceiling. In travel, whose only write comes at the end, reach saves a little less than next-step, from a flow of 38 sessions.
-  - **DTap-Bench.** Reach saves more than next-step whichever agents it learned from: +4.7 points with each agent's own sessions (4.2–5.2), +2.2 with the other harnesses' agents (1.7–2.7), with more detours.
+  - **DTap-Bench.** Over four domains, reach saves more than next-step whichever agents it learned from: +3.1 points with each agent's own runs (2.7–3.6), +2.1 with the other harnesses' agents (1.7–2.6), with more detours.
   - **WorkBench.** Neither decider saves a turn or makes a detour. The ceiling is 3.5%, its reads take a name or a date the request gave, and once a search the agent always narrows is never made bare, the flows make no lookup at all in 13,869 turns, at 0.3 or at 0.1.
-- **Flows carry across harnesses, as far as the agents act alike.** Learned from the other harnesses' agents, a flow keeps 56% of what the agent's own saves, with a third of the detours. Within the OpenAI Agents SDK, learned from its other models, it keeps 83–94% for each GPT-5 model. Claude Opus 4.6 keeps more from other harnesses (42%) than from Claude Sonnet 4.5 in its own (20%). The harness shapes the ceiling where it changes the turns: Gemini on Google's ADK batches its reads into parallel turns, and leaves 7.6% of turns in the ceiling, against 25–26% for the other two SDKs.
+- **Flows carry across harnesses.** Learned from the other harnesses' agents, a flow keeps 64% of what the agent's own saves, with half the detours; learned from its harness-mates, 85%. Each SDK runs one vendor's models here, so harness and model family go together: the GPT-5 models keep 91% from each other, and Claude Opus 4.6 keeps as much from the other harnesses (60%) as from Claude Sonnet 4.5 in its own (59%). Agents that repeat their own reads would repeat a lookup's too, and six of the seven repeated 18 of 15,706 reads.
 - **A threshold per decision is not free.** Pricing each lookup's detour and saved turn where it stands, rather than the domain's averages, changes τ²-bench's counted utility by −15% in retail, +7% in airline and +10% in telecom. It raises the threshold early in an episode, and retail's product lookups there are scored 0.33 and used 64% of the time.
 - **Three things new benchmarks taught the binder.**
   - **Read results as data.** AgentDojo prints results as YAML and Python literals. Read as JSON, the form an MCP server returns, its ceiling doubles, from 10.0% to 22.1% of turns.
@@ -52,16 +52,16 @@ Each benchmark's published runs are rewritten as τ²-bench results, with a chec
 | BFCL v4 multi-turn, base | `bfcl_to_tau2.py --runs` | 8 APIs in one: files, messaging, social, tickets, trading, travel, a car, math | 8 models: GPT-4.1, GPT-4.1 mini, o3, o4-mini, Mistral Large, Llama 3.3 70B, Qwen3 235B, Gemini 2.5 Flash | 10: Claude Opus, Sonnet and Haiku 4.5, GPT-5.2, GPT-5 mini, Gemini 3 Pro, Grok 4.1 Fast, Kimi K2, GLM-4.6, DeepSeek V3.2 | 799 | 8,510 |
 | AgentDojo (benign runs) | `agentdojo_to_tau2.py` | workspace, Slack, banking, travel | 11 released before May 2024 | 10 released after | 410 | 1,523 |
 | WorkBench (2026 re-run) | `workbench_to_tau2.py` | email, calendar, analytics, CRM, project management, multi-domain | 10: GPT-3.5 to GPT-5.2, o3, GLM-4.6, Claude Haiku 4.5 | 14, among them Claude Opus 4.8, GPT-5.5, Gemini 3.1 Pro and 3.5 Flash, Kimi K2.6, DeepSeek V4 Pro | 3,858 | 13,869 |
-| DTap-Bench (benign runs) | `dtap_to_tau2.py` | customer service: orders, cases, subscriptions, email | the agent's own training runs; its harness's other agents; the other harnesses' agents | 7: Claude Opus 4.6 and Sonnet 4.5 (Claude Agent SDK), Gemini 3 Pro (Google ADK), GPT-5.1, 5.2, 5.4 and gpt-oss-120b (OpenAI Agents SDK) | 448 | 3,949 |
+| DTap-Bench (benign runs) | `dtap_to_tau2.py` | customer service, CRM, telecom, travel | the agent's own training runs; its harness's other agents; the other harnesses' agents | 7: Claude Opus 4.6 and Sonnet 4.5 (Claude Agent SDK), Gemini 3 Pro (Google ADK), GPT-5.1, 5.2, 5.4 and gpt-oss-120b (OpenAI Agents SDK) | 1,624 | 15,383 |
 
 **Reads and writes.** Which tools write was checked against each benchmark's source.
 
 - AgentDojo's `get_unread_emails` marks what it returns as read, so it is a write; `get_webpage` only logs its request, so it is a read.
 - BFCL's `cd` moves the working directory, and its logins change what later calls may do; both are writes.
 - In WorkBench, every send, reply, forward, create, update and delete is a write.
-- DTap-Bench publishes trajectories, not its servers, so its tools are marked by their verbs. `get`, `list`, `search`, `find` and `lookup` read; `create`, `update`, `add`, `send`, `grant`, `cancel`, `refund`, `set` and the rest write, among them `transfer_to_human`.
+- DTap-Bench publishes trajectories, not its servers, so its tools are marked by the first verb in their names, `getJiraIssue` and `meetings_get` alike. `get`, `list`, `search`, `find`, `query` and `view` read; `create`, `update`, `add`, `send`, `book`, `cancel`, `set` and the rest write, among them `transfer_to_human`, and so does a name with no verb the converter knows. The Claude Agent SDK's own tools (`Bash`, `Read`, `TodoWrite`) are neither.
 
-**The runs as recorded.** BFCL-Result, the leaderboard's own archive, gives each model's logged calls, their results, and the checker's verdict on each task. WorkBench's harness logs an agent's reply as an action named `Final Answer`; it is the reply, not a call. Some models call tools that do not exist; those calls are neither reads nor writes. DTap-Bench's harnesses log the calls that list or load tools (`List MCP Tools`, the Claude Agent SDK's `ToolSearch`). Those belong to the harness, so they are left out with their results. The Claude Agent SDK names some results' tools wrongly, so results are paired with calls in the order the calls were made. OpenClaw, the fourth harness, logs only the reply, so its runs are left out.
+**The runs as recorded.** BFCL-Result, the leaderboard's own archive, gives each model's logged calls, their results, and the checker's verdict on each task. WorkBench's harness logs an agent's reply as an action named `Final Answer`; it is the reply, not a call. Some models call tools that do not exist; those calls are neither reads nor writes. DTap-Bench's harnesses log the calls that list or load tools (`List MCP Tools`, the Claude Agent SDK's `ToolSearch`). Those belong to the harness, so they are left out with their results. The Claude Agent SDK names some results' tools wrongly, so results are paired with calls in the order the calls were made. The OpenAI Agents SDK logs some domains' results as Python reprs of MCP text blocks; the converter unwraps them to the JSON inside. OpenClaw, the fourth harness, logs only the reply, so its runs are left out.
 
 ## What decides an agent's turns
 
@@ -86,17 +86,21 @@ Test episodes of the agents each flow is replayed on. The ceiling counts every t
 | — email | 1,670 | 30.2% | 31.6% | 38.2% | 0.5% | 6.9% |
 | — calendar | 2,046 | 29.8% | 27.7% | 42.5% | 0.1% | 2.3% |
 | — analytics | 1,798 | 36.9% | 31.0% | 32.1% | 0.0% | 0.2% |
-| DTap-Bench customer service | 3,949 | 15.2% | 24.1% | 60.7% | 24.2% | 33.6% |
-| — Claude Agent SDK (2 agents) | 1,271 | 22.1% | 22.7% | 55.2% | 26.4% | 33.4% |
-| — OpenAI Agents SDK (4) | 2,454 | 10.4% | 24.0% | 65.6% | 24.5% | 36.0% |
-| — Google ADK (1) | 224 | 28.6% | 32.6% | 38.8% | 7.6% | 8.9% |
+| DTap-Bench | 15,383 | 14.2% | 36.1% | 49.7% | 19.6% | 26.6% |
+| — telecom | 1,229 | 27.3% | 7.6% | 65.0% | 34.3% | 35.0% |
+| — customer service | 3,949 | 15.2% | 24.1% | 60.7% | 24.2% | 33.6% |
+| — travel | 5,672 | 7.9% | 53.2% | 38.9% | 19.8% | 27.2% |
+| — CRM | 4,533 | 17.8% | 32.8% | 49.4% | 11.5% | 17.6% |
+| — Claude Agent SDK (2 agents) | 4,537 | 22.7% | 36.4% | 40.8% | 16.0% | 21.8% |
+| — OpenAI Agents SDK (4) | 9,773 | 9.5% | 36.2% | 54.3% | 22.3% | 30.0% |
+| — Google ADK (1) | 1,073 | 21.6% | 33.6% | 44.8% | 10.8% | 15.9% |
 
 τ-bench's turns divide as τ²-bench's do, to within a point or two, though its agents are a year older and ran in another harness: the domain sets the anatomy. Reads are 32–73% of turns everywhere; what varies is where their arguments come from.
 
 - **τ²-bench and τ-bench.** A customer names themselves and the agent walks the records: user, then orders, then items.
 - **AgentDojo's travel suite.** A city's listing names the hotels, and every later lookup takes those names.
 - **WorkBench.** Each request names its customer, task or date; the agent searches for them, then writes. So nearly every read's arguments come from the request, which only reading language can bind.
-- **DTap-Bench.** Each request names an order or a customer's email, and the agent walks the order, its shipment, its cases and the guidelines. The harness changes the turns: Gemini on Google's ADK makes 3.5 turns an episode, batching its reads into parallel calls, where the other agents make 8–11. A turn of parallel reads is saved only when every read in it is answered, so its ceiling is 7.6%.
+- **DTap-Bench.** In customer service each request names an order or a customer's email, and the agent walks the order, its shipment, its cases and the guidelines; in telecom it walks the customer's account, bills and tickets. How an agent groups its calls matters as much as the harness: in customer service and travel, Gemini on Google's ADK batches its reads into a few parallel turns (3.5 an episode in customer service, where the others make 8–11). A turn of parallel reads is saved only when every read in it is answered, so its ceiling there is 7.6% and 0.5%, against 13–34% for the other agents. In CRM and telecom it batches less, and its ceiling is 13.5% and 21.7%.
 
 The column with the user's words is that bound: 5–9 points more in BFCL, AgentDojo, WorkBench and DTap-Bench, and under 2 in τ²-bench and τ-bench, where the user's details arrive over the conversation and the agent looks the rest up.
 
@@ -116,8 +120,8 @@ Both deciders at θ = 0.3, the retail-live threshold of the paper. Saved turns a
 | — Slack | 16.8% | 16.8% | | 78% | 0.11 / 0.11 |
 | — banking, workspace | 0 | 0 | | 0% | 0 / 0 |
 | WorkBench | 0 | 0 | 0 | 0% | 0 / 0 |
-| DTap-Bench, flows from the other harnesses | 4.0% | 1.8% | +2.18 points (1.65 – 2.70) | 16% | 0.52 / 0.12 |
-| DTap-Bench, flows from the agent's own runs | 7.0% | 2.3% | +4.68 points (4.16 – 5.20) | 29% | 1.48 / 0.25 |
+| DTap-Bench (4 domains), flows from the other harnesses | 5.5% | 3.3% | +2.14 points (1.69 – 2.56) | 28% | 0.28 / 0.11 |
+| DTap-Bench (4 domains), flows from the agent's own runs | 8.0% | 4.9% | +3.12 points (2.66 – 3.60) | 43% | 0.51 / 0.09 |
 
 In τ-bench retail the flows answer 42.4% of GPT-4o's API calls (471 of 1,110) and 44.8% of Claude 3.5 Sonnet's (525 of 1,171) with each call's exact arguments and result. They make 651 and 638 lookups, 72% and 82% of them used; next-step answers 40.5% and 41.4%. Speculative Actions (Ye et al., ICLR 2026) reports that its model speculators (GPT-5 family, Gemini 2.5 Flash; one to three guesses a step) predict 22–38% of τ-bench retail's API calls. Its agent differs and it guesses the next step, writes included, so the comparison is indicative, not controlled.
 
@@ -129,24 +133,48 @@ BFCL's flow takes only 12% of its ceiling. BFCL's 200 base tasks are 200 differe
 
 ### Across harnesses
 
-DTap-Bench runs the same 160 customer-service tasks under three agent SDKs, so a flow can be learned under one and served under another. Each agent's 64 test episodes are replayed with four flows: learned from its own 96 training runs, from its harness's other agents, from the other harnesses' agents, and from all seven. Turns saved by reach at θ = 0.3 (next-step in brackets):
+DTap-Bench runs the same tasks under three agent SDKs, so a flow can be learned under one and served under another. In each of four domains (customer service, CRM, telecom and travel), each agent's test episodes are replayed with four flows: learned from its own training runs, from its harness's other agents, from the other harnesses' agents, and from all seven. Both deciders at θ = 0.3; intervals are 95%, from a bootstrap over tasks, a task's episodes of every agent drawn together.
 
-| Agent (harness) | Turns | Ceiling | Own | Same harness | Other harnesses | All seven |
-|---|---|---|---|---|---|---|
-| Claude Opus 4.6 (Claude Agent SDK) | 730 | 236 | 88 (44) | 18 (24) | 37 (8) | 66 (35) |
-| Claude Sonnet 4.5 (Claude Agent SDK) | 541 | 100 | 15 (3) | 16 (10) | 3 (1) | 5 (6) |
-| Gemini 3 Pro (Google ADK) | 224 | 17 | 1 (0) | — | 4 (0) | 4 (0) |
-| GPT-5.1 (OpenAI Agents SDK) | 643 | 196 | 34 (4) | 32 (7) | 20 (19) | 35 (21) |
-| GPT-5.2 (OpenAI Agents SDK) | 617 | 150 | 51 (7) | 48 (6) | 31 (16) | 52 (16) |
-| GPT-5.4 (OpenAI Agents SDK) | 696 | 187 | 87 (34) | 72 (27) | 50 (20) | 83 (36) |
-| gpt-oss-120b (OpenAI Agents SDK) | 498 | 68 | 1 (0) | 4 (2) | 11 (6) | 5 (5) |
-| All | 3,949 | 954 | 277 (92) | 190 (76) † | 156 (70) | 250 (119) |
+| Domain | Source | Agents | Turns | Saved, reach | Saved, next-step | Reach minus next-step | Share of the ceiling, reach | Detours per episode, reach / next-step |
+|---|---|---|---|---|---|---|---|---|
+| All four | own runs | 27 | 14,278 | 8.0% | 4.9% | +3.12 (+2.66 – +3.60) | 43% | 0.51 / 0.09 |
+|  | harness-mates | 24 | 14,310 | 7.6% | 4.9% | +2.71 (+2.34 – +3.08) | 37% | 0.39 / 0.12 |
+|  | other harnesses | 28 | 15,383 | 5.5% | 3.3% | +2.14 (+1.69 – +2.56) | 28% | 0.28 / 0.11 |
+|  | all seven | 28 | 15,383 | 7.9% | 5.4% | +2.57 (+2.13 – +2.99) | 40% | 0.42 / 0.10 |
+| Customer service | own runs | 7 | 3,949 | 7.0% | 2.3% | +4.68 (+4.16 – +5.20) | 29% | 1.48 / 0.25 |
+|  | harness-mates | 6 | 3,725 | 5.1% | 2.0% | +3.06 (+2.59 – +3.52) | 20% | 0.89 / 0.23 |
+|  | other harnesses | 7 | 3,949 | 4.0% | 1.8% | +2.18 (+1.65 – +2.70) | 16% | 0.52 / 0.12 |
+|  | all seven | 7 | 3,949 | 6.3% | 3.0% | +3.32 (+2.42 – +4.07) | 26% | 0.89 / 0.13 |
+| CRM | own runs | 7 | 4,533 | 1.4% | 0.6% | +0.75 (+0.53 – +0.98) | 12% | 0.02 / 0.01 |
+|  | harness-mates | 6 | 4,036 | 1.1% | 0.5% | +0.64 (+0.41 – +0.88) | 10% | 0.02 / 0.01 |
+|  | other harnesses | 7 | 4,533 | 0.8% | 0.8% | +0.09 (+0.00 – +0.21) | 7% | 0.09 / 0.07 |
+|  | all seven | 7 | 4,533 | 1.3% | 1.1% | +0.11 (+0.02 – +0.21) | 11% | 0.15 / 0.09 |
+| Telecom | own runs | 7 | 1,229 | 13.0% | 7.6% | +5.37 (+3.04 – +7.79) | 38% | 0.01 / 0.00 |
+|  | harness-mates | 6 | 1,086 | 11.5% | 7.6% | +3.87 (+2.59 – +5.09) | 32% | 0.06 / 0.02 |
+|  | other harnesses | 7 | 1,229 | 4.9% | 1.1% | +3.82 (+2.30 – +5.52) | 14% | 0.04 / 0.01 |
+|  | all seven | 7 | 1,229 | 13.2% | 8.2% | +4.96 (+2.38 – +7.71) | 38% | 0.04 / 0.00 |
+| Travel | own runs | 6 | 4,567 | 14.1% | 10.6% | +3.50 (+2.61 – +4.50) | 86% | 0.41 / 0.07 |
+|  | harness-mates | 6 | 5,463 | 13.2% | 9.5% | +3.77 (+3.00 – +4.53) | 64% | 0.57 / 0.21 |
+|  | other harnesses | 7 | 5,672 | 10.3% | 6.9% | +3.39 (+2.53 – +4.31) | 52% | 0.46 / 0.23 |
+|  | all seven | 7 | 5,672 | 13.3% | 9.8% | +3.49 (+2.93 – +4.05) | 67% | 0.52 / 0.18 |
 
-† Six agents; Gemini is its harness's only agent.
+gpt-oss-120b succeeded in none of its travel runs, so it has no flow of its own there (`learn` fits the habit on successful runs). Gemini is its harness's only agent.
 
-- **How alike the agents act decides transfer, not the harness.** The GPT-5 models' flows from their harness's other models keep 83–94% of their own flows' turns. Opus 4.6's flow from Sonnet 4.5, in the same harness, keeps 20%, and its flow from the other harnesses keeps 42%. Sonnet reads less than Opus (its ceiling is 18% of its turns, Opus's 32%).
-- **Own flows overreach.** Learned from 96 runs of one agent, the flows score high and miss: in the reach flows' top scores, 0.8–0.9, a quarter of the lookups were used. They make 1.5 detours an episode, against 0.9 for the flow learned from all seven agents, which keeps 90% of their turns. As on τ²-bench, a deployment should start from other agents' sessions and fold its own in (the paper's §4.3).
-- **Reach leads with every source**, by 2.2 to 4.7 points of all turns, and is better calibrated (below).
+Turns saved by reach over the four domains, by the flow's source, with the share of what the agent's own flow saves:
+
+| Agent (harness) | Own runs | Harness-mates | Other harnesses |
+|---|---|---|---|
+| GPT-5.1, 5.2 and 5.4 (OpenAI Agents SDK) | 769 | 699 (91%) | 506 (66%) |
+| Claude Opus 4.6 (Claude Agent SDK) | 222 | 131 (59%) | 134 (60%) |
+| Claude Sonnet 4.5 (Claude Agent SDK) | 100 | 83 (83%) | 54 (54%) |
+| Gemini 3 Pro (Google ADK) | 28 | — | 18 (64%) |
+| gpt-oss-120b (OpenAI Agents SDK), no travel | 22 | 28 | 23 |
+
+- **A flow carries across harnesses at about two thirds of the agent's own.** Over the 27 agent-domain pairs with a flow of their own, a flow from the other harnesses keeps 64% of its turns, with 52% of its detours; one from the agent's harness-mates keeps 85%. Each SDK runs one vendor's models here, so harness and model family go together: the GPT-5 models keep 91% from each other, and Opus 4.6 keeps as much from the other harnesses' agents as from Sonnet 4.5 in its own.
+- **Own flows overreach where sessions are few.** In customer service, learned from 96 runs of one agent, the flows score high and miss: of the reach flows' lookups scored 0.8–0.9, a quarter were used. Learned from all seven agents, the flows keep 94% of the own flows' turns with 79% of their detours.
+- **Reach leads in every domain, least in CRM**, whose ceiling is 11.5% (+0.1 to +0.8 points). With the agents' own runs it takes 86% of travel's ceiling and 38% of telecom's.
+
+**Do agents skip what they already have?** The replay assumes that an agent that sees a lookup's result does not make the call itself. The record shows how often an agent makes a read again that it already made, with no write between, as an agent that ignored a lookup's result would (`scripts/remade.py --results`). Six of the seven agents did so for 18 of their 15,706 reads, in all three harnesses. gpt-oss-120b did so for 917 of its 3,649 (25%), so its replayed savings are upper bounds.
 
 ### Calibration
 
@@ -159,10 +187,16 @@ With `--explore 0` each replay logs every lookup the flow weighed, with its scor
 | BFCL | 3,601 | −0.021 (−0.035 – +0.001) | −0.004 (−0.017 – +0.009) | +0.054 (−0.002 – +0.118) |
 | AgentDojo travel | 772 | +0.068 (+0.008 – +0.142) | +0.028 (−0.004 – +0.091) | −0.006 (−0.120 – +0.044) |
 | AgentDojo Slack | 395 | +0.006 (−0.019 – +0.030) | −0.005 (−0.018 – +0.011) | +0.027 (0.000 – +0.064) |
-| DTap-Bench, own runs | 9,625 | −0.071 (−0.081 – −0.050) | −0.028 (−0.035 – −0.022) | +0.017 (−0.001 – +0.039) |
-| DTap-Bench, other harnesses | 16,280 | −0.033 (−0.045 – −0.016) | −0.011 (−0.016 – −0.007) | −0.016 (−0.032 – +0.000) |
+| DTap-Bench customer service, own runs | 9,625 | −0.071 (−0.081 – −0.050) | −0.028 (−0.035 – −0.022) | +0.017 (−0.001 – +0.039) |
+| — other harnesses | 16,280 | −0.033 (−0.045 – −0.016) | −0.011 (−0.016 – −0.007) | −0.016 (−0.032 – +0.000) |
+| DTap-Bench CRM, own runs | 4,151 | −0.014 (−0.016 – −0.006) | −0.006 (−0.007 – −0.004) | +0.018 (+0.011 – +0.027) |
+| — other harnesses | 10,840 | +0.001 (−0.001 – +0.007) | −0.000 (−0.001 – +0.000) | +0.001 (−0.006 – +0.008) |
+| DTap-Bench telecom, own runs | 1,189 | −0.139 (−0.173 – −0.027) | −0.067 (−0.108 – −0.025) | +0.117 (+0.035 – +0.193) |
+| — other harnesses | 1,626 | −0.060 (−0.100 – −0.004) | −0.036 (−0.064 – −0.005) | +0.052 (+0.011 – +0.093) |
+| DTap-Bench travel, own runs | 1,514 | +0.017 (−0.035 – +0.058) | +0.011 (−0.047 – +0.058) | −0.391 (−0.488 – −0.269) |
+| — other harnesses | 2,237 | −0.004 (−0.043 – +0.027) | −0.031 (−0.067 – −0.001) | −0.181 (−0.239 – −0.106) |
 
-WorkBench's flows weighed 4,154 lookups, all scored near zero, and the agents used none: there is nothing to calibrate. As on τ²-bench, counting the right event helps most where agents read ahead of their next write in varied orders, as in τ-bench retail. In BFCL the differences have the same signs, with intervals that reach zero. Where the next call is nearly always the call that is used, as in airline, the two coincide.
+WorkBench's flows weighed 4,154 lookups, all scored near zero, and the agents used none: there is nothing to calibrate. In DTap-Bench reach is better calibrated in customer service and telecom and alike in CRM; in travel, as in AgentDojo's, it ranks lookups worse while saving more turns. As on τ²-bench, counting the right event helps most where agents read ahead of their next write in varied orders, as in τ-bench retail. In BFCL the differences have the same signs, with intervals that reach zero. Where the next call is nearly always the call that is used, as in airline, the two coincide.
 
 ## A threshold per decision
 
@@ -206,13 +240,13 @@ With the count, the WorkBench flows make no lookup at all in the 13,869 turns of
 
 - **Reading the request.** Binding the user's words would add 5–9 points of turns in BFCL, AgentDojo, WorkBench and DTap-Bench. That takes a speculator that reads the request for the values a search takes, such as a customer's name or a date, where this one reads only results.
 - **Constants.** AgentDojo banking's most-read lookup takes a number of transactions, which the agent sets the same way every time. A binding that learns such constants would make it.
-- **More domains, more servers.** DTap-Bench has thirteen more domains with the same agents and harnesses, among them CRM, travel, finance and a telecom of its own. MCPMark publishes 21 models on real MCP servers. Both fit the trace replay.
-- **Calibration per site.** A threshold per decision needs each lookup's score right where it is priced. The binding's chance is counted per call, not per lookup, which undercounts a lookup the agent makes once among several calls of the same tool.
-- **Live, with other agents.** The replays assume an agent skips a call a lookup already answered, which GLM-5.3 did live. The DTap-Bench replays count what agents in three other harnesses would have skipped, not whether they would have; that remains to be checked live.
+- **More domains, more servers.** DTap-Bench has ten more domains with the same agents and harnesses, among them finance, medical and legal. MCPMark publishes 21 models on real MCP servers. Both fit the trace replay.
+- **Calibration per site.** A threshold per decision needs each lookup's score right where it is priced. Retail's lookups of an order's products are scored as the tool's chance (0.43) times the argument's (0.76) and used 64% of the time; counting each lookup's own use at its site would score them directly.
+- **Live, with other agents.** The replays assume an agent skips a call a lookup already answered, which GLM-5.3 did live. The DTap-Bench replays count what agents in three other harnesses would have skipped, not whether they would have. That six of the seven seldom repeat their own reads says they would; it remains to be checked live.
 
 ## Caveats
 
-- **Counterfactual turns.** A replay counts what the flow would have spared an agent that otherwise acted as recorded. Live, GLM-5.3 made none of the flow's 101 lookups again (the paper, §6). The 72 agents here were never run with a flow.
+- **Counterfactual turns.** A replay counts what the flow would have spared an agent that otherwise acted as recorded. Live, GLM-5.3 made none of the flow's 101 lookups again (the paper, §6). The 72 agents here were never run with a flow. Six of DTap-Bench's seven agents repeated 18 of their 15,706 reads with no write between; gpt-oss-120b repeated a quarter, and its savings are upper bounds.
 - **Detours are lower bounds.** They are 55–72% of the environment's on τ²-bench, and the reach decider's lead in savings comes with more detours than these tables show. The paper's costs make one saved turn worth about 2.4 detours in retail and about 7 in airline and telecom.
 - **One trial each.** BFCL, AgentDojo, WorkBench and DTap-Bench publish one run per model and task (DTap-Bench's latest, where a task was run again), so their intervals are over tasks, with every agent's episode of a task drawn together.
 - **The converters are choices.** Results are rendered as JSON, a listing becomes a label and its items, and every write is labelled by hand from the source, or in DTap-Bench by its verb. Each converter's docstring says what it does, and the checkout's `tools.py` lists every label.
@@ -237,9 +271,11 @@ python3 scripts/agentdojo_to_tau2.py --runs $DATA/agentdojo/runs --out dojo
 python3 scripts/workbench_to_tau2.py --results $DATA/WorkBench/data/results --out wb
 
 # DTap-Bench: huggingface.co/datasets/AI-Secure/DTap-Bench-Agent-Trajectories, each config's
-#   <harness>/<model>/customer-service/benign/<task>/: the latest <time>.json as traj.json, and judge_result.json as judge.json,
-#   in dtap-runs/customer-service/<harness>__<model>/<task>/
+#   <harness>/<model>/<domain>/benign/<task>/: the latest <time>.json as traj.json, and judge_result.json as judge.json,
+#   in dtap-runs/<domain>/<harness>__<model>/<task>/
 python3 scripts/dtap_to_tau2.py --runs dtap-runs --domain customer-service --out dtap
+for d in crm telecom travel; do python3 scripts/dtap_to_tau2.py --runs dtap-runs --domain $d --name dtap_$d --out dtap; done
+python3 scripts/remade.py --results dtap/dtap_telecom/*.json --tau2 dtap/checkout      # repeated reads
 
 # Learn from the older agents, replay the newer ones from the record (here AgentDojo's travel suite)
 target/release/stretto learn --results dojo/travel/gpt-4-0125-preview.json ... \

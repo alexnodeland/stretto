@@ -11,10 +11,14 @@ in order, and counts the lookups the agent made again before the next write.
 For comparison it also counts the agent's repeats of its own reads.
 
     remade.py --domain retail EPISODE_DIR...
+    remade.py --results RESULTS.json... [--tau2 DIR]
 
 An episode folder is laid out as in the published archives
 (`docs/results/*-episodes.tar.gz`): `task-*/trajectory.jsonl` and
-`task-*/flow.jsonl`.
+`task-*/flow.jsonl`. With `--results`, recorded runs with no flow (any
+benchmark laid out as τ²-bench's, `scripts/*_to_tau2.py`), it counts only
+the agent's repeats of its own reads, with no write between: an agent that
+makes a read again is one that may make a lookup's again.
 """
 
 import argparse
@@ -35,11 +39,46 @@ def calls(trajectory: Path) -> list[tuple[str, str]]:
     return out
 
 
+def repeats(results: Path, tau2: Path) -> dict:
+    """An agent's reads in recorded runs, and those it had made already with no write since."""
+    data = json.loads(results.read_text())
+    domain = data["info"]["environment_info"]["domain_name"]
+    if domain in anatomy.READ:
+        reads, writes = anatomy.READ[domain], None
+    else:
+        reads, writes = anatomy.stub_tools(tau2, domain)
+    out = dict(runs=0, reads=0, repeats=0)
+    for sim in data["simulations"]:
+        out["runs"] += 1
+        seen = set()
+        for m in sim["messages"]:
+            if m["role"] != "assistant":
+                continue
+            for c in m.get("tool_calls") or []:
+                if c["name"] in reads:
+                    k = (c["name"], json.dumps(c["arguments"], sort_keys=True))
+                    out["reads"] += 1
+                    out["repeats"] += k in seen
+                    seen.add(k)
+                elif writes is None or c["name"] in writes:
+                    seen = set()  # a write: what was read may have changed
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("episodes", type=Path, nargs="+", help="task-* folders of a live run")
-    ap.add_argument("--domain", required=True, choices=["retail", "airline", "telecom"])
+    ap.add_argument("episodes", type=Path, nargs="*", help="task-* folders of a live run")
+    ap.add_argument("--domain", choices=["retail", "airline", "telecom"])
+    ap.add_argument("--results", type=Path, nargs="+", help="recorded runs, as τ²-bench results")
+    ap.add_argument("--tau2", type=Path, default=Path("../tau2-bench"), help="the checkout those results belong to")
     args = ap.parse_args()
+    if args.results:
+        for path in args.results:
+            r = repeats(path, args.tau2)
+            print(json.dumps({"results": path.name, **r, "share": round(r["repeats"] / max(1, r["reads"]), 4)}))
+        return
+    if not args.domain:
+        ap.error("--domain is required with live episodes")
     reads = anatomy.READ[args.domain]
     tally = dict(episodes=0, lookups=0, matched=0, remade=0, agent_reads=0, agent_repeats=0)
     for ep in args.episodes:
