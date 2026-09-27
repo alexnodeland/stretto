@@ -1,0 +1,116 @@
+{
+ "what": "the live no-flow episodes of AgentDojo, written as \u03c4\u00b2-bench results (pilot/bench/live_to_tau2.py) and replayed from the record with the published flows (pilot/check_flow.py --trace)",
+ "rows": [
+  {
+   "model": "glm-5.3",
+   "suite": "banking",
+   "decider": "reach",
+   "threshold": 0.3,
+   "episodes": 8,
+   "turns": 25,
+   "turns_saved": 0,
+   "flow_lookups": 0,
+   "detours": 0,
+   "unrecorded": 0,
+   "calls_skipped": 0
+  },
+  {
+   "model": "glm-5.3",
+   "suite": "slack",
+   "decider": "reach",
+   "threshold": 0.3,
+   "episodes": 9,
+   "turns": 40,
+   "turns_saved": 3,
+   "flow_lookups": 15,
+   "detours": 2,
+   "unrecorded": 2,
+   "calls_skipped": 13
+  },
+  {
+   "model": "glm-5.3",
+   "suite": "travel",
+   "decider": "reach",
+   "threshold": 0.3,
+   "episodes": 8,
+   "turns": 34,
+   "turns_saved": 3,
+   "flow_lookups": 9,
+   "detours": 1,
+   "unrecorded": 1,
+   "calls_skipped": 8
+  },
+  {
+   "model": "glm-5.3",
+   "suite": "workspace",
+   "decider": "reach",
+   "threshold": 0.3,
+   "episodes": 16,
+   "turns": 49,
+   "turns_saved": 0,
+   "flow_lookups": 0,
+   "detours": 0,
+   "unrecorded": 0,
+   "calls_skipped": 0
+  },
+  {
+   "model": "claude-haiku-4-5-20251001",
+   "suite": "banking",
+   "decider": "reach",
+   "threshold": 0.3,
+   "episodes": 8,
+   "turns": 26,
+   "turns_saved": 0,
+   "flow_lookups": 0,
+   "detours": 0,
+   "unrecorded": 0,
+   "calls_skipped": 0
+  },
+  {
+   "model": "claude-haiku-4-5-20251001",
+   "suite": "slack",
+   "decider": "reach",
+   "threshold": 0.3,
+   "episodes": 9,
+   "turns": 35,
+   "turns_saved": 2,
+   "flow_lookups": 11,
+   "detours": 0,
+   "unrecorded": 0,
+   "calls_skipped": 11
+  },
+  {
+   "model": "claude-haiku-4-5-20251001",
+   "suite": "travel",
+   "decider": "reach",
+   "threshold": 0.3,
+   "episodes": 8,
+   "turns": 29,
+   "turns_saved": 3,
+   "flow_lookups": 9,
+   "detours": 0,
+   "unrecorded": 0,
+   "calls_skipped": 9
+  },
+  {
+   "model": "claude-haiku-4-5-20251001",
+   "suite": "workspace",
+   "decider": "reach",
+   "threshold": 0.3,
+   "episodes": 16,
+   "turns": 46,
+   "turns_saved": 0,
+   "flow_lookups": 0,
+   "detours": 0,
+   "unrecorded": 0,
+   "calls_skipped": 0
+  }
+ ],
+ "total": {
+  "episodes": 82,
+  "turns": 284,
+  "turns_saved": 11,
+  "flow_lookups": 44,
+  "detours": 3
+ }
+}

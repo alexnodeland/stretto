@@ -43,6 +43,7 @@ The [benchmarks page](benchmarks-2026-09-27.md) replayed flows on six more bench
   - On five others, the agents listed the channels to post or invite, and read none. There the walk made 41 of Slack's 43 detours.
   - No Slack pair took more turns.
 - **Promotion cannot split the walk.** `stretto promote`, run on each agent's own sessions of Slack's 12 training tasks, held back the walk's first read. That removed all 43 detours, and with them the saved turns: 72 turns against 75 without a flow, where the walk took 68. Which kind of task it is, the request says, and an MCP proxy does not see the request.
+- **The replay's savings held on the same episodes; its detours did not.** Replayed from the record, the same agents' no-flow episodes projected 11 saved turns. Live, the flow saved 10 in the pairs where the agent used a lookup. But the record found 3 of the 52 live detours: it cannot follow a walk through tools the agent never called.
 - **Cost is not resolved.**
   - Agent input tokens fell 5.4% in AgentDojo, and 8.3% in Slack and travel.
   - Priced as billed, cost varied from run to run by as much as any difference between the arms. In the pairs where the flow made no lookup, cost moved by −5% to +13%.
@@ -141,6 +142,25 @@ Shadow mode and promotion ([results](promotion-2026-09-25.md)) are the deploymen
 
 This test cost 39.0 GLM credits (26.2 for the training sessions, 12.7 for the promoted arm).
 
+## Against the replay, on the same episodes
+
+`pilot/bench/live_to_tau2.py` writes each agent's no-flow episodes as τ²-bench results. `pilot/check_flow.py --trace` then replays them from the record with the same flows, at θ = 0.3, as the benchmarks round replayed the published runs. The projection and the live flow arm then cover the same agents on the same tasks.
+
+| Suite | Replay: turns saved (detours) | Live: turns saved, all pairs | Live: in pairs where the agent used a lookup | Live detours |
+|---|---|---|---|---|
+| Slack | 5 (2) | 7 | 4 | 43 |
+| travel | 6 (1) | 7 | 6 | 8 |
+| banking | 0 (0) | −1 | 0 | 0 |
+| workspace | 0 (0) | 4 | 0 | 1 |
+| all | 11 (3) | 17 | 10 | 52 |
+
+- **The savings held.** The replay projected 11 saved turns, all in Slack and travel. Live, the flow saved 10 in the pairs where the agent used one of its lookups. The rest came from pairs where it used none, within the run-to-run variation.
+- **The detours did not.** The record found 3 of the 52.
+  - Most live detours came from Slack's walk over every channel.
+  - In the five episodes where the walk detoured, the agent read no channel itself, and in some it never listed them either.
+  - The record holds no result, of any shape, for a tool the agent never called, so the replay stops the flow at the first such lookup (`pilot/trace_env.py`). The whole walk goes uncounted.
+  - Detour counts from the record are lower bounds, and on a flow whose detours begin with a tool the agent never called, a loose one. On τ²-bench, replay against the environment found 55–72% of them.
+
 ## Tokens, cost and time
 
 Cost is priced as billed.
@@ -194,6 +214,7 @@ These runs cannot resolve cost, for two reasons.
 - **Left out:** the environments' final states (`state.pkl`), which scoring used.
 
 [live-benchmarks-2026-09-27.json](live-benchmarks-2026-09-27.json) holds every pair's row and every group's summary, as `analyze_bench.py` wrote them.
+[live-benchmarks-2026-09-27-replay.json](live-benchmarks-2026-09-27-replay.json) holds the replay of the no-flow episodes, per model and suite.
 
 ## Reproduce
 
@@ -211,6 +232,15 @@ python run_bench_paired.py bfcl --bfcl-dir bfcl --sample 20 --seed 7 --agent-cli
 python analyze_bench.py runs/dojo/glm runs/dojo/haiku runs/bfcl/glm runs/bfcl/haiku \
     --set "Slack and travel=slack,travel" --set "banking and workspace=banking,workspace" \
     --json live-benchmarks.json --md live-benchmarks.md
+```
+
+The replay of the same episodes, for one model and suite (the checkout is `agentdojo_to_tau2.py`'s, as in [the benchmarks round](benchmarks-2026-09-27.md#reproduce)):
+
+```bash
+python live_to_tau2.py runs/dojo/glm --arm baseline --out work/live-glm
+cd .. && python check_flow.py --domain slack --trials 0 --results work/live-glm/slack.json \
+    --flow FLOWS/agentdojo-slack.flow.json --flow-decider reach --flow-threshold 0.3 --flow-oracle replay \
+    --oracle-cache work/cache --explore 0 --tau2 WORK/dojo/checkout --out work/replay-glm-slack --trace
 ```
 
 The promotion test, for one model:

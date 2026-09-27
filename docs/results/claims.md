@@ -19,7 +19,7 @@ Each number in [the working paper](../../paper/stretto.md)'s abstract and contri
 What the evidence does not show, in brief (the paper's §6 has the rest):
 
 - **Replays assume the agent skips what a lookup already answered.** GLM-5.3 did live. In the record, agents repeat 0.8–2.6% of their reads with no write between on five benchmarks, and a few models many more (gpt-oss-120b 23%, Qwen3.5 Flash 17.5%), whose replayed savings are upper bounds.
-- **Detours from the record are lower bounds**: 55–72% of the environment's on τ²-bench.
+- **Detours from the record are lower bounds.** Replay from the record found 55–72% of the environment's on τ²-bench. Replayed from the same agents' own no-flow episodes on AgentDojo, it found 3 of the 52 the flows made live: the record cannot follow a chain through tools the agent never called. Its projected savings held there: 11 turns, against 10 saved live in the pairs where the agent used a lookup ([results](live-benchmarks-2026-09-27.md#against-the-replay-on-the-same-episodes)).
 - **Few agents live.**
   - On τ²-bench, the use-before-write speculator ran live with GLM-5.3 only.
   - On AgentDojo and BFCL, it ran with GLM-5.3 and Claude Haiku 4.5, one run per arm ([results](live-benchmarks-2026-09-27.md)).

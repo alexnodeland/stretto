@@ -10,9 +10,14 @@ is the only kind the replay rule counts. A lookup the agent never made before
 its next write is a detour whatever it returned; the record cannot say what
 that was, so it returns what another call of the same tool returned in the
 episode (the nearest before it, else after it), a result of the right shape
-for the flow's next decisions to read, or an empty one if the tool was never
-called; `guessed` marks it, and check_flow.py never counts it as a saving,
-even when the agent's own call after a write returned the same. So on any
+for the flow's next decisions to read; `guessed` marks it, and check_flow.py
+never counts it as a saving, even when the agent's own call after a write
+returned the same. A lookup of a tool the agent never called in the episode
+has no result of any shape to stand in, so the flow stops there, and the
+lookup is not counted: a detour that starts a chain of such lookups is missed
+with the whole chain. Detours from the record are lower bounds for this
+reason too (on AgentDojo's live runs, the record found 3 of the 52
+detours the flows made, docs/results/live-benchmarks-2026-09-27.md). So on any
 benchmark whose trajectories keep each call's result, a replay needs only the
 record and which tools write.
 

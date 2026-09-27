@@ -292,6 +292,8 @@ Of AgentDojo's 88 lookups, 36 were calls the agent also made in its episode with
 
 Which kind of task it is, the request says (§6).
 
+Replayed from the record, the same agents' own no-flow episodes projected 11 saved turns, all in Slack and travel. Live, the speculator saved 10 in the pairs where the agent used one of its lookups. The replay's savings held on these agents. Its detours did not: the record found 3 of the 52. A lookup of a tool the agent never called in the episode has no recorded result to replay, so the record misses a walk through such tools whole.
+
 *Table 5b. Live in AgentDojo's and BFCL's own environments. GLM-5.3 and Claude Haiku 4.5 pooled, one run per arm, each task scored by the benchmark's check. 95% intervals from a bootstrap over tasks, with a task's pairs drawn together.*
 
 | | Pairs | LLM turns, without → with | Change | Pairs fewer / more | Passed, without → with |

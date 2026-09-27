@@ -19,6 +19,7 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
   - `run_bench_episode.py` runs one episode in Claude Code and scores it with the benchmark's own check. It stops with a clear error when the task's server never started.
   - `run_bench_paired.py` runs every held-out task in both arms, resumably. It runs every task's first arm and then every task's second, so that two arms sharing a prompt prefix do not share the prompt cache.
   - `run_bench_paired.py --split train` runs the training tasks, to record an agent's own sessions for `stretto promote`.
+  - `live_to_tau2.py` writes a live run's episodes as τ²-bench results, so the same episodes can be replayed from the record. Replayed there, the no-flow episodes projected 11 saved turns, against 10 saved live where the agent used a lookup. They found 3 of the 52 live detours, because the record cannot follow a chain through tools the agent never called (`pilot/trace_env.py` now says so).
   - `analyze_bench.py` pairs the arms by task, each arm known by its label, so a promoted flow can run as an arm of its own. It reports:
     - bootstrap intervals over tasks, with a task's pairs for all models drawn together;
     - an exact sign test;
