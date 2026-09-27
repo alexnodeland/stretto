@@ -19,7 +19,8 @@ With `--versus`, the second set replays the same episodes under another
 decider, and each domain's differences (second minus first) get 95% intervals
 from a bootstrap over tasks, one resample shared by both sets and all agents.
 
-A folder's domain is read from its name (`c-<domain>-...`, or `solo`).
+A folder's domain is read from its name (`c-<domain>-...`, or `solo`), any
+benchmark's domain laid out as τ²-bench's (`scripts/*_to_tau2.py`).
 """
 
 import argparse
@@ -35,7 +36,8 @@ def domain_of(name: str) -> str:
     for d in ("retail", "airline", "telecom", "solo"):
         if name.startswith(f"c-{d}-") or f"-{d}" in name:
             return d
-    return "other"
+    # Another benchmark's domain, laid out as τ²-bench's: `c-<domain>-...`.
+    return name[2:].split("-", 1)[0] if name.startswith("c-") else "other"
 
 
 def lookups(replay: Path) -> tuple[list[tuple[float, bool, float, str]], int]:

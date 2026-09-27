@@ -46,6 +46,14 @@ makes the lookup later, before its next write, and it is not made yet;
 lookup spares a call of; and `next` if it is the agent's very next call.
 `--explore 0` explores nothing and still writes them.
 
+`--trace` answers every call from the recorded trajectory instead of an
+environment (`trace_env.py`): a lookup returns what the agent's own later call
+returned, if it made one before its next write, which is exact; a detour, which
+the record cannot answer, returns another call of the same tool's result. It
+replays another benchmark laid out as τ²-bench's results and checkout (`--tau2`
+with that domain's `tools.py`, whose decorators say which tools write, and its
+split).
+
 By default each episode's tools run in their own `tau2_mcp.py` process over
 MCP, as the agent's would, and episodes replay one at a time. Most of that
 time is spent starting Python and importing τ²-bench. `--in-process` calls
@@ -159,6 +167,19 @@ async def replay(task_id: str, messages: list, episode: Path, address: str, args
     episode.mkdir(parents=True, exist_ok=True)
     for stale in ("trajectory.jsonl", "tools-state.json"):
         (episode / stale).unlink(missing_ok=True)
+    if getattr(args, "trace", False):
+        import trace_env
+
+        server = trace_env.TraceEpisode(
+            messages, WRITES, task_id, episode, MAX_CALLS, address, FLOW_MAX, FLOW_BUDGET,
+            record_answers=exploring(args),
+        )
+        server.save_state()
+
+        async def call(name: str, arguments: dict) -> str:
+            return server.call(name, arguments)[0]
+
+        return await walk(messages, episode, call, task_id, guessed=server.guessed)
     if getattr(args, "in_process", False):
         import tau2_mcp
 
@@ -217,13 +238,15 @@ def label(answer: dict, made: set, recorded: set, turn_of: dict, name: str,
     return {**answer, "labels": labels, "episode": name}
 
 
-async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
+async def walk(messages: list, episode: Path, call, task_id: str, guessed: list | None = None) -> dict:
     """Replay the recorded calls through `call`, skipping those a flow lookup
     answered: the same call, made by the flow and not yet used by a recorded
     call, that returned what the recorded call returned (with no write since,
     the agent's or the customer's, it did). A lookup that answers none is a
     detour. The agent's own repeated calls are made again, as they were. With
-    --legacy, any recorded call already made is skipped."""
+    --legacy, any recorded call already made is skipped. `guessed` marks, in
+    order, the lookups a trace replay answered with a stand-in: they are
+    detours whatever they returned."""
     trajectory = episode / "trajectory.jsonl"
     agent = [m for m in messages if m["role"] == "assistant"]
     recorded = {key(c["name"], c["arguments"]) for m in agent for c in m.get("tool_calls") or []}
@@ -309,7 +332,7 @@ async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
             k = key(c["name"], c["arguments"])
             if not LEGACY:
                 r = recorded_out.get((i, j))
-                hit = next((f for f in fresh if not f["used"] and f["key"] == k
+                hit = next((f for f in fresh if not f["used"] and not f["guessed"] and f["key"] == k
                             and (not f["stale"] or (r is not None and f["out"] == r))), None)
                 if hit is None and SAME_RESULT and results.get(c.get("id")) is not None:
                     r = same(results[c.get("id")])
@@ -369,7 +392,8 @@ async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
             for f in flow_calls(text):
                 made.add(f)
                 by_flow.append(f)
-                fresh.append({"key": f, "out": outs.get(f), "used": False, "stale": False, "at": i})
+                g = guessed is not None and len(by_flow) <= len(guessed) and guessed[len(by_flow) - 1]
+                fresh.append({"key": f, "out": outs.get(f), "used": False, "stale": False, "at": i, "guessed": g})
             if SAME_RESULT:
                 for f, out in outs.items():
                     returned.setdefault(f[0], []).append((f, out))
@@ -389,6 +413,7 @@ async def walk(messages: list, episode: Path, call, task_id: str) -> dict:
         "used_later": used_later,
         "flow_lookups": state.get("flow_lookups"),
         "flow_queries": state.get("flow_queries"),
+        "unrecorded": state.get("unrecorded", 0),
         "detours": sum(1 for f in by_flow if f not in recorded and f not in twins) if LEGACY else len(by_flow) - used,
     }
 
@@ -480,6 +505,10 @@ def main() -> None:
     )
     parser.add_argument("--explore-seed", type=int, default=0, help="seed for the exploration draws")
     parser.add_argument("--in-process", action="store_true", help="call tau2_mcp.Episode directly instead of over MCP")
+    parser.add_argument(
+        "--trace", action="store_true",
+        help="answer every call from the recorded trajectory (trace_env.py), with no environment",
+    )
     parser.add_argument("--jobs", type=int, default=1, help="episodes to replay at once")
     parser.add_argument(
         "--same-result", action="store_true",
@@ -493,7 +522,12 @@ def main() -> None:
     global SAME_RESULT, LEGACY, WRITES
     SAME_RESULT = args.same_result
     LEGACY = args.legacy
-    WRITES = write_tools(args.domain, getattr(args, "solo", False))
+    if args.trace and args.domain not in ("retail", "airline", "telecom"):
+        import trace_env
+
+        WRITES = trace_env.declared(args.tau2 / f"src/tau2/domains/{args.domain}/tools.py")[1]
+    else:
+        WRITES = write_tools(args.domain, getattr(args, "solo", False))
     episodes = recorded_episodes(args)
     if not episodes:
         parser.error("nothing to replay")

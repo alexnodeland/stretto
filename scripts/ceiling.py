@@ -74,7 +74,13 @@ def main():
     for path in args.results:
         data = json.loads(Path(path).read_text())
         sims = data["simulations"]
-        domain = domain_of(sims)
+        named = data.get("info", {}).get("environment_info", {}).get("domain_name")
+        if named not in ("retail", "airline", "telecom") and (Path(args.tau2) / f"src/tau2/domains/{named}/tools.py").exists():
+            # Another benchmark in τ²-bench's layout: its tools say which read.
+            domain = named
+            anatomy.READ.setdefault(domain, anatomy.stub_tools(args.tau2, domain)[0])
+        else:
+            domain = domain_of(sims)
         test = set(json.loads((Path(args.tau2) / f"data/tau2/domains/{domain}/split_tasks.json").read_text())["test"])
         sims = [s for s in sims if str(s["task_id"]) in test and s.get("trial", 0) in (0, 1, 2, 3)]
         writes = {c["name"] for s in sims for m in s["messages"] for c in m.get("tool_calls") or []

@@ -273,6 +273,22 @@ def tree(train, with_goal, max_depth=6, min_leaf=5, counts=False):
     predict.roots = roots  # per site: (node, depth), for reading the tree
     predict.everything = everything  # the node for a site training never saw
     return predict
+
+
+def stub_tools(tau2, domain):
+    """The reads and writes a tools.py marks with τ²-bench's decorator: another
+    benchmark laid out as τ²-bench's checkout (scripts/bfcl_to_tau2.py)."""
+    reads, writes, pending = set(), set(), None
+    for line in (Path(tau2) / f"src/tau2/domains/{domain}/tools.py").read_text().splitlines():
+        t = line.strip()
+        if t.startswith("@is_tool(ToolType."):
+            pending = t.split(".", 1)[1].split(")")[0]
+        elif t.startswith("def ") and pending is not None:
+            (writes if pending == "WRITE" else reads).add(t[4:].split("(")[0].strip())
+            pending = None
+    return reads, writes
+
+
 def walk(sim, domain, writes):
     """Turns, calls (with argument classes) and decisions of one episode."""
     messages = sim["messages"]
