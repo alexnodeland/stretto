@@ -112,10 +112,10 @@
   .cval { position: absolute; font: 650 36px/56px var(--sans); color: var(--text); white-space: nowrap; }
   .clab { position: absolute; left: 0; font-size: 22px; color: var(--muted); }
   .foot { position: absolute; left: 1060px; top: 452px; width: 720px; font-size: 22px; line-height: 1.45; color: var(--subtle); }
-  .fact { position: absolute; top: 720px; width: 780px; border-top: 2px solid var(--border); padding-top: 26px; }
-  .fact .big { font-size: 64px; font-weight: 650; letter-spacing: -0.035em; line-height: 1; }
-  .fact .txt { font-size: 26px; line-height: 1.42; color: var(--muted); margin-top: 14px; }
-  .fact .txt .s { color: var(--subtle); font-size: 22px; display: block; margin-top: 6px; }
+  .fact { position: absolute; top: 712px; width: 500px; border-top: 2px solid var(--border); padding-top: 24px; }
+  .fact .big { font-size: 58px; font-weight: 650; letter-spacing: -0.035em; line-height: 1; }
+  .fact .txt { font-size: 24px; line-height: 1.4; color: var(--muted); margin-top: 14px; }
+  .fact .txt .s { color: var(--subtle); font-size: 20px; line-height: 1.4; display: block; margin-top: 8px; }
 
   /* Get started */
   .cmd { position: absolute; left: 140px; width: 1640px; border-radius: 16px; background: var(--surface-2); box-shadow: inset 0 0 0 1.5px var(--border); padding: 26px 32px; font: 24px/1.45 var(--mono); color: var(--text); white-space: pre; }
@@ -184,7 +184,7 @@
     <div class="pkt res" id="q3" style="left:1340px"></div>
     <div class="pkt res" id="q4" style="left:730px"></div>
     <div class="logs" id="logs" style="left:810px"><span id="l1"></span><span id="l2"></span><span id="l3"></span><span id="l4"></span><span id="l5" class="now"></span></div>
-    <div class="loglabel" id="loglabel" style="left:810px">~/.stretto/logs/*.jsonl</div>
+    <div class="loglabel" id="loglabel" style="left:810px">~/.stretto/logs/orders/*.jsonl</div>
     <p class="cap" id="rc"><code>stretto-proxy</code> wraps any MCP server: the host runs it in place of the server's command, and it records each session.</p>
   </section>
 
@@ -257,16 +257,17 @@
       <div class="cval" id="cv2" style="top:150px;left:422px">224</div>
     </div>
     <div class="foot" id="rfoot">Passed: 24 without, 21 with. Twenty-eight tasks cannot tell an effect on success from the agent's own variance.</div>
-    <div class="fact" id="f1" style="left:140px"><div class="big">86.4%</div><div class="txt">of retail's read-only ceiling, 10.2 points more than the next-step speculator<span class="s">Replay, τ²-bench, nine agents it never saw</span></div></div>
-    <div class="fact" id="f2" style="left:1000px"><div class="big">39 of 40</div><div class="txt">held-out tasks, where no user speaks, at 0.48 LLM turns per ticket, against 15.9<span class="s">τ²-bench solo telecom: a procedure compiled once, GLM-5.3 on its four hand-backs</span></div></div>
+    <div class="fact" id="f3" style="left:140px"><div class="big">10.1%</div><div class="txt">fewer LLM turns, live, in AgentDojo's Slack and travel suites (95% CI 5.8–14.0%); no effect in BFCL<span class="s">The suites where the replay found reads to take. GLM-5.3 and Claude Haiku 4.5, one run per arm, in the benchmarks' own environments</span></div></div>
+    <div class="fact" id="f1" style="left:710px"><div class="big">86.4%</div><div class="txt">of retail's read-only ceiling, 10.2 points more than the next-step speculator<span class="s">Replay, τ²-bench, nine agents it never saw</span></div></div>
+    <div class="fact" id="f2" style="left:1280px"><div class="big">39 of 40</div><div class="txt">held-out tasks, where no user speaks, at 0.48 LLM turns per ticket, against 15.9<span class="s">τ²-bench solo telecom: a procedure compiled once, GLM-5.3 on its four hand-backs</span></div></div>
   </section>
 
   <!-- 5. Get started -->
   <section class="scene" id="start">
     <h2 class="title">Get started</h2>
-    <div class="cmd" id="cmd1" style="top:300px"><span class="p">$</span><span id="cmd1t" data-full="cargo install --git https://github.com/alexnodeland/stretto --tag v0.1.0 stretto-proxy stretto-report"></span></div>
-    <div class="cmd" id="cmd2" style="top:420px"><span class="p">$</span><span id="cmd2t" data-full="stretto-proxy --record ~/.stretto/logs --domain orders -- &lt;your MCP server&gt;"></span></div>
-    <p class="cap" id="gcap" style="top:560px">Then learn a flow, review it and serve it. The walkthrough runs the whole loop on the official MCP filesystem server, with no key.</p>
+    <div class="cmd" id="cmd1" style="top:300px"><span class="p">$</span><span id="cmd1t" data-full="cargo install --locked --git https://github.com/alexnodeland/stretto stretto-report stretto-proxy"></span></div>
+    <div class="cmd" id="cmd2" style="top:420px"><span class="p">$</span><span id="cmd2t" data-full="stretto init --host claude-code --domain orders -- &lt;your MCP server&gt;"></span></div>
+    <p class="cap" id="gcap" style="top:560px">stretto init prints the host's configuration and the steps from there to a served flow. The quickstart runs the whole loop on a demo shop, with no key and no network.</p>
     <div class="link" id="lk1" style="top:760px"><span class="l">Docs</span>alexnodeland.github.io/stretto</div>
     <div class="link" id="lk2" style="top:850px"><span class="l">Code</span>github.com/alexnodeland/stretto <span style="font-size:30px;font-weight:500;color:var(--subtle);margin-left:18px">MIT · Rust</span></div>
   </section>

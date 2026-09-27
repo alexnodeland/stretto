@@ -236,8 +236,9 @@
       tl.key('cb2', 'sx', [t0 + 3.1, 0], [t0 + 4.1, 1]);
       fadeIn(tl, 'cv2', t0 + 3.8, 0.4, 0);
       fadeIn(tl, 'rfoot', t0 + 4.6, 0.6, 8);
-      fadeIn(tl, 'f1', t0 + 6.4, 0.7, 16);
-      fadeIn(tl, 'f2', t0 + 7.2, 0.7, 16);
+      fadeIn(tl, 'f3', t0 + 6.2, 0.7, 16);
+      fadeIn(tl, 'f1', t0 + 7.0, 0.7, 16);
+      fadeIn(tl, 'f2', t0 + 7.8, 0.7, 16);
       t = end;
     }
 
