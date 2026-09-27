@@ -234,6 +234,20 @@ A threshold per decision is only as good as each score where it is priced, and t
 
 Changes are against θ* with the model's scores. Calibrating the sites removes most of retail's loss, which was the miscalibrated sites', and leaves the threshold per decision within 5% of θ* everywhere. With a prior of 10 lookups it overfits airline's twenty test tasks. The served threshold stays the domain's: pricing each decision gains little once the scores are right on average, and costs much where they are not.
 
+## In seconds and dollars
+
+τ²-bench's recorded episodes report each LLM turn's generation time and cost for six of the paper's agents: Claude Opus and Sonnet 4.5, Gemini Pro and Flash, and GPT-5.2 at high and no reasoning. `pilot/check_flow.py` now names the turns a replay saved (`saved_at`), and `scripts/priced.py` prices them. It charges each detour the domain's counted detour tokens at the agent's input price, fitted on the agent's own turns. The replays are the paper's, at θ = 0.3.
+
+| Domain | Turns saved, reach / next-step | Generation time saved per episode | Share of generation time | Cost saved per episode, net of detours | Share of cost |
+|---|---|---|---|---|---|
+| Retail | 28.3% / 24.9% | 35.6 s / 30.7 s | 23.6% / 20.4% | $0.026 / $0.022 | 18.1% / 15.2% |
+| Airline | 10.9% / 10.8% | 17.0 s / 16.7 s | 7.2% / 7.1% | $0.012 / $0.012 | 6.5% / 6.4% |
+| Telecom | 12.4% / 11.4% | † | † | $0.029 / $0.028 | 12.1% / 11.7% |
+
+† Some of telecom's turns report no generation time for four of the six agents.
+
+A turn that only reads generates less than one that replies, so a saved turn is worth less than the average turn, in seconds and in dollars. Per agent in retail, the saved turns are 17–26% of the generation time and 9–22% of the cost. GPT-5.2's share of the cost is lowest, since its reasoning makes its other turns dear. The costs are the benchmark's own records.
+
 ## What the binder learned
 
 ### Lists
@@ -313,6 +327,7 @@ python3 pilot/check_flow.py --domain retail --trials 0 1 2 3 --results .data/tau
     --flow pool-retail.flow.json --flow-decider reach --flow-threshold 0.1 --flow-oracle replay --explore 0 \
     --in-process --tau2 ../tau2-bench --out perdec/c-retail-glm-5_enabled_retail_gpt-5.2_4trials   # each agent and domain
 python3 scripts/per_decision.py --replays perdec --results .data/tau2-targets --sweep sweep --tau2 ../tau2-bench --recalibrate 40
+python3 scripts/priced.py --replays priced --results .data/tau2-targets        # replays at 0.3, rerun with saved_at
 ```
 
 The rows behind every table are in [benchmarks-2026-09-27.json](benchmarks-2026-09-27.json): the trace-versus-environment comparison, each agent's ceiling, every replay's totals and episodes, the calibration summaries, the list ablation, the WorkBench runs before bare calls were counted, DTap-Bench by the flow's source, and the per-decision evaluation. The flows every replay served are in [benchmarks-2026-09-27-flows.tar.gz](benchmarks-2026-09-27-flows.tar.gz).

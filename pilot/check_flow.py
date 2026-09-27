@@ -322,6 +322,7 @@ async def walk(messages: list, episode: Path, call, task_id: str, guessed: list 
         ahead_of[(i, j)] = later
         next_of[(i, j)] = next((k2 for _, _, k2, _ in flat[n + 1:] if k2 is not None), None)
     turns = tool_turns = saved = calls = skipped = used_next = used_later = 0
+    saved_at: list[int] = []  # the messages of the turns saved, to price them (scripts/priced.py)
     executed_in: list[int] = []  # the messages whose calls the replay made
     for i, m in enumerate(messages):
         if m["role"] == "tool":
@@ -413,6 +414,8 @@ async def walk(messages: list, episode: Path, call, task_id: str, guessed: list 
                 for f, out in outs.items():
                     returned.setdefault(f[0], []).append((f, out))
         saved += left == 0
+        if left == 0:
+            saved_at.append(i)
     if pairs:
         (episode / "same-result.json").write_text(json.dumps(pairs))
     state = json.loads((episode / "tools-state.json").read_text())
@@ -422,6 +425,7 @@ async def walk(messages: list, episode: Path, call, task_id: str, guessed: list 
         "turns": turns,
         "tool_turns": tool_turns,
         "turns_saved": saved,
+        "saved_at": saved_at,
         "calls": calls,
         "calls_skipped": skipped,
         "used_next": used_next,
@@ -580,7 +584,7 @@ def main() -> None:
     finally:
         serve.terminate()
         serve.wait(timeout=30)
-    total = {k: sum(r[k] for r in rows) for k in rows[0] if k not in ("episode", "task_id")}
+    total = {k: sum(r[k] for r in rows) for k in rows[0] if k not in ("episode", "task_id", "saved_at")}
     total["episodes"] = len(rows)
     total["turns_saved_share"] = round(total["turns_saved"] / max(total["turns"], 1), 4)
     total["episodes_with_detour"] = sum(1 for r in rows if r["detours"])
