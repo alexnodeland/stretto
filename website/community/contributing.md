@@ -21,6 +21,9 @@ docs/              the design, formats, CLI reference, privacy, review, roadmap,
 paper/             the working paper
 site/              the research notebook
 website/           this site
+examples/          the no-key quickstart that CI runs
+packaging/         the Homebrew formula and the installers' test
+brand/             the brand kit, the explainer and the videos
 ```
 
 ## Build and test
@@ -33,9 +36,13 @@ cargo test
 
 `cargo test` runs the unit tests, and Phase 0 on a miniature fixture checkout. CI runs the three, and then:
 
+- [the quick start's demo](/guide/quick-start#2-see-the-whole-loop-with-no-key), with no key and no network (`sh examples/quickstart/run.sh --bin target/debug`);
+- `install.sh` against a local release of stand-in binaries (`sh packaging/test-install.sh`), and shellcheck on the shell scripts;
 - [the walkthrough](/guide/walkthrough), end to end on the official MCP filesystem server (`python3 scripts/walkthrough.py --bin target/debug`);
 - the proxy in front of the reference Streamable HTTP server (`python3 scripts/http_check.py --bin target/debug`);
 - the doctests of `scripts/telecom_workflow.py` and `scripts/ceiling.py`, and the benchmarks round's scripts on a fixture.
+
+On macOS and Windows, CI builds the four programs and runs each one's `--version`.
 
 ## Conventions
 
