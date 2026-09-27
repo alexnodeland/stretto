@@ -36,6 +36,8 @@
 //! JSON body. A GET stream sends one log message of the server's own and
 //! stays open until the session is deleted. With `--require-auth VALUE`,
 //! a request without `Authorization: VALUE` is refused (401).
+//!
+//! `--version` prints its version and `--help` its usage.
 
 use serde_json::{json, Value};
 use std::io::{self, BufRead, Write};
@@ -43,6 +45,9 @@ use std::time::Duration;
 
 /// Protocol version to offer when the client names none.
 const DEFAULT_PROTOCOL_VERSION: &str = "2025-06-18";
+
+const USAGE: &str =
+    "usage: stretto-mcp-demo [--world echo|retail] [--http ADDR [--require-auth VALUE]]";
 
 /// Which tools the server has.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -55,6 +60,17 @@ enum World {
 
 fn main() -> io::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    match args.as_slice() {
+        [flag] if flag == "-h" || flag == "--help" => {
+            println!("A tiny MCP server over stdio, for trying stretto-proxy.\n\n{USAGE}");
+            return Ok(());
+        }
+        [flag] if flag == "-V" || flag == "--version" => {
+            println!("stretto-mcp-demo {}", env!("CARGO_PKG_VERSION"));
+            return Ok(());
+        }
+        _ => {}
+    }
     let (mut world, mut http, mut auth) = (Some(World::Echo), None, None);
     let mut rest = args.iter().map(String::as_str);
     while let Some(arg) = rest.next() {
@@ -67,9 +83,7 @@ fn main() -> io::Result<()> {
         }
     }
     let Some(world) = world else {
-        eprintln!(
-            "usage: stretto-mcp-demo [--world echo|retail] [--http ADDR [--require-auth VALUE]]"
-        );
+        eprintln!("{USAGE}");
         std::process::exit(2);
     };
     if let Some(addr) = http {
