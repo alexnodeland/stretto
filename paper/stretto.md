@@ -305,7 +305,9 @@ The procedure is a file stretto runs: `stretto-procedure` executes it against an
 
 **Where no user speaks is τ²-bench's own variant.** The compiled procedure was fitted on 730 successful episodes of one customer's base tasks, carried to renamed and moved customers, and hands back what its own check cannot confirm; its one missed failure shows that the check is only as good as the outcome the ticket states. Procedures need many consistent demonstrations: fitted on a quarter of the training tasks it passed 18 of 40. A compiled procedure is cloned behavior, whose errors compound once a run leaves the states its demonstrators visited [DAgger]; the outcome check bounds what that costs, by handing such runs back.
 
-**Simulated users.** τ²-bench's users are LLMs, and so are the users of our live runs. BFCL's, AgentDojo's and WorkBench's requests were written by their authors, but one request per task is not a user.
+**What a proxy sees.** An MCP proxy sees the agent's calls and their results, not the user's words. Binding values the request names would add 5–9 points of turns in BFCL, AgentDojo, WorkBench and DTap-Bench (§4.1), and takes a host that shares the conversation with the speculator.
+
+**Simulated users.** τ²-bench's users are LLMs, and so are the users of our live runs. BFCL's, AgentDojo's, WorkBench's and DTap-Bench's requests were written by their authors, but one request per task is not a user.
 
 **Availability.** stretto's code, the flows every replay and live run served, the rows behind every table and figure, and the live episodes are published at https://github.com/alexnodeland/stretto; each number here is recomputed from them by the commands on the round's results page.
 
