@@ -215,6 +215,14 @@ export default defineConfigWithTheme<ThemeConfig>({
         devServer: !isBuild
       })
 
+      // Short inline code (an option, a command, a field) is not broken across lines,
+      // such as `--` at a hyphen; longer code still wraps.
+      const codeInline = md.renderer.rules.code_inline!
+      md.renderer.rules.code_inline = (tokens, idx, options, env, self) => {
+        if (tokens[idx].content.length <= 24) tokens[idx].attrJoin('class', 'nobr')
+        return codeInline(tokens, idx, options, env, self)
+      }
+
       // ```mermaid blocks render as diagrams, in the browser.
       const fence = md.renderer.rules.fence!
       md.renderer.rules.fence = (tokens, idx, options, env, self) => {

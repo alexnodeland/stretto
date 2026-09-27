@@ -161,6 +161,11 @@
   }
 }
 
+/* Short inline code (config.mts marks it) stays on one line. */
+.vp-doc code.nobr {
+  white-space: nowrap;
+}
+
 /* A table's first column names things (a command, a field, a variable): keep each whole. */
 .vp-doc td:first-child > code,
 .vp-doc td:first-child > a > code {
