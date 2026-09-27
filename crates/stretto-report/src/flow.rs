@@ -1225,7 +1225,7 @@ pub struct Bindings {
         skip_serializing_if = "BTreeMap::is_empty",
         with = "stretto_model::pairs"
     )]
-    constants: BTreeMap<(String, String), Value>,
+    pub(crate) constants: BTreeMap<(String, String), Value>,
 }
 
 /// How many values of a lookup's argument the agent took from one source at

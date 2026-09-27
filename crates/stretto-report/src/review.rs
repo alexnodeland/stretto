@@ -842,6 +842,34 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
     }
     sections.push(("Sources by site".to_string(), by_site));
 
+    // Constants the binding passes as the agent always did (`learn --constants`).
+    // A new or changed one needs review: it could be a value of one user's
+    // that every training session happened to share.
+    let mut constants = Vec::new();
+    let (ca, cb) = (old.bindings.constants(), new.bindings.constants());
+    for key in ca.keys().chain(cb.keys()).collect::<BTreeSet<_>>() {
+        let (tool, arg) = key;
+        match (ca.get(key), cb.get(key)) {
+            (Some(a), Some(b)) if a != b => {
+                constants.push(format!("`{tool}` `{arg}`: `{a}` → `{b}`"));
+                review.push(format!(
+                    "a changed constant: `{tool}`'s `{arg}` is now `{b}`"
+                ));
+            }
+            (None, Some(b)) => {
+                constants.push(format!("`{tool}` `{arg}`: `{b}`"));
+                review.push(format!(
+                    "a new constant: `{tool}`'s `{arg}` is always `{b}`"
+                ));
+            }
+            (Some(a), None) => {
+                constants.push(format!("`{tool}` `{arg}` no longer passes `{a}`"));
+            }
+            _ => {}
+        }
+    }
+    sections.push(("Constants".to_string(), constants));
+
     // Pinned input contracts: the server's arguments when each flow learned.
     let mut pinned = Vec::new();
     let tools: BTreeSet<&String> = old
@@ -1101,6 +1129,25 @@ mod tests {
             d.markdown
         );
         assert!(d.needs_review.is_empty(), "{:?}", d.needs_review);
+    }
+
+    #[test]
+    fn a_new_constant_needs_review() {
+        let old = example("retail-5-sessions");
+        let mut new = old.clone();
+        new.bindings.constants.insert(
+            ("get_order_details".to_string(), "page_size".to_string()),
+            serde_json::json!(100),
+        );
+        let d = diff(&old, &new, 0.05, 0.3);
+        assert_eq!(d.needs_review.len(), 1, "{:?}", d.needs_review);
+        assert!(d.needs_review[0]
+            .contains("a new constant: `get_order_details`'s `page_size` is always `100`"));
+        assert!(show(&new, 0.3).contains("- `get_order_details` `page_size`: `100`"));
+        // Dropping it makes fewer lookups the agent's own: listed, not flagged.
+        let back = diff(&new, &old, 0.05, 0.3);
+        assert!(back.needs_review.is_empty(), "{:?}", back.needs_review);
+        assert!(back.markdown.contains("no longer passes `100`"));
     }
 
     #[test]

@@ -79,6 +79,7 @@ What to check, section by section:
 - **Sites.** After each call: the lookups the flow may make next, how often the agent made each in training, and what the flow does there with the habit alone. That last column uses the threshold the flow will be served with (`--threshold`, as `stretto-proxy --flow-threshold`). It pools over what came before the call, so a live decision near the threshold can go either way. A lookup seen once or twice is a thin basis.
 - **Bindings.** Where each required argument comes from, and how often that way gave the agent's own arguments. "Nothing" means the flow never makes that lookup itself. Here, `find_user_id_by_email` needs an email only the customer knows. Where a flow counts them, further columns give the chance where the customer had named another record, and where the record they described had already been read.
 - **Sources by site**, when a flow has them: where an argument has more than one source, the order the binding tries them after a call, as the agent used them there. A reorder adds no source; a new source shows under Bindings.
+- **Constants**, when a flow has them (`learn --constants`): arguments the agent passed with one value every time, which the flow passes as the agent did. Check that each is a value every call should pass, such as a page size, and not one user's id that the training sessions happened to share.
 - **Code features**, when a flow has them, hold values copied from training outputs. Treat such a flow like the data it was learned from.
 - **Arbiter.** A flow with an arbiter asks a System-One model at each decision and sends it the conversation so far. The section shows the arbiter's weights, the model's record, and the text of each yes/no predicate it asks alongside.
 
@@ -96,9 +97,10 @@ The diff speaks in the same terms as `flow-show` and lists first what needs a re
 | A lookup offered after a call where it was not | Yes |
 | Every read tool offered after every call (`--manifest-options`) | Yes |
 | An argument bound from a new source (tool and JSON path) | Yes |
+| A new or changed constant (`learn --constants`) | Yes: it could be one user's value that every training session shared |
 | An arbiter added, another System-One model, or new or reworded predicates | Yes: the flow sends the conversation to a model, or asks it something new |
 | A site newly promoted, or a promotion lifted (`stretto promote`), or a site a search switched off switched back on | Yes: the flow acts after a call where it handed back |
-| Lookups, sources or an arbiter removed, a tool no longer read-only, a site no longer promoted or switched off | No: the flow does less |
+| Lookups, sources, constants or an arbiter removed, a tool no longer read-only, a site no longer promoted or switched off | No: the flow does less |
 | A site's own threshold set, raised or lowered (`stretto search`) | No; listed. It moves the bar for lookups the flow could already make there, as `--threshold` does |
 | What the flow does after each call with the habit alone, at `--threshold` (0.3) | No; listed |
 | The source a binding tries first after a call (`bindings.site_sources`) | No; listed. It orders sources the flow could already bind from |
