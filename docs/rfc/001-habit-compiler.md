@@ -1236,7 +1236,7 @@ What this changes:
 - **§3.3's scores:** a threshold per decision needs each lookup scored right where it is priced, which the product of the tool's chance and the argument's is not at every site; counting each lookup's own use at its site comes first.
 - **§3.6's System-One layer, again:** a speculator that binds the user's words needs the conversation, which an MCP proxy does not see; a host that shares it could ask the arbiter's model for the value, which picks it for a third to a half of what the words add (the fifth count).
 - **§3.26's procedures, beyond telecom:** in the benchmarks without a simulated user, 4–37% of episodes pass no value the agent composed, and at most 8% none from the request either, so a procedure compiled there would need a model to read the request and most often one to write.
-- **Next:** calibrating each site and a live check in another harness. DTap-Bench's other domains with benign runs have 4–34 tasks each.
+- **Next:** calibrating each site and a live check in another harness. DTap-Bench's browser and macOS domains, too small to learn from, have almost no ceiling: their calls act on a screen and return the one they leave.
 
 ## 4. Drawbacks
 
