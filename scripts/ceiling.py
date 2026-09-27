@@ -80,13 +80,22 @@ MAX_OPTIONS = 255  # a Choice question's limit
 
 
 def words_of(text: str) -> list:
-    """The words of a text, trimmed of the punctuation around them."""
+    """The words of a text, trimmed of the punctuation around them.
+
+    >>> words_of("Find the Desk Lamp, please!")
+    ['Find', 'the', 'Desk', 'Lamp', 'please']
+    """
     return [w for w in (t.strip(".,;:!?-") for t in SPAN.findall(text)) if w]
 
 
 def spans(said: str, longest: int = 6) -> list:
     """What a model may pick as a value the customer wrote: every run of one to `longest` words of `said` that
-    neither starts nor ends with a common word, the latest first, at most MAX_OPTIONS."""
+    neither starts nor ends with a common word, the latest first, at most MAX_OPTIONS.
+
+    >>> options = spans("find the desk lamp i bought")
+    >>> options[0], "desk lamp" in options, "the desk" in options
+    ('bought', True, False)
+    """
     words = words_of(said)
     ends = {}
     for n in range(1, longest + 1):

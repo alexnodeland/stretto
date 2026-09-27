@@ -37,6 +37,8 @@ jobs:
       - run: python3 scripts/http_check.py --bin target/debug
       # The compiled workflow's binding rules (scripts/telecom_workflow.py), which need no τ²-bench.
       - run: python3 -m doctest scripts/telecom_workflow.py
+      # The spans of the user's words a model picks from (scripts/ceiling.py's fifth count).
+      - run: python3 -m doctest scripts/ceiling.py
       # The benchmarks round's scripts (scripts/bench/), on a fixture of two replays and a ceiling.
       - run: bash -n scripts/bench/replay.sh
       - run: |
