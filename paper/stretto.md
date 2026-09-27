@@ -316,7 +316,7 @@ The procedure is a file stretto runs: `stretto-procedure` executes it against an
 
 **Simulated users.** τ²-bench's users are LLMs, and so are the users of our live runs. BFCL's, AgentDojo's, WorkBench's and DTap-Bench's requests were written by their authors, but one request per task is not a user.
 
-**Availability.** stretto's code, the flows every replay and live run served, the rows behind every table and figure, and the live episodes are published at https://github.com/alexnodeland/stretto; each number here is recomputed from them by `scripts/bench/` and the commands on each round's results page.
+**Availability.** stretto's code, the flows every replay and live run served, the rows behind every table and figure, and the live episodes are published at https://github.com/alexnodeland/stretto; each number here is recomputed from them by `scripts/bench/` and the commands on each round's results page, and `docs/results/claims.md` maps each headline number to its evidence.
 
 ## References
 
