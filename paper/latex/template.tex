@@ -1,0 +1,75 @@
+% stretto.tex is written by build.py from ../stretto.md and this template:
+% edit the Markdown, then run `make`. See README.md.
+\pdfminorversion=7
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs,longtable,array,calc}
+\usepackage{adjustbox}
+\usepackage{etoolbox}
+\usepackage{caption}
+\captionsetup{labelfont=bf,labelsep=period,font=small}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,fit,backgrounds}
+\usepackage{xcolor}
+\usepackage[authoryear,round]{natbib}
+\usepackage{newunicodechar}
+\usepackage{xurl}
+\usepackage[colorlinks,linkcolor={blue!50!black},citecolor={blue!50!black},urlcolor={blue!50!black}]{hyperref}
+
+% The Markdown's characters that pdfLaTeX's UTF-8 input does not cover in text.
+\newunicodechar{τ}{\ensuremath{\tau}}
+\newunicodechar{θ}{\ensuremath{\theta}}
+\newunicodechar{ρ}{\ensuremath{\rho}}
+\newunicodechar{β}{\ensuremath{\beta}}
+\newunicodechar{δ}{\ensuremath{\delta}}
+\newunicodechar{−}{\ensuremath{-}}
+\newunicodechar{∅}{\ensuremath{\emptyset}}
+\newunicodechar{∎}{\ensuremath{\blacksquare}}
+\newunicodechar{≤}{\ensuremath{\le}}
+\newunicodechar{≥}{\ensuremath{\ge}}
+\newunicodechar{≈}{\ensuremath{\approx}}
+
+% What pandoc's LaTeX assumes.
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{%
+  \sbox\pandoc@box{#1}%
+  \ifdim\wd\pandoc@box>\linewidth\resizebox{\linewidth}{!}{\usebox\pandoc@box}\else\usebox\pandoc@box\fi}
+\makeatother
+
+\setlength{\parskip}{0.35\baselineskip}
+\setlength{\parindent}{0pt}
+\setcounter{topnumber}{3}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\floatpagefraction}{0.8}
+
+\title{%%TITLE%%}
+\author{Alex Nodeland\\\small\url{https://github.com/alexnodeland/stretto}}
+\date{%%DATE%%}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+%%ABSTRACT%%
+\end{abstract}
+
+%%BODY%%
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\appendix
+
+%%APPENDIX%%
+
+\end{document}

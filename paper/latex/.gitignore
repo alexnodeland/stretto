@@ -1,0 +1,11 @@
+# LaTeX's intermediate files; stretto.tex, figures/*.pdf and stretto.pdf are kept.
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+latexmk.out
+arxiv.tar.gz

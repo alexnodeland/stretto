@@ -1,0 +1,17 @@
+% Algorithm 1: the speculator, after each of the agent's tool responses (paper/stretto.md, §2.4).
+\begin{algorithm}[tbp]
+\caption{The speculator, after each of the agent's tool responses.}
+\label{alg:speculator}
+\begin{algorithmic}[1]
+\Require tool state $x$, abstract history $h$, threshold $\theta$
+\Loop
+  \State $C \gets \{(t, a) : t \in \mathcal R,\ a = \mathrm{bind}(t, x) \text{ defined}\}$
+    \Comment{bind skips values an earlier call of $t$ passed}
+  \If{$C = \emptyset$} \textbf{stop} \EndIf
+  \State $(t^\ast, a^\ast) \gets \operatorname{arg\,max}_{(t, a) \in C}\ r(t \mid h)\,\rho(a \mid t, x)$
+  \If{$r(t^\ast \mid h)\,\rho(a^\ast \mid t^\ast, x) < \theta$} \textbf{stop} \EndIf
+  \State $y \gets$ call $t^\ast(a^\ast)$; append $(t^\ast, a^\ast, y)$ to the response
+  \State $x \gets x + (t^\ast, a^\ast, y)$;\quad $h \gets h + \mathrm{abstract}(t^\ast, y)$
+\EndLoop
+\end{algorithmic}
+\end{algorithm}

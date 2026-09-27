@@ -1,0 +1,46 @@
+% Figure 1: the two regimes in stretto (the Mermaid diagram of paper/stretto.md, §2.6).
+\begin{tikzpicture}[
+  font=\sffamily\footnotesize,
+  node distance=9mm and 12mm,
+  box/.style={draw, rounded corners=2pt, align=center, inner sep=4pt, minimum height=7mm, fill=white},
+  file/.style={draw, align=center, inner sep=4pt, minimum height=6mm, fill=black!5},
+  store/.style={draw, cylinder, shape border rotate=90, aspect=0.22, align=center,
+    minimum height=9mm, minimum width=15mm, inner sep=2pt, fill=white},
+  arr/.style={-{Latex[length=1.8mm]}},
+  both/.style={{Latex[length=1.8mm]}-{Latex[length=1.8mm]}},
+  lab/.style={font=\sffamily\scriptsize, fill=white, inner sep=1pt},
+  panel/.style={draw=black!35, rounded corners=4pt, inner sep=7pt},
+  title/.style={font=\sffamily\small\bfseries, anchor=south west, inner sep=2pt},
+]
+% A user is present.
+\node[box] (H) {agent host (LLM)};
+\node[box, below=of H] (P) {\texttt{stretto-proxy}\\speculator};
+\node[box, below=of P] (S1) {MCP server};
+\node[store, right=16mm of H, yshift=-3mm] (R) {sessions};
+\node[file, right=16mm of S1, yshift=3mm] (F) {flow IR};
+\draw[both] (H) -- node[lab]{MCP} (P);
+\draw[both] (P) -- node[lab]{MCP} (S1);
+\draw[arr] (P.north east) -- node[lab, sloped, above=1pt, fill=none]{records} (R.south west);
+\draw[arr] (R) -- node[lab, right=1pt, fill=none, align=left] (learn) {\texttt{stretto learn}:\\counts} (F);
+\draw[arr] (F.north west) -- (P.south east);
+\begin{scope}[on background layer]
+  \node[panel, fit=(H)(S1)(R)(F)(learn)] (L) {};
+\end{scope}
+\node[title] at (L.north west) {A user is present};
+% No user speaks.
+\begin{scope}[xshift=86mm]
+  \node[box] (T) {ticket};
+  \node[box, below=of T] (Q) {\texttt{stretto-procedure}};
+  \node[box, below=of Q] (S2) {MCP server};
+  \node[file, right=10mm of T] (C) {procedure IR};
+  \node[box, right=21mm of Q] (M) {model};
+  \draw[arr] (T) -- (Q);
+  \draw[arr] (C) -- (Q);
+  \draw[both] (Q) -- node[lab]{MCP} (S2);
+  \draw[arr] (Q) -- node[lab, above=1pt, fill=none, align=center]{hand back:\\calls, results} (M);
+  \begin{scope}[on background layer]
+    \node[panel, fit=(T)(S2)(C)(M)] (Rt) {};
+  \end{scope}
+  \node[title] at (Rt.north west) {No user speaks};
+\end{scope}
+\end{tikzpicture}
