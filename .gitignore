@@ -6,3 +6,8 @@ reports/
 .data/
 pilot/runs/
 __pycache__/
+# The documentation site (website/)
+website/node_modules/
+website/.vitepress/dist/
+website/.vitepress/cache/
+website/public/notebook/

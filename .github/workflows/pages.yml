@@ -1,11 +1,23 @@
 name: Pages
 
-# Publishes site/ (the paper) to GitHub Pages. The repository's Pages
-# source must be set to "GitHub Actions" (Settings → Pages).
+# Builds the documentation site (website/, VitePress) and publishes it to
+# GitHub Pages at https://alexnodeland.github.io/stretto/. The research
+# notebook, site/index.html, is copied into the build by the site's build
+# script and served at /stretto/notebook/. The repository's Pages source must
+# be set to "GitHub Actions" (Settings → Pages).
 on:
   push:
     branches: [main]
-    paths: ["site/**", ".github/workflows/pages.yml"]
+    paths:
+      - "website/**"
+      - "docs/**"
+      - "paper/**"
+      - "site/**"
+      - "CHANGELOG.md"
+      # The site also renders these two files.
+      - "crates/stretto-proxy/README.md"
+      - "LICENSE"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
@@ -19,16 +31,36 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Every commit, so that each page's "Last updated" date is its own.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - uses: actions/configure-pages@v5
+      - name: Install
+        working-directory: website
+        run: npm ci
+      # Fails on a dead link, to a page or to a file of the repository.
+      - name: Build
+        working-directory: website
+        run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/.vitepress/dist
+
   deploy:
+    needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
       - id: deployment
         uses: actions/deploy-pages@v4
