@@ -13,7 +13,7 @@ stretto is four binaries, installed together:
 | [`install.ps1`](#windows) | Windows x64 | PowerShell |
 | [Homebrew](#homebrew) | macOS, Linux | the tap, which does not exist yet |
 | [Docker](#docker) | anywhere Docker runs, linux/amd64 and linux/arm64 | Docker |
-| [From source](#from-source) | anywhere Rust 1.87 or later runs | Rust |
+| [From source](#from-source) | anywhere Rust 1.88 or later runs | Rust |
 
 Release archives, `install.sh`, `install.ps1` and the container image come with the releases after 0.1.0; for 0.1.0, install from source. Then [check the installation](#check-it-stretto-doctor) and [add shell completions](#shell-completions).
 
@@ -109,7 +109,7 @@ To build the image from a checkout: `docker build -t stretto .`. Behind a TLS-in
 
 ## From source
 
-With Rust 1.87 or later ([rustup](https://rustup.rs)):
+With Rust 1.88 or later ([rustup](https://rustup.rs)); the ICU crates that `Cargo.lock` holds, through reqwest, need 1.88, although the crates declare 1.87:
 
 ```sh
 cargo install --locked --git https://github.com/alexnodeland/stretto --tag v0.1.0 stretto-report stretto-proxy
