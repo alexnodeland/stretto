@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # The walkthrough video's command list: docs/walkthrough.md, run for real.
 #
-#   bash brand/video/walkthrough/script.sh                 # run it in a temporary directory
+#   bash brand/video/walkthrough/script.sh                 # run it in a new home directory
 #   python3 brand/video/walkthrough/capture.py --bin DIR   # record it for the video
 #
 # Every command below runs: the stretto binaries, the official MCP filesystem
 # server (through npx) and agent.py, a scripted agent standing in for an LLM
-# host. No step needs a key.
+# host. No step needs a key. The working directory is also HOME, so ~/.stretto
+# and ~/notes are inside it: capture.py sets that up, and so does a plain run.
 #
 # The format, which capture.py and render.mjs read:
 #   step TITLE CAPTION   opens a step: a title card in the video, then a terminal
@@ -22,6 +23,12 @@ STRETTO_BIN=${STRETTO_BIN:-}
 [[ -n "$STRETTO_BIN" ]] && export PATH="$STRETTO_BIN:$PATH"
 WORK=${STRETTO_WORK:-$(mktemp -d "${TMPDIR:-/tmp}/stretto-walkthrough.XXXXXX")}
 cd "$WORK"
+if [[ -z "${STRETTO_CAPTURE:-}" ]]; then
+  # A plain run: a new, empty home, so doctor and ~/.stretto start fresh.
+  # npx keeps its cache where it was.
+  export npm_config_cache=${npm_config_cache:-$HOME/.npm}
+  export HOME=$WORK
+fi
 
 # ---------------------------------------------------------------- helpers
 _b64() { printf '%s' "$1" | base64 | tr -d '\n'; }
@@ -80,62 +87,52 @@ What's the status of project gamma?
 Summarize the August and September meetings.
 What's in my inbox?
 EOF
-# The host's configuration: the command agent.py runs for each session.
-cat > mcp.json <<EOF
-{
-  "mcpServers": {
-    "notes": {
-      "command": "stretto-proxy",
-      "args": ["--record", "$WORK/logs", "--domain", "notes",
-               "--context", "$WORK/context/notes.jsonl",
-               "--", "npx", "-y", "@modelcontextprotocol/server-filesystem@2026.8.31",
-               "$WORK/notes"]
-    }
-  }
-}
-EOF
 # `./agent` in the commands below is agent.py, the scripted agent.
 ln -sf "$HERE/agent.py" agent
 ./agent --help > /dev/null
 
 # ---------------------------------------------------------------- the steps
+step "Check the install" \
+  "stretto doctor checks the binaries on PATH and ~/.stretto, and says what a key would add. Nothing here needs one."
+run 'stretto doctor'
+
 step "Wrap the server" \
-  "A folder of notes, served by the official MCP filesystem server. In the host's MCP config, stretto-proxy takes the server's place, and the server's command goes after --."
+  "A folder of notes, served by the official MCP filesystem server. stretto init prints the host's configuration: for Claude Code, a claude mcp add command that puts stretto-proxy in the server's place."
 run 'find notes -type f | sort'
-run 'cat mcp.json'
+note "Its next steps go to stderr; the rest of this walkthrough runs them. A scripted agent starts the proxy with the same arguments."
+run 'stretto init --host claude-code --domain notes -- npx -y @modelcontextprotocol/server-filesystem ~/notes 2>/dev/null'
 
 step "Record sessions" \
-  "Use the agent as usual. Here a scripted agent stands in for the LLM: it searches the notes and reads what it finds, through the proxy, which records each session."
-run 'cat recorded.txt'
+  "Use the agent as usual. Here a scripted agent stands in for the LLM: it searches the notes and reads what it finds, through the proxy, which records each session in ~/.stretto/logs/notes."
 run './agent --quiet --from recorded.txt'
-run 'ls logs'
+run 'ls ~/.stretto/logs/notes'
 
 step "Learn a flow, with no key" \
   "--habit-only asks no model: stretto counts which reads followed which calls, and where their arguments came from."
-run 'stretto learn --sessions logs --domain notes --habit-only --out notes.flow.json'
+run 'stretto learn --sessions ~/.stretto/logs/notes --domain notes --habit-only --out ~/.stretto/notes.flow.json'
 
 step "Review it" \
   "A flow is a JSON file to review before serving it. flow-show renders it for a reviewer: what it may look up after each call, and where each argument comes from."
 note "After a search, the flow reads a file: the agent did so after every search in training."
-run "stretto flow-show notes.flow.json | awk '/^## Sites/{on=1} /^## Bindings/{on=0} on'"
+run "stretto flow-show ~/.stretto/notes.flow.json | awk '/^## Sites/{on=1} /^## Bindings/{on=0} on'"
 note "The file's path comes from the search's own result: one line of it, or all of it when it found one file."
-run "stretto flow-show notes.flow.json | awk '/^## Bindings/{on=1} /^## Sources/{on=0} on'"
+run "stretto flow-show ~/.stretto/notes.flow.json | awk '/^## Bindings/{on=1} /^## Sources/{on=0} on'"
 
 step "Audit it on sessions it never saw" \
   "Record three more sessions without the flow, then score the agent's steps under it, site by site."
-run './agent --quiet --logs logs-new --from new.txt'
-run 'stretto audit --flow notes.flow.json --sessions logs-new | head -n 14'
+run './agent --quiet --logs ~/.stretto/logs/notes-new --from new.txt'
+run 'stretto audit --flow ~/.stretto/notes.flow.json --sessions ~/.stretto/logs/notes-new | head -n 14'
 
 step "Serve it" \
   "The same request, without the flow and with it. With it, the flow's reads ride in the search's result, and the agent skips the calls it would have made."
-run './agent --logs logs-baseline "Summarize the October meetings."'
-note "With the flow, served by the proxy behind the agent's calls: --flow notes.flow.json --flow-decider habit."
-run './agent --logs logs-served --flow notes.flow.json "Summarize the October meetings."'
+run './agent --logs ~/.stretto/logs/served "Summarize the October meetings."'
+note "With the flow, served by the proxy behind the agent's calls: --flow ~/.stretto/notes.flow.json --flow-decider habit."
+run './agent --logs ~/.stretto/logs/served --flow ~/.stretto/notes.flow.json "Summarize the October meetings."'
 note "The flow log says why: each lookup's probability and its binding's chance, then why it handed back."
-run "jq -c 'select(.action) | {action, site, prob: (.prob * 100 | round / 100), binding, tool, reason} | del(..|nulls)' logs-served/*.flow.jsonl"
+run "jq -c 'select(.action) | {action, site, prob: (.prob * 100 | round / 100), binding, tool, reason} | del(..|nulls)' ~/.stretto/logs/served/*.flow.jsonl"
 
 step "Learn again, and review what changed" \
   "The audit's sessions are new training data. Learn from all eleven, and diff the new flow against the one being served."
-run 'mkdir -p logs-all && cp logs/*.jsonl logs-new/*.jsonl logs-all/'
-run 'stretto learn --sessions logs-all --domain notes --habit-only --out notes-2.flow.json'
-run 'stretto flow-diff notes.flow.json notes-2.flow.json'
+run 'cp ~/.stretto/logs/notes-new/*.jsonl ~/.stretto/logs/notes/'
+run 'stretto learn --sessions ~/.stretto/logs/notes --domain notes --habit-only --out ~/.stretto/notes-2.flow.json'
+run 'stretto flow-diff ~/.stretto/notes.flow.json ~/.stretto/notes-2.flow.json'

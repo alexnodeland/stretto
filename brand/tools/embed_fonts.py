@@ -25,7 +25,8 @@ FEATURES = ["kern", "liga", "calt", "ccmp", "locl", "mark", "mkmk", "case", "tnu
 
 
 def cut(path: Path, text: str) -> str:
-    font = TTFont(path)
+    # Keep the head table's modified date, so the same page embeds to the same bytes.
+    font = TTFont(path, recalcTimestamp=False)
     options = subset.Options()
     options.layout_features = FEATURES
     options.flavor = "woff2"

@@ -71,7 +71,7 @@ export function h264Args(out, fps, crf = 18) {
 }
 
 export function report(file, root) {
-  console.log(`${path.relative(root, file)}: ${(fs.statSync(file).size / 1048576).toFixed(2)} MB`);
+  console.log(`${path.relative(root, file)}: ${(fs.statSync(file).size / 1e6).toFixed(2)} MB`);
 }
 
 export function option(args, name, dflt) {
