@@ -1205,7 +1205,19 @@ impl From<DeciderArg> for Decider {
     }
 }
 
+/// The CLI runs on a thread with an 8 MB stack, Linux's default for the main
+/// thread. Windows gives its main thread 1 MB, which parsing this CLI's many
+/// subcommands overflows in a debug build.
 fn main() -> Result<()> {
+    std::thread::Builder::new()
+        .name("stretto".to_string())
+        .stack_size(8 << 20)
+        .spawn(run)?
+        .join()
+        .unwrap_or_else(|panic| std::panic::resume_unwind(panic))
+}
+
+fn run() -> Result<()> {
     match Cli::parse().command {
         Command::Phase0 { data, out, json } => {
             if data.pooled_arbiter {

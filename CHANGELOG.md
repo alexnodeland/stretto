@@ -14,6 +14,7 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
   - `stretto doctor` checks the installation: the binaries on PATH, `~/.stretto`, whether a key is set (never its value), and the flows and sessions. `stretto completions <shell>` prints shell completions.
   - `examples/quickstart/` records, learns, reviews and serves a flow on `stretto-mcp-demo`, with no key, in under a second, and runs in CI. [docs/install.md](docs/install.md) and [docs/releasing.md](docs/releasing.md) cover installing and cutting a release.
   - Building from source needs Rust 1.88.
+  - `stretto` runs on a thread with an 8 MB stack. On Windows, whose main thread has 1 MB, a debug build overflowed it parsing the command line. CI now builds on macOS and Windows and runs each binary's `--version`.
 - **Live runs on other benchmarks** (`pilot/bench/`).
   - `bench_mcp.py` serves an AgentDojo or BFCL task's tools over MCP, running each call with the benchmark's own code.
   - `run_bench_episode.py` runs one episode in Claude Code and scores it with the benchmark's own check. It stops with a clear error when the task's server never started.
