@@ -1,0 +1,117 @@
+WEBVTT
+
+1
+00:00:00.900 --> 00:00:01.398
+stretto.
+
+2
+00:00:01.398 --> 00:00:02.956
+Read ahead of your agent.
+
+3
+00:00:06.100 --> 00:00:09.085
+An agent spends an LLM turn on every tool call,
+
+4
+00:00:09.085 --> 00:00:11.753
+and those turns are most of what it costs.
+
+5
+00:00:13.153 --> 00:00:16.465
+But many of those turns are decided before they start.
+
+6
+00:00:16.465 --> 00:00:18.612
+The first result named both orders,
+
+7
+00:00:18.612 --> 00:00:22.722
+so the next two reads were fixed by the tools, not by the customer.
+
+8
+00:00:24.122 --> 00:00:26.848
+stretto makes those reads for the agent.
+
+9
+00:00:26.848 --> 00:00:31.345
+They ride in the same tool result, so the agent skips those turns.
+
+10
+00:00:31.345 --> 00:00:36.251
+A wrong read costs only tokens, and changes nothing: stretto only reads.
+
+11
+00:00:37.651 --> 00:00:38.656
+First, record.
+
+12
+00:00:38.656 --> 00:00:41.169
+stretto-proxy wraps any MCP server,
+
+13
+00:00:41.169 --> 00:00:44.687
+forwards every message, and records each session.
+
+14
+00:00:46.087 --> 00:00:46.791
+Then learn.
+
+15
+00:00:46.791 --> 00:00:51.976
+stretto counts which reads follow which calls, and where each argument came from.
+
+16
+00:00:51.976 --> 00:00:54.537
+The flow is a file you review like code.
+
+17
+00:00:55.937 --> 00:00:56.643
+Then serve.
+
+18
+00:00:56.643 --> 00:01:01.653
+After each call, the flow's lookups ride in the result the agent already gets.
+
+19
+00:01:01.653 --> 00:01:04.286
+No new tool, and no change to the prompt.
+
+20
+00:01:05.686 --> 00:01:13.991
+A lookup is made when the chance that the agent uses it before its next write clears a threshold set by costs, about 0.3.
+
+21
+00:01:13.991 --> 00:01:16.462
+No model is asked: the proxy counts.
+
+22
+00:01:17.962 --> 00:01:26.418
+Live, on 28 τ²-bench retail and airline tasks, GLM-5.3 took 27.9% fewer LLM turns.
+
+23
+00:01:26.418 --> 00:01:30.440
+In AgentDojo's Slack and travel suites,
+
+24
+00:01:30.440 --> 00:01:37.555
+GLM-5.3 and Claude Haiku 4.5 took 10.1% fewer, with passes unchanged.
+
+25
+00:01:38.955 --> 00:01:41.970
+To start, install stretto and run stretto init.
+
+26
+00:01:41.970 --> 00:01:46.331
+It prints your host's configuration, and the steps to a served flow.
+
+27
+00:01:46.331 --> 00:01:49.346
+The quickstart runs the whole loop with no key.
+
+28
+00:01:50.946 --> 00:01:51.444
+stretto.
+
+29
+00:01:51.444 --> 00:01:53.002
+Read ahead of your agent.

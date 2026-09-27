@@ -4,6 +4,8 @@
 //
 //   window.__cut          the cut this page renders (?cut=launch|teaser)
 //   window.__duration     its length in seconds
+//   window.__marks        when each scene starts, for the voice-over's lines
+//   window.__voice        (set by render.mjs) each line's start and length, to hold scenes for
 //   window.__render(t)    draw the frame at t seconds
 //   window.__ready        a promise that resolves once every font face and image has loaded
 (() => {
@@ -89,11 +91,19 @@
   function launch() {
     const tl = new Timeline();
     let t = 0;
+    // The voice-over (narration.json, voiced by narrate.py, passed in by
+    // render.mjs): each line starts `at` seconds into its scene, and a scene
+    // holds until its line has finished and a breath after it. Without it,
+    // every scene keeps its own length. `marks` is when each scene starts.
+    const V = (window.__voice && window.__voice.lines) || {};
+    const fit = (key, base, breath = 0.9) => (V[key] ? Math.max(base, V[key].at + V[key].duration + breath) : base);
+    const marks = {};
 
     // 0. Open: the three bars of the mark enter as a stretto, each before the
     //    last has finished, and each sooner than the one before.
     {
-      const t0 = t, end = t0 + 5.6;
+      const t0 = t, end = t0 + fit('open', 5.6);
+      marks.open = t0;
       scene(tl, 'open', t0, end, 0.6);
       for (const [id, s] of [['b1', 0.35], ['b2', 0.85], ['b3', 1.1]]) {
         tl.key(id, 'opacity', [t0 + s, 0], [t0 + s + 0.2, 1, 'lin']);
@@ -109,7 +119,10 @@
 
     // 1–2. Problem, then the idea, on one episode's turns.
     {
-      const t0 = t, end = t0 + 23.4;
+      // Three beats, each held for its line: the problem, the problem
+      // sharpened (from a), and the idea (from b).
+      const t0 = t, a = t0 + fit('problem', 6.8), b = a + fit('decided', 6.8), end = b + fit('idea', 9.8);
+      Object.assign(marks, { problem: t0, decided: a, idea: b });
       scene(tl, 'episode', t0, end, 0.6);
       fadeIn(tl, 'p-t1', t0 + 0.3, 0.7);
       fadeIn(tl, 'p-lane', t0 + 0.8, 0.5, 0);
@@ -119,7 +132,6 @@
       tl.key('r2', 'opacity', [0, 0]); tl.key('r3', 'opacity', [0, 0]);
 
       // The problem, sharpened: the first result named what turns 2 and 3 read.
-      const a = t0 + 6.8;
       fadeOut(tl, 'p-t1', a); fadeOut(tl, 'p-c1', a);
       fadeIn(tl, 'p-t2', a + 0.4, 0.7);
       fadeIn(tl, 'p-res', a + 0.9, 0.6, 10);
@@ -129,7 +141,6 @@
       fadeIn(tl, 'p-c2', a + 2.2, 0.7, 12);
 
       // The idea: those reads ride in the first result; the turns close up.
-      const b = t0 + 13.6;
       fadeOut(tl, 'p-t2', b); fadeOut(tl, 'p-c2', b); fadeOut(tl, 'p-res', b);
       fadeIn(tl, 'p-t3', b + 0.4, 0.7);
       tl.key('k2', 'opacity', [b + 1.2, 1], [b + 1.8, 0, 'in']);
@@ -158,7 +169,8 @@
 
     // 3a. Record.
     {
-      const t0 = t, end = t0 + 7.2;
+      const t0 = t, end = t0 + fit('record', 7.2);
+      marks.record = t0;
       scene(tl, 'record', t0, end);
       tl.key('record', 'y', [0, 0]);
       fadeIn(tl, document.querySelector('#record .kicker'), t0 + 0.2, 0.5, 0);
@@ -181,7 +193,8 @@
 
     // 3b. Learn.
     {
-      const t0 = t, end = t0 + 7.4;
+      const t0 = t, end = t0 + fit('learn', 7.4);
+      marks.learn = t0;
       scene(tl, 'learn', t0, end);
       fadeIn(tl, document.querySelector('#learn .kicker'), t0 + 0.2, 0.5, 0);
       fadeIn(tl, document.querySelector('#learn .title'), t0 + 0.3, 0.6);
@@ -197,7 +210,8 @@
 
     // 3c. Serve.
     {
-      const t0 = t, end = t0 + 7.6;
+      const t0 = t, end = t0 + fit('serve', 7.6);
+      marks.serve = t0;
       scene(tl, 'serve', t0, end);
       fadeIn(tl, document.querySelector('#serve .kicker'), t0 + 0.2, 0.5, 0);
       fadeIn(tl, document.querySelector('#serve .title'), t0 + 0.3, 0.6);
@@ -212,7 +226,8 @@
 
     // 3d. The rule.
     {
-      const t0 = t, end = t0 + 8.4;
+      const t0 = t, end = t0 + fit('rule', 8.4);
+      marks.rule = t0;
       scene(tl, 'rule', t0, end);
       fadeIn(tl, document.querySelector('#rule .kicker'), t0 + 0.2, 0.5, 0);
       fadeIn(tl, document.querySelector('#rule .title'), t0 + 0.3, 0.6);
@@ -224,7 +239,8 @@
 
     // 4. Results, with their scope.
     {
-      const t0 = t, end = t0 + 13.6;
+      const t0 = t, end = t0 + fit('results', 13.6);
+      marks.results = t0;
       scene(tl, 'results', t0, end, 0.6);
       fadeIn(tl, document.querySelector('#results .kicker'), t0 + 0.2, 0.5, 0);
       fadeIn(tl, 'hero', t0 + 0.4, 0.8, 24);
@@ -244,7 +260,8 @@
 
     // 5. Get started.
     {
-      const t0 = t, end = t0 + 10.0;
+      const t0 = t, end = t0 + fit('start', 10.0);
+      marks.start = t0;
       scene(tl, 'start', t0, end);
       fadeIn(tl, document.querySelector('#start .title'), t0 + 0.2, 0.6);
       fadeIn(tl, 'cmd1', t0 + 0.6, 0.5, 12);
@@ -259,7 +276,8 @@
 
     // End card: the lockup, the tagline and the address.
     {
-      const t0 = t, end = t0 + 4.0;
+      const t0 = t, end = t0 + fit('end', 4.0, 1.4);
+      marks.end = t0;
       scene(tl, 'open', t0, end + 0.001, 0.001);
       // The open's elements, hidden again while its scene is invisible, then back.
       tl.key('namenote', 'opacity', [t0 - 0.02, 1], [t0 - 0.01, 0, 'lin']);
@@ -271,6 +289,7 @@
     }
     hide(tl, 'teaser');
     tl.duration = t;
+    tl.marks = marks;
     return tl;
   }
 
@@ -320,6 +339,7 @@
   const tl = cuts[name]();
   window.__cut = name;
   window.__duration = tl.duration;
+  window.__marks = tl.marks || {};
   window.__render = t => tl.render(t);
   window.__ready = Promise.all([
     document.fonts.load('400 20px "JetBrains Mono"'),

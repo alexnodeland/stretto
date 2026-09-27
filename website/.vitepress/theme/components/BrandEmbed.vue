@@ -2,8 +2,8 @@
 // BRAND SLOT. Embeds a piece of the brand kit once its file is in website/public/:
 //
 //   kind="explainer"    public/explainer/index.html   (an iframe)
-//   kind="launch"       public/media/launch.mp4       (a video, poster media/launch-poster.png)
-//   kind="walkthrough"  public/media/walkthrough.mp4  (a video, poster media/walkthrough-poster.png)
+//   kind="launch"       public/media/launch.mp4       (a video, poster media/launch-poster.png, captions media/launch.vtt)
+//   kind="walkthrough"  public/media/walkthrough.mp4  (a video, poster media/walkthrough-poster.png, captions media/walkthrough.vtt)
 //
 // config.mts checks for the files when the site builds. Until they are there, a
 // build renders nothing here and `npm run dev` shows where the file goes.
@@ -15,7 +15,12 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useData, withBase } from 'vitepress'
 
 /** Set by config.mts: each brand file's site path, or false while it is missing. */
-type BrandAssets = Partial<Record<'explainer' | 'launchVideo' | 'launchPoster' | 'walkthroughVideo' | 'walkthroughPoster', string | false>>
+type BrandAssets = Partial<
+  Record<
+    'explainer' | 'launchVideo' | 'launchPoster' | 'launchCaptions' | 'walkthroughVideo' | 'walkthroughPoster' | 'walkthroughCaptions',
+    string | false
+  >
+>
 
 const props = withDefaults(
   defineProps<{
@@ -49,6 +54,14 @@ const poster = computed(() => {
   const a = assets.value
   if (!a || props.kind === 'explainer') return undefined
   const file = props.kind === 'launch' ? a.launchPoster : a.walkthroughPoster
+  return file ? withBase(file) : undefined
+})
+
+/** The voice-over's captions, WebVTT, off until the viewer turns them on. */
+const captions = computed(() => {
+  const a = assets.value
+  if (!a || props.kind === 'explainer') return undefined
+  const file = props.kind === 'launch' ? a.launchCaptions : a.walkthroughCaptions
   return file ? withBase(file) : undefined
 })
 
@@ -99,7 +112,9 @@ onBeforeUnmount(() => window.removeEventListener('message', onMessage))
         loading="lazy"
         allow="fullscreen"
       />
-      <video v-else :src="src" :poster="poster" :aria-label="label" controls playsinline preload="none" />
+      <video v-else :src="src" :poster="poster" :aria-label="label" controls playsinline preload="none">
+        <track v-if="captions" kind="captions" :src="captions" srclang="en" label="English" />
+      </video>
     </div>
     <figcaption v-if="caption" class="brand-embed__caption">{{ caption }}</figcaption>
   </figure>

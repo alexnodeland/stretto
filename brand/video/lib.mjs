@@ -1,6 +1,7 @@
 // Shared by the video renderers: find ffmpeg, open a page in headless
 // Chromium, capture frames, and pipe them into ffmpeg's stdin. No frame is
-// written to disk.
+// written to disk. The voice-over (narrate.py's clips) is mixed into one
+// track, muxed with the frames, and written out as WebVTT captions.
 //
 // ffmpeg is $FFMPEG, else `ffmpeg` on PATH, else the binary of the Python
 // package imageio-ffmpeg ($PYTHON, else python3). Chromium is Playwright's,
@@ -10,6 +11,7 @@ import { spawn, execFileSync } from 'node:child_process';
 import { once } from 'node:events';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export function ffmpegPath() {
   if (process.env.FFMPEG) return process.env.FFMPEG;
@@ -25,11 +27,14 @@ export async function launchBrowser() {
 }
 
 // Open url at 1920 x 1080; `prepare(page)` runs once the page is ready.
-// Returns the page and frame(t), which draws t with window.__render and
-// returns the frame as PNG bytes, once it is on screen.
-export async function openPage(browser, url, prepare = async () => {}) {
+// `voice`, when given, is window.__voice before the page's scripts run, so a
+// timeline can make room for each spoken line. Returns the page and frame(t),
+// which draws t with window.__render and returns the frame as PNG bytes, once
+// it is on screen.
+export async function openPage(browser, url, prepare = async () => {}, voice = null) {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
   page.on('pageerror', e => { console.error(e); process.exitCode = 1; });
+  if (voice) await page.addInitScript(v => { window.__voice = v; }, voice);
   await page.goto(url);
   await page.evaluate(() => window.__ready);
   await prepare(page);
@@ -42,11 +47,13 @@ export async function openPage(browser, url, prepare = async () => {}) {
   return { page, frame };
 }
 
-// Pipe frames for t in [from, to) at fps into ffmpeg, with its output arguments.
-export async function encode({ frame, fps, from = 0, to, outArgs, label }) {
+// Pipe frames for t in [from, to) at fps into ffmpeg, with its output
+// arguments. `audio` is a sound file to mux in as the second input (see
+// h264Args).
+export async function encode({ frame, fps, from = 0, to, outArgs, label, audio = null }) {
   const n = Math.round((to - from) * fps);
   const ff = spawn(ffmpegPath(), ['-y', '-hide_banner', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(fps),
-    '-c:v', 'png', '-i', '-', ...outArgs], { stdio: ['pipe', 'inherit', 'inherit'] });
+    '-c:v', 'png', '-i', '-', ...(audio ? ['-i', audio] : []), ...outArgs], { stdio: ['pipe', 'inherit', 'inherit'] });
   const started = Date.now();
   for (let i = 0; i < n; i++) {
     const png = await frame(from + i / fps);
@@ -60,14 +67,92 @@ export async function encode({ frame, fps, from = 0, to, outArgs, label }) {
 }
 
 // H.264 for the web: yuv420p, BT.709, faststart, keyframes every two seconds.
-export function h264Args(out, fps, crf = 18) {
+// With `audio`, the second input is muxed in as AAC; else the file is silent.
+export function h264Args(out, fps, crf = 18, audio = false) {
   return [
+    '-map', '0:v', ...(audio ? ['-map', '1:a', '-c:a', 'aac', '-b:a', '128k', '-ar', '48000', '-ac', '2'] : ['-an']),
     '-vf', 'scale=out_color_matrix=bt709:out_range=tv,format=yuv420p',
     '-c:v', 'libx264', '-preset', 'slow', '-tune', 'animation', '-crf', String(crf),
     '-profile:v', 'high', '-level', '4.1', '-g', String(fps * 2),
     '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709', '-color_range', 'tv',
-    '-movflags', '+faststart', '-an', '-r', String(fps), out,
+    '-movflags', '+faststart', '-r', String(fps), out,
   ];
+}
+
+// ------------------------------------------------------------ the voice-over
+
+// narrate.py's clips for a video, from video/out/voice/NAME/manifest.json, or
+// null if they have not been made: the video is then rendered silent.
+export function loadVoice(name) {
+  const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'out', 'voice', name);
+  const file = path.join(dir, 'manifest.json');
+  if (!fs.existsSync(file)) {
+    console.warn(`${name}: no voice-over (run narrate.py first); rendering it silent`);
+    return null;
+  }
+  const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+  for (const l of manifest.lines) l.file = path.join(dir, l.file);
+  return manifest;
+}
+
+// Mix `clips` ([{file, t}], in seconds) into one track `duration` long, at
+// out, at -16 LUFS with true peaks under -1.5 dBTP, as spoken web video is.
+// The clips never overlap: the timelines hold each line until it ends.
+export function voiceTrack(clips, duration, out) {
+  const inputs = clips.flatMap(c => ['-i', c.file]);
+  const delays = clips.map((c, i) => `[${i}:a]aresample=48000,adelay=${Math.round(c.t * 1000)}:all=1[a${i}]`);
+  const mix = `${clips.map((_, i) => `[a${i}]`).join('')}amix=inputs=${clips.length}:normalize=0:dropout_transition=0,`
+    + `loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000,`
+    + `apad=whole_dur=${duration.toFixed(3)},atrim=0:${duration.toFixed(3)}[out]`;
+  execFileSync(ffmpegPath(), ['-y', '-hide_banner', '-loglevel', 'error', ...inputs,
+    '-filter_complex', [...delays, mix].join(';'), '-map', '[out]', '-ac', '2', '-c:a', 'pcm_s16le', out]);
+}
+
+// A caption's pieces: its sentences, and a sentence longer than `max`
+// characters split again at the clause break nearest its middle, if that
+// leaves both halves long enough to read.
+function cuePieces(text, max = 84) {
+  const split = s => {
+    if (s.length <= max) return [s];
+    // A break leaving a piece too short to read is no break.
+    const breaks = [...s.matchAll(/[,:;] /g)].map(m => m.index + 1).filter(i => i >= 24 && s.length - i >= 24);
+    if (!breaks.length) return [s];
+    const at = breaks.reduce((best, i) => (Math.abs(i - s.length / 2) < Math.abs(best - s.length / 2) ? i : best));
+    return [...split(s.slice(0, at).trim()), ...split(s.slice(at).trim())];
+  };
+  return text.split(/(?<=[.!?])\s+/).map(p => p.trim()).filter(Boolean).flatMap(split);
+}
+
+// Put `audio` into the video at `file` in place of its sound, copying its
+// frames: for a change to the voice-over alone (render.mjs --audio-only).
+export function remux(file, audio) {
+  const tmp = `${file}.remux.mp4`;
+  execFileSync(ffmpegPath(), ['-y', '-hide_banner', '-loglevel', 'error', '-i', file, '-i', audio,
+    '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k', '-ar', '48000', '-ac', '2',
+    '-movflags', '+faststart', '-shortest', tmp]);
+  fs.renameSync(tmp, file);
+}
+
+// Captions for the voice-over, as WebVTT: each line split into pieces (see
+// cuePieces), each piece given its share of the line's time by length.
+export function writeVtt(lines, out) {
+  const stamp = s => {
+    const ms = Math.max(0, Math.round(s * 1000));
+    const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, sec = Math.floor(ms / 1000) % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(ms % 1000).padStart(3, '0')}`;
+  };
+  const cues = [];
+  for (const { text, t, duration } of lines) {
+    const parts = cuePieces(text);
+    const total = parts.reduce((a, p) => a + p.length, 0);
+    let at = t;
+    for (const p of parts) {
+      const d = (duration * p.length) / total;
+      cues.push(`${stamp(at)} --> ${stamp(at + d)}\n${p}`);
+      at += d;
+    }
+  }
+  fs.writeFileSync(out, `WEBVTT\n\n${cues.map((c, i) => `${i + 1}\n${c}`).join('\n\n')}\n`);
 }
 
 export function report(file, root) {

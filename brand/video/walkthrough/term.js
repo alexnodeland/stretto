@@ -4,8 +4,15 @@
 //   window.__load(castText)   build the timeline from walkthrough.cast
 //   window.__duration          its length in seconds
 //   window.__posterTime        a frame to use as the poster: the served result
+//   window.__spoken            when each line of the voice-over starts
 //   window.__render(t)         draw the frame at t seconds
 //   window.__ready             resolves once fonts and images load
+//
+// window.__voice, set by render.mjs before this runs, is the voice-over's
+// lengths: {intro, outro, captions: {caption text: seconds}}. With it, the
+// intro speaks over the intro card, each caption as it appears, and the outro
+// over the outro card; a caption is not replaced, and a step not left, until
+// its line has finished.
 (() => {
   const $ = id => document.getElementById(id);
 
@@ -15,6 +22,7 @@
   const GAP = 0.6, GAP_KEEP = 0.3, GAP_MAX = 1.4;  // recorded pauses above GAP shrink to 30%
   const STEP_TAIL = 0.6, FADE = 0.35;
   const hold = (lines, newCaption) => Math.max(2.8, Math.min(8.5, 2.2 + 0.22 * lines)) + (newCaption ? 1.2 : 0);
+  const SAY_AT = 0.5, BREATH = 0.6;  // a line starts this long after its card or caption, and rests this long after
 
   const PROMPT = '\x1b[1;36m$\x1b[0m ';
   const TYPED = '\x1b[97m';
@@ -43,15 +51,35 @@
       }
     }
 
-    const segs = [{ kind: 'intro', t0: 0, t1: INTRO }];
-    let t = INTRO, poster = null;
+    // The voice-over: when each line starts, and when the voice is free again.
+    const V = window.__voice || null;
+    const spoken = [];
+    let free = 0;
+    const say = (key, text, t, duration) => {
+      if (!duration) return;
+      spoken.push({ key, text, t, duration });
+      free = t + duration + BREATH;
+    };
+    const lineOf = caption => (V && V.captions && V.captions[caption]) || 0;
+
+    const intro = V ? Math.max(INTRO, SAY_AT + V.intro + BREATH + 0.6) : INTRO;
+    say('intro', null, SAY_AT, V && V.intro);
+    const segs = [{ kind: 'intro', t0: 0, t1: intro }];
+    let t = intro, poster = null;
     steps.forEach((s, i) => {
-      segs.push({ kind: 'card', t0: t, t1: t + CARD, step: s, index: i });
-      t += CARD;
+      // A step whose first command brings a new caption keeps its card up
+      // while its own caption is said.
+      const replaced = s.cmds.length && s.cmds[0].caption !== s.caption;
+      const card = replaced ? Math.max(CARD, SAY_AT + lineOf(s.caption) + BREATH) : CARD;
+      segs.push({ kind: 'card', t0: t, t1: t + card, step: s, index: i });
+      say('caption', s.caption, t + SAY_AT, lineOf(s.caption));
+      t += card;
       const scene = { kind: 'term', t0: t, step: s, index: i, cmds: [] };
       let promptAt = t;
       let lastCaption = s.caption;
       for (const c of s.cmds) {
+        // A new caption waits for the line before it.
+        if (c.caption !== lastCaption && t + 0.4 < free) t = free - 0.4;
         const typing = Math.min(TYPE_MAX, c.text.length / TYPE_CPS);
         const x = { text: c.text, caption: c.caption, promptAt, typeStart: t + 0.4, out: [] };
         x.typeEnd = x.typeStart + typing;
@@ -67,6 +95,7 @@
         x.outEnd = clock + 0.12;
         const lines = c.out.map(o => o[1]).join('').split('\n').length;
         x.end = x.outEnd + hold(lines, c.caption !== lastCaption);
+        if (c.caption !== lastCaption) say('caption', c.caption, x.typeStart, lineOf(c.caption));
         lastCaption = c.caption;
         // The poster: the agent's first session with a flow, once its result is on screen.
         if (!poster && /^\.\/agent\b.*--flow /.test(c.text)) poster = x.outEnd + 1.2;
@@ -75,17 +104,20 @@
         t = x.end;
       }
       scene.idlePrompt = promptAt;
-      t += STEP_TAIL;
+      t = Math.max(t + STEP_TAIL, free);
       scene.t1 = t;
       segs.push(scene);
     });
-    segs.push({ kind: 'outro', t0: t, t1: t + OUTRO });
-    t += OUTRO;
+    const outro = V ? Math.max(OUTRO, SAY_AT + V.outro + BREATH + 1.2) : OUTRO;
+    segs.push({ kind: 'outro', t0: t, t1: t + outro });
+    say('outro', null, t + SAY_AT, V && V.outro);
+    t += outro;
     $('intro-meta').innerHTML = `${escapeHtml(header.stretto?.version || 'stretto')} · recorded ${new Date(header.timestamp * 1000).toISOString().slice(0, 10)} · the commands are in <code>brand/video/walkthrough/script.sh</code>`;
     $('tb-right').textContent = `${header.width}×${header.height}`;
-    plan = { header, steps, segs, duration: t, poster: poster ?? t / 2 };
+    plan = { header, steps, segs, duration: t, poster: poster ?? t / 2, spoken };
     window.__duration = plan.duration;
     window.__posterTime = plan.poster;
+    window.__spoken = spoken;
     return plan;
   }
 

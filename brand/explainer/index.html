@@ -258,6 +258,8 @@
   .btn { display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); cursor: pointer; padding: 0; }
   .btn:hover { border-color: var(--text); }
   .btn.play { background: var(--fill); border-color: var(--fill); color: var(--on-fill); }
+  .btn[aria-pressed="true"] { border-color: var(--graphic); color: var(--graphic); }
+  .btn[hidden] { display: none; }
   .btn svg { display: block; }
   .progress { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
   .seg-btn { position: relative; height: 38px; border: 0; background: none; cursor: pointer; padding: 0; }
@@ -306,6 +308,10 @@
     .s-arch { gap: 14px; }
     .buttons { justify-content: center; }
     .hint { display: none; }
+    /* The row labels run past 0.3 here: mark the threshold on each row's
+       track, not with a line through the labels. */
+    .band { border-left: 0; }
+    .cand::after { content: ""; position: absolute; left: 30%; top: 22px; height: 18px; margin-left: -1px; border-left: 2px solid var(--graphic); }
   }
 </style>
 </head>
@@ -608,10 +614,11 @@
       <button class="btn" id="prev" type="button" aria-label="Previous step"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <button class="btn play" id="play" type="button" aria-label="Play"><svg id="play-icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6L12.6 8z" fill="currentColor"/></svg></button>
       <button class="btn" id="next" type="button" aria-label="Next step"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="btn" id="sound" type="button" aria-label="Narration" aria-pressed="false" title="Narration (M)"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.4 6h2.3L8 3.2v9.6L4.7 10H2.4z" fill="currentColor"/><path id="sound-waves" d="M10.6 6.1 13.8 9.9M13.8 6.1l-3.2 3.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
     </div>
     <div class="progress" id="progress"></div>
   </nav>
-  <p class="hint" id="hint">Arrow keys step through; space plays or pauses. On a touch screen, swipe.</p>
+  <p class="hint" id="hint">Arrow keys step through; space plays or pauses; M turns the narration on or off. On a touch screen, swipe.</p>
 </main>
 
 <script>
@@ -628,6 +635,8 @@
   const count = document.getElementById('count');
   const playBtn = document.getElementById('play');
   const playIcon = document.getElementById('play-icon');
+  const soundBtn = document.getElementById('sound');
+  const soundWaves = document.getElementById('sound-waves');
   const slidesBox = document.getElementById('slides');
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
   const HOLD = 7500;        // ms to read a slide after it is built, when playing
@@ -645,6 +654,46 @@
 
   const times = slides.map(s => (s.dataset.times || '0').split(',').map(Number));
   let cur = 0, playing = false, t = 0, last = null, raf = 0, beat = -1;
+
+  // Narration: each step's line is audio/step-N.mp3, next to this page. It is
+  // off until a click turns it on, as browsers allow sound only then. While it
+  // is on, the step shown is spoken, and a playing explainer moves on once its
+  // line has finished. Without the files, the button goes away.
+  let sound = false, said = null;  // said: the step clock when the line ended
+  const lines = slides.map((_, i) => {
+    const a = new Audio();
+    a.preload = 'none';
+    a.src = `audio/step-${i + 1}.mp3`;
+    a.addEventListener('ended', () => { if (i === cur) { said = t; schedule(); } });
+    a.addEventListener('error', () => { setSound(false); soundBtn.hidden = true; });
+    return a;
+  });
+  function hush() { for (const a of lines) a.pause(); }
+  function speak() {
+    hush();
+    said = null;
+    if (!sound) return;
+    const a = lines[cur];
+    a.currentTime = 0;
+    a.play().catch(() => { said = t; });
+  }
+  function setSound(on) {
+    sound = on;
+    soundBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    soundWaves.setAttribute('d', on ? 'M10.4 5.7a3.2 3.2 0 0 1 0 4.6M12.2 3.9a5.8 5.8 0 0 1 0 8.2' : 'M10.6 6.1 13.8 9.9M13.8 6.1l-3.2 3.8');
+    if (on) speak(); else hush();
+  }
+  // How long the step shown takes, playing: its build and the line, or its
+  // build and a pause to read it.
+  function span(i) {
+    const d = lines[i].duration;
+    return sound && Number.isFinite(d) ? Math.max(duration(i), d * 1000 + 900) : duration(i) + HOLD;
+  }
+  function done() {
+    if (!sound) return t >= duration(cur) + HOLD;
+    // A line that never arrives holds the step no more than 30 s longer.
+    return (said !== null && t >= Math.max(duration(cur), said + 900)) || t >= duration(cur) + HOLD + 30000;
+  }
 
   function motion() { return !reduce.matches; }
   function beatsOf(s) { return [...s.querySelectorAll('[data-b]')]; }
@@ -675,7 +724,7 @@
   function render() {
     const d = duration(cur);
     segs.forEach((b, i) => {
-      const fill = i < cur ? 1 : i > cur ? 0 : (playing ? Math.min(1, t / (d + HOLD)) : (beat >= maxBeat(cur) ? 1 : Math.min(1, t / d)));
+      const fill = i < cur ? 1 : i > cur ? 0 : (playing ? Math.min(1, t / span(cur)) : (beat >= maxBeat(cur) ? 1 : Math.min(1, t / d)));
       b.firstChild.style.width = (fill * 100).toFixed(2) + '%';
       if (i === cur) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
     });
@@ -696,7 +745,7 @@
       apply(cur, k);
       if (k >= maxBeat(cur)) { const i = cur; setTimeout(() => { if (cur === i && beat >= maxBeat(i)) slides[i].classList.remove('building'); }, 900); }
     }
-    if (playing && t >= duration(cur) + HOLD) {
+    if (playing && done()) {
       if (cur < n - 1) show(cur + 1, true);
       else { setPlaying(false); built(cur); render(); return; }
     }
@@ -714,6 +763,7 @@
       if (!on) s.classList.remove('building');
     });
     last = null; beat = -1;
+    speak();
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     if (animate && motion()) {
       slides[cur].classList.add('building');
@@ -731,6 +781,9 @@
 
   function setPlaying(p) {
     playing = p;
+    const a = lines[cur];
+    if (!p) a.pause();
+    else if (sound && said === null && a.paused && a.currentTime > 0) a.play().catch(() => { said = t; });
     playBtn.setAttribute('aria-label', p ? 'Pause' : 'Play');
     playIcon.innerHTML = p ? '<path d="M4.5 3h2.6v10H4.5zM8.9 3h2.6v10H8.9z" fill="currentColor"/>' : '<path d="M5 3.2v9.6L12.6 8z" fill="currentColor"/>';
     slidesBox.setAttribute('aria-live', p ? 'off' : 'polite');
@@ -745,6 +798,7 @@
     else if (beat >= maxBeat(cur)) { t = duration(cur); }
     setPlaying(true);
   });
+  soundBtn.addEventListener('click', () => setSound(!sound));
   document.getElementById('prev').addEventListener('click', () => go(cur - 1));
   document.getElementById('next').addEventListener('click', () => go(cur + 1));
   document.addEventListener('keydown', e => {
@@ -754,6 +808,7 @@
     else if (e.key === 'ArrowLeft') { e.preventDefault(); go(cur - 1); }
     else if (e.key === 'Home') { e.preventDefault(); go(0); }
     else if (e.key === 'End') { e.preventDefault(); go(n - 1); }
+    else if (e.key === 'm' || e.key === 'M') { e.preventDefault(); soundBtn.hidden || setSound(!sound); }
     else if ((e.key === ' ' || e.key === 'k') && tag !== 'button' && tag !== 'summary' && tag !== 'a') { e.preventDefault(); playBtn.click(); }
   });
   reduce.addEventListener('change', () => { root.classList.toggle('no-motion', reduce.matches); if (reduce.matches) { setPlaying(false); built(cur); render(); } });

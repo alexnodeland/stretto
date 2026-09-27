@@ -6,8 +6,9 @@
 Each REQUEST is one session: the agent starts `stretto-proxy` in front of the
 official MCP filesystem server, as a host would, writes the conversation to the
 proxy's --context file, searches the notes for what the request asks about,
-reads what it needs and replies. With --flow, the proxy serves that flow
-(`--flow-decider habit`), and the agent skips the reads the flow already made:
+reads what it needs and replies. With --flow, the proxy serves that flow (with
+`reach`, its default for a flow without an arbiter), and the agent skips the
+reads the flow already made:
 their results arrive inside the result of the call before, after a line that
 says so.
 
@@ -131,7 +132,7 @@ def run(args, request: str, n: int) -> int:
     logs = Path(args.logs).expanduser().resolve()
     proxy = [args.proxy, "--record", str(logs), "--domain", "notes"]
     if args.flow:
-        proxy += ["--flow", str(Path(args.flow).expanduser().resolve()), "--flow-decider", "habit"]
+        proxy += ["--flow", str(Path(args.flow).expanduser().resolve())]
     context = Path(args.work).expanduser().resolve() / "context" / f"{logs.name}-{os.getpid()}-{n}.jsonl"
     s = Session(proxy, shlex.split(args.server), root, context)
     s.say("user", request)
@@ -182,7 +183,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("requests", nargs="*", help="one session per request")
     ap.add_argument("--from", dest="from_file", help="read the requests from this file, one per line")
-    ap.add_argument("--flow", help="serve this flow (stretto-proxy --flow FILE --flow-decider habit)")
+    ap.add_argument("--flow", help="serve this flow (stretto-proxy --flow FILE)")
     ap.add_argument("--logs", default="~/.stretto/logs/notes",
                     help="where the proxy records sessions (default: ~/.stretto/logs/notes, where `stretto init` puts them)")
     ap.add_argument("--notes", default="notes", help="the folder the filesystem server serves (default: notes)")

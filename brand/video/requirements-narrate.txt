@@ -1,0 +1,6 @@
+# The voice-over (video/narrate.py): Kokoro-82M, run locally with ONNX Runtime.
+#   python3 -m venv .venv-voice && .venv-voice/bin/pip install -r brand/video/requirements-narrate.txt
+# The model files (kokoro-v1.0.onnx, voices-v1.0.bin) come from
+# https://github.com/thewh1teagle/kokoro-onnx/releases/tag/model-files-v1.0
+kokoro-onnx==0.6.1
+soundfile==0.14.0

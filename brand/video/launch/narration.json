@@ -1,0 +1,16 @@
+{
+  "about": "The launch video's voice-over. Each line starts `at` seconds into its scene (timeline.js), and a scene holds until its line has finished. narrate.py voices the lines; render.mjs places them and writes brand/media/launch.vtt from the same text.",
+  "lines": [
+    {"key": "open", "at": 0.9, "text": "stretto. Read ahead of your agent."},
+    {"key": "problem", "at": 0.5, "text": "An agent spends an LLM turn on every tool call, and those turns are most of what it costs."},
+    {"key": "decided", "at": 0.5, "text": "But many of those turns are decided before they start. The first result named both orders, so the next two reads were fixed by the tools, not by the customer."},
+    {"key": "idea", "at": 0.5, "text": "stretto makes those reads for the agent. They ride in the same tool result, so the agent skips those turns. A wrong read costs only tokens, and changes nothing: stretto only reads."},
+    {"key": "record", "at": 0.5, "text": "First, record. stretto-proxy wraps any MCP server, forwards every message, and records each session."},
+    {"key": "learn", "at": 0.5, "text": "Then learn. stretto counts which reads follow which calls, and where each argument came from. The flow is a file you review like code."},
+    {"key": "serve", "at": 0.5, "text": "Then serve. After each call, the flow's lookups ride in the result the agent already gets. No new tool, and no change to the prompt."},
+    {"key": "rule", "at": 0.5, "text": "A lookup is made when the chance that the agent uses it before its next write clears a threshold set by costs, about 0.3. No model is asked: the proxy counts."},
+    {"key": "results", "at": 0.6, "text": "Live, on 28 τ²-bench retail and airline tasks, GLM-5.3 took 27.9% fewer LLM turns. In AgentDojo's Slack and travel suites, GLM-5.3 and Claude Haiku 4.5 took 10.1% fewer, with passes unchanged."},
+    {"key": "start", "at": 0.5, "text": "To start, install stretto and run stretto init. It prints your host's configuration, and the steps to a served flow. The quickstart runs the whole loop with no key."},
+    {"key": "end", "at": 0.7, "text": "stretto. Read ahead of your agent."}
+  ]
+}

@@ -126,7 +126,7 @@ run 'stretto audit --flow ~/.stretto/notes.flow.json --sessions ~/.stretto/logs/
 step "Serve it" \
   "The same request, without the flow and with it. With it, the flow's reads ride in the search's result, and the agent skips the calls it would have made."
 run './agent --logs ~/.stretto/logs/served "Summarize the October meetings."'
-note "With the flow, served by the proxy behind the agent's calls: --flow ~/.stretto/notes.flow.json --flow-decider habit."
+note "With the flow, served by the proxy behind the agent's calls: --flow ~/.stretto/notes.flow.json. It has no arbiter, so the proxy decides with reach, asking no model."
 run './agent --logs ~/.stretto/logs/served --flow ~/.stretto/notes.flow.json "Summarize the October meetings."'
 note "The flow log says why: each lookup's probability and its binding's chance, then why it handed back."
 run "jq -c 'select(.action) | {action, site, prob: (.prob * 100 | round / 100), binding, tool, reason} | del(..|nulls)' ~/.stretto/logs/served/*.flow.jsonl"

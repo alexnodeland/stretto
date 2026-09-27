@@ -32,7 +32,9 @@ const brandFiles = {
   launchVideo: 'media/launch.mp4',
   launchPoster: 'media/launch-poster.png',
   walkthroughVideo: 'media/walkthrough.mp4',
-  walkthroughPoster: 'media/walkthrough-poster.png'
+  walkthroughPoster: 'media/walkthrough-poster.png',
+  launchCaptions: 'media/launch.vtt',
+  walkthroughCaptions: 'media/walkthrough.vtt'
 } as const
 
 export type BrandAssets = Record<keyof typeof brandFiles, string | false>
