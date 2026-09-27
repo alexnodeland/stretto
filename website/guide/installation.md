@@ -1,10 +1,10 @@
 ---
-description: Install stretto from source today; release binaries, an install script and a Docker image come with the first release.
+description: Install stretto from source today; release binaries, install scripts and a Docker image come with every release, from the first.
 ---
 
 # Installation
 
-stretto is four programs from two Rust packages. Today you build them from source. Prebuilt binaries, an install script and a Docker image are coming with the first release; this page will say when they are available.
+stretto is four programs from two Rust packages. Until the first release is tagged, you build them from source. From then on, each release carries prebuilt binaries for Linux, macOS and Windows, install scripts that check each archive's checksum, and a Docker image ([every way to install](../../docs/install.md)).
 
 | Package | Installs |
 |---|---|
@@ -12,11 +12,9 @@ stretto is four programs from two Rust packages. Today you build them from sourc
 | `stretto-proxy` | `stretto-proxy`, the MCP proxy; `stretto-procedure`, which runs a compiled procedure; `stretto-mcp-demo`, a tiny server for trying the proxy |
 
 <!--
-  FIRST RELEASE: the three tabs marked "First release" are placeholders for what the
-  release branch ships (release binaries, an install script, and the image
-  ghcr.io/alexnodeland/stretto). When they are published, replace each tab's body
-  with its commands, drop its badge, and make it the first tab if it should be the
-  default. This is the only page that mentions them.
+  FIRST RELEASE: the three tabs marked "First release" hold what each release ships
+  (.github/workflows/release.yml and container.yml). When the first tag is published,
+  drop their badges and the notes, and make the install script the first tab.
 -->
 <Tabs :tabs="[
   { key: 'source', label: 'From source' },
@@ -26,10 +24,10 @@ stretto is four programs from two Rust packages. Today you build them from sourc
 ]">
 <template #source>
 
-You need Rust 1.87 or later ([rustup](https://rustup.rs)) and git. Install both packages from the `main` branch:
+You need Rust 1.88 or later ([rustup](https://rustup.rs)) and git. Install both packages from the `main` branch:
 
 ```sh
-cargo install --git https://github.com/alexnodeland/stretto \
+cargo install --locked --git https://github.com/alexnodeland/stretto \
   stretto-proxy stretto-report
 ```
 
@@ -42,28 +40,55 @@ cargo install --path crates/stretto-proxy
 cargo install --path crates/stretto-report
 ```
 
-Cargo puts the programs in `~/.cargo/bin`. To pin the first release, add `--tag v0.1.0` to the first command. That tag predates some options these pages document, such as `--flow-decider reach`, `stretto-procedure`, `--flow-tools` and `stretto learn --constants` ([changelog](/community/changelog)).
+Cargo puts the programs in `~/.cargo/bin`. Once releases are tagged, add `--tag vX.Y.Z` to the first command to build one.
 
 </template>
 <template #binaries>
 
-::: info Coming with the first release
-Prebuilt binaries will be attached to each release on [GitHub Releases](https://github.com/alexnodeland/stretto/releases). Until then, install from source.
+::: info From the first release
+Until the first release is tagged, install from source.
 :::
+
+Each release on [GitHub Releases](https://github.com/alexnodeland/stretto/releases) carries an archive of the four binaries for Linux (x86_64 and aarch64, glibc 2.35 or later), macOS (Apple silicon and Intel) and Windows x64, with `SHA256SUMS`:
+
+```sh
+sha256sum --ignore-missing --check SHA256SUMS
+tar -xzf stretto-x86_64-unknown-linux-gnu.tar.gz
+cp stretto-x86_64-unknown-linux-gnu/stretto* ~/.local/bin/
+```
 
 </template>
 <template #script>
 
-::: info Coming with the first release
-An install script will download the release binaries for your platform. Until then, install from source.
+::: info From the first release
+Until the first release is tagged, install from source.
 :::
+
+The script picks the archive for your system, checks its checksum against the release's `SHA256SUMS`, and copies the binaries into `~/.local/bin`, changing nothing else:
+
+```sh
+curl -fsSL https://github.com/alexnodeland/stretto/releases/latest/download/install.sh | sh
+```
+
+On Windows, in PowerShell:
+
+```powershell
+irm https://github.com/alexnodeland/stretto/releases/latest/download/install.ps1 | iex
+```
 
 </template>
 <template #docker>
 
-::: info Coming with the first release
-A Docker image will be published as `ghcr.io/alexnodeland/stretto`. Until then, install from source.
+::: info From the first release
+Until the first release is tagged, build the image from a checkout: `docker build -t stretto .`
 :::
+
+`ghcr.io/alexnodeland/stretto` is published for linux/amd64 and linux/arm64 with each release. It runs as a non-root user, with `/data` as its home: mount a volume there to keep `~/.stretto`.
+
+```sh
+docker run --rm ghcr.io/alexnodeland/stretto --help
+docker run --rm --entrypoint /usr/local/share/stretto/quickstart/run.sh ghcr.io/alexnodeland/stretto
+```
 
 </template>
 </Tabs>
@@ -71,10 +96,10 @@ A Docker image will be published as `ghcr.io/alexnodeland/stretto`. Until then, 
 ## Check the install
 
 ```sh
-stretto --version
-stretto-proxy --version
-stretto-procedure --version
+stretto doctor
 ```
+
+`stretto doctor` checks the programs on your `PATH`, whether `~/.stretto` is writable, whether a TypeSafe key is set (never its value), and the flows and sessions you have. It exits with 1 when something needs fixing. `stretto completions bash|zsh|fish|powershell|elvish` prints shell completions.
 
 MCP hosts start servers without your shell, and some do not see your `PATH`. If a host cannot start `stretto-proxy`, give its absolute path in the host's configuration: `which stretto-proxy` prints it.
 
