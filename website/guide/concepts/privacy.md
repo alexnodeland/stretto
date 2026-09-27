@@ -21,7 +21,7 @@ Keep logs where the data may live, and never commit them.
 
 The proxy talks to the MCP server it fronts, and to nothing else unless a System-One model is asked. Questions go to Jev, only on a cache miss, and only when:
 
-- the proxy serves a flow with its arbiter (`--flow-decider arbiter`, the default) or runs the confirmation judge (`--confirm-judge`), with `--oracle jev`; or
+- the proxy serves a flow with its arbiter (`--flow-decider arbiter`, the default for a flow that has one) or runs the confirmation judge (`--confirm-judge`), with `--oracle jev`; or
 - an offline command asks: `stretto learn` or `compile` fitting an arbiter, `phase0 --oracle`, `confirm`, `match`, `ask`.
 
 A question carries the customer's first message and up to four later ones, the agent's last message, up to 16 earlier calls and the last four results in full, each cut to a length ([the fields](/reference/privacy#what-leaves-the-machine)).

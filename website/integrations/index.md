@@ -110,7 +110,7 @@ stretto init --host cursor --domain orders \
 ```json
 "args": ["--record", "~/.stretto/shadow/orders", "--domain", "orders",
          "--flow", "/home/me/.stretto/orders.flow.json",
-         "--flow-decider", "habit", "--flow-shadow",
+         "--flow-decider", "reach", "--flow-shadow",
          "--", "npx", "-y", "some-mcp-server"]
 ```
 
@@ -133,11 +133,11 @@ stretto init --host cursor --domain orders \
 ```json
 "args": ["--record", "~/.stretto/logs/orders", "--domain", "orders",
          "--flow", "/home/me/.stretto/orders-promoted.flow.json",
-         "--flow-decider", "habit",
+         "--flow-decider", "reach",
          "--", "npx", "-y", "some-mcp-server"]
 ```
 
-A flow learned with `--habit-only` has no arbiter, so `init` serves it on its habit alone (`--flow-decider habit`). To serve it with the `reach` decider, which also needs no key, change `habit` to `reach` ([deciders](/guide/concepts/deciders)). A flow with an arbiter is served with it, and `init` reminds you that the server then needs `TYPESAFE_API_KEY` in its `env`. To name the only tools the flow may call on its own, add `--flow-tools` to `args` by hand ([lookups](/guide/concepts/lookups#which-tools-a-flow-may-call)).
+A flow learned with `--habit-only` has no arbiter, so `init` serves it with the `reach` decider (`--flow-decider reach`), which asks no model and needs no key ([deciders](/guide/concepts/deciders)). A flow with an arbiter is served with it, and `init` reminds you that the server then needs `TYPESAFE_API_KEY` in its `env`. To name the only tools the flow may call on its own, add `--flow-tools` to `args` by hand ([lookups](/guide/concepts/lookups#which-tools-a-flow-may-call)).
 
 ## What to watch for
 

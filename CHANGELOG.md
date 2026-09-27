@@ -33,6 +33,13 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
   - Over all of AgentDojo, 6.0% fewer, where the replay projected 7.2%.
   - No effect in BFCL, whose replay projected 1.6%.
   - Promotion, live on Slack: scored on each agent's own training sessions, it removed every detour and the saved turns with them. One site served both kinds of task, and only the request tells them apart. It also kept lookups of calls the agent had already asked for in the same turn ([#40](https://github.com/alexnodeland/stretto/issues/40)).
+- **A flow without an arbiter decides with `reach` by default**, the chance of each lookup before the agent's next write.
+  - `stretto-proxy` serves such a flow with `reach` unless `--flow-decider` names another. Before, it refused one without `--flow-decider habit`.
+  - `stretto promote` scores it with `reach` too, and `stretto init` writes `--flow-decider reach` and passes `--decider reach` to the promote step it prints.
+  - `stretto flow-show` and `flow-diff` show what it does at each site with `reach`.
+  - A flow learned before flows held reach's counts is served with the habit, as before. `stretto audit` still scores a flow without an arbiter with the habit, the model of the agent's next step.
+  - The quickstart and the walkthrough serve with the default, and save as many calls as with the habit.
+  - With `reach`, a hand-back now names the likeliest lookup under the threshold and its probability, instead of "no lookup to make".
 - `stretto audit` and `stretto flow-show` name the reach decider when a flow is served with it, instead of the arbiter.
 - **The documentation site** (`website/`, VitePress), deployed to GitHub Pages: a guide, integrations, the reference, the research and the community pages. The research notebook moves to `/notebook/`.
 - **The brand kit** (`brand/`): the mark, the wordmark and lockups, color tokens with a contrast check, messaging, the social card, an interactive explainer, and the launch and walkthrough videos with their sources.

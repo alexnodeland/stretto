@@ -248,7 +248,7 @@ def main() -> None:
 
     # 5. Serve it.
     served = work / "logs-served"
-    counts = record(SERVED, served, ["--flow", str(flow_path), "--flow-decider", "habit"])
+    counts = record(SERVED, served, ["--flow", str(flow_path)])
     for (request, _, _), c in zip(SERVED, counts):
         print(f"5. \"{request}\": the agent made {c['calls']} calls; the flow read {c['flow']} files for it")
     decisions = [json.loads(l) for p in sorted(served.glob("*.flow.jsonl")) for l in p.read_text().splitlines()]

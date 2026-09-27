@@ -14,9 +14,9 @@ stretto-proxy ... --flow orders.flow.json --flow-decider reach -- <server comman
 |---|---|---|---|
 | `reach` | That the agent calls this tool before its next write, counted in training | No | No |
 | `habit` | That the agent calls this tool next, counted in training | No | No |
-| `arbiter` (the default) | The habit's, weighed with a System-One model's answers and yes/no questions about the state | Yes, at each decision | `TYPESAFE_API_KEY` |
+| `arbiter` (the default for a flow that has one) | The habit's, weighed with a System-One model's answers and yes/no questions about the state | Yes, at each decision | `TYPESAFE_API_KEY` |
 
-Start with `reach`. `stretto init` serves a flow that has no arbiter with `habit`, so change `habit` to `reach` in the configuration it prints. The same deciders are options of `stretto audit`, `stretto promote` and `stretto serve` (`--decider`).
+Start with `reach`. It is what `stretto-proxy` and `stretto promote` use for a flow without an arbiter unless told otherwise, and what `stretto init` writes into the configuration it prints. The same deciders are options of `stretto audit`, `stretto promote` and `stretto serve` (`--decider`). `stretto audit` scores the agent's next step, so it scores a flow without an arbiter with the habit.
 
 ## reach
 

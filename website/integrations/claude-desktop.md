@@ -48,7 +48,7 @@ stretto init --host claude-desktop --domain notes \
 ```json
 "args": ["--record", "~/.stretto/logs/notes", "--domain", "notes",
          "--flow", "/Users/me/.stretto/notes.flow.json",
-         "--flow-decider", "habit",
+         "--flow-decider", "reach",
          "--", "npx", "-y", "@modelcontextprotocol/server-filesystem",
          "/Users/me/notes"]
 ```
@@ -56,7 +56,7 @@ stretto init --host claude-desktop --domain notes \
 Replace the server's entry with the new one, and restart Claude Desktop.
 
 - Add `--shadow` to `init` to see what the flow would do before it acts ([shadow mode](/guide/concepts/shadow-and-promotion)).
-- A flow learned with `--habit-only` is served on its habit (`--flow-decider habit`). To serve it with `reach`, which needs no key either, change `habit` to `reach` ([deciders](/guide/concepts/deciders)).
+- A flow learned with `--habit-only` has no arbiter, so `init` serves it with `reach`, which asks no model and needs no key ([deciders](/guide/concepts/deciders)).
 
 ## When a server does not start
 

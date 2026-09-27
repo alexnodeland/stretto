@@ -163,7 +163,8 @@ enum Command {
         #[arg(help_heading = "Inputs", value_name = "N", long, num_args = 1..)]
         trials: Vec<u32>,
         /// Ask no System-One model: every session trains the habit, and the
-        /// flow has no arbiter (serve it with `--decider habit`).
+        /// flow has no arbiter (serve it with `--flow-decider reach`, as
+        /// `stretto init` does).
         #[arg(help_heading = "The arbiter", long)]
         habit_only: bool,
         /// Also pass, as the agent did, each argument it passed with one value
@@ -702,8 +703,10 @@ enum Command {
             default_value = ".oracle-cache"
         )]
         oracle_cache: PathBuf,
-        /// How the flow decides: `arbiter`, `habit` or `reach`. Default: the
-        /// arbiter, or the habit for a flow without one.
+        /// How the flow decides: `arbiter`, `habit` or `reach`, as it will be
+        /// served (`stretto-proxy --flow-decider`). Default: as the proxy
+        /// serves it by default, with its arbiter, else `reach`, else, for a
+        /// flow learned before flows held reach's counts, `habit`.
         #[arg(help_heading = "The System-One model", long, value_enum)]
         decider: Option<DeciderArg>,
         /// The threshold the flow will be served with (`stretto-proxy
@@ -887,8 +890,10 @@ struct InitArgs {
     #[arg(long, value_name = "NAME", required_unless_present = "flow")]
     domain: Option<String>,
     /// Run this flow (from `stretto learn` or `stretto promote`) after the
-    /// agent's calls. A flow without an arbiter is served on its habit
-    /// alone (`--flow-decider habit`).
+    /// agent's calls. A flow without an arbiter is served on the chance of
+    /// each lookup before the agent's next write (`--flow-decider reach`),
+    /// or on its habit alone (`habit`) if it was learned before flows held
+    /// those counts.
     #[arg(long, value_name = "FILE")]
     flow: Option<String>,
     /// Run the flow in shadow: it decides and logs, but looks nothing up,
@@ -1415,7 +1420,8 @@ fn run() -> Result<()> {
             let flow = stretto_report::flow::Flow::load(&flow)?;
             if decider == DeciderArg::Arbiter && !flow.has_arbiter() {
                 anyhow::bail!(
-                    "this flow was learned without a System-One model: serve it with --decider habit"
+                    "this flow was learned without a System-One model: serve it with --decider {}",
+                    flow.served_decider().name()
                 );
             }
             if decider == DeciderArg::Reach && !flow.has_reach() {
@@ -1916,9 +1922,12 @@ fn run() -> Result<()> {
             let mut sc = ShadowConfig::new(oracle_kind(oracle));
             sc.cache_dir = oracle_cache;
             let oracle = sc.build()?;
-            let decider = decider.map_or(flow.default_decider(), Decider::from);
+            let decider = decider.map_or(flow.served_decider(), Decider::from);
             if decider == Decider::Arbiter && !flow.has_arbiter() {
-                anyhow::bail!("the flow has no arbiter: promote it with --decider habit");
+                anyhow::bail!(
+                    "the flow has no arbiter: promote it with --decider {}",
+                    flow.served_decider().name()
+                );
             }
             if decider == Decider::Reach && !flow.has_reach() {
                 anyhow::bail!("the flow has no counts for --decider reach: learn it again");
@@ -2193,6 +2202,7 @@ fn init(args: InitArgs) -> Result<()> {
         flow: flow.map(|(path, loaded)| Served {
             path,
             arbiter: loaded.has_arbiter(),
+            reach: loaded.has_reach(),
             shadow: args.shadow,
         }),
         domain,

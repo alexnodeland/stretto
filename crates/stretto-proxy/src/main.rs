@@ -64,9 +64,11 @@ struct Cli {
     /// System-One model's answers and the predicates, combined), `habit`
     /// (the habit alone, which never asks a System-One model and needs no
     /// key), or `reach` (the habit's counts for whether the agent makes the
-    /// lookup before its next write; no key either).
-    #[arg(help_heading = "Flows", long, value_enum, default_value_t = DeciderArg::Arbiter)]
-    flow_decider: DeciderArg,
+    /// lookup before its next write; no key either). Default: the flow's
+    /// arbiter, else `reach`, else, for a flow learned before flows held
+    /// reach's counts, `habit`.
+    #[arg(help_heading = "Flows", long, value_enum)]
+    flow_decider: Option<DeciderArg>,
     /// Lookups appended to one result, at most.
     #[arg(help_heading = "Flows", value_name = "N", long, default_value_t = 8)]
     flow_per_call: usize,
@@ -308,14 +310,16 @@ fn active(cli: &Cli) -> Result<Active> {
             let path = expand_home(path.clone());
             let flow = Flow::load(&path).with_context(|| format!("loading {}", path.display()))?;
             let decider = match cli.flow_decider {
-                DeciderArg::Arbiter => Decider::Arbiter,
-                DeciderArg::Habit => Decider::Habit,
-                DeciderArg::Reach => Decider::Reach,
+                Some(DeciderArg::Arbiter) => Decider::Arbiter,
+                Some(DeciderArg::Habit) => Decider::Habit,
+                Some(DeciderArg::Reach) => Decider::Reach,
+                None => flow.served_decider(),
             };
             if decider == Decider::Arbiter && !flow.has_arbiter() {
                 bail!(
-                    "{} was learned without a System-One model: serve it with --flow-decider habit",
-                    path.display()
+                    "{} was learned without a System-One model: serve it with --flow-decider {}",
+                    path.display(),
+                    flow.served_decider().name()
                 );
             }
             if decider == Decider::Reach && !flow.has_reach() {
@@ -333,9 +337,11 @@ fn active(cli: &Cli) -> Result<Active> {
             });
             sc.cache_dir = expand_home(cli.oracle_cache.clone());
             eprintln!(
-                "stretto-proxy: serving the {} flow from {}",
+                "stretto-proxy: serving the {} flow from {}, deciding with {}{}",
                 flow.domain(),
-                path.display()
+                path.display(),
+                decider.name(),
+                if cli.flow_shadow { ", in shadow" } else { "" }
             );
             Some(FlowConfig {
                 flow,

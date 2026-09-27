@@ -512,8 +512,10 @@ fn a_flow_shows_what_it_may_call_and_where_its_arguments_come_from() {
         "| `get_order` | `order_id` | `get_account` at `$.orders[*]` (120 of 120) |",
         // Only the customer knows their email.
         "| `find_account` | `email` | nothing: the flow never makes this lookup | — |",
-        "It has no arbiter: it decides with the habit alone and asks no one.",
-        "It also counts how often each action came before the agent's next write (`reach`), which `--decider reach` serves.",
+        // It holds reach's counts, so it is served, and shown, with them.
+        "It has no arbiter and asks no one: it decides by how often each lookup came before the agent's next write (`reach`).",
+        "what the flow does there with `reach` at a threshold of 0.3, which is the likeliest lookup's share of the times the agent made it before its next write, times the chance",
+        "| After | Lookups it may make next (times seen) | What the agent did next in training | With `reach` |",
     ] {
         assert!(md.contains(line), "missing {line:?} in\n{md}");
     }
@@ -757,4 +759,24 @@ fn a_promoted_flow_acts_only_where_its_lookups_were_the_agents_own() {
     assert!(stretto_report::review::diff(&flow, &promoted, 0.05, 0.3)
         .needs_review
         .is_empty());
+}
+
+#[test]
+fn a_flow_is_served_with_its_arbiter_else_reach_else_its_habit() {
+    // What the proxy and `stretto promote` decide with when not told.
+    let episodes: Vec<Episode> = (0..60).map(session).collect();
+    let habit = habit_flow(&episodes, &manifest());
+    assert!(habit.has_reach());
+    assert_eq!(habit.served_decider(), Decider::Reach);
+    // The audit scores the agent's next step, which the habit predicts.
+    assert_eq!(habit.default_decider(), Decider::Habit);
+    assert_eq!(learned_flow().served_decider(), Decider::Arbiter);
+    // A flow learned before flows held reach's counts.
+    let older = stretto_report::flow::Flow::load(
+        &PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/examples/retail-5-sessions.flow.json"),
+    )
+    .unwrap();
+    assert!(!older.has_reach());
+    assert_eq!(older.served_decider(), Decider::Habit);
 }

@@ -14,7 +14,7 @@ stretto-proxy --record ~/.stretto/shadow/orders --domain orders \
   -- <server command>
 ```
 
-`stretto init --host HOST --domain orders --flow ~/.stretto/orders.flow.json --shadow -- <server command>` prints this configuration for your host, recording to `~/.stretto/shadow/orders`; for a flow with no arbiter it writes `--flow-decider habit`, which you can change to `reach` ([integrations](/integrations/)).
+`stretto init --host HOST --domain orders --flow ~/.stretto/orders.flow.json --shadow -- <server command>` prints this configuration for your host, recording to `~/.stretto/shadow/orders`, and the `promote` command below; for a flow with no arbiter it writes `--flow-decider reach` ([integrations](/integrations/)).
 
 With `--flow-shadow`, the flow decides after each of the agent's calls and logs what it would look up, marked `"shadow": true` in the flow log, but makes no lookups. The agent gets the server's results unchanged. Serve it this way for as many sessions as it takes to see each kind of request a few times.
 

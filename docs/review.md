@@ -76,7 +76,7 @@ Where each lookup's required arguments come from, and how often binding them tha
 What to check, section by section:
 
 - **Tools.** The flow calls only the read tools. A tool that writes but is marked read is the one mistake that matters here. Kinds come from the server's `readOnlyHint` annotations or a `--manifest` file, so check them against what the tools do.
-- **Sites.** After each call: the lookups the flow may make next, how often the agent made each in training, and what the flow does there with the habit alone. That last column uses the threshold the flow will be served with (`--threshold`, as `stretto-proxy --flow-threshold`). It pools over what came before the call, so a live decision near the threshold can go either way. A lookup seen once or twice is a thin basis.
+- **Sites.** After each call: the lookups the flow may make next, how often the agent made each in training, and what the flow does there as it is served by default: with `reach` for a flow without an arbiter, as every flow `stretto learn` writes is, else with the habit alone (the examples here were learned before flows held reach's counts, and an arbiter's model is not asked for a review). That last column uses the threshold the flow will be served with (`--threshold`, as `stretto-proxy --flow-threshold`). It pools over what came before the call, so a live decision near the threshold can go either way. A lookup seen once or twice is a thin basis.
 - **Bindings.** Where each required argument comes from, and how often that way gave the agent's own arguments. "Nothing" means the flow never makes that lookup itself. Here, `find_user_id_by_email` needs an email only the customer knows. Where a flow counts them, further columns give the chance where the customer had named another record, and where the record they described had already been read.
 - **Sources by site**, when a flow has them: where an argument has more than one source, the order the binding tries them after a call, as the agent used them there. A reorder adds no source; a new source shows under Bindings.
 - **Constants**, when a flow has them (`learn --constants`): arguments the agent passed with one value every time, which the flow passes as the agent did. Check that each is a value every call should pass, such as a page size, and not one user's id that the training sessions happened to share.
@@ -102,7 +102,7 @@ The diff speaks in the same terms as `flow-show` and lists first what needs a re
 | A site newly promoted, or a promotion lifted (`stretto promote`), or a site a search switched off switched back on | Yes: the flow acts after a call where it handed back |
 | Lookups, sources, constants or an arbiter removed, a tool no longer read-only, a site no longer promoted or switched off | No: the flow does less |
 | A site's own threshold set, raised or lowered (`stretto search`) | No; listed. It moves the bar for lookups the flow could already make there, as `--threshold` does |
-| What the flow does after each call with the habit alone, at `--threshold` (0.3) | No; listed |
+| What the flow does after each call with `reach` or the habit alone, as for `flow-show`, at `--threshold` (0.3) | No; listed |
 | The source a binding tries first after a call (`bindings.site_sources`) | No; listed. It orders sources the flow could already bind from |
 | Shares, binding chances and arbiter weights that moved by `--tolerance` (0.05) or more | No; listed |
 | Code features, the promotion's bar, and provenance | No; listed |

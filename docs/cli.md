@@ -220,7 +220,7 @@ Usage: stretto learn [OPTIONS] --domain <NAME> --out <FILE>
 
 **The arbiter**
 
-- `--habit-only` (not with `--refit-habit`, `--arbiter-from`, `--manifest-options`, `--oracle`, `--oracle-cache`, `--oracle-budget`, `--predicates`): Ask no System-One model: every session trains the habit, and the flow has no arbiter (serve it with `--decider habit`).
+- `--habit-only` (not with `--refit-habit`, `--arbiter-from`, `--manifest-options`, `--oracle`, `--oracle-cache`, `--oracle-budget`, `--predicates`): Ask no System-One model: every session trains the habit, and the flow has no arbiter (serve it with `--flow-decider reach`, as `stretto init` does).
 - `--refit-habit` (not with `--habit-only`, `--arbiter-from`): Once the arbiter is fitted on the held-out sessions, learn the habit, the sites and the bindings again from every session.
 - `--arbiter-from <FILE>` (not with `--habit-only`, `--refit-habit`, `--manifest-options`, `--oracle`, `--oracle-cache`, `--oracle-budget`, `--predicates`): Ask no System-One model while learning: every session trains the habit, and the flow serves this arbiter instead. It is an arbiter file (`export-arbiter`; `data/arbiters/` ships two), or a flow whose arbiter to take, such as one `compile` fitted on other agents' traces.
 - `--manifest-options` (not with `--habit-only`, `--arbiter-from`): Offer every read-only tool at every site (see `compile`). Only the arbiter a flow fits here weighs such options.
@@ -503,7 +503,7 @@ Usage: stretto promote [OPTIONS] --flow <FILE> --out <FILE>
 
 - `--oracle <ORACLE>` (one of `jev`, `replay`, `mock`; default `replay`): Who answers the flow's questions: `replay` (the cache only; decisions it cannot answer are left out), `jev` (needs TYPESAFE_API_KEY) or `mock`.
 - `--oracle-cache <DIR>` (default `.oracle-cache`): Replay cache for oracle answers.
-- `--decider <DECIDER>` (one of `arbiter`, `habit`, `reach`): How the flow decides: `arbiter`, `habit` or `reach`. Default: the arbiter, or the habit for a flow without one.
+- `--decider <DECIDER>` (one of `arbiter`, `habit`, `reach`): How the flow decides: `arbiter`, `habit` or `reach`, as it will be served (`stretto-proxy --flow-decider`). Default: as the proxy serves it by default, with its arbiter, else `reach`, else, for a flow learned before flows held reach's counts, `habit`.
 
 **The bar**
 
@@ -623,7 +623,7 @@ Usage: stretto init [OPTIONS] --host <HOST> -- <SERVER_COMMAND>...
 
 - `--host <HOST>` (required; one of `claude-code`, `claude-desktop`, `cursor`, `vscode`): The MCP host to configure.
 - `--domain <NAME>`: The server's name in the host, which is also the domain of its sessions and flows (default, with --flow: the flow's).
-- `--flow <FILE>`: Run this flow (from `stretto learn` or `stretto promote`) after the agent's calls. A flow without an arbiter is served on its habit alone (`--flow-decider habit`).
+- `--flow <FILE>`: Run this flow (from `stretto learn` or `stretto promote`) after the agent's calls. A flow without an arbiter is served on the chance of each lookup before the agent's next write (`--flow-decider reach`), or on its habit alone (`habit`) if it was learned before flows held those counts.
 - `--shadow`: Run the flow in shadow: it decides and logs, but looks nothing up, for `stretto promote`.
 - `--record <DIR>`: Where the proxy records sessions (default: ~/.stretto/logs/NAME, or ~/.stretto/shadow/NAME with --shadow).
 - `--write <PATH>`: Write the host's configuration file here instead of printing it (for Claude Code, a project's .mcp.json). An existing file is left as it is, unless --force is given.
@@ -680,7 +680,7 @@ Usage: stretto-proxy [OPTIONS] [-- <SERVER_COMMAND>...]
 
 - `--flow <FILE>`: Run this flow (from `stretto compile` or `stretto learn`) after each of the agent's calls, and append its lookups to the result.
 - `--flow-threshold <P>` (default `0.3`): Take a lookup when the tool's probability times its arguments' agreement is at least this.
-- `--flow-decider <FLOW_DECIDER>` (one of `arbiter`, `habit`, `reach`; default `arbiter`): Where the tool's probability comes from: `arbiter` (the habit, the System-One model's answers and the predicates, combined), `habit` (the habit alone, which never asks a System-One model and needs no key), or `reach` (the habit's counts for whether the agent makes the lookup before its next write; no key either).
+- `--flow-decider <FLOW_DECIDER>` (one of `arbiter`, `habit`, `reach`): Where the tool's probability comes from: `arbiter` (the habit, the System-One model's answers and the predicates, combined), `habit` (the habit alone, which never asks a System-One model and needs no key), or `reach` (the habit's counts for whether the agent makes the lookup before its next write; no key either). Default: the flow's arbiter, else `reach`, else, for a flow learned before flows held reach's counts, `habit`.
 - `--flow-per-call <N>` (default `8`): Lookups appended to one result, at most.
 - `--flow-per-session <N>` (default `40`): Lookups per session, at most.
 - `--flow-questions <N>` (default `300`): Questions to the System-One model per session, at most.

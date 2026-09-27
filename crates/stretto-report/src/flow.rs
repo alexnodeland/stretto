@@ -279,6 +279,17 @@ pub enum Decider {
     Reach,
 }
 
+impl Decider {
+    /// Its name, as `--flow-decider` and `--decider` take it.
+    pub fn name(self) -> &'static str {
+        match self {
+            Decider::Arbiter => "arbiter",
+            Decider::Habit => "habit",
+            Decider::Reach => "reach",
+        }
+    }
+}
+
 /// Exploration at a flow's decisions (RFC-001 §3.7): with probability
 /// `epsilon`, the flow takes a lookup other than the one its rule picks,
 /// drawn in proportion to the decider's probabilities among the lookups it
@@ -574,11 +585,27 @@ impl Flow {
         }
     }
 
-    /// How the flow decides unless told otherwise: with its arbiter, or with
-    /// the habit alone if it has none.
+    /// How `stretto audit` scores the flow unless told otherwise: with its
+    /// arbiter, or with the habit alone if it has none. The audit scores the
+    /// agent's next step, which the habit predicts and `reach` does not.
     pub fn default_decider(&self) -> Decider {
         if self.has_arbiter() {
             Decider::Arbiter
+        } else {
+            Decider::Habit
+        }
+    }
+
+    /// How the flow is served, and promoted, unless told otherwise: with its
+    /// arbiter; without one, by the chance of each lookup before the agent's
+    /// next write (`reach`), whose counts every flow `stretto learn` writes
+    /// holds; and with the habit alone if it was learned before flows held
+    /// them.
+    pub fn served_decider(&self) -> Decider {
+        if self.has_arbiter() {
+            Decider::Arbiter
+        } else if self.has_reach() {
+            Decider::Reach
         } else {
             Decider::Habit
         }
@@ -986,12 +1013,7 @@ impl Flow {
             (false, 1.0 - explore.epsilon)
         };
         next.policy = Some(PolicyView {
-            decider: match chosen.decider {
-                Decider::Arbiter => "arbiter",
-                Decider::Habit => "habit",
-                Decider::Reach => "reach",
-            }
-            .to_string(),
+            decider: chosen.decider.name().to_string(),
             threshold,
             epsilon: explore.epsilon,
             explored,
@@ -1093,9 +1115,17 @@ impl Flow {
     ) -> Result<Next> {
         next.probs = options.iter().cloned().zip(probs.iter().copied()).collect();
         let mut best: Option<(&String, f64, Value, f64)> = None;
-        let mut why = "no lookup to make".to_string();
+        let mut unbound = None;
+        // The likeliest lookup under the threshold, to say why none was made.
+        let mut below: Option<(&String, f64)> = None;
         for (tool, &p) in options.iter().zip(probs) {
-            if tool.as_str() == RESPOND || p < threshold {
+            if tool.as_str() == RESPOND {
+                continue;
+            }
+            if p < threshold {
+                if below.is_none_or(|(_, q)| p > q) {
+                    below = Some((tool, p));
+                }
                 continue;
             }
             match self.bind_lookup(tool, episode) {
@@ -1104,11 +1134,20 @@ impl Flow {
                         best = Some((tool, p, arguments, chance));
                     }
                 }
-                Err(e) => why = format!("{tool}: {e}"),
+                Err(e) => unbound = Some((format!("{tool}: {e}"), p)),
             }
         }
         let Some((tool, p, arguments, chance)) = best else {
-            next.proposal = Proposal::HandBack { reason: why };
+            // Say why, with the probability of the lookup it is about.
+            let (reason, p) = match (unbound, below) {
+                (Some((why, p)), _) => (why, Some(p)),
+                (None, Some((tool, p))) => {
+                    (format!("{tool} at {p:.2}, below {threshold}"), Some(p))
+                }
+                (None, None) => ("no lookup to make".to_string(), None),
+            };
+            next.prob = p;
+            next.proposal = Proposal::HandBack { reason };
             return Ok(next);
         };
         next.prob = Some(p);

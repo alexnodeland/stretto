@@ -70,14 +70,14 @@ stretto init --host claude-code --domain notes \
 ```sh
 claude mcp add notes -- stretto-proxy \
   --record ~/.stretto/logs/notes --domain notes \
-  --flow /home/me/.stretto/notes.flow.json --flow-decider habit \
+  --flow /home/me/.stretto/notes.flow.json --flow-decider reach \
   -- npx -y @modelcontextprotocol/server-filesystem /home/me/notes
 ```
 
 The server is already configured under that name, so remove it first (`claude mcp remove notes`), then run the new command and restart Claude Code. Claude Code then sees each of the flow's lookups inside the result of the call it made, under `--- Also looked up automatically ... ---`.
 
 - Add `--shadow` to `init` to see what the flow would do before it acts ([shadow mode](/guide/concepts/shadow-and-promotion)).
-- A flow learned with `--habit-only` is served on its habit (`--flow-decider habit`). To serve it with `reach`, which needs no key either, change `habit` to `reach` ([deciders](/guide/concepts/deciders)).
+- A flow learned with `--habit-only` has no arbiter, so `init` serves it with `reach`, which asks no model and needs no key ([deciders](/guide/concepts/deciders)).
 
 ## Notes
 

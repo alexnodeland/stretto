@@ -66,10 +66,27 @@ pub struct Served {
     /// The flow's file, as the host passes it (the proxy expands `~`).
     pub path: String,
     /// Whether it has an arbiter, which asks a System-One model. A flow
-    /// without one is served on its habit alone.
+    /// without one decides by counting: by its chance of use before the
+    /// next write (`reach`) when it holds those counts, as every flow
+    /// `stretto learn` writes does, else on its habit alone.
     pub arbiter: bool,
+    /// Whether it holds the counts `--flow-decider reach` reads.
+    pub reach: bool,
     /// Shadow mode: decide and log, but look nothing up.
     pub shadow: bool,
+}
+
+impl Served {
+    /// The decider to pass the proxy: none for a flow with an arbiter, which
+    /// the proxy serves by default, else `reach` where the flow holds its
+    /// counts and `habit` where it does not.
+    pub fn decider(&self) -> Option<&'static str> {
+        match (self.arbiter, self.reach) {
+            (true, _) => None,
+            (false, true) => Some("reach"),
+            (false, false) => Some("habit"),
+        }
+    }
 }
 
 /// A server behind the proxy, as `init` sets it up.
@@ -107,8 +124,8 @@ impl Setup {
         ];
         if let Some(flow) = &self.flow {
             args.extend(["--flow".into(), flow.path.clone()]);
-            if !flow.arbiter {
-                args.extend(["--flow-decider".into(), "habit".into()]);
+            if let Some(decider) = flow.decider() {
+                args.extend(["--flow-decider".into(), decider.into()]);
             }
             if flow.shadow {
                 args.push("--flow-shadow".into());
@@ -269,7 +286,14 @@ pub fn next_steps(setup: &Setup, init: &str) -> String {
                  {init} --flow {flow} --shadow -- {server}"
             ));
             let shadow = Setup::default_record(d, true);
-            steps.push(promote_step(&flow, &shadow, &promoted, false));
+            // `stretto learn` writes a flow with the counts `reach` reads.
+            steps.push(promote_step(
+                &flow,
+                &shadow,
+                &promoted,
+                false,
+                Some("reach"),
+            ));
             steps.push(serve_step(init, &promoted, &server));
         }
         Some(served) if served.shadow => {
@@ -283,6 +307,7 @@ pub fn next_steps(setup: &Setup, init: &str) -> String {
                 &setup.record,
                 &promoted,
                 served.arbiter,
+                served.decider(),
             ));
             steps.push(serve_step(init, &promoted, &server));
         }
@@ -324,17 +349,25 @@ pub fn next_steps(setup: &Setup, init: &str) -> String {
     out
 }
 
-/// Promote `flow` on the shadow sessions in `sessions`.
-fn promote_step(flow: &str, sessions: &str, promoted: &str, arbiter: bool) -> String {
+/// Promote `flow` on the shadow sessions in `sessions`, scoring the decisions
+/// the flow will be served with.
+fn promote_step(
+    flow: &str,
+    sessions: &str,
+    promoted: &str,
+    arbiter: bool,
+    decider: Option<&str>,
+) -> String {
     // A flow with an arbiter replays the answers the proxy cached in shadow.
     let cache = if arbiter {
         " --oracle-cache ~/.stretto/oracle-cache"
     } else {
         ""
     };
+    let decider = decider.map_or(String::new(), |d| format!(" --decider {d}"));
     format!(
         "Keep the flow to the calls where its lookups were the agent's own:\n\
-         stretto promote --flow {flow} --sessions {sessions}{cache} --out {promoted}"
+         stretto promote --flow {flow} --sessions {sessions}{decider}{cache} --out {promoted}"
     )
 }
 
@@ -370,7 +403,7 @@ mod tests {
     const INIT: &str = "stretto init --host cursor --domain notes";
 
     #[test]
-    fn the_proxy_records_each_domain_apart_and_serves_a_habit_flow_on_its_habit() {
+    fn the_proxy_records_each_domain_apart_and_serves_a_flow_without_an_arbiter_by_counting() {
         assert_eq!(
             setup(None).args(),
             [
@@ -385,9 +418,11 @@ mod tests {
                 "/home/me/notes"
             ]
         );
+        // A flow `stretto learn` writes holds the counts `reach` reads.
         let shadow = setup(Some(Served {
             path: "/home/me/.stretto/notes.flow.json".to_string(),
             arbiter: false,
+            reach: true,
             shadow: true,
         }));
         assert_eq!(
@@ -400,14 +435,26 @@ mod tests {
                 "--flow",
                 "/home/me/.stretto/notes.flow.json",
                 "--flow-decider",
-                "habit",
+                "reach",
                 "--flow-shadow"
             ]
+        );
+        // One learned before flows held them is served on its habit.
+        let older = setup(Some(Served {
+            path: "f.json".to_string(),
+            arbiter: false,
+            reach: false,
+            shadow: false,
+        }));
+        assert_eq!(
+            older.args()[4..8],
+            ["--flow", "f.json", "--flow-decider", "habit"]
         );
         // A flow with an arbiter is served as the proxy serves it by default.
         let arbiter = setup(Some(Served {
             path: "f.json".to_string(),
             arbiter: true,
+            reach: false,
             shadow: false,
         }));
         assert!(!arbiter.args().contains(&"--flow-decider".to_string()));
@@ -476,7 +523,7 @@ mod tests {
             "stretto init --host cursor --domain notes --flow ~/.stretto/notes.flow.json \
              --shadow -- npx -y @modelcontextprotocol/server-filesystem /home/me/notes",
             "stretto promote --flow ~/.stretto/notes.flow.json --sessions \
-             ~/.stretto/shadow/notes --out ~/.stretto/notes-promoted.flow.json",
+             ~/.stretto/shadow/notes --decider reach --out ~/.stretto/notes-promoted.flow.json",
             "stretto init --host cursor --domain notes --flow \
              ~/.stretto/notes-promoted.flow.json -- npx -y",
         ] {
@@ -489,6 +536,7 @@ mod tests {
             &setup(Some(Served {
                 path: "~/.stretto/notes.flow.json".to_string(),
                 arbiter: true,
+                reach: false,
                 shadow: true,
             })),
             INIT,
@@ -503,16 +551,22 @@ mod tests {
         let mut custom = setup(Some(Served {
             path: "~/.stretto/notes.flow.json".to_string(),
             arbiter: false,
+            reach: true,
             shadow: true,
         }));
         custom.record = "/srv/shadow".to_string();
         let custom = next_steps(&custom, INIT);
-        assert!(custom.contains("--sessions /srv/shadow --out"), "{custom}");
+        assert!(
+            custom.contains("--sessions /srv/shadow --decider reach --out"),
+            "{custom}"
+        );
+        assert!(!custom.contains("--oracle-cache"), "{custom}");
 
         let served = next_steps(
             &setup(Some(Served {
                 path: "~/.stretto/notes-promoted.flow.json".to_string(),
                 arbiter: false,
+                reach: false,
                 shadow: false,
             })),
             INIT,

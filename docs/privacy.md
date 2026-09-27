@@ -21,7 +21,7 @@ The logs, the cache and the flows stay where they are written. The proxy talks t
 
 Questions go to Jev (TypeSafe's `POST /v1/systemone`) only on a cache miss, and only when:
 
-- the proxy serves a flow with its arbiter (`--flow-decider arbiter`, the default; `--flow-decider habit` asks nothing), or runs the confirmation judge (`--confirm-judge`), with `--oracle jev`; or
+- the proxy serves a flow with its arbiter (`--flow-decider arbiter`, the default for a flow that has one; `reach` and `habit` ask nothing), or runs the confirmation judge (`--confirm-judge`), with `--oracle jev`; or
 - an offline command asks: `stretto phase0 --oracle`, `learn` or `compile` fitting an arbiter, `confirm`, `match`, `ask`.
 
 A flow's question at a site carries this state:

@@ -717,6 +717,47 @@ fn sessions_recorded_through_the_proxy_teach_the_flow_it_serves() {
         parts[1]
     );
     assert_eq!(host.finish(), 0);
+
+    // A flow learned with no model is served, unless a decider is named,
+    // with `reach`: the proxy needs no key and no --flow-decider.
+    let habit = dir.join("habit.flow.json");
+    raw.save(&habit).unwrap();
+    let log = dir.join("habit.decisions.jsonl");
+    let mut host = Host::start_without(
+        &[
+            "--domain",
+            "retail",
+            "--flow",
+            habit.to_str().unwrap(),
+            "--flow-log",
+            log.to_str().unwrap(),
+            "--context",
+            context.to_str().unwrap(),
+            "--",
+            DEMO,
+            "--world",
+            "retail",
+        ],
+        &["TYPESAFE_API_KEY"],
+    );
+    open_session(&mut host);
+    let found = host.call(
+        3,
+        "find_user_id_by_email",
+        json!({"email": "c123@example.com"}),
+    );
+    let parts = texts(&found);
+    assert_eq!(parts.len(), 2, "{parts:?}");
+    assert!(
+        parts[1].contains("get_user_details {\"user_id\":\"user_123\"}"),
+        "{}",
+        parts[1]
+    );
+    assert_eq!(host.finish(), 0);
+    // `reach` gives handing back no probability of its own; the habit, which
+    // smooths every option, never gives it 0.
+    let logged = fs::read_to_string(&log).unwrap();
+    assert!(logged.contains("\"respond\":0.0"), "{logged}");
     fs::remove_dir_all(&dir).unwrap();
 }
 

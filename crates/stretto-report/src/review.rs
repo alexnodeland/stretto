@@ -7,23 +7,63 @@
 //! marked read-only or a lookup the flow could not make before, is listed as
 //! one to review.
 
-use crate::flow::{Flow, LookupBinding};
+use crate::flow::{Decider, Flow, LookupBinding};
 use crate::shadow::{Predicate, Sites, RESPOND};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write;
-use stretto_model::world::decode;
+use stretto_model::world::{decode, BackoffModel};
 use stretto_model::Action;
 use stretto_trace::ToolKind;
 
 /// What the agent did next after a call to `tool` that failed or not, in
 /// training: each action's share, and how many steps that is.
 fn followed(flow: &Flow, tool: &str, failed: bool) -> (BTreeMap<String, f64>, f64) {
+    shares(flow, flow.habit.base(), tool, failed)
+}
+
+/// Whether the review weighs a site with `reach`: for a flow served with it
+/// by default ([`Flow::served_decider`]). Otherwise it weighs the habit
+/// alone, which for a flow with an arbiter leaves out the model it asks.
+fn weighs_reach(flow: &Flow) -> bool {
+    flow.served_decider() == Decider::Reach
+}
+
+/// The name of what the review weighs a site with.
+fn weighed_by(flow: &Flow) -> &'static str {
+    if weighs_reach(flow) {
+        "`reach`"
+    } else {
+        "the habit alone"
+    }
+}
+
+/// The shares the flow weighs after a site: with `reach`, of the times the
+/// agent made the call in training, how often each action came before its
+/// next write; else `next`, what it did next.
+fn weighed(
+    flow: &Flow,
+    tool: &str,
+    failed: bool,
+    next: &BTreeMap<String, f64>,
+) -> BTreeMap<String, f64> {
+    match &flow.reach {
+        Some(reach) if weighs_reach(flow) => shares(flow, reach, tool, failed).0,
+        _ => next.clone(),
+    }
+}
+
+/// Of `model`'s training steps just after a call to `tool` that failed or
+/// not, each action's share, and how many steps that is.
+fn shares(
+    flow: &Flow,
+    model: &BackoffModel,
+    tool: &str,
+    failed: bool,
+) -> (BTreeMap<String, f64>, f64) {
     let id = flow.vocab.id(&Action::Tool(tool.to_string()));
     let outcome = u32::from(failed);
-    let (counts, total) = flow
-        .habit
-        .base()
-        .followed(|s| matches!(decode(s), Some((a, o, _)) if a == id && o == outcome));
+    let (counts, total) =
+        model.followed(|s| matches!(decode(s), Some((a, o, _)) if a == id && o == outcome));
     let shares = counts
         .into_iter()
         .filter_map(|(a, n)| {
@@ -47,11 +87,12 @@ fn bindings(flow: &Flow) -> BTreeMap<String, LookupBinding> {
 }
 
 /// The likeliest lookup after a site for a flow deciding with the habit
-/// alone, pooled over training.
+/// alone or with `reach`, pooled over training.
 #[derive(Clone, Debug, PartialEq)]
 struct Likely {
     tool: String,
-    /// Its share of what the agent did next there.
+    /// Its share of what the agent did next there, or with `reach` of the
+    /// times the agent made it before its next write.
     share: f64,
     /// The chance that its bound arguments are the agent's, if the flow can
     /// bind them.
@@ -78,9 +119,9 @@ impl Likely {
     }
 }
 
-/// Of the lookups offered after a site, the one the agent made most often
-/// next in training (the first of equals, as the flow takes it), with the
-/// chance of binding its arguments. It is what the habit weighs there,
+/// Of the lookups offered after a site, the one with the largest share in
+/// `shares` (the first of equals, as the flow takes it), with the chance of
+/// binding its arguments. It is what the habit or `reach` weighs there,
 /// pooled over the calls before the site and the code features that
 /// sharpen it, so a live decision near the threshold can go either way.
 fn likely(
@@ -118,7 +159,7 @@ fn likely(
     best
 }
 
-/// What the flow does after a site with the habit alone, at `threshold`.
+/// What the flow does after a site, as [`weighed_by`] says, at `threshold`.
 fn verdict(likely: Option<&Likely>, threshold: f64) -> String {
     match likely {
         Some(l) if l.prob() >= threshold => format!("looks up {}", l.describe()),
@@ -287,17 +328,17 @@ pub fn show(flow: &Flow, threshold: f64) -> String {
             p.sources.join(", ")
         },
         thousands(p.habit_episodes),
-        if flow.has_arbiter() {
-            format!(
+        match flow.served_decider() {
+            Decider::Arbiter => format!(
                 "Its arbiter was fitted on {} held-out decisions and asks `{}`.",
                 thousands(p.arbiter_cases),
                 flow.model
-            )
-        } else {
-            "It has no arbiter: it decides with the habit alone and asks no one.".to_string()
+            ),
+            Decider::Reach => "It has no arbiter and asks no one: it decides by how often each lookup came before the agent's next write (`reach`).".to_string(),
+            Decider::Habit => "It has no arbiter: it decides with the habit alone and asks no one.".to_string(),
         },
-        if flow.has_reach() {
-            " It also counts how often each action came before the agent's next write (`reach`), which `--decider reach` serves."
+        if flow.has_arbiter() && flow.has_reach() {
+            " It also counts how often each action came before the agent's next write, which `--flow-decider reach` serves."
         } else {
             ""
         }
@@ -339,7 +380,13 @@ pub fn show(flow: &Flow, threshold: f64) -> String {
     }
     let _ = writeln!(
         md,
-        "After each call: the lookups the flow may make next, what the agent did next in training, and what the flow does there with the habit alone at a threshold of {threshold}, which is the likeliest lookup's share times the chance its bound arguments are the agent's. The share pools over the calls before and the code features, so a live decision near the threshold can go either way.\n"
+        "After each call: the lookups the flow may make next, what the agent did next in training, and what the flow does there with {} at a threshold of {threshold}, which is the likeliest lookup's share{} times the chance its bound arguments are the agent's. The share pools over the calls before and the code features, so a live decision near the threshold can go either way.\n",
+        weighed_by(flow),
+        if weighs_reach(flow) {
+            " of the times the agent made it before its next write,"
+        } else {
+            ""
+        }
     );
     if !flow.thresholds().is_empty() {
         let _ = writeln!(
@@ -350,7 +397,8 @@ pub fn show(flow: &Flow, threshold: f64) -> String {
     }
     let _ = writeln!(
         md,
-        "| After | Lookups it may make next (times seen) | What the agent did next in training | With the habit alone |\n|---|---|---|---|"
+        "| After | Lookups it may make next (times seen) | What the agent did next in training | With {} |\n|---|---|---|---|",
+        weighed_by(flow)
     );
     let bound = bindings(flow);
     for ((tool, failed), lookups) in flow.sites.next() {
@@ -370,7 +418,14 @@ pub fn show(flow: &Flow, threshold: f64) -> String {
                 flow,
                 tool,
                 *failed,
-                likely(flow, tool, *failed, &shares, &bound).as_ref(),
+                likely(
+                    flow,
+                    tool,
+                    *failed,
+                    &weighed(flow, tool, *failed, &shares),
+                    &bound
+                )
+                .as_ref(),
                 threshold
             )
         );
@@ -697,8 +752,8 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
     }
     sections.push(("Sites".to_string(), sites));
 
-    // What the flow does after each call with the habit alone, and what the
-    // agent did next in training.
+    // What the flow does after each call with the habit alone or `reach`,
+    // and what the agent did next in training.
     let (bound_old, bound_new) = (bindings(old), bindings(new));
     let mut habit = Vec::new();
     let mut next = Vec::new();
@@ -706,7 +761,13 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
         let (tool, failed) = (&key.0, key.1);
         let site = site_name(tool, failed);
         let (sb, _) = followed(new, tool, failed);
-        let lb = likely(new, tool, failed, &sb, &bound_new);
+        let lb = likely(
+            new,
+            tool,
+            failed,
+            &weighed(new, tool, failed, &sb),
+            &bound_new,
+        );
         let clears_b = lb
             .as_ref()
             .is_some_and(|l| l.prob() >= threshold_at(new, tool, failed, threshold));
@@ -721,7 +782,13 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
             continue;
         }
         let (sa, _) = followed(old, tool, failed);
-        let la = likely(old, tool, failed, &sa, &bound_old);
+        let la = likely(
+            old,
+            tool,
+            failed,
+            &weighed(old, tool, failed, &sa),
+            &bound_old,
+        );
         let clears_a = la
             .as_ref()
             .is_some_and(|l| l.prob() >= threshold_at(old, tool, failed, threshold))
@@ -749,7 +816,7 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
             }
         }
     }
-    sections.push((format!("With the habit alone, at {threshold}"), habit));
+    sections.push((format!("With {}, at {threshold}", weighed_by(new)), habit));
     sections.push(("What the agent did next in training".to_string(), next));
 
     // Bindings.
@@ -923,9 +990,10 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
                 new.model
             ));
         }
-        (true, false) => {
-            arbiter.push("no longer has an arbiter: the habit alone decides".to_string())
-        }
+        (true, false) => arbiter.push(format!(
+            "no longer has an arbiter: {} decides",
+            weighed_by(new)
+        )),
         (true, true) => {
             if old.model != new.model {
                 arbiter.push(format!("asks `{}` instead of `{}`", new.model, old.model));

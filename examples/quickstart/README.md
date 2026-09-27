@@ -50,14 +50,14 @@ Each session runs the demo behind the proxy as an MCP host would: `stretto-proxy
    stretto: learned the shop flow from 6 sessions (4 tools) and wrote /tmp/stretto-quickstart.Xa9Qz2/shop.flow.json
 ```
 
-`--habit-only` asks no System-One model. The flow learns which lookup followed which call, and where each lookup's arguments came from.
+`--habit-only` asks no System-One model. The flow learns which lookup followed which call, which came before the agent's next write, and where each lookup's arguments came from.
 
 ### 3. Review it
 
 `stretto flow-show` renders the flow for a reviewer. The script prints its tools, sites and bindings; `shop.flow.md` also has the program the flow runs:
 
 ```text
-   | After | Lookups it may make next (times seen) | What the agent did next in training | With the habit alone |
+   | After | Lookups it may make next (times seen) | What the agent did next in training | With `reach` |
    |---|---|---|---|
    | `find_user_id_by_email` | `get_user_details` (6) | get_user_details 100% (of 6) | looks up `get_user_details` 1.00 × 0.88 = 0.88 |
    | `get_order_details` | `get_order_details` (6) | get_order_details 50%, respond 50% (of 12) | looks up `get_order_details` 0.50 × 0.93 = 0.46 |
@@ -77,15 +77,15 @@ Each session runs the demo behind the proxy as an MCP host would: `stretto-proxy
    The agent made 3 calls instead of 9. It makes one call per LLM turn, so that
    is 6 fewer LLM turns: the flow's lookups came back with its first call.
    What the flow decided after c41's first call, from its log (served/<session>.flow.jsonl):
-   after find_user_id_by_email: looks up get_user_details {"user_id":"user_41"} (1.00 x 0.88)
+   after find_user_id_by_email: looks up get_user_details {"user_id":"user_41"} (0.99 x 0.88)
    after get_user_details: looks up get_order_details {"order_id":"#W41a"} (1.00 x 0.93)
-   after get_order_details: looks up get_order_details {"order_id":"#W41b"} (0.99 x 0.93)
-   after get_order_details: hands back (get_order_details at 0.01, below 0.3)
+   after get_order_details: looks up get_order_details {"order_id":"#W41b"} (0.95 x 0.93)
+   after get_order_details: hands back (get_order_details at 0.05, below 0.3)
 ```
 
-The proxy serves the flow with `--flow shop.flow.json --flow-decider habit`. After the agent's first call, the flow looked up the customer's details and both orders, and the proxy appended them to that call's result under `--- Also looked up automatically ---`. The agent skipped the calls whose results it already had, and made the cancellation itself: a flow only calls reads. The customers are new, so every argument was bound from this session's results, not remembered.
+The proxy serves the flow with `--flow shop.flow.json`. The flow has no arbiter, so the proxy decides with `reach`, which needs no key: a lookup's chance of being made before the agent's next write, times its binding's chance, against the threshold (0.3). After the agent's first call, the flow looked up the customer's details and both orders, and the proxy appended them to that call's result under `--- Also looked up automatically ---`. The agent skipped the calls whose results it already had, and made the cancellation itself: a flow only calls reads. The customers are new, so every argument was bound from this session's results, not remembered.
 
-The probabilities in the log differ from flow-show's pooled shares: served, the habit also conditions on the call before, so after one order it was sure of a second (0.99), and after the second sure of a stop.
+The probabilities in the log differ from flow-show's pooled shares: served, `reach` also conditions on the call before, so after one order it was nearly sure the agent reads a second before its next write (0.95), and after the second that it reads no third (0.05).
 
 ## What it does not show
 

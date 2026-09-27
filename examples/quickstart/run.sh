@@ -203,7 +203,7 @@ for spec in 41:cancel 42:status; do
     customer "$n" "$kind"
     stop
     before=$calls
-    start "served-$n" --record "$work/served" --flow "$work/shop.flow.json" --flow-decider habit
+    start "served-$n" --record "$work/served" --flow "$work/shop.flow.json"
     customer "$n" "$kind"
     stop
     echo "   c$n@example.com ($kind): $before calls without the flow, $calls with it"

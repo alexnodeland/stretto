@@ -15,7 +15,7 @@ stretto flow-show ~/.stretto/orders.flow.json
 `flow-show` renders a flow as Markdown, section by section:
 
 - **Tools.** The only tools it may call, the read tools, and those it never calls. A tool that writes but is marked read is the one mistake that matters here, so check the kinds against what the tools do.
-- **Sites.** After each call: the lookups the flow may make next, how often the agent made each in training, and what the flow does there with the habit alone at the served threshold. A lookup seen once or twice is a thin basis.
+- **Sites.** After each call: the lookups the flow may make next, how often the agent made each in training, and what the flow does there at the served threshold: with `reach`, as the proxy serves a flow without an arbiter, or with the habit alone for a flow with one, whose model a review does not ask. A lookup seen once or twice is a thin basis.
 - **Bindings.** Where each required argument comes from, and how often that way gave the agent's own arguments. "Nothing" means the flow never makes that lookup itself ([bindings](./bindings)).
 - **Constants**, **code features** and the **arbiter**, when the flow has them. Constants should be values every call passes, such as a page size, and not one user's id. Code features hold values copied from training results. An arbiter sends the conversation to a System-One model at each decision.
 

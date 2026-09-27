@@ -134,14 +134,14 @@ It prints the same configuration, with the flow added to the proxy's arguments:
 ```json
 "args": ["--record", "~/.stretto/logs/notes", "--domain", "notes",
          "--flow", "/home/me/.stretto/notes.flow.json",
-         "--flow-decider", "habit",
+         "--flow-decider", "reach",
          "--", "npx", "-y", "@modelcontextprotocol/server-filesystem",
          "/home/me/notes"]
 ```
 
 Replace the server's entry in the host's configuration with it, and restart the server. From then on, after each of the agent's calls, the flow makes each lookup whose probability, times the chance that its arguments are the agent's own, is at least 0.3 (`--flow-threshold`). Their results ride in the same tool result, under `--- Also looked up automatically ... ---`.
 
-A flow learned with `--habit-only` has no arbiter, so `init` serves it on its habit alone (`--flow-decider habit`), which asks no model and needs no key. The `reach` decider needs no key either, and decides on each lookup's chance of use before the agent's next write, which the research found better calibrated. To use it, change `habit` to `reach` in `args` ([deciders](./concepts/deciders)).
+A flow learned with `--habit-only` has no arbiter, so `init` serves it with the `reach` decider (`--flow-decider reach`), which asks no model and needs no key. It decides on each lookup's chance of use before the agent's next write, which the research found better calibrated than the chance that the lookup comes next ([deciders](./concepts/deciders)).
 
 ::: tip Shadow first
 Add `--shadow` to `stretto init` to try the flow on real traffic before it acts. The proxy then records to `~/.stretto/shadow/notes`, and the flow decides and logs what it would look up, but makes no lookups. `stretto promote` then keeps the flow to the calls where its lookups were the agent's own:

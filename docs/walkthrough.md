@@ -54,7 +54,7 @@ stretto learn --sessions ~/.stretto/notes --domain notes --habit-only --out note
 stretto: learned the notes flow from 8 sessions (14 tools) and wrote notes.flow.json
 ```
 
-`--habit-only` asks no System-One model. Every session trains the habit, and the flow has no arbiter, so it is served with `--flow-decider habit`. From a deployment's first sessions this is the steadier start: in the cold start results, the habit alone saved more than an arbiter fitted on those same sessions. `--arbiter-from data/arbiters/retail.json` instead adds [a shipped arbiter](../data/arbiters/README.md), fitted on four agents' τ²-bench decisions. It asks Jev at each decision when the flow serves, so it needs `TYPESAFE_API_KEY`.
+`--habit-only` asks no System-One model. Every session trains the habit, and the flow has no arbiter, so the proxy serves it by counting, with no key: by default with `reach`, each lookup's chance of being made before the agent's next write (`--flow-decider habit` serves the habit's chance of it being made next). From a deployment's first sessions this is the steadier start: in the cold start results, the habit's counts alone saved more than an arbiter fitted on those same sessions. `--arbiter-from data/arbiters/retail.json` instead adds [a shipped arbiter](../data/arbiters/README.md), fitted on four agents' τ²-bench decisions. It asks Jev at each decision when the flow serves, so it needs `TYPESAFE_API_KEY`.
 
 The flow is a JSON file ([every field](formats.md)). Review it before serving it; `stretto flow-show` says what it will do ([reviewing flows](review.md)):
 
@@ -70,7 +70,7 @@ stretto flow-show notes.flow.json
 
 ## Sites
 
-| After | Lookups it may make next (times seen) | What the agent did next in training | With the habit alone |
+| After | Lookups it may make next (times seen) | What the agent did next in training | With `reach` |
 |---|---|---|---|
 | `read_text_file` | `read_text_file` (7) | read_text_file 50%, respond 50% (of 14) | looks up `read_text_file` 0.50 × 0.81 = 0.41 |
 | `search_files` | `read_text_file` (7) | read_text_file 100% (of 7) | looks up `read_text_file` 1.00 × 0.81 = 0.81 |
@@ -86,7 +86,7 @@ stretto flow-show notes.flow.json
 ```
 
 - **Tools**: the 10 read tools, taken from the annotations. They are the only tools the flow will ever call.
-- **Sites**: after `search_files`, the agent read a file 7 times; after `read_text_file`, it read another 7 times. Those are the only lookups this flow can make. With the habit alone, it takes both at the proxy's default threshold, 0.3.
+- **Sites**: after `search_files`, the agent read a file 7 times; after `read_text_file`, it read another 7 times. Those are the only lookups this flow can make. With `reach`, pooled over training, it takes both at the proxy's default threshold, 0.3.
 - **Bindings**: `read_text_file`'s `path` came from `search_files`' result 14 times. Three came from the whole result (`$`), a search that found one file. Eleven came from one line of it (`$[*]`), a search that listed several. A result that is not JSON is read as its lines, so a lookup can bind one line at a time. The binding picked the agent's own path at 12 of its 14 reads. It missed twice, where the agent read the files the customer named ("beta and gamma") and the binding would have read the list in order. A value counts as mentioned only when the customer's words contain all of it, an id or an email, not part of a path.
 
 `search_files`' own `path` and `pattern` were never found in an earlier output, since they come from the agent. So the flow never searches; it reads what a search found.
@@ -111,20 +111,22 @@ The flow decides with the habit alone. 3 episodes, 8 decisions scored (0 left ou
 At each point where the flow would decide, the audit compares its likeliest option with what the agent did next. It runs the flow as a fugue program and scores the agent's path under it ([the audit](results/audit-2026-09-24.md)).
 
 - **After `search_files`** the habit is sure the agent reads a file (0.99), and it did both times.
-- **After `read_text_file`** the habit is unsure: in training the agent read on 7 times and stopped 7 times. After a search and one read, it read on 4 times in 7; after two reads, 3 times in 7. So the habit expects a second read and then a stop. On a five-file request it disagrees with the agent's third, fourth and fifth reads, and on a one-file request it expected a second. The habit cannot count what is left in a list; the binding can. Serving, the flow reads on while the habit's probability times the binding's chance clears 0.3 (0.43 × 0.81 here) and the search listed a file it has not read. When nothing is left, it hands back. A site with low agreement is not a site the flow gets wrong, but a site to look at.
+- **After `read_text_file`** the habit is unsure: in training the agent read on 7 times and stopped 7 times. After a search and one read, it read on 4 times in 7; after two reads, 3 times in 7. So the habit expects a second read and then a stop. On a five-file request it disagrees with the agent's third, fourth and fifth reads, and on a one-file request it expected a second. The habit cannot count what is left in a list; the binding can. Serving, the flow reads on while the chance that the agent reads another file before its next write (`reach`), times the binding's chance, clears 0.3 (0.56 × 0.81 after the first read here) and the search listed a file it has not read. When nothing is left, it hands back. A site with low agreement is not a site the flow gets wrong, but a site to look at.
 - **When to learn again:** a site whose agreement falls on new sessions, a request type the flow has not seen, or a server whose tools change. Learning is quick, so learn from the sessions recorded since.
 
-A flow with an arbiter is audited with its arbiter unless `--decider habit` says otherwise; the arbiter asks the System-One model, from `--oracle-cache` or, with `--oracle jev`, live.
+A flow with an arbiter is audited with its arbiter unless `--decider habit` says otherwise; the arbiter asks the System-One model, from `--oracle-cache` or, with `--oracle jev`, live. A flow without one is audited with the habit, whichever decider serves it: the audit scores the agent's next step, which the habit predicts and `reach` does not.
 
 ## 5. Serve it
 
-Add `--flow` to the proxy's arguments:
+Add `--flow` to the proxy's arguments (`stretto init --flow` prints them for your host):
 
 ```json
 "args": ["--record", "~/.stretto/notes", "--domain", "notes", "--context", "~/.stretto/notes-context.jsonl",
-         "--flow", "~/.stretto/notes.flow.json", "--flow-decider", "habit",
+         "--flow", "~/.stretto/notes.flow.json", "--flow-decider", "reach",
          "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "/home/me/notes"]
 ```
+
+`--flow-decider reach` is the proxy's default for a flow without an arbiter; `stretto init` writes it out so the configuration says how the flow decides.
 
 Asked "Summarize the October meetings.", files the agent had never read, the agent searched once. The flow read both meetings behind that one call, so the agent made 1 call where it had made 3. The agent got its own result with one more text item:
 
@@ -141,12 +143,14 @@ read_text_file {"path":"/home/me/notes/meetings/2026-10-13.md"}:
 Delta owner: Priya.
 ```
 
-**The flow log**, `<session>.flow.jsonl` next to the session log, says why. After the search, the flow looked up the first meeting (`"prob": 0.99`, `"binding": 0.81`). After that read, it looked up the second (0.57). After the second it handed back (abridged):
+**The flow log**, `<session>.flow.jsonl` next to the session log, says why. After the search, the flow looked up the first meeting (`"prob": 0.98`, `"binding": 0.81`). After that read, it looked up the second (0.56). After the second it handed back (abridged):
 
 ```json
-{"action": "hand_back", "address": "decide#2", "site": "read_text_file", "prob": 0.43,
- "probs": {"read_text_file": 0.43, "respond": 0.57}, "reason": "read_text_file: nothing left to pass as `path`"}
+{"action": "hand_back", "address": "decide#2", "site": "read_text_file", "prob": 0.45,
+ "probs": {"read_text_file": 0.45, "respond": 0.0}, "reason": "read_text_file: nothing left to pass as `path`"}
 ```
+
+With `reach`, handing back has no probability of its own (`"respond": 0.0`): each lookup is weighed on its own chance of use before the next write.
 
 Each entry has the site, each option's probability, the lookup's probability (`prob`) and its binding's chance (`binding`), and the lookup made (`tool`, `arguments`) or the reason for handing back. `address` is the decision's site in the flow's run as a fugue program ([the flow's `program`](formats.md#program)): the third decision after that call. The run's own line, `run`, comes after its decisions. It holds the run's trace: each site's value and log-probability, and `surprise`, how unexpected the reads' results were to the flow. `--flow-per-call` (8) and `--flow-per-session` (40) cap the lookups.
 
