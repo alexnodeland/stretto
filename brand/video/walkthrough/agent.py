@@ -127,11 +127,12 @@ def run(args, request: str, n: int) -> int:
     if request not in REQUESTS:
         sys.exit(f"agent: no script for {request!r}; known requests: {', '.join(map(repr, REQUESTS))}")
     pattern, pick = REQUESTS[request]
-    root = Path(args.notes).resolve()
-    proxy = [args.proxy, "--record", str(Path(args.logs).resolve()), "--domain", "notes"]
+    root = Path(args.notes).expanduser().resolve()
+    logs = Path(args.logs).expanduser().resolve()
+    proxy = [args.proxy, "--record", str(logs), "--domain", "notes"]
     if args.flow:
-        proxy += ["--flow", str(Path(args.flow).resolve()), "--flow-decider", "habit"]
-    context = Path(args.work).resolve() / "context" / f"{Path(args.logs).name}-{os.getpid()}-{n}.jsonl"
+        proxy += ["--flow", str(Path(args.flow).expanduser().resolve()), "--flow-decider", "habit"]
+    context = Path(args.work).expanduser().resolve() / "context" / f"{logs.name}-{os.getpid()}-{n}.jsonl"
     s = Session(proxy, shlex.split(args.server), root, context)
     s.say("user", request)
     if not args.quiet:
@@ -182,7 +183,8 @@ def main() -> None:
     ap.add_argument("requests", nargs="*", help="one session per request")
     ap.add_argument("--from", dest="from_file", help="read the requests from this file, one per line")
     ap.add_argument("--flow", help="serve this flow (stretto-proxy --flow FILE --flow-decider habit)")
-    ap.add_argument("--logs", default="logs", help="where the proxy records sessions (default: logs)")
+    ap.add_argument("--logs", default="~/.stretto/logs/notes",
+                    help="where the proxy records sessions (default: ~/.stretto/logs/notes, where `stretto init` puts them)")
     ap.add_argument("--notes", default="notes", help="the folder the filesystem server serves (default: notes)")
     ap.add_argument("--work", default=".", help="where to keep the conversation files (default: .)")
     ap.add_argument("--proxy", default="stretto-proxy", help="the stretto-proxy binary")

@@ -4,12 +4,16 @@ write what it prints, with timing, as an asciicast (v2) file.
 
     python3 brand/video/walkthrough/capture.py --bin DIR [--work DIR] [--out FILE]
 
---bin is the directory with the stretto binaries (stretto, stretto-proxy).
-Every command in script.sh runs for real, in a fresh working directory, with
-a small environment: PATH, HOME, locale, terminal size and proxy settings; no
-other variable of yours reaches the commands, so no key does. The working
-directory's path is written as /home/me, as docs/walkthrough.md shows it;
-nothing else in the output is changed.
+--bin is the directory with the stretto binaries (stretto, stretto-proxy,
+stretto-procedure, stretto-mcp-demo). Every command in script.sh runs for
+real, in a fresh working directory that is also HOME, so `stretto doctor` and
+~/.stretto see a new installation: the binaries are copied into its
+.cargo/bin, where `cargo install` puts them. The commands get a small
+environment: PATH, HOME, locale, terminal size, proxy settings and npm's cache
+(so npx finds the filesystem server it already has); no other variable of
+yours reaches them, so no key does. The working directory's path is written
+as /home/me, as docs/walkthrough.md shows it; nothing else in the output is
+changed.
 
 The cast's events are [seconds, "o", text] for output and [seconds, "m", json]
 for the script's markers: {"step": title}, {"caption": text}, {"cmd": command}
@@ -38,14 +42,21 @@ COLS, ROWS = 128, 26
 DISPLAY_HOME = "/home/me"
 MARK = re.compile(rb"\x1b\]7777;([a-z]+);([A-Za-z0-9+/=]*)\x07")
 # Variables the commands may see. Everything else stays out, keys included.
-KEEP = {"HOME", "LANG", "LC_ALL", "LC_CTYPE", "TMPDIR", "USER", "LOGNAME", "SHELL",
+KEEP = {"LANG", "LC_ALL", "LC_CTYPE", "TMPDIR", "USER", "LOGNAME", "SHELL",
         "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "https_proxy", "http_proxy", "no_proxy",
         "SSL_CERT_FILE", "NODE_EXTRA_CA_CERTS", "REQUESTS_CA_BUNDLE", "NPM_CONFIG_CACHE"}
 
 
+BINARIES = ("stretto", "stretto-proxy", "stretto-procedure", "stretto-mcp-demo")
+
+
 def environment(bin_dir: Path, work: Path) -> dict:
     env = {k: v for k, v in os.environ.items() if k in KEEP}
+    npm_cache = Path(os.environ.get("npm_config_cache") or os.environ.get("NPM_CONFIG_CACHE") or Path.home() / ".npm")
+    if npm_cache.is_dir():
+        env["npm_config_cache"] = str(npm_cache)
     env.update({
+        "HOME": str(work),
         "PATH": f"{bin_dir}:{os.environ.get('PATH', '/usr/bin:/bin')}",
         "TERM": "xterm-256color", "COLUMNS": str(COLS), "LINES": str(ROWS),
         "LANG": env.get("LANG", "C.UTF-8"),
@@ -63,14 +74,17 @@ def main() -> None:
     ap.add_argument("--script", type=Path, default=HERE / "script.sh")
     args = ap.parse_args()
 
-    bin_dir = args.bin.resolve()
-    for name in ("stretto", "stretto-proxy"):
-        if not (bin_dir / name).exists():
-            sys.exit(f"capture: no {name} in {bin_dir}")
+    source = args.bin.resolve()
+    for name in BINARIES:
+        if not (source / name).exists():
+            sys.exit(f"capture: no {name} in {source}")
     work = (args.work or Path(tempfile.mkdtemp(prefix="stretto-walkthrough-"))).resolve()
     if work.exists():
         shutil.rmtree(work)
-    work.mkdir(parents=True)
+    bin_dir = work / ".cargo" / "bin"
+    bin_dir.mkdir(parents=True)
+    for name in BINARIES:
+        shutil.copy2(source / name, bin_dir / name)
     env = environment(bin_dir, work)
     version = subprocess.run([str(bin_dir / "stretto"), "--version"], capture_output=True, text=True, env=env).stdout.strip()
 
@@ -155,7 +169,8 @@ def main() -> None:
         "stretto": {
             "version": version,
             "script": "brand/video/walkthrough/script.sh",
-            "note": f"Paths in the capture's working directory are shown under {DISPLAY_HOME}.",
+            "note": f"The capture's working directory was HOME, and its paths are shown under {DISPLAY_HOME}; "
+                    "the binaries were copied into its .cargo/bin.",
         },
     }
     with args.out.open("w") as f:
