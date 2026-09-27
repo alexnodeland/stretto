@@ -32,21 +32,27 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 
 
-def agentdojo_tasks(suites: list[str], version: str) -> list[tuple[str, str]]:
+def held_out(i: int, split: str) -> bool:
+    """Whether the i-th task, in order, is in the split: the first four of every ten are the test tasks."""
+    return (i % 10 < 4) == (split == "test")
+
+
+def agentdojo_tasks(suites: list[str], version: str, split: str = "test") -> list[tuple[str, str]]:
     from agentdojo.task_suite.load_suites import get_suite
 
     out = []
     for suite in suites:
         ids = sorted(get_suite(version, suite).user_tasks, key=lambda t: int(t.rsplit("_", 1)[1]))
-        out += [(suite, t) for i, t in enumerate(ids) if i % 10 < 4]
+        out += [(suite, t) for i, t in enumerate(ids) if held_out(i, split)]
     return out
 
 
-def bfcl_tasks(bfcl_dir: Path, category: str, sample: int | None, seed: int) -> list[tuple[str, str]]:
-    """The held-out tasks, in the data file's order, and a seeded sample of them."""
+def bfcl_tasks(bfcl_dir: Path, category: str, sample: int | None, seed: int,
+               split: str = "test") -> list[tuple[str, str]]:
+    """The split's tasks, in the data file's order, and a seeded sample of them."""
     path = bfcl_dir / "bfcl_eval" / "data" / f"BFCL_v4_{category}.json"
     ids = [json.loads(l)["id"] for l in path.read_text().splitlines() if l.strip()]
-    held = [t for i, t in enumerate(ids) if i % 10 < 4]
+    held = [t for i, t in enumerate(ids) if held_out(i, split)]
     if sample:
         held = sorted(random.Random(seed).sample(held, sample), key=lambda t: int(t.rsplit("_", 1)[1]))
     return [("bfcl", t) for t in held]
@@ -68,14 +74,17 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--credit-cap", type=float, default=0.0, help="GLM credits for this run, at most (0: no cap)")
     parser.add_argument("--limit", type=int, help="the first N tasks only")
+    parser.add_argument("--split", default="test", choices=["test", "train"],
+                        help="the held-out tasks (default), or the training tasks the flows learned from, such as "
+                             "to record an agent's own sessions for `stretto promote`")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     ledger = args.out / "credits.jsonl"
     spent = sum(json.loads(l)["credits"] for l in ledger.read_text().splitlines()) if ledger.exists() else 0.0
     if args.bench == "agentdojo":
-        tasks = agentdojo_tasks(args.suites, args.version)[: args.limit]
+        tasks = agentdojo_tasks(args.suites, args.version, args.split)[: args.limit]
     else:
-        tasks = bfcl_tasks(args.bfcl_dir, args.category, args.sample, args.seed)[: args.limit]
+        tasks = bfcl_tasks(args.bfcl_dir, args.category, args.sample, args.seed, args.split)[: args.limit]
     rng = random.Random(args.seed)
     orders = []
     for suite, task in tasks:

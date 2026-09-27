@@ -35,6 +35,7 @@ Each message rests on one row of [docs/results/claims.md](../docs/results/claims
 | # | Message | The number, with its scope | Claims row |
 |---|---|---|---|
 | 1 | **It works live, with no model of its own.** The reach decider counts; it asks no model and needs no key. | Live: GLM-5.3 took 27.9% fewer LLM turns (95% CI 19.1–35.9%) on 28 τ²-bench retail and airline tasks, paired with the recorded baseline; 21 passed, against 24. Pass rates at this size are underpowered. | "It works live with no model of its own" |
+| 1b | **It holds live on another benchmark's own environment.** Where the replay found reads to take, the live run found the savings. | Live: in AgentDojo's Slack and travel suites, GLM-5.3 and Claude Haiku 4.5 took 10.1% fewer LLM turns (95% CI 5.8–14.0%), with passes unchanged (27 of 34 in both arms); over all 41 AgentDojo tasks, 6.0% (2.1–9.9%), where the replay projected 7.2%. One run per arm. | "It holds live beyond τ²-bench" |
 | 2 | **It estimates the probability that matters.** Not the chance a read comes next, but the chance it is used before the agent's next write. | Replay, nine agents: expected calibration error 0.01–0.08 in every τ²-bench domain, against 0.06–0.16 for the next-step probability. | "Counting the right event calibrates the probability of use" |
 | 3 | **It takes most of what can be taken.** | Replay, nine agents it never saw: 86.4% of retail's read-only ceiling (95% CI 80.2–93.1), 10.2 points more than the next-step speculator (6.7–14.2). | "The speculator takes most of retail's ceiling" |
 | 4 | **How much it saves is the domain's, and it stays out where it cannot help.** Set expectations before a number. | Record, 89 more agents on six benchmarks: the read-only ceiling runs from 3.5% of turns in WorkBench to 47.1% in AgentDojo's travel suite, and is 29.0% in τ²-bench. In WorkBench's 13,869 turns it makes no lookup. | "The ceiling is the domain's"; "It stays out where it cannot help" |
@@ -50,7 +51,7 @@ Supporting facts, from the paper, for longer copy:
 
 What the evidence does not show, and copy must not imply (claims ledger, "What the evidence does not show"):
 
-- Only GLM-5.3 ran live with the reach decider. An earlier flow also ran live with two more models, on ten and three retail tasks; every other agent is replayed.
+- Live with the reach decider: GLM-5.3 on τ²-bench, and GLM-5.3 and Claude Haiku 4.5 on AgentDojo and BFCL, one run per arm. An earlier flow also ran live with two more models, on ten and three retail tasks. Every other agent is replayed. In BFCL the live run shows no effect, and live cost is not resolved.
 - Pass rates are underpowered; τ²-bench's users are LLMs. Do not claim stretto keeps or raises task success.
 - Replayed savings assume the agent skips what a lookup already answered.
 

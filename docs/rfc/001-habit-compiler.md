@@ -33,7 +33,7 @@
     - [`docs/results/cold-start-live-airline-2026-09-25.md`](../results/cold-start-live-airline-2026-09-25.md) (the cold start, live, in airline);
     - [`docs/results/claude-models-2026-09-25.md`](../results/claude-models-2026-09-25.md) (Claude models as the agent and the customer);
     - [`docs/results/refine-2026-09-25.md`](../results/refine-2026-09-25.md) (predicate refinement, in airline);
-    - the working paper, [alexnodeland.github.io/stretto](https://alexnodeland.github.io/stretto/);
+    - the working paper, [alexnodeland.github.io/stretto](https://alexnodeland.github.io/stretto/notebook/);
   - TypeSafe AI's Jev (released 2026-09-15).
 
 ---
@@ -687,7 +687,7 @@ What this changes:
 
 stretto now implements the first design end to end. It measured three more things: the live form in airline, policy guards against published trajectories, and a flow audited as a fugue program.
 
-- **Details:** stretto's [implementation status](../design.md#implementation-status-2026-09-26), [airline pilot](../results/pilot-airline-2026-09-24.md), [guard audit](../results/guards-2026-09-24.md) and [flow audit](../results/audit-2026-09-24.md), and the [working paper](https://alexnodeland.github.io/stretto/), which collects every result so far.
+- **Details:** stretto's [implementation status](../design.md#implementation-status-2026-09-26), [airline pilot](../results/pilot-airline-2026-09-24.md), [guard audit](../results/guards-2026-09-24.md) and [flow audit](../results/audit-2026-09-24.md), and the [working paper](https://alexnodeland.github.io/stretto/notebook/), which collects every result so far.
 
 Five findings; §3.11, §4, §6 and §7 are updated to match.
 
@@ -767,7 +767,7 @@ What this changes:
 
 Before building `plan_*` (arms C and D), stretto measured what naming a flow could add. It also replayed arm C and a habit-only flow against D0. No LLM ran. The only new spend was $0.078 of Jev questions for the replays, plus $1.11 to ask the v1 questions a second time.
 
-- **Details:** stretto's [arms results](../results/arms-2026-09-24.md) and the [working paper](https://alexnodeland.github.io/stretto/)'s §5.9.
+- **Details:** stretto's [arms results](../results/arms-2026-09-24.md) and the [working paper](https://alexnodeland.github.io/stretto/notebook/)'s §5.9.
 
 Four findings; §3.5, §3.6, §3.11, §4, §5, §6 and §7 are updated to match.
 
@@ -824,7 +824,7 @@ What this changes:
 
 Three follow-ups to §3.16 test where a System-One model earns its place (§6, question 9). The habit-only flow ran live, the habit was trained on fewer traces, and Jev was asked to judge confirmations. The live run cost 109.1 Z.ai credits. Jev's new answers cost $1.24: $1.12 for the fewer-traces sweep and $0.12 for the confirmations. They are published with the arms replays' answers, so every result here replays without a key.
 
-- **Details:** stretto's [habit pilot](../results/pilot-habit-2026-09-24.md), [fewer traces](../results/sweep-2026-09-24.md), [confirmations](../results/confirm-2026-09-24.md) and [answer bundle](../results/answers-2026-09-24-arms-sweep-confirm.md), and the [working paper](https://alexnodeland.github.io/stretto/)'s §5.9–5.11.
+- **Details:** stretto's [habit pilot](../results/pilot-habit-2026-09-24.md), [fewer traces](../results/sweep-2026-09-24.md), [confirmations](../results/confirm-2026-09-24.md) and [answer bundle](../results/answers-2026-09-24-arms-sweep-confirm.md), and the [working paper](https://alexnodeland.github.io/stretto/notebook/)'s §5.9–5.11.
 
 Three findings; §3.6, §3.11, §4, §6 and §7 are updated to match.
 
@@ -884,7 +884,7 @@ What this changes:
 
 Four follow-ups to §3.17, each on §6's question 9: where does a System-One model earn its place? A flow was learned from an agent's own first sessions, offline and live. Flows were offered every read-only tool in the manifest. The confirmation judge got a second question. And Jev was asked to match descriptions to records. The live runs cost 182 Z.ai credits of the 200 approved. Jev's 25,981 new answers cost $2.33: $0.62 for the cold start, $1.17 for options from the manifest, $0.25 for the confirmation's second question and $0.29 for matching. They are published, so every result here replays without a key.
 
-- **Details:** stretto's [cold start](../results/cold-start-2026-09-24.md), [options from the manifest](../results/manifest-options-2026-09-24.md), [second confirmation question](../results/confirm-second-2026-09-24.md), [matching](../results/matching-2026-09-24.md) and [answer bundle](../results/answers-2026-09-24-cold-manifest-match.md), and the [working paper](https://alexnodeland.github.io/stretto/)'s §5.10–5.14.
+- **Details:** stretto's [cold start](../results/cold-start-2026-09-24.md), [options from the manifest](../results/manifest-options-2026-09-24.md), [second confirmation question](../results/confirm-second-2026-09-24.md), [matching](../results/matching-2026-09-24.md) and [answer bundle](../results/answers-2026-09-24-cold-manifest-match.md), and the [working paper](https://alexnodeland.github.io/stretto/notebook/)'s §5.10–5.14.
 
 Five findings, one of them a correction; §3.6, §3.11, §4, §6 and §7 are updated to match.
 
@@ -941,7 +941,7 @@ What this changes:
 
 A follow-up to §3.18. A deployment's first sessions are too few to fit an arbiter on, and an arbiter fitted on other agents' decisions in the same domain was insurance against a narrow start. This amendment ships two such arbiters with stretto, and tests each in the domain it was not fitted on. No LLM ran. Jev's 718 new answers cost $0.08 and are published, so the results replay without a key.
 
-- **Details:** stretto's [shipped arbiters across domains](../results/arbiter-transfer-2026-09-24.md), the arbiters themselves in [`data/arbiters/`](../../data/arbiters/), and the [working paper](https://alexnodeland.github.io/stretto/)'s §5.12.
+- **Details:** stretto's [shipped arbiters across domains](../results/arbiter-transfer-2026-09-24.md), the arbiters themselves in [`data/arbiters/`](../../data/arbiters/), and the [working paper](https://alexnodeland.github.io/stretto/notebook/)'s §5.12.
 
 **What ships.** `stretto compile --pooled-arbiter` fits one arbiter on every held-out decision, where a compiled flow otherwise gets five cross-fitted ones. `stretto export-arbiter` writes it to its own file: the eight weights, Jev's agreement with the agents at each tool, the three predicates it weighs, and the model it asks. `learn --arbiter-from` serves it with a habit learned from new sessions, and asks nothing while learning. `data/arbiters/` holds a retail and an airline arbiter, fitted on four 2025 agents' published decisions (4,513 and 2,042).
 
@@ -971,7 +971,7 @@ What this changes:
 
 The pilots' ten pairs per domain could not bound a loss of pass^1, the second half of the Phase 2 gate (§3.10). This run takes every test task, paired: τ²-bench retail's 40 test tasks once and airline's 20 twice, 80 pairs, with the pilots' 20 reused. GLM-5.3 is the agent, in Claude Code, and it plays the customer. The flow is the pilots' D0. The run cost 1,897 Z.ai credits.
 
-- **Details:** stretto's [paired run](../results/paired-2026-09-25.md), its [episodes](../results/paired-2026-09-25-episodes.tar.gz), and the [working paper](https://alexnodeland.github.io/stretto/)'s §5.6.
+- **Details:** stretto's [paired run](../results/paired-2026-09-25.md), its [episodes](../results/paired-2026-09-25-episodes.tar.gz), and the [working paper](https://alexnodeland.github.io/stretto/notebook/)'s §5.6.
 
 | | Retail, 40 pairs | Airline, 40 pairs | Both, 80 pairs |
 |---|---|---|---|
@@ -1000,7 +1000,7 @@ What this changes:
 
 §3.18 left the cold start live on three tasks, with a flow whose arbiter was fitted on two of GLM-5.3's five recorded sessions. Offline, two other starts did better (§3.18, §3.19). This round learned both from all five sessions and ran them on all ten of the retail pilot's tasks: the habit alone, and the habit with the shipped airline arbiter.
 
-- **Details:** stretto's [cold start, live](../results/cold-start-live-2026-09-25.md), and the [working paper](https://alexnodeland.github.io/stretto/)'s §5.12.
+- **Details:** stretto's [cold start, live](../results/cold-start-live-2026-09-25.md), and the [working paper](https://alexnodeland.github.io/stretto/notebook/)'s §5.12.
 
 | | No flow | D0 | Habit, four agents | Habit, five sessions | With the shipped airline arbiter |
 |---|---|---|---|---|---|
@@ -1021,7 +1021,7 @@ What this changes:
 
 Four follow-ups to §3.20–3.21. Offline, `--flow-explore` and `stretto evaluate` build §3.7's counterfactual evaluation. Live, the confirmation judge ran enforced against logged, the cold start ran in airline, and Claude models played the agent and the customer.
 
-- **Details:** stretto's [counterfactual evaluation](../results/evaluate-2026-09-25.md), [the judge, live](../results/judge-live-2026-09-25.md), [the cold start in airline](../results/cold-start-live-airline-2026-09-25.md) and [Claude models, live](../results/claude-models-2026-09-25.md), and the [working paper](https://alexnodeland.github.io/stretto/)'s §5.11, §5.12, §5.18 and §5.19.
+- **Details:** stretto's [counterfactual evaluation](../results/evaluate-2026-09-25.md), [the judge, live](../results/judge-live-2026-09-25.md), [the cold start in airline](../results/cold-start-live-airline-2026-09-25.md) and [Claude models, live](../results/claude-models-2026-09-25.md), and the [working paper](https://alexnodeland.github.io/stretto/notebook/)'s §5.11, §5.12, §5.18 and §5.19.
 
 **Counterfactual evaluation (§3.7).**
 
@@ -1078,7 +1078,7 @@ What this changes:
 
 §3.4's loop is built, and it ran once in airline, where the arbiter is weakest: the audit found the airline flow picking the agent's step 64.5% of the time (§3.15).
 
-- **Details:** stretto's [predicate refinement](../results/refine-2026-09-25.md), and the [working paper](https://alexnodeland.github.io/stretto/)'s §5.20.
+- **Details:** stretto's [predicate refinement](../results/refine-2026-09-25.md), and the [working paper](https://alexnodeland.github.io/stretto/notebook/)'s §5.20.
 - **What was built.**
   - `stretto refine --examples` ranks the sites by the held-out surprise of the agents' steps, fitting the arbiter by cross-validation over tasks. At the worst sites it writes out the decisions the arbiter got most wrong, with the state Jev saw.
   - `phase0 --candidates` asks each candidate alone, with the next-step question's state, so no other answer changes.
@@ -1107,7 +1107,7 @@ What this changes:
 
 §3.10's Phase 3 plans a search over flows with fugue-evo. It is built, and it ran once in airline and once in retail.
 
-- **Details:** stretto's [flow search](../results/search-2026-09-25.md), and the [working paper](https://alexnodeland.github.io/stretto/)'s §5.21.
+- **Details:** stretto's [flow search](../results/search-2026-09-25.md), and the [working paper](https://alexnodeland.github.io/stretto/notebook/)'s §5.21.
 - **What was built.**
   - A flow can carry its own threshold at each site (`thresholds`, flow format 2). Above 1, it never acts at the site. `flow-show` and `flow-diff` show them.
   - `stretto search` runs NSGA-II from fugue-evo over each site's threshold and the flow's decider, the arbiter or the habit alone. It scores every setting by replaying recorded episodes, on two objectives: LLM turns saved and detours.
@@ -1255,7 +1255,13 @@ Amendments 17 and 18 replayed flows from published trajectories, which count sav
   - In banking and workspace it made one lookup in 48 episodes.
   - Over all 41 tasks it cut 6.0% (2.1–9.9%), against the replay's 7.2%.
   - BFCL, projected at 1.6%, shows no effect at 20 tasks per model. Resolving it would take about 900 pairs.
-- **Slack's detours are one binding.** After `get_channels`, the flow reads `general`, as the older agents did on most tasks. These agents read only the channel the request named. That is 36 of AgentDojo's 52 detours. No pair paid for them in turns, and §3.7's shadow mode and promotion are built for this case.
+- **Slack's savings and detours are one walk.** After `get_channels`, the flow reads every channel in turn, as the older agents did on the tasks that ask about all of them.
+  - It spared the agents a turn on the two held-out tasks that do.
+  - It read four channels for nothing on the five that did not: 41 of Slack's 43 detours.
+- **Promotion, live.**
+  - `stretto promote --decider reach` ran on each agent's own sessions of Slack's 12 training tasks. It held the walk's first read back: 57% and 67% of its lookups were used.
+  - Served on the 9 held-out tasks, the promoted flows made no detour and saved no turn the flow's lookups could claim: 72 turns against 75 without a flow and 68 with the published one.
+  - The sites promotion kept followed calls whose siblings the agent had asked for in the same LLM turn. Claude Code runs a turn's calls as the model streams them, so the proxy sees them as later turns. `promote` counted them as the lookups being used.
 - **Run-to-run variation, measured.**
   - In the pairs where the flow made no lookup, both arms ran under the same conditions: the same tools, the same handshake and the same results.
   - Those pairs differ in turns by up to 8% for one model and in cost by −5% to +13%. So one run per arm resolves a 10% effect in turns, but not cost.
@@ -1264,9 +1270,9 @@ Amendments 17 and 18 replayed flows from published trajectories, which count sav
 What this changes:
 
 - **§3.7's evaluation:** a replay's projection is testable live, per domain, before the run. Fixing the domains in which the replay found reads to take is the comparison to make; splitting on whether the flow acted uses the treated run.
-- **§3.7's promotion:** its first live test should be Slack's channel reads.
+- **§3.7's promotion:** a bar per site cannot keep a lookup for one kind of task and drop it for another. Only the request separates them, and a proxy does not see it, which is §3.6's case for reading the request with a model. Promotion should also score a lookup only against calls the agent could not already have asked for. That means using the proxy's view of which calls are in flight, and a host that streams a turn's calls ([#40](https://github.com/alexnodeland/stretto/issues/40)).
 - **Next:**
-  - Live promotion on AgentDojo's Slack suite.
+  - Promotion scored against what the proxy can see: the calls in flight, and a turn's streamed calls.
   - Several runs per arm, with the arms run apart, to resolve cost.
   - A flow learned from these agents' own sessions.
 

@@ -61,7 +61,7 @@ Both are under the [SIL Open Font License 1.1](fonts/LICENSE-Inter.txt) ([JetBra
 `social/og-card.png` is 1200 × 630: the lockup, the tagline, a schematic of the turns a flow saves, and the live result with its scope. It is rendered from `social/og-card.html` (`node brand/tools/render_assets.mjs og`).
 
 ```html
-<meta property="og:image" content="https://alexnodeland.github.io/stretto/og-card.png">
+<meta property="og:image" content="https://alexnodeland.github.io/stretto/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="stretto: Read ahead of your agent. Live, GLM-5.3 took 27.9% fewer LLM turns on 28 τ²-bench retail and airline tasks.">

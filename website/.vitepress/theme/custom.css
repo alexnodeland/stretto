@@ -1,33 +1,55 @@
 /* ==========================================================================
    BRAND TOKENS
-   Every brand color of the site is in this block, in light and dark. The values
-   are a placeholder palette; the brand kit (brand/tokens.css) replaces them.
+   Every brand color of the site is in this block, in light and dark, from the
+   brand kit (brand/tokens.css, whose contrast is checked by brand/tools/contrast.mjs):
+   one accent, petrol, and neutrals biased towards its hue.
    ========================================================================== */
 
 :root {
-  --stretto-accent: #0d8a7c;
+  --stretto-accent: #039298;
 
-  --vp-c-brand-1: #2d44a8;
-  --vp-c-brand-2: #3650c0;
-  --vp-c-brand-3: #4a61cf;
-  --vp-c-brand-soft: rgba(74, 97, 207, 0.14);
+  --vp-c-brand-1: #02767b;
+  --vp-c-brand-2: #015f63;
+  --vp-c-brand-3: #02767b;
+  --vp-c-brand-soft: rgba(3, 146, 152, 0.14);
+
+  --vp-c-bg-alt: #f8fbfb;
+  --vp-c-bg-soft: #eff3f4;
+  --vp-c-divider: #dae1e3;
+  --vp-c-gutter: #dae1e3;
+
+  --vp-button-brand-text: #ffffff;
+  --vp-button-brand-hover-text: #ffffff;
+  --vp-button-brand-active-text: #ffffff;
 
   --vp-home-hero-name-color: transparent;
-  --vp-home-hero-name-background: -webkit-linear-gradient(120deg, #3650c0 30%, #0d8a7c);
-  --vp-home-hero-image-background-image: linear-gradient(-45deg, #4a61cf 50%, #1bb39f 50%);
+  --vp-home-hero-name-background: -webkit-linear-gradient(120deg, #141c1e 30%, #02767b);
+  --vp-home-hero-image-background-image: linear-gradient(-45deg, #039298 50%, #33c0c7 50%);
   --vp-home-hero-image-filter: blur(44px);
 }
 
 .dark {
-  --stretto-accent: #4fd1bf;
+  --stretto-accent: #33c0c7;
 
-  --vp-c-brand-1: #a4b4ff;
-  --vp-c-brand-2: #8093f5;
-  --vp-c-brand-3: #4a61cf;
-  --vp-c-brand-soft: rgba(128, 147, 245, 0.16);
+  --vp-c-brand-1: #5dd2d8;
+  --vp-c-brand-2: #93e5e9;
+  --vp-c-brand-3: #33c0c7;
+  --vp-c-brand-soft: rgba(51, 192, 199, 0.16);
 
-  --vp-home-hero-name-background: -webkit-linear-gradient(120deg, #a4b4ff 30%, #4fd1bf);
-  --vp-home-hero-image-background-image: linear-gradient(-45deg, #4a61cf 50%, #1bb39f 50%);
+  --vp-c-bg: #121719;
+  --vp-c-bg-alt: #0b0f11;
+  --vp-c-bg-elv: #191f21;
+  --vp-c-bg-soft: #191f21;
+  --vp-c-divider: #272f32;
+  --vp-c-gutter: #0b0f11;
+
+  /* Text on the petrol fill is ink, not white, in dark (brand/tokens.css's --stretto-on-accent). */
+  --vp-button-brand-text: #0b0f11;
+  --vp-button-brand-hover-text: #0b0f11;
+  --vp-button-brand-active-text: #0b0f11;
+
+  --vp-home-hero-name-background: -webkit-linear-gradient(120deg, #eceff0 30%, #5dd2d8);
+  --vp-home-hero-image-background-image: linear-gradient(-45deg, #02767b 50%, #33c0c7 50%);
 }
 
 /* ==========================================================================
@@ -190,4 +212,22 @@
   margin-top: -8px;
   font-size: 14px;
   color: var(--vp-c-text-2);
+}
+
+/* The home hero's mark: the logo file is drawn at 32px, so it is sized here. */
+.VPHero .image-src {
+  width: 160px;
+  height: auto;
+}
+
+@media (min-width: 640px) {
+  .VPHero .image-src {
+    width: 208px;
+  }
+}
+
+@media (min-width: 960px) {
+  .VPHero .image-src {
+    width: 256px;
+  }
 }

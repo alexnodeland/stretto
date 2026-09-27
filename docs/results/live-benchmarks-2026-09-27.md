@@ -15,9 +15,9 @@ The [benchmarks page](benchmarks-2026-09-27.md) replayed flows on six more bench
   - BFCL uses `multi_turn_checker`, which replays the agent's calls turn by turn on fresh instances and compares their state and results with the ground truth's.
 - **Harness check:** with no model, the harness makes the ground truth's calls through the same proxy, server and flow (`--agent scripted`). These pass all 41 AgentDojo tasks and all 80 BFCL held-out tasks, in both arms.
 - **Runs:**
-  - Each pair was run once. The order of the two arms was drawn per task, and 244 episodes were run in all.
+  - Each pair was run once. The order of the two arms was drawn per task, and 244 episodes were run in all. A promotion test on Slack added 42 more (below).
   - Every episode ended with the agent's own answer, with no timeout and no call budget reached.
-  - GLM used 469.8 credits: 209.6 on AgentDojo, 252.9 on BFCL and 7.3 on smoke tests. Haiku ran on a subscription and is reported in tokens.
+  - GLM used 508.8 credits: 209.6 on AgentDojo, 252.9 on BFCL, 39.0 on the promotion test and 7.3 on smoke tests. Haiku ran on a subscription and is reported in tokens.
 - **Intervals:**
   - Intervals are 95%, from a bootstrap over tasks that draws a task's pairs for both models together.
   - The sign test is exact and two-sided, on the pairs whose turns differ.
@@ -31,12 +31,18 @@ The [benchmarks page](benchmarks-2026-09-27.md) replayed flows on six more bench
   - 14 of those 34 pairs took fewer turns with the flow and one took more (sign test p = 0.001). Both models agree: 12.5% fewer for Haiku 4.5 and 8.1% for GLM-5.3.
   - In banking and workspace the flow made one lookup in 48 episodes, and the arms differed by 2.1% (−3.6% to 8.7%).
   - Over all of AgentDojo: 6.0% fewer turns (2.1% to 9.9%, 19 pairs fewer and 6 more, p = 0.015). The replay projected 7.2% for other agents.
+  - Of the 14 turns saved in Slack and travel, 10 came from the 15 pairs in which the agent used one of the flow's lookups. The other 4 came from pairs in which it used none, within the run-to-run variation.
 - **Passes did not move.** AgentDojo passed 68 of 82 pairs without the flow and 69 with it; Slack and travel passed 27 and 27. BFCL passed 29 and 29 of 40.
 - **BFCL shows no effect, which is what the replay projected.**
   - The replay projected 1.6% of turns. Live, the agents took 451 turns with the flow against 444 without it: −1.6% (−6.3% to 4.2%).
   - Most of that gap comes from the 25 pairs in which the flow made no lookup, so both arms ran under identical conditions. They differed by 3.9% more turns.
   - With one run per arm, telling a 1.6% effect from that noise would take about 900 pairs.
-- **The flow's detours were mostly one read.** AgentDojo's flows made 88 lookups. In 36 of them, the agent had made the same call in its episode without the flow. Of the 52 detours, 36 read a Slack channel's messages: after `get_channels`, the flow reads `general`, which the older agents read on almost every Slack task. The detours did not cost turns: Slack took 9.3% fewer, with no pair taking more.
+- **Slack's savings and detours came from one walk.** AgentDojo's flows made 88 lookups. In 36 of them, the agent had made the same call in its episode without the flow.
+  - After `get_channels`, the Slack flow reads every channel in turn, as the older agents did on the tasks that go through all of them.
+  - On the two held-out tasks that do, both agents read all four channels themselves, and the walk spared them that turn.
+  - On five others, the agents listed the channels to post or invite, and read none. There the walk made 41 of Slack's 43 detours.
+  - No Slack pair took more turns.
+- **Promotion cannot split the walk.** `stretto promote`, run on each agent's own sessions of Slack's 12 training tasks, held back the walk's first read. That removed all 43 detours, and with them the saved turns: 72 turns against 75 without a flow, where the walk took 68. Which kind of task it is, the request says, and an MCP proxy does not see the request.
 - **Cost is not resolved.**
   - Agent input tokens fell 5.4% in AgentDojo, and 8.3% in Slack and travel.
   - Priced as billed, cost varied from run to run by as much as any difference between the arms. In the pairs where the flow made no lookup, cost moved by −5% to +13%.
@@ -101,11 +107,39 @@ At BFCL's noise, about two turns per pair, resolving a 1.6% effect at 80% power 
 | workspace | `get_received_emails` | 0 | 1 |
 
 - **Travel's lookups were mostly the agent's own.** These are the list bindings added for travel: every hotel or restaurant that a city's listing named.
-- **Slack's detours are one binding.** After `get_channels`, the flow reads a channel, `general` first. The older agents read it on most Slack tasks. GLM-5.3 and Haiku 4.5 read only the channel the request named.
+- **Slack's detours are one walk.** After `get_channels`, the flow reads `general`, then `random`, `private` and `External_0`, each after the last. The older agents read every channel on the tasks that ask about all of them.
+  - Two held-out tasks do: 10 (add everyone from the channels to one) and 13 (congratulate the most active user). There both agents read all four channels in one turn, and the flow's reads were theirs.
+  - On five tasks for GLM-5.3 and four for Haiku, the agents listed the channels to post, invite or find a user, and read none. There the walk made 22 of GLM-5.3's 24 Slack detours and all 19 of Haiku's.
 
-  This is the case promotion was built for ([shadow mode and promotion](promotion-2026-09-25.md)). The lookup would stay in shadow until the agent's own calls show it pays. Live promotion is the next test.
+## Promotion on the agents' own sessions, live
 
-  The detours cost no turns: no Slack pair took more turns with the flow.
+Shadow mode and promotion ([results](promotion-2026-09-25.md)) are the deployment's answer to a site whose lookups are not the agent's own. Here they get their first live test, with each agent's own sessions:
+
+1. **Record.** Each agent ran Slack's 12 training tasks with no flow, through the proxy: 24 episodes. GLM-5.3 passed 11 and Haiku 4.5 passed 10.
+2. **Promote.** `stretto promote --decider reach --threshold 0.3` scored the published Slack flow on each agent's 12 sessions, at the default bar: 70% of a site's lookups used, a lower bound of 0.5 and three tasks.
+3. **Serve.** Each promoted flow ran on the 9 held-out Slack tasks, as a third arm.
+
+| Site, after | GLM-5.3: lookups used in training | Promoted | Haiku 4.5: lookups used in training | Promoted |
+|---|---|---|---|---|
+| `get_channels` (the walk's first read) | 4 of 7 (57%) | no | 4 of 6 (67%) | no |
+| `read_channel_messages` (the walk's next read) | 13 of 13 | yes | 9 of 10 | yes |
+| `get_users_in_channel` | 9 of 11 | yes | 6 of 6, from 2 tasks | no |
+| `get_webpage` | 2 of 4 | no | 1 of 3 | no |
+
+| Slack, 9 held-out tasks × 2 models | LLM turns, no flow → flow | Fewer (95% interval) | Pairs fewer / more | Passed | Lookups (own / detours / repeated) |
+|---|---|---|---|---|---|
+| the published flow | 75 → 68 | 9.3% (4.1% to 14.3%) | 6 / 0 | 18 → 18 | 63 (20 / 43 / 3) |
+| promoted on the agent's own sessions | 75 → 72 | 4.0% (0.0% to 9.6%) | 2 / 0 | 18 → 18 | 8 (8 / 0 / 8) |
+
+- **Promotion removed every detour, and the savings with them.** Holding back the walk's first read removed all 43 detours, and so the walk never started. On the two tasks that read every channel, the agents read them in one turn, as before. The published flow's lookups had saved 4 turns in Slack's pairs where the agent used one, and the promoted flow saved 3 fewer turns than it did.
+- **The few turns the promoted flow saved are noise.** Its 8 lookups were all calls the agents made again themselves. The 3 turns GLM-5.3 saved came from pairs where the flow made no lookup, so they are run-to-run variation. The promoted arm also ran after the other two.
+- **The site cannot tell the tasks apart.** After `get_channels`, the walk pays on a task that asks about every channel and is a detour on one that posts to a channel. Only the request says which. A per-site bar can keep the walk or drop it, but it cannot keep it for one kind of task only. That takes the conversation, which an MCP proxy does not see ([the paper](../../paper/stretto.md), §6, "What a proxy sees").
+- **The kept chain was asked for already.** The sites promotion kept, the walk's next read and `get_users_in_channel`, followed a call whose sibling calls the agent had asked for in the same LLM turn.
+  - Claude Code runs a turn's calls as the model streams them. So a call can reach the proxy after an earlier call of the same turn has returned, and the proxy counts it as a new turn.
+  - `stretto promote` counted those later calls as the lookups being used, and the lookups spared nothing.
+  - Scoring a lookup only against calls the agent could not already have asked for is [issue #40](https://github.com/alexnodeland/stretto/issues/40).
+
+This test cost 39.0 GLM credits (26.2 for the training sessions, 12.7 for the promoted arm).
 
 ## Tokens, cost and time
 
@@ -145,6 +179,7 @@ These runs cannot resolve cost, for two reasons.
 
 - **One run per arm, two models.** The intervals are over tasks. The run-to-run variation is measured, by the pairs in which the flow made no lookup, but not averaged away.
 - **Twenty of BFCL's 80 held-out tasks.** The sample was set by the GLM credit budget. At BFCL's projected effect, even all 80 would not resolve it (above).
+- **One promotion test, on one suite.** Promotion was scored on 12 training sessions per agent, and its arm ran after the other two.
 - **The flows are the published ones.** They were learned from older agents, as a deployment would start. A flow learned from these agents' own sessions, which is what `stretto learn --sessions` does after a few days of traffic, is not tested here. In τ²-bench, an agent's own sessions saved more than other agents' (the paper's §4.3).
 - **Not run live:**
   - WorkBench: its flows make no lookup in replay, so both arms would run alike.
@@ -153,8 +188,8 @@ These runs cannot resolve cost, for two reasons.
 
 ## The episodes
 
-[live-benchmarks-2026-09-27-episodes.tar.gz](live-benchmarks-2026-09-27-episodes.tar.gz) (4.9 MB) holds all 244 episodes.
-- **Layout:** `agentdojo/` and `bfcl/`, then the model (`glm-5.3/`, `claude-haiku-4.5/`), then the arm (`baseline/`, `reach/`), then one folder per task.
+[live-benchmarks-2026-09-27-episodes.tar.gz](live-benchmarks-2026-09-27-episodes.tar.gz) holds all 286 episodes.
+- **Layout:** `agentdojo/` and `bfcl/`, then the model (`glm-5.3/`, `claude-haiku-4.5/`), then the arm (`baseline/`, `reach/`, and on Slack `promoted/`), then one folder per task. `agentdojo-train/` holds the Slack training sessions that promotion scored, and `promoted-flows/` the two promoted flows.
 - **Each task folder:** the agent's event stream (`events.jsonl`), the proxy's session log (`log/`), the flow's decisions (`flow.jsonl`), every call the server ran (`trajectory.jsonl`, the flow's lookups included), the server's call count (`tools-state.json`), the MCP config (`mcp.json`), the agent's stderr and `result.json`.
 - **Left out:** the environments' final states (`state.pkl`), which scoring used.
 
@@ -176,6 +211,21 @@ python run_bench_paired.py bfcl --bfcl-dir bfcl --sample 20 --seed 7 --agent-cli
 python analyze_bench.py runs/dojo/glm runs/dojo/haiku runs/bfcl/glm runs/bfcl/haiku \
     --set "Slack and travel=slack,travel" --set "banking and workspace=banking,workspace" \
     --json live-benchmarks.json --md live-benchmarks.md
+```
+
+The promotion test, for one model:
+
+```bash
+python run_bench_paired.py agentdojo --suites slack --split train --arms baseline --agent-cli glm --model glm-5.3 \
+    --flows FLOWS --out runs/promo/glm/train
+mkdir -p runs/promo/glm/sessions
+for d in runs/promo/glm/train/baseline/slack-*; do cp "$d"/log/*.jsonl "runs/promo/glm/sessions/$(basename "$d").jsonl"; done
+stretto promote --flow FLOWS/agentdojo-slack.flow.json --sessions runs/promo/glm/sessions --decider reach \
+    --threshold 0.3 --out slack-promoted.flow.json
+for t in user_task_0 user_task_1 user_task_2 user_task_3 user_task_10 user_task_11 user_task_12 user_task_13 user_task_20; do
+  python run_bench_episode.py agentdojo --suite slack --task $t --arm reach --label promoted \
+      --flow slack-promoted.flow.json --agent-cli glm --model glm-5.3 --out runs/dojo/glm
+done
 ```
 
 From the archive:

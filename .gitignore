@@ -11,3 +11,5 @@ website/node_modules/
 website/.vitepress/dist/
 website/.vitepress/cache/
 website/public/notebook/
+website/public/explainer/
+website/public/media/

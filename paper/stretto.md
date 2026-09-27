@@ -285,7 +285,12 @@ The replay had found reads to take in AgentDojo's Slack and travel suites and no
 - Over all 41 tasks it cut turns by 6.0% (2.1–9.9%); the replay had projected 7.2% for ten other agents.
 - In BFCL, where the replay projected 1.6%, no effect shows at this size (+1.6%, −4.2 to +6.3). The 25 pairs in which the speculator made no lookup ran alike in both arms, yet differ by 3.9%. Resolving 1.6% would take about 900 pairs.
 
-Of AgentDojo's 88 lookups, 36 were calls the agent also made in its episode without the speculator. 36 of the 52 detours read a Slack channel that the older agents read on most tasks and these agents seldom did; no pair paid for them in turns.
+Of AgentDojo's 88 lookups, 36 were calls the agent also made in its episode without the speculator. In Slack, the savings and 41 of the 43 detours came from one site. After the agent lists the channels, the speculator reads every channel in turn, as the older agents did on the tasks that ask about all of them.
+- On the two held-out tasks that do, the reads spared the agents that turn.
+- On the five that did not, it read four channels for nothing.
+- Promotion on each agent's own training sessions held the site back. That removed all 43 detours, and the saved turns with them: 72 turns against 75 without a speculator and 68 with it.
+
+Which kind of task it is, the request says (§6).
 
 *Table 5b. Live in AgentDojo's and BFCL's own environments. GLM-5.3 and Claude Haiku 4.5 pooled, one run per arm, each task scored by the benchmark's check. 95% intervals from a bootstrap over tasks, with a task's pairs drawn together.*
 
@@ -337,7 +342,7 @@ The procedure is a file stretto runs: `stretto-procedure` executes it against an
 
 **Where no user speaks is τ²-bench's own variant.** The compiled procedure was fitted on 730 successful episodes of one customer's base tasks, carried to renamed and moved customers, and hands back what its own check cannot confirm; its one missed failure shows that the check is only as good as the outcome the ticket states. Procedures need many consistent demonstrations: fitted on a quarter of the training tasks it passed 18 of 40. A compiled procedure is cloned behavior, whose errors compound once a run leaves the states its demonstrators visited [DAgger]; the outcome check bounds what that costs, by handing such runs back. In the benchmarks without a simulated user, a procedure compiled once would need a model to read the request, and most often one to write: 4% (MCPMark) to 37% (AgentDojo) of their episodes pass no value the agent composed, and at most 8% take none from the request either.
 
-**What a proxy sees.** An MCP proxy sees the agent's calls and their results, not the user's words. Binding values the request names would add 3–7 points of turns in BFCL, AgentDojo, WorkBench and DTap-Bench (§4.1). It takes a host that shares the conversation with the speculator, and a model that reads it: a pattern recovers at most a fifth of those points, and a small model that picks the value among the request's words a third to a half.
+**What a proxy sees.** An MCP proxy sees the agent's calls and their results, not the user's words. Binding values the request names would add 3–7 points of turns in BFCL, AgentDojo, WorkBench and DTap-Bench (§4.1). It takes a host that shares the conversation with the speculator, and a model that reads it: a pattern recovers at most a fifth of those points, and a small model that picks the value among the request's words a third to a half. Live, AgentDojo's Slack suite shows the cost of not seeing it. One site's lookups paid on the tasks that ask about every channel and were detours on the rest. A bar per site, set on the agents' own sessions, could keep both or drop both (§4.4).
 
 **Simulated users.** τ²-bench's users are LLMs, and so are the users of our live runs there. BFCL's, AgentDojo's, WorkBench's, DTap-Bench's and MCPMark's requests were written by their authors, but one request per task is not a user.
 

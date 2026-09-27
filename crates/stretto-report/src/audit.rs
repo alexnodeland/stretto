@@ -244,7 +244,7 @@ pub struct CalibrationBin {
 pub struct Audit {
     /// The flow's domain.
     pub domain: String,
-    /// How the flow decided: `arbiter` or `habit`.
+    /// How the flow decided: `arbiter`, `habit` or `reach`.
     pub decider: String,
     /// Episodes read.
     pub episodes: usize,
@@ -389,10 +389,10 @@ pub fn markdown(a: &Audit) -> String {
          the flow, scored by fugue's `ScoreGivenTrace`).\n\
          - **Calibration:** expected calibration error {:.3}.\n",
         a.domain,
-        if a.decider == "habit" {
-            "the habit alone"
-        } else {
-            "its arbiter"
+        match a.decider.as_str() {
+            "habit" => "the habit alone",
+            "reach" => "its chance of use before the next write (the reach decider)",
+            _ => "its arbiter",
         },
         a.episodes,
         a.decisions,

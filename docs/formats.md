@@ -168,7 +168,7 @@ pure(prev)
 - **Distributions.** `Decide(prev, failed)` is the decision after a call to tool `prev`. Handing back and the lookups `sites.next` offers there get a flat Dirichlet's posterior predictive, given what the agent did next in training; the other lookups get 0. `Outcome(d)` is whether a call to tool `d` succeeds, a flat Beta's posterior predictive given how often its calls did. These two are the only distributions a flow's program can use.
 - **Checked on load.** A program that uses another name, or gives `Decide` or `Outcome` the wrong number of arguments, does not load. A flow written without `program` runs the standard one.
 
-The proxy decides at each `decide#i` with the arbiter, and takes each `outcome#i` from the server.
+The proxy decides at each `decide#i` with the decider it serves the flow with (`--flow-decider`: the arbiter, the habit alone, or `reach`), and takes each `outcome#i` from the server.
 
 Check: any program other than the standard run is code the proxy runs. `stretto flow-diff` lists a change to it as needing review.
 

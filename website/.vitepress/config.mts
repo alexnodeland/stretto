@@ -121,6 +121,7 @@ const research: DefaultTheme.SidebarItem[] = [
       { text: 'Claims and evidence', link: '/research/claims' },
       { text: 'Results index', link: '/research/results' },
       { text: 'Seven benchmarks', link: '/research/benchmarks' },
+      { text: 'Live on AgentDojo and BFCL', link: '/research/live' },
       { text: 'Reproduce the results', link: '/research/reproduce' },
       { text: 'Research notebook', link: '/notebook/', target: '_self' }
     ]
@@ -155,12 +156,18 @@ export default defineConfigWithTheme<ThemeConfig>({
   },
 
   head: [
+    ['link', { rel: 'icon', href: `${base}favicon.ico`, sizes: '48x48' }],
     ['link', { rel: 'icon', type: 'image/svg+xml', href: `${base}favicon.svg` }],
+    ['link', { rel: 'apple-touch-icon', href: `${base}apple-touch-icon.png` }],
+    ['link', { rel: 'manifest', href: `${base}site.webmanifest` }],
+    ['meta', { name: 'theme-color', content: '#f8fbfb', media: '(prefers-color-scheme: light)' }],
+    ['meta', { name: 'theme-color', content: '#0b0f11', media: '(prefers-color-scheme: dark)' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:site_name', content: title }],
     ['meta', { property: 'og:image', content: `${siteUrl}og.png` }],
     ['meta', { property: 'og:image:width', content: '1200' }],
     ['meta', { property: 'og:image:height', content: '630' }],
+    ['meta', { property: 'og:image:alt', content: 'stretto: Read ahead of your agent.' }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
     ['meta', { name: 'twitter:image', content: `${siteUrl}og.png` }]
   ],
@@ -236,7 +243,7 @@ export default defineConfigWithTheme<ThemeConfig>({
   },
 
   themeConfig: {
-    logo: { src: '/logo.svg', alt: '' },
+    logo: { light: '/logo.svg', dark: '/logo-dark.svg', alt: '' },
     siteTitle: 'stretto',
 
     nav: [

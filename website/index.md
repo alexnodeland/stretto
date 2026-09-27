@@ -5,10 +5,11 @@ titleTemplate: Fewer LLM turns for tool-using agents
 
 hero:
   name: stretto
-  text: Fewer LLM turns for tool-using agents
+  text: Read ahead of your agent.
   tagline: stretto learns, from your agent's recorded tool calls, which reads come next and where their arguments come from. An MCP proxy then makes those reads for it, in the same tool result.
   image:
-    src: /logo.svg
+    light: /logo.svg
+    dark: /logo-dark.svg
     alt: ''
   actions:
     - theme: brand
@@ -82,13 +83,13 @@ The agent made 1 call where it had made 3. [The walkthrough](/guide/walkthrough)
     <strong>27.9%</strong>
     <span>fewer LLM turns for GLM-5.3 on 28 τ²-bench retail and airline tasks (19.1–35.9%), live, with no model of its own</span>
   </a>
+  <a href="research/results">
+    <strong>10.1%</strong>
+    <span>fewer LLM turns for GLM-5.3 and Claude Haiku 4.5 in AgentDojo's own environment, in the suites with reads to take (5.8–14.0%), live, with passes unchanged</span>
+  </a>
   <a href="research/claims">
     <strong>86.4%</strong>
     <span>of retail's read-only ceiling taken across nine agents it never saw, 10.2 points more than a next-step speculator, in replay</span>
-  </a>
-  <a href="research/claims">
-    <strong>10 sessions</strong>
-    <span>of an agent's own give 96% (retail) and 93% (airline) of what all of them do, in replay</span>
   </a>
   <a href="research/claims">
     <strong>39 of 40</strong>

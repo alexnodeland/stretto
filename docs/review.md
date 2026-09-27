@@ -28,7 +28,7 @@ Written by stretto 0.0.1 from openai/glm-5-fp8. The habit learned from 3 success
 
 ## Run
 
-What the flow does after each call, as a fugue program (`program`): `Decide` is a decision between handing back (0) and the lookups offered after the call just made, and `Outcome` whether a lookup succeeds. The proxy decides with the arbiter and takes each outcome from the server. This is the standard run: decide, look up, and decide again, until the flow hands back or has made `max_lookups` lookups (`--flow-per-call`).
+What the flow does after each call, as a fugue program (`program`): `Decide` is a decision between handing back (0) and the lookups offered after the call just made, and `Outcome` whether a lookup succeeds. The proxy decides with the decider it serves the flow with (`--flow-decider`: the arbiter, the habit alone, or `reach`) and takes each outcome from the server. This is the standard run: decide, look up, and decide again, until the flow hands back or has made `max_lookups` lookups (`--flow-per-call`).
 
 ~~~text
 let prev = call;

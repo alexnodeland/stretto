@@ -3,7 +3,8 @@ name: Pages
 # Builds the documentation site (website/, VitePress) and publishes it to
 # GitHub Pages at https://alexnodeland.github.io/stretto/. The research
 # notebook, site/index.html, is copied into the build by the site's build
-# script and served at /stretto/notebook/. The repository's Pages source must
+# script and served at /stretto/notebook/, and so are the brand kit's
+# explainer and videos (brand/). The repository's Pages source must
 # be set to "GitHub Actions" (Settings → Pages).
 on:
   push:
@@ -14,6 +15,8 @@ on:
       - "paper/**"
       - "site/**"
       - "CHANGELOG.md"
+      # The brand kit: the explainer and the videos are copied in at build time.
+      - "brand/**"
       # The site also renders these two files.
       - "crates/stretto-proxy/README.md"
       - "LICENSE"

@@ -112,7 +112,8 @@ def analyze(folder: Path) -> dict:
     episodes = {}
     for result in folder.glob("*/*/result.json"):
         r = json.loads(result.read_text())
-        episodes[(r["arm"], r["domain"], r["task"])] = (result.parent, r)
+        # An arm is known by its label: a flow served with the same decider can run under another name.
+        episodes[(r.get("label") or r["arm"], r["domain"], r["task"])] = (result.parent, r)
     arms = sorted({a for a, _, _ in episodes} - {"baseline"})
     first = next(iter(episodes.values()))[1] if episodes else {}
     out = {"model": first.get("model"), "bench": first.get("bench"), "arms": {}}
@@ -157,10 +158,10 @@ def pool(results: list[dict]) -> list[dict]:
 
 
 def markdown(results: list[dict]) -> str:
-    lines = ["| Benchmark | Model | Group | Tasks | LLM turns, no flow → flow | Fewer (95% interval) | "
+    lines = ["| Benchmark | Model | Arm | Group | Tasks | LLM turns, no flow → flow | Fewer (95% interval) | "
              "Pairs fewer / more (sign test p) | Passed, no flow → flow | Lookups (own / detours / repeated) | "
              "Agent input tokens, no flow → flow |",
-             "|---|---|---|---|---|---|---|---|---|---|"]
+             "|---|---|---|---|---|---|---|---|---|---|---|"]
     for res in results:
         for arm, a in res["arms"].items():
             for group in ["all", "all, flow acted", "all, flow silent", *SETS] + sorted(
@@ -169,7 +170,7 @@ def markdown(results: list[dict]) -> str:
                     continue
                 s = a["summary"][group]
                 lines.append(
-                    f"| {res['bench']} | {res['model']} | {group} | {s['tasks']} | {s['turns'][0]} → {s['turns'][1]} | "
+                    f"| {res['bench']} | {res['model']} | {arm} | {group} | {s['tasks']} | {s['turns'][0]} → {s['turns'][1]} | "
                     f"{s['fewer']:.1%} ({s['fewer_ci'][0]:.1%} to {s['fewer_ci'][1]:.1%}) | "
                     f"{s['fewer_pairs']} / {s['more_pairs']} ({s['sign_p']:.2g}) | "
                     f"{s['passed'][0]:.0f} → {s['passed'][1]:.0f} | "

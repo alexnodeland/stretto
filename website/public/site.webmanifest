@@ -1,0 +1,8 @@
+{
+  "name": "stretto",
+  "short_name": "stretto",
+  "icons": [{ "src": "/stretto/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }],
+  "background_color": "#0b0f11",
+  "theme_color": "#0b0f11",
+  "display": "browser"
+}
