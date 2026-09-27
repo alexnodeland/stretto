@@ -1,0 +1,108 @@
+name: Container
+
+# The container image, from the Dockerfile.
+#
+# - Pull requests and pushes to main that change what goes into the image:
+#   build it for linux/amd64, publish nothing, and run each binary and the
+#   quickstart in it.
+# - A version tag (v0.2.0): build it for linux/amd64 and linux/arm64 (arm64
+#   under QEMU, which is slow) and publish ghcr.io/alexnodeland/stretto with
+#   the tags 0.2.0, 0.2 and latest (a pre-release tag, v0.2.0-rc.1, gets
+#   only its own). Run by hand on a tag, it publishes that tag's image: the
+#   release workflow does so when it is itself run by hand.
+#
+# docs/releasing.md has the steps around it.
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - Cargo.toml
+      - Cargo.lock
+      - "crates/**"
+      - "examples/quickstart/**"
+      - .github/workflows/container.yml
+  push:
+    branches: [main]
+    tags: ["v*"]
+    # Not evaluated for tags: a version tag always builds.
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - Cargo.toml
+      - Cargo.lock
+      - "crates/**"
+      - "examples/quickstart/**"
+      - .github/workflows/container.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/alexnodeland/stretto
+
+jobs:
+  build:
+    if: "!startsWith(github.ref, 'refs/tags/v')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: stretto:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Each binary, doctor and the quickstart, in the image
+        run: |
+          docker run --rm stretto:ci --version
+          for bin in stretto-proxy stretto-procedure stretto-mcp-demo; do
+            docker run --rm --entrypoint "$bin" stretto:ci --version
+          done
+          docker run --rm stretto:ci doctor
+          docker run --rm --entrypoint /usr/local/share/stretto/quickstart/run.sh stretto:ci
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        env:
+          # Annotations on the index too, where ghcr.io reads a multi-platform
+          # image's description.
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
+        with:
+          images: ${{ env.IMAGE }}
+          flavor: latest=false
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: The published image runs
+        run: docker run --rm "$IMAGE:${{ steps.meta.outputs.version }}" --version

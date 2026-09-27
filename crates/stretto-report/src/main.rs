@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use std::collections::{BTreeMap, HashSet};
 use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
@@ -7,6 +7,7 @@ use std::time::Instant;
 use stretto_oracle::{Answer, MockOracle, NoulCriteria, Oracle, Question, ReplayCache, Request};
 use stretto_report::confirm::Second;
 use stretto_report::flow::{Arbiter, Decider};
+use stretto_report::init::Host;
 use stretto_report::shadow::{OracleKind, QuestionSet, ShadowConfig};
 use stretto_report::{phase0, render};
 
@@ -848,6 +849,67 @@ enum Command {
         #[arg(value_name = "DIR", long, default_value = ".oracle-cache")]
         oracle_cache: PathBuf,
     },
+    /// Print the configuration that runs an MCP server behind
+    /// `stretto-proxy` in an MCP host, recording its sessions, and the steps
+    /// from there to a served flow: for Claude Code a `claude mcp add`
+    /// command, for the other hosts their JSON. The configuration goes to
+    /// stdout and the steps to stderr. Nothing is written without --write.
+    Init(InitArgs),
+    /// Check the installation: the versions of `stretto-proxy`,
+    /// `stretto-procedure` and `stretto-mcp-demo` on PATH, whether
+    /// ~/.stretto is writable, whether TYPESAFE_API_KEY is set (never its
+    /// value), and the flows and recorded sessions in ~/.stretto. Exits
+    /// with 1 when something needs fixing.
+    Doctor {
+        /// Also ask Jev one question (uncached) if a key is set, as
+        /// `jev-check` does. Without it, doctor makes no network request.
+        #[arg(long)]
+        network: bool,
+    },
+    /// Print the completion script for `stretto` in `bash`, `zsh`, `fish`,
+    /// `powershell` or `elvish` to stdout. docs/install.md says where each
+    /// shell reads it.
+    Completions {
+        /// The shell.
+        #[arg(value_enum, value_name = "SHELL")]
+        shell: clap_complete::Shell,
+    },
+}
+
+/// What `init` sets up.
+#[derive(clap::Args)]
+struct InitArgs {
+    /// The MCP host to configure.
+    #[arg(long, value_enum)]
+    host: HostArg,
+    /// The server's name in the host, which is also the domain of its
+    /// sessions and flows (default, with --flow: the flow's).
+    #[arg(long, value_name = "NAME", required_unless_present = "flow")]
+    domain: Option<String>,
+    /// Run this flow (from `stretto learn` or `stretto promote`) after the
+    /// agent's calls. A flow without an arbiter is served on its habit
+    /// alone (`--flow-decider habit`).
+    #[arg(long, value_name = "FILE")]
+    flow: Option<String>,
+    /// Run the flow in shadow: it decides and logs, but looks nothing up,
+    /// for `stretto promote`.
+    #[arg(long, requires = "flow")]
+    shadow: bool,
+    /// Where the proxy records sessions (default: ~/.stretto/logs/NAME, or
+    /// ~/.stretto/shadow/NAME with --shadow).
+    #[arg(long, value_name = "DIR")]
+    record: Option<String>,
+    /// Write the host's configuration file here instead of printing it (for
+    /// Claude Code, a project's .mcp.json). An existing file is left as it
+    /// is, unless --force is given.
+    #[arg(long, value_name = "PATH")]
+    write: Option<PathBuf>,
+    /// With --write, replace an existing file, with any other servers in it.
+    #[arg(long, requires = "write")]
+    force: bool,
+    /// The MCP server's command and its arguments, after `--`.
+    #[arg(value_name = "SERVER_COMMAND", last = true, required = true)]
+    server: Vec<String>,
 }
 
 /// What Phase 0 reads and how it measures, shared by `phase0` and
@@ -1103,6 +1165,25 @@ enum DeciderArg {
 enum SecondArg {
     Described,
     Proposed,
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum HostArg {
+    ClaudeCode,
+    ClaudeDesktop,
+    Cursor,
+    Vscode,
+}
+
+impl From<HostArg> for Host {
+    fn from(h: HostArg) -> Self {
+        match h {
+            HostArg::ClaudeCode => Host::ClaudeCode,
+            HostArg::ClaudeDesktop => Host::ClaudeDesktop,
+            HostArg::Cursor => Host::Cursor,
+            HostArg::Vscode => Host::VsCode,
+        }
+    }
 }
 
 impl From<SecondArg> for Second {
@@ -1923,7 +2004,10 @@ fn main() -> Result<()> {
             );
             Ok(())
         }
-        Command::JevCheck => jev_check(),
+        Command::JevCheck => {
+            println!("{}", jev_check()?);
+            Ok(())
+        }
         Command::ExportArbiter { flow, out } => {
             let arbiter = stretto_report::flow::Flow::load(&flow)?.arbiter()?;
             arbiter.save(&out)?;
@@ -2047,7 +2131,185 @@ fn main() -> Result<()> {
             eprintln!("stretto: imported {n} answers");
             Ok(())
         }
+        Command::Init(args) => init(args),
+        Command::Doctor { network } => doctor(network),
+        Command::Completions { shell } => {
+            // Generated whole first: clap_complete panics on a failed write.
+            let mut script = Vec::new();
+            clap_complete::generate(shell, &mut Cli::command(), "stretto", &mut script);
+            std::io::stdout().write_all(&script)?;
+            Ok(())
+        }
     }
+}
+
+/// `stretto init`: the host's configuration, printed or written, then the
+/// next steps.
+fn init(args: InitArgs) -> Result<()> {
+    use stretto_report::init::{self, Served, Setup};
+    let home = home_dir();
+    let flow = match &args.flow {
+        Some(path) => {
+            let path = host_path(path)?;
+            let loaded =
+                stretto_report::flow::Flow::load(&init::expand_home(&path, home.as_deref()))?;
+            Some((path, loaded))
+        }
+        None => None,
+    };
+    let domain = match (args.domain, &flow) {
+        (Some(domain), _) => domain,
+        (None, Some((_, loaded))) => loaded.domain().to_string(),
+        (None, None) => unreachable!("clap requires --domain or --flow"),
+    };
+    init::check_domain(&domain)?;
+    let record = match &args.record {
+        Some(dir) => host_path(dir)?,
+        None => Setup::default_record(&domain, args.shadow),
+    };
+    // A host starts the server in a directory of its own choosing, so a
+    // program named by a relative path gets its absolute one.
+    let mut server = args.server;
+    if let Some(program) = server.first_mut() {
+        let path = Path::new(program.as_str());
+        if path.is_relative() && path.components().count() > 1 {
+            *program = std::path::absolute(path)?.display().to_string();
+        }
+    }
+    let host = Host::from(args.host);
+    let setup = Setup {
+        flow: flow.map(|(path, loaded)| Served {
+            path,
+            arbiter: loaded.has_arbiter(),
+            shadow: args.shadow,
+        }),
+        domain,
+        record,
+        proxy: proxy_command(host),
+        server,
+    };
+    match &args.write {
+        Some(path) => {
+            init::write_new(path, &init::config_text(host, &setup), args.force)?;
+            eprintln!("stretto: wrote {}", path.display());
+        }
+        None => {
+            print!("{}", init::snippet(host, &setup));
+            std::io::stdout().flush()?;
+            eprintln!("\n{}", host.placement());
+        }
+    }
+    let again = format!(
+        "stretto init --host {} --domain {}",
+        host.name(),
+        setup.domain
+    );
+    eprintln!("\n{}", init::next_steps(&setup, &again));
+    Ok(())
+}
+
+/// How the host should start `stretto-proxy`: by name when it is on PATH,
+/// except for Claude Desktop, which starts servers with a minimal PATH and
+/// so gets its full path, as does every host when the proxy is only next
+/// to this binary.
+fn proxy_command(host: Host) -> String {
+    let name = "stretto-proxy";
+    let path = std::env::var_os("PATH").unwrap_or_default();
+    if let Some(found) = stretto_report::doctor::which(name, &path) {
+        if host == Host::ClaudeDesktop {
+            return found.display().to_string();
+        }
+        return name.to_string();
+    }
+    let beside = std::env::current_exe().ok().and_then(|exe| {
+        let beside = exe
+            .parent()?
+            .join(format!("{name}{}", std::env::consts::EXE_SUFFIX));
+        beside.is_file().then_some(beside)
+    });
+    match beside {
+        Some(found) => {
+            eprintln!(
+                "stretto: {name} is not on PATH, so the configuration names it by its full path"
+            );
+            found.display().to_string()
+        }
+        None => {
+            eprintln!(
+                "stretto: {name} is not on PATH; install it before the host starts the server \
+                 (docs/install.md)"
+            );
+            name.to_string()
+        }
+    }
+}
+
+/// A path as a host should get it: a leading `~` is kept, for the proxy to
+/// expand, and anything else is made absolute, since hosts start servers in
+/// a directory of their own choosing.
+fn host_path(path: &str) -> Result<String> {
+    if path.starts_with('~') || Path::new(path).is_absolute() {
+        return Ok(path.to_string());
+    }
+    Ok(std::path::absolute(path)
+        .with_context(|| format!("resolving {path}"))?
+        .display()
+        .to_string())
+}
+
+/// The home directory: HOME, or USERPROFILE on Windows.
+fn home_dir() -> Option<PathBuf> {
+    std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .filter(|h| !h.is_empty())
+        .map(PathBuf::from)
+}
+
+/// `stretto doctor`: the report, then, with `network`, Jev's answer.
+fn doctor(network: bool) -> Result<()> {
+    use stretto_report::doctor::{self, Report};
+    let version = env!("CARGO_PKG_VERSION");
+    let exe = std::env::current_exe().ok();
+    match &exe {
+        Some(exe) => println!("stretto {version} ({})\n", exe.display()),
+        None => println!("stretto {version}\n"),
+    }
+    let mut report = Report::default();
+    let path = std::env::var_os("PATH").unwrap_or_default();
+    doctor::check_binaries(
+        &mut report,
+        version,
+        &path,
+        exe.as_deref().and_then(Path::parent),
+    );
+    let home = home_dir();
+    match &home {
+        Some(home) => doctor::check_dir(&mut report, &home.join(".stretto")),
+        None => report.problem("neither HOME nor USERPROFILE is set, so there is no ~/.stretto"),
+    }
+    // Whether the variables are set, never what they hold.
+    let set = |var: &str| std::env::var_os(var).is_some_and(|v| !v.is_empty());
+    let (key, key_file) = (set("TYPESAFE_API_KEY"), set("TYPESAFE_API_KEY_FILE"));
+    doctor::check_key(&mut report, key, key_file);
+    if let Some(home) = &home {
+        doctor::check_files(&mut report, &home.join(".stretto"), home);
+    }
+    if network {
+        if !(key || key_file) {
+            report.note("--network: no key is set, so Jev was not asked");
+        } else {
+            match jev_check() {
+                Ok(answer) => report.ok(answer),
+                Err(e) => report.problem(format!("Jev did not answer: {e:#}")),
+            }
+        }
+    }
+    print!("{}", report.render());
+    if report.problems() > 0 {
+        eprintln!("stretto: {} problem(s) to fix", report.problems());
+        std::process::exit(1);
+    }
+    Ok(())
 }
 
 /// τ²-bench episodes from `results`, as a deployment's sessions for
@@ -2523,7 +2785,8 @@ struct AnswerLine {
     response: stretto_oracle::Response,
 }
 
-fn jev_check() -> Result<()> {
+/// Ask Jev one small question, uncached, and say how it answered.
+fn jev_check() -> Result<String> {
     let client = stretto_oracle::jev::JevClient::from_env()?;
     let request = Request {
         model: stretto_oracle::jev::JevClient::default_model(),
@@ -2548,13 +2811,12 @@ fn jev_check() -> Result<()> {
         Some(Answer::Noul { noul }) => format!("P(yes) = {noul:.3}"),
         other => format!("{other:?}"),
     };
-    println!(
+    Ok(format!(
         "Jev OK: model {}, {answer}, {} input tokens, {} ms",
         response.model,
         response.usage.input_tokens,
         elapsed.as_millis()
-    );
-    Ok(())
+    ))
 }
 
 fn write(path: &PathBuf, bytes: &[u8]) -> Result<()> {
@@ -2654,6 +2916,33 @@ mod tests {
         assert_eq!(
             kind("compile --tau2 t --domain retail --out f.json --questions v2"),
             Some(ErrorKind::MissingRequiredArgument)
+        );
+    }
+
+    #[test]
+    fn init_needs_a_domain_or_a_flow_and_the_server_after_two_dashes() {
+        for ok in [
+            "init --host cursor --domain notes -- npx -y server /notes",
+            "init --host vscode --flow f.json --shadow -- npx -y server",
+            "init --host claude-code --domain notes --write .mcp.json --force -- server",
+        ] {
+            assert!(parse(ok).is_ok(), "{ok}");
+        }
+        for missing in [
+            "init --host cursor -- server",
+            "init --host cursor --domain notes",
+            "init --host cursor --domain notes --shadow -- server",
+            "init --host cursor --domain notes --force -- server",
+        ] {
+            assert_eq!(
+                kind(missing),
+                Some(ErrorKind::MissingRequiredArgument),
+                "{missing}"
+            );
+        }
+        assert_eq!(
+            kind("init --host zed --domain notes -- server"),
+            Some(ErrorKind::InvalidValue)
         );
     }
 }

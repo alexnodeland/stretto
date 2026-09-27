@@ -33,6 +33,11 @@ jobs:
         with:
           node-version: 22
       - run: cargo build -p stretto-report -p stretto-proxy
+      # examples/quickstart: the loop on stretto-mcp-demo, with no key and no network.
+      - run: sh examples/quickstart/run.sh --bin target/debug
+      # install.sh against a local release of stand-in binaries, and the shell scripts linted.
+      - run: sh packaging/test-install.sh
+      - run: shellcheck install.sh examples/quickstart/run.sh packaging/test-install.sh packaging/homebrew/fill.sh
       - run: python3 scripts/walkthrough.py --bin target/debug
       - run: python3 scripts/http_check.py --bin target/debug
       # The compiled workflow's binding rules (scripts/telecom_workflow.py), which need no τ²-bench.

@@ -9,10 +9,14 @@ rust-version = "1.87"
 license = "MIT"
 repository = "https://github.com/alexnodeland/stretto"
 authors = ["Alex Nodeland"]
+homepage = "https://alexnodeland.github.io/stretto/"
+readme = "README.md"
+keywords = ["mcp", "llm", "agents", "bayesian", "speculation"]
 
 [workspace.dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
 fugue = { package = "fugue-ppl", git = "https://github.com/alexnodeland/fugue", rev = "3d65f3db3ce489d61125c217041a6cf980492f08", features = ["program"] }
 fugue-evo = { version = "0.3.1", default-features = false, features = ["std", "classic"] }
 hex = "0.4"

@@ -34,6 +34,9 @@ Compile an agent's recorded behavior into flows, serve them, and measure them ag
 | [`export-answers`](#stretto-export-answers) | Write every cached oracle answer to stdout as JSON lines (`{"key", "response"}`). |
 | [`ask`](#stretto-ask) | Ask a System-One model questions of your own. |
 | [`import-answers`](#stretto-import-answers) | Read JSON lines from `export-answers` on stdin into a replay cache. |
+| [`init`](#stretto-init) | Print the configuration that runs an MCP server behind `stretto-proxy` in an MCP host, recording its sessions, and the steps from there to a served flow. |
+| [`doctor`](#stretto-doctor) | Check the installation. |
+| [`completions`](#stretto-completions) | Print the completion script for `stretto` in `bash`, `zsh`, `fish`, `powershell` or `elvish` to stdout. |
 
 ### `stretto phase0`
 
@@ -607,6 +610,52 @@ Usage: stretto import-answers [OPTIONS]
 **Options**
 
 - `--oracle-cache <DIR>` (default `.oracle-cache`): Replay cache to fill.
+
+### `stretto init`
+
+Print the configuration that runs an MCP server behind `stretto-proxy` in an MCP host, recording its sessions, and the steps from there to a served flow: for Claude Code a `claude mcp add` command, for the other hosts their JSON. The configuration goes to stdout and the steps to stderr. Nothing is written without --write.
+
+```text
+Usage: stretto init [OPTIONS] --host <HOST> -- <SERVER_COMMAND>...
+```
+
+**Options**
+
+- `--host <HOST>` (required; one of `claude-code`, `claude-desktop`, `cursor`, `vscode`): The MCP host to configure.
+- `--domain <NAME>`: The server's name in the host, which is also the domain of its sessions and flows (default, with --flow: the flow's).
+- `--flow <FILE>`: Run this flow (from `stretto learn` or `stretto promote`) after the agent's calls. A flow without an arbiter is served on its habit alone (`--flow-decider habit`).
+- `--shadow`: Run the flow in shadow: it decides and logs, but looks nothing up, for `stretto promote`.
+- `--record <DIR>`: Where the proxy records sessions (default: ~/.stretto/logs/NAME, or ~/.stretto/shadow/NAME with --shadow).
+- `--write <PATH>`: Write the host's configuration file here instead of printing it (for Claude Code, a project's .mcp.json). An existing file is left as it is, unless --force is given.
+- `--force`: With --write, replace an existing file, with any other servers in it.
+
+**Arguments**
+
+- `<SERVER_COMMAND>...` (required): The MCP server's command and its arguments, after `--`.
+
+### `stretto doctor`
+
+Check the installation: the versions of `stretto-proxy`, `stretto-procedure` and `stretto-mcp-demo` on PATH, whether ~/.stretto is writable, whether TYPESAFE_API_KEY is set (never its value), and the flows and recorded sessions in ~/.stretto. Exits with 1 when something needs fixing.
+
+```text
+Usage: stretto doctor [OPTIONS]
+```
+
+**Options**
+
+- `--network`: Also ask Jev one question (uncached) if a key is set, as `jev-check` does. Without it, doctor makes no network request.
+
+### `stretto completions`
+
+Print the completion script for `stretto` in `bash`, `zsh`, `fish`, `powershell` or `elvish` to stdout. docs/install.md says where each shell reads it.
+
+```text
+Usage: stretto completions <SHELL>
+```
+
+**Arguments**
+
+- `<SHELL>` (required; one of `bash`, `elvish`, `fish`, `powershell`, `zsh`): The shell.
 
 <!-- end stretto -->
 

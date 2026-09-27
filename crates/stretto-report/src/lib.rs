@@ -22,15 +22,19 @@
 //! [`guards`] are typed policy checks a proxy runs before a write, and
 //! [`audit`] scores recorded episodes under a flow, as a fugue program.
 //! A [`procedure`] is a whole workflow compiled once from traces, writes
-//! included, for where no user speaks, run with no model.
+//! included, for where no user speaks, run with no model. [`init`] writes an
+//! MCP host's configuration for the proxy, and [`doctor`] checks an
+//! installation.
 
 pub mod arbitrate;
 pub mod audit;
 pub mod cli_doc;
 pub mod confirm;
+pub mod doctor;
 pub mod evaluate;
 pub mod flow;
 pub mod guards;
+pub mod init;
 pub mod matching;
 pub mod phase0;
 pub mod procedure;
