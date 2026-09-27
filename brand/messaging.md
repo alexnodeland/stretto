@@ -22,9 +22,9 @@ stretto is an open-source MCP proxy, written in Rust. It records an agent's tool
 
 ## 150 words
 
-stretto is an open-source MCP proxy for LLM agents, written in Rust and MIT-licensed. `stretto-proxy` wraps any MCP server and records the agent's sessions. From them, `stretto learn` writes a flow: which reads follow which calls, and where each argument comes from. Served, the flow makes the lookups the agent is likely to need, and they ride in the same tool result, with no new tool and no change to the prompt.
+stretto is an open-source MCP proxy for LLM agents, written in Rust and MIT-licensed. `stretto-proxy` wraps any MCP server and records the agent's sessions. From them, `stretto learn` writes a flow: which reads follow which calls, and where each argument comes from. Served, the flow makes the lookups the agent will likely need, and they ride in the same tool result, with no new tool and no change to the prompt.
 
-The flow only reads, so a wrong lookup, a detour, costs tokens and changes nothing. The reach decider asks no model: it makes a lookup when its chance of being used before the agent's next write clears a threshold set by costs. Live, GLM-5.3 took 27.9% fewer LLM turns (95% CI 19.1–35.9%) on 28 τ²-bench retail and airline tasks, against the recorded baseline.
+The flow only reads, so a wrong lookup, a detour, costs tokens and changes no state. The reach decider asks no model: it makes a lookup when its chance of being used before the agent's next write clears a threshold set by costs. Live, GLM-5.3 took 27.9% fewer LLM turns (95% CI 19.1–35.9%) on 28 τ²-bench retail and airline tasks, against the recorded baseline.
 
 Where no user speaks, `stretto-procedure` runs a workflow compiled once from traces, with no model.
 
@@ -62,7 +62,7 @@ What the evidence does not show, and copy must not imply (claims ledger, "What t
 | LLM turns | steps, API calls, requests | The measured unit. |
 | reads, lookups | prefetches, cache hits | stretto makes a real call with bound arguments; nothing is cached. |
 | a flow | a model, an agent | A flow is a JSON file of counts and bindings that a person can review. |
-| a detour | a miss, an error | A lookup the agent did not use. It costs tokens and changes nothing. |
+| a detour | a miss, an error | A lookup the agent did not use. It costs tokens and changes no state. |
 | the next write | the next step | The event the decision is about. |
 | the reach decider | the AI, the predictor | It counts; it asks no model. |
 | live; replay; record | tested, proven | The three kinds of evidence, as the claims ledger defines them. |

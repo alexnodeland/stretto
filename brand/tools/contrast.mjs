@@ -57,7 +57,7 @@ for (const fg of ['text', 'text-muted', 'text-subtle', 'accent', 'accent-hover']
   for (const bg of surfaces) pairs.push([fg, bg, TEXT, 'text']);
 }
 pairs.push(['on-accent', 'accent-fill', TEXT, 'text']);
-for (const fg of ['accent-graphic', 'border-strong', 'focus']) {
+for (const fg of ['accent-graphic', 'border-strong', 'focus', 'chart-baseline', 'chart-accent']) {
   for (const bg of ['bg', 'surface', 'surface-2']) pairs.push([fg, bg, GRAPHIC, 'graphic']);
 }
 

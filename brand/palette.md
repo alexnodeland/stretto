@@ -23,6 +23,8 @@ Every color was chosen in OKLCH and converted to sRGB inside its gamut: petrol a
 | `--stretto-accent-fill` | `#02767b` | `#33c0c7` | Buttons and badges |
 | `--stretto-on-accent` | `#ffffff` | `#0b0f11` | Text on `--stretto-accent-fill` |
 | `--stretto-focus` | `#02767b` | `#5dd2d8` | Focus rings |
+| `--stretto-chart-baseline` | `#4a5557` | `#606b6f` | The baseline series in a chart |
+| `--stretto-chart-accent` | `#039298` | `#33c0c7` | stretto's series in a chart |
 
 **Brand constants** do not change with the theme; the logo files use them.
 
@@ -39,7 +41,7 @@ Type tokens: `--stretto-font-sans` (Inter) and `--stretto-font-mono` (JetBrains 
 ## Using the accent
 
 - **One job.** Petrol is stretto's own contribution. In a diagram of an episode, the agent's LLM turns and the server are neutral; the reads stretto made are petrol. A detour, a read the agent did not use, is a petrol outline, dashed, not a new color.
-- **Charts.** The baseline is `--stretto-border-strong`, stretto is `--stretto-accent-graphic`, and each bar carries its value as text, so no reading depends on color alone.
+- **Charts.** A chart compares stretto with a baseline: the baseline is `--stretto-chart-baseline`, stretto is `--stretto-chart-accent`, and each bar carries its value as text, so no reading depends on color alone. The pair differs in lightness, not only in hue: checked with a color-vision-deficiency simulation (OKLab), the worst case is ΔE 15.9 (deuteranopia) in light and 21.8 in dark, and 18.2 and 24.2 with normal vision. A mid-gray baseline of the accent's lightness would fail that check (ΔE 2.0 under protanopia), which is why the light baseline is the darker slate.
 - **No status colors.** The brand has no red or green. Where a page needs to flag an error or a warning, say so in words with an icon, and use the host's own status color if it has one.
 - **Text in petrol** uses `--stretto-accent`, never `--stretto-accent-graphic`: the graphic tone reaches 3:1, not 4.5:1, on the light background.
 
@@ -50,7 +52,7 @@ Computed by [`tools/contrast.mjs`](tools/contrast.mjs) from `tokens.css`, with t
 Run `node brand/tools/contrast.mjs --check` after changing a token; it exits with 1 if a pair fails, or if the two copies of the dark theme in `tokens.css` differ.
 
 <details>
-<summary>Every pair (68)</summary>
+<summary>Every pair (80)</summary>
 
 | Theme | Foreground | Background | Kind | Ratio | Needs | Result |
 |---|---|---|---|---|---|---|
@@ -84,6 +86,12 @@ Run `node brand/tools/contrast.mjs --check` after changing a token; it exits wit
 | light | `--stretto-focus` #02767b | `--stretto-bg` #f8fbfb | graphic | 5.20:1 | 3:1 | pass |
 | light | `--stretto-focus` #02767b | `--stretto-surface` #ffffff | graphic | 5.41:1 | 3:1 | pass |
 | light | `--stretto-focus` #02767b | `--stretto-surface-2` #eff3f4 | graphic | 4.84:1 | 3:1 | pass |
+| light | `--stretto-chart-baseline` #4a5557 | `--stretto-bg` #f8fbfb | graphic | 7.40:1 | 3:1 | pass |
+| light | `--stretto-chart-baseline` #4a5557 | `--stretto-surface` #ffffff | graphic | 7.70:1 | 3:1 | pass |
+| light | `--stretto-chart-baseline` #4a5557 | `--stretto-surface-2` #eff3f4 | graphic | 6.89:1 | 3:1 | pass |
+| light | `--stretto-chart-accent` #039298 | `--stretto-bg` #f8fbfb | graphic | 3.62:1 | 3:1 | pass |
+| light | `--stretto-chart-accent` #039298 | `--stretto-surface` #ffffff | graphic | 3.77:1 | 3:1 | pass |
+| light | `--stretto-chart-accent` #039298 | `--stretto-surface-2` #eff3f4 | graphic | 3.38:1 | 3:1 | pass |
 | dark | `--stretto-text` #eceff0 | `--stretto-bg` #0b0f11 | text | 16.66:1 | 4.5:1 | pass |
 | dark | `--stretto-text` #eceff0 | `--stretto-surface` #121719 | text | 15.63:1 | 4.5:1 | pass |
 | dark | `--stretto-text` #eceff0 | `--stretto-surface-2` #191f21 | text | 14.43:1 | 4.5:1 | pass |
@@ -114,6 +122,12 @@ Run `node brand/tools/contrast.mjs --check` after changing a token; it exits wit
 | dark | `--stretto-focus` #5dd2d8 | `--stretto-bg` #0b0f11 | graphic | 10.71:1 | 3:1 | pass |
 | dark | `--stretto-focus` #5dd2d8 | `--stretto-surface` #121719 | graphic | 10.05:1 | 3:1 | pass |
 | dark | `--stretto-focus` #5dd2d8 | `--stretto-surface-2` #191f21 | graphic | 9.27:1 | 3:1 | pass |
+| dark | `--stretto-chart-baseline` #606b6f | `--stretto-bg` #0b0f11 | graphic | 3.51:1 | 3:1 | pass |
+| dark | `--stretto-chart-baseline` #606b6f | `--stretto-surface` #121719 | graphic | 3.30:1 | 3:1 | pass |
+| dark | `--stretto-chart-baseline` #606b6f | `--stretto-surface-2` #191f21 | graphic | 3.04:1 | 3:1 | pass |
+| dark | `--stretto-chart-accent` #33c0c7 | `--stretto-bg` #0b0f11 | graphic | 8.72:1 | 3:1 | pass |
+| dark | `--stretto-chart-accent` #33c0c7 | `--stretto-surface` #121719 | graphic | 8.18:1 | 3:1 | pass |
+| dark | `--stretto-chart-accent` #33c0c7 | `--stretto-surface-2` #191f21 | graphic | 7.55:1 | 3:1 | pass |
 | brand | logo on light: ink bar #141c1e | #f8fbfb | graphic | 16.62:1 | 3:1 | pass |
 | brand | logo on light: petrol bars #039298 | #f8fbfb | graphic | 3.62:1 | 3:1 | pass |
 | brand | logo on light: petrol bars on white #039298 | #ffffff | graphic | 3.77:1 | 3:1 | pass |

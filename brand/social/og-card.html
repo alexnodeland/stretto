@@ -45,7 +45,7 @@
   .legend i { display: inline-block; width: 18px; height: 8px; border-radius: 2px; margin-right: 7px; vertical-align: 1px; }
   .result { grid-column: 1 / 3; display: flex; align-items: baseline; gap: 18px; border-top: 1px solid var(--border);
     padding-top: 22px; }
-  .num { font-weight: 650; font-size: 46px; letter-spacing: -0.03em; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .num { font-weight: 650; font-size: 46px; letter-spacing: -0.03em; color: var(--accent); }
   .what { font-weight: 560; font-size: 25px; letter-spacing: -0.01em; }
   .scope { font-size: 18px; color: var(--muted); margin-left: auto; text-align: right; line-height: 1.35; }
 </style>
@@ -74,7 +74,7 @@
         <rect x="280" y="28" width="50" height="22" rx="5"/>
         <rect x="336" y="28" width="50" height="22" rx="5"/>
       </g>
-      <!-- the two turns that only read what the second turn's result named -->
+      <!-- the two turns that only read what the second turn's result named: stretto saves them -->
       <g fill="#0b292c" stroke="#33c0c7" stroke-width="1.5">
         <rect x="112.75" y="28.75" width="48.5" height="20.5" rx="4.5"/>
         <rect x="168.75" y="28.75" width="48.5" height="20.5" rx="4.5"/>
@@ -99,7 +99,7 @@
         <rect x="336.75" y="115.75" width="48.5" height="20.5" rx="4.5"/>
       </g>
     </svg>
-    <div class="legend"><span><i style="background:#4d575b"></i>LLM turn</span><span><i style="background:#0b292c;box-shadow:inset 0 0 0 1.5px #33c0c7"></i>a turn that only reads</span><span><i style="background:#33c0c7"></i>stretto's read</span></div>
+    <div class="legend"><span><i style="background:#4d575b"></i>LLM turn</span><span><i style="background:#0b292c;box-shadow:inset 0 0 0 1.5px #33c0c7"></i>a turn stretto saves</span><span><i style="background:#33c0c7"></i>stretto's read</span></div>
   </div>
 
   <div class="result">

@@ -12,6 +12,8 @@
  *   --stretto-accent-graphic: marks, bars and icons, >= 3:1 (non-text contrast).
  *   --stretto-on-accent: text on --stretto-accent-fill, >= 4.5:1.
  *   --stretto-border-strong: control outlines, >= 3:1 on the backgrounds.
+ *   --stretto-chart-baseline and -chart-accent: >= 3:1 as graphics, and apart in
+ *     lightness, so a chart's two series survive color-vision deficiencies.
  *   --stretto-border: hairlines only; it carries no meaning on its own.
  */
 
@@ -38,6 +40,11 @@
   --stretto-accent-fill: #02767b;   /* buttons, badges */
   --stretto-on-accent: #ffffff;     /* text on --stretto-accent-fill */
   --stretto-focus: #02767b;
+
+  /* Charts: the emphasis pair. The baseline differs from the accent in lightness,
+     so the two stay apart for color-blind readers (checked, see palette.md). */
+  --stretto-chart-baseline: #4a5557;
+  --stretto-chart-accent: #039298;
 
   /* Brand constants: the same in both themes (logo files use these). */
   --stretto-ink: #141c1e;
@@ -76,6 +83,8 @@
     --stretto-accent-fill: #33c0c7;
     --stretto-on-accent: #0b0f11;
     --stretto-focus: #5dd2d8;
+    --stretto-chart-baseline: #606b6f;
+    --stretto-chart-accent: #33c0c7;
   }
 }
 
@@ -96,4 +105,6 @@
   --stretto-accent-fill: #33c0c7;
   --stretto-on-accent: #0b0f11;
   --stretto-focus: #5dd2d8;
+  --stretto-chart-baseline: #606b6f;
+  --stretto-chart-accent: #33c0c7;
 }
