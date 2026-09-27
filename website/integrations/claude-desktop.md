@@ -1,22 +1,22 @@
 ---
-description: Run an MCP server behind stretto-proxy in Claude Desktop, with claude_desktop_config.json.
+description: Run an MCP server behind stretto-proxy in Claude Desktop - stretto init prints the entry for claude_desktop_config.json, with the proxy's full path.
 ---
 
 # Claude Desktop
 
-Claude Desktop reads its MCP servers from `claude_desktop_config.json`. Open it from **Settings → Developer → Edit Config**, or at:
+Claude Desktop reads its MCP servers from `claude_desktop_config.json`. `stretto init --host claude-desktop` prints the entry that runs your server behind `stretto-proxy`:
 
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-
-Put `stretto-proxy` in place of the server's command, and the server's command after `--`:
+```sh
+stretto init --host claude-desktop --domain notes \
+  -- npx -y @modelcontextprotocol/server-filesystem /Users/me/notes
+```
 
 ```json
 {
   "mcpServers": {
     "notes": {
       "command": "/Users/me/.cargo/bin/stretto-proxy",
-      "args": ["--record", "~/.stretto/notes", "--domain", "notes",
+      "args": ["--record", "~/.stretto/logs/notes", "--domain", "notes",
                "--", "npx", "-y", "@modelcontextprotocol/server-filesystem",
                "/Users/me/notes"]
     }
@@ -24,22 +24,39 @@ Put `stretto-proxy` in place of the server's command, and the server's command a
 }
 ```
 
-Quit Claude Desktop completely and open it again; it reads the file when it starts.
+Claude Desktop starts servers with a minimal `PATH`, so `init` writes the full path of the `stretto-proxy` it finds on yours. Merge the entry into `claude_desktop_config.json`, which **Settings → Developer → Edit Config** opens, or find it at:
 
-::: tip Absolute paths
-Claude Desktop does not start servers from your shell, so it may not find programs on your shell's `PATH`. The example gives `stretto-proxy`'s absolute path, which `which stretto-proxy` prints. If the server's own command is not found either, give its absolute path too, such as `which npx`.
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+Then quit Claude Desktop completely and open it again; it reads the file when it starts. After it prints the entry, `init` lists the next steps, from learning a flow to serving it: [the quick start](/guide/quick-start) follows them.
+
+::: tip The server's command
+`init` resolves the proxy's path, not the server's. If Claude Desktop cannot find the server's own command either, such as `npx`, give its full path in `args`: `which npx` prints it.
 :::
 
 ## Serve a flow
 
-Once you have [learned and reviewed a flow](/guide/quick-start#4-learn-a-flow), add it to the proxy's arguments, and restart Claude Desktop:
+Once you have [learned and reviewed a flow](/guide/quick-start#4-learn-a-flow), run `init` again with it:
+
+```sh
+stretto init --host claude-desktop --domain notes \
+  --flow ~/.stretto/notes.flow.json \
+  -- npx -y @modelcontextprotocol/server-filesystem /Users/me/notes
+```
 
 ```json
-"args": ["--record", "~/.stretto/notes", "--domain", "notes",
-         "--flow", "~/.stretto/notes.flow.json", "--flow-decider", "reach",
+"args": ["--record", "~/.stretto/logs/notes", "--domain", "notes",
+         "--flow", "/Users/me/.stretto/notes.flow.json",
+         "--flow-decider", "habit",
          "--", "npx", "-y", "@modelcontextprotocol/server-filesystem",
          "/Users/me/notes"]
 ```
+
+Replace the server's entry with the new one, and restart Claude Desktop.
+
+- Add `--shadow` to `init` to see what the flow would do before it acts ([shadow mode](/guide/concepts/shadow-and-promotion)).
+- A flow learned with `--habit-only` is served on its habit (`--flow-decider habit`). To serve it with `reach`, which needs no key either, change `habit` to `reach` ([deciders](/guide/concepts/deciders)).
 
 ## When a server does not start
 

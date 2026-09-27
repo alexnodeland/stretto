@@ -11,10 +11,13 @@ Everything stretto learns comes from sessions: what an agent did with a server's
 `stretto-proxy` takes the place of an MCP server in the host's configuration. The host starts it as a stdio server; it starts the real server as a child process, from the command after `--`, or connects to one over Streamable HTTP ([`--upstream`](/integrations/streamable-http)). It forwards every line in both directions byte for byte, except what you ask it to act on, such as a result a flow adds its lookups to.
 
 ```sh
-stretto-proxy --record ~/.stretto/logs --domain orders -- npx -y some-mcp-server
+stretto-proxy --record ~/.stretto/logs/orders --domain orders \
+  -- npx -y some-mcp-server
 ```
 
-- `--record DIR` writes one log per session, `DIR/<session>.jsonl`, and creates `DIR` if it is missing. Without it, the proxy only forwards.
+`stretto init` prints this for your host, in the host's own format ([integrations](/integrations/)).
+
+- `--record DIR` writes one log per session, `DIR/<session>.jsonl`, and creates `DIR` if it is missing. Keep one directory per server, since `stretto learn` reads every session in a directory; `stretto init` uses `~/.stretto/logs/NAME`. Without `--record`, the proxy only forwards.
 - `--domain NAME` names the domain in the log's header, and later the flow's.
 - `--agent-model MODEL` names the model that drives the agent, which the proxy cannot see. Without it, the log names the host application from `initialize`.
 
@@ -69,7 +72,7 @@ A flow only knows what the sessions showed: which lookup followed which call, an
 
 ## Try it
 
-`stretto-mcp-demo` is a tiny server for trying the proxy: `lookup` (read-only) and `update` (a write) answer with their arguments. `stretto-mcp-demo --world retail` serves a tiny shop with four of τ²-bench retail's tool names and canned data instead. The [quick start](../quick-start#2-see-the-proxy-record-with-no-host) records a session with it from the shell.
+`stretto-mcp-demo` is a tiny server for trying the proxy: `lookup` (read-only) and `update` (a write) answer with their arguments. `stretto-mcp-demo --world retail` serves a tiny shop with four of τ²-bench retail's tool names and canned data instead. [The quick start's demo](../quick-start#2-see-the-whole-loop-with-no-key) records six sessions on that shop and learns a flow from them, and [the proxy's reference](/reference/proxy#try-it) records one from the shell.
 
 ## Related
 

@@ -1,14 +1,14 @@
 ---
-description: Install stretto, put the proxy in front of an MCP server, learn a flow from recorded sessions with no key, review it, and serve it.
+description: Install stretto, see the whole loop with no key, put the proxy in front of your MCP server with stretto init, learn a flow, review it, and serve it.
 ---
 
 # Quick start
 
-This page puts a flow behind an agent: install stretto, record a few sessions through the proxy, learn a flow from them, review it, and serve it. It uses [the official MCP filesystem server](https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem) on a folder of notes, as [the walkthrough](./walkthrough) does, but any MCP server works the same way.
+This page puts a flow behind an agent. You install stretto, watch the whole loop run on a demo, then record a few sessions of your own agent through the proxy, learn a flow from them, review it, and serve it. It uses [the official MCP filesystem server](https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem) on a folder of notes, as [the walkthrough](./walkthrough) does, but any MCP server works the same way.
 
 You need:
 
-- Rust 1.87 or later ([rustup](https://rustup.rs)), to install from source;
+- Rust 1.88 or later ([rustup](https://rustup.rs)), to install from source until the first release is tagged ([other ways to install](./installation));
 - an MCP host, such as Claude Code, Claude Desktop, Cursor or VS Code;
 - Node 18 or later, for this page's example server (`npx`).
 
@@ -20,52 +20,62 @@ No API key: everything below learns and decides without a model.
 ## 1. Install
 
 ```sh
-cargo install --git https://github.com/alexnodeland/stretto \
-  stretto-proxy stretto-report
+cargo install --locked --git https://github.com/alexnodeland/stretto \
+  stretto-report stretto-proxy
+stretto doctor
 ```
 
-This builds from the `main` branch and installs `stretto`, `stretto-proxy`, `stretto-procedure` and `stretto-mcp-demo` into `~/.cargo/bin`. Check that your shell finds them:
+`cargo install` builds the `main` branch and puts `stretto`, `stretto-proxy`, `stretto-procedure` and `stretto-mcp-demo` in `~/.cargo/bin`. `stretto doctor` then checks the installation: that the other three programs are on your `PATH` at the same version as `stretto`, that `~/.stretto` is writable, whether a TypeSafe key is set (never its value), and which flows and sessions you have. It exits with 1 when something needs fixing. On a first run it prints:
+
+```text
+stretto 0.1.0 (/home/me/.cargo/bin/stretto)
+
+ok       stretto-proxy 0.1.0 (/home/me/.cargo/bin/stretto-proxy)
+ok       stretto-procedure 0.1.0 (/home/me/.cargo/bin/stretto-procedure)
+ok       stretto-mcp-demo 0.1.0 (/home/me/.cargo/bin/stretto-mcp-demo)
+note     /home/me/.stretto does not exist yet; `stretto-proxy --record` creates it
+note     TYPESAFE_API_KEY is not set. It is optional: …
+note     no flows in ~/.stretto yet (`stretto learn` writes one)
+note     no recorded sessions in ~/.stretto yet
+```
+
+For shell completions, `stretto completions bash` prints the script for bash, and likewise for `zsh`, `fish`, `powershell` and `elvish` ([where each shell reads it](../../docs/install.md#shell-completions)).
+
+## 2. See the whole loop with no key
 
 ```sh
-stretto --version
-stretto-proxy --version
+curl -fsSLO https://raw.githubusercontent.com/alexnodeland/stretto/main/examples/quickstart/run.sh \
+  && sh run.sh
 ```
 
-[Installation](./installation) has the other ways to install, and what each package installs.
+The script runs the loop on `stretto-mcp-demo`'s tiny shop, with a scripted agent in place of an LLM. It records six customers' sessions through `stretto-proxy`, learns a flow from them with no key, prints the flow for review, and serves it to two new customers. It needs only a POSIX shell and the programs you just installed, makes no network request, and takes about a second. Its last step serves the flow to the two new customers:
 
-## 2. See the proxy record, with no host
-
-`stretto-mcp-demo` is a tiny MCP server with two tools that answer with their arguments: `lookup`, marked read-only, and `update`, marked as a write. Send it a few JSON-RPC messages through the proxy:
-
-```sh
-printf '%s\n' \
-  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"shell","version":"0"}}}' \
-  '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
-  '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
-  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"lookup","arguments":{"text":"hello"}}}' \
-  | stretto-proxy --record /tmp/stretto-demo -- stretto-mcp-demo
-cat /tmp/stretto-demo/*.jsonl
+```text
+c41@example.com (cancel): 5 calls without the flow, 2 with it
+c42@example.com (status): 4 calls without the flow, 1 with it
+The agent made 3 calls instead of 9. It makes one call per LLM turn, so that
+is 6 fewer LLM turns: the flow's lookups came back with its first call.
 ```
 
-The server's answers come out on stdout, unchanged, and the proxy says on stderr where it records (`stretto-proxy: recording to /tmp/stretto-demo/<session>.jsonl`). The log starts with a header, then holds every line that crossed the proxy, with when and from whom:
-
-```json
-{"stretto_mcp_log":2,"session":"20260927T132150.035Z-17076","started_unix_ms":1790515310035,"server_command":["stretto-mcp-demo"],"domain":null,"agent_model":null}
-{"t_ms":2,"from":"client","message":{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"shell","version":"0"}}}}
-```
-
-[The log format](/reference/proxy#log-format) documents every field.
+[The quickstart's README](../../examples/quickstart/README.md) shows and explains everything it prints.
 
 ## 3. Put the proxy in front of your server
 
-In your MCP host's configuration, put `stretto-proxy` where the server's command was, and the server's command after `--`. For the filesystem server, in the JSON that Claude Code (`.mcp.json`), Claude Desktop and Cursor read:
+In your MCP host's configuration, `stretto-proxy` takes the place of the server's command, and the server's command goes after `--`. `stretto init` prints that configuration. Give it the host (`claude-code`, `claude-desktop`, `cursor` or `vscode`), a name for the server, which is also the domain of its sessions and flows, and the server's command after `--`:
+
+```sh
+stretto init --host cursor --domain notes \
+  -- npx -y @modelcontextprotocol/server-filesystem /home/me/notes
+```
+
+For Cursor, as for Claude Desktop and VS Code, it prints the JSON for the host's configuration file (its arguments wrapped here):
 
 ```json
 {
   "mcpServers": {
     "notes": {
       "command": "stretto-proxy",
-      "args": ["--record", "~/.stretto/notes", "--domain", "notes",
+      "args": ["--record", "~/.stretto/logs/notes", "--domain", "notes",
                "--", "npx", "-y", "@modelcontextprotocol/server-filesystem",
                "/home/me/notes"]
     }
@@ -73,10 +83,10 @@ In your MCP host's configuration, put `stretto-proxy` where the server's command
 }
 ```
 
-- `--record` writes one log per session into `~/.stretto/notes/`. The proxy expands a leading `~` in its own paths, since hosts start servers without a shell. The server's arguments after `--` are passed as written, so give the notes folder as an absolute path.
-- `--domain` names the flow's domain; any name will do.
+For Claude Code it prints the `claude mcp add` command to run instead. Then it says where the configuration goes, and lists the next steps, which this page follows. It writes nothing unless you pass `--write PATH`, and even then it leaves an existing file alone unless you add `--force`. [Integrations](/integrations/) shows what it prints for each host.
 
-[Integrations](/integrations/) has the exact file and format for each host, and the variant for servers you reach over HTTP.
+- `--record ~/.stretto/logs/notes` writes one log per session into that folder. The proxy expands a leading `~` in its own paths, since hosts start servers without a shell. The server's arguments after `--` are passed as written, so give the notes folder as an absolute path.
+- `--domain notes` names the server in the host, and the domain of its sessions and flows.
 
 Now use the agent as you normally would. Each session leaves a log. Record the kinds of request the agent will see: a flow only knows what the sessions showed, and a request type never recorded gets no help. Replayed on τ²-bench, ten of an agent's own sessions gave 96% (retail) and 93% (airline) of what all of its sessions did ([the claims](/research/claims)).
 
@@ -87,7 +97,8 @@ A flow only calls tools the server marks `readOnlyHint: true`. The filesystem se
 ## 4. Learn a flow
 
 ```sh
-stretto learn --sessions ~/.stretto/notes --domain notes --habit-only --out ~/.stretto/notes.flow.json
+stretto learn --sessions ~/.stretto/logs/notes --domain notes \
+  --habit-only --out ~/.stretto/notes.flow.json
 ```
 
 With [the walkthrough](./walkthrough)'s eight sessions, it prints:
@@ -110,33 +121,56 @@ It lists the tools the flow may call (only the read tools), the lookups it may m
 
 ## 6. Serve it
 
-Add the flow to the proxy's arguments:
+Run `stretto init` again, with the flow:
+
+```sh
+stretto init --host cursor --domain notes \
+  --flow ~/.stretto/notes.flow.json \
+  -- npx -y @modelcontextprotocol/server-filesystem /home/me/notes
+```
+
+It prints the same configuration, with the flow added to the proxy's arguments:
 
 ```json
-"args": ["--record", "~/.stretto/notes", "--domain", "notes",
-         "--flow", "~/.stretto/notes.flow.json", "--flow-decider", "reach",
+"args": ["--record", "~/.stretto/logs/notes", "--domain", "notes",
+         "--flow", "/home/me/.stretto/notes.flow.json",
+         "--flow-decider", "habit",
          "--", "npx", "-y", "@modelcontextprotocol/server-filesystem",
          "/home/me/notes"]
 ```
 
-Restart the server in your host. From now on, after each of the agent's calls, the flow makes the lookups whose chance of being used before the agent's next write, times the chance their arguments are the agent's, is at least 0.3 (`--flow-threshold`). Their results ride in the same tool result, under `--- Also looked up automatically ... ---`.
+Replace the server's entry in the host's configuration with it, and restart the server. From then on, after each of the agent's calls, the flow makes each lookup whose probability, times the chance that its arguments are the agent's own, is at least 0.3 (`--flow-threshold`). Their results ride in the same tool result, under `--- Also looked up automatically ... ---`.
 
-`--flow-decider reach` asks no model and needs no key. [Deciders](./concepts/deciders) explains it and the alternatives.
+A flow learned with `--habit-only` has no arbiter, so `init` serves it on its habit alone (`--flow-decider habit`), which asks no model and needs no key. The `reach` decider needs no key either, and decides on each lookup's chance of use before the agent's next write, which the research found better calibrated. To use it, change `habit` to `reach` in `args` ([deciders](./concepts/deciders)).
 
-## 7. See what it did
+::: tip Shadow first
+Add `--shadow` to `stretto init` to try the flow on real traffic before it acts. The proxy then records to `~/.stretto/shadow/notes`, and the flow decides and logs what it would look up, but makes no lookups. `stretto promote` then keeps the flow to the calls where its lookups were the agent's own:
 
-- **The flow log.** Every decision is logged beside the session log, in `<session>.flow.jsonl`: the lookup made and its probability, or why the flow handed back.
-- **An audit.** Score the flow on sessions it never saw, recorded without it:
+```sh
+stretto promote --flow ~/.stretto/notes.flow.json \
+  --sessions ~/.stretto/shadow/notes \
+  --out ~/.stretto/notes-promoted.flow.json
+```
+
+Serve the promoted flow the same way. See [shadow mode and promotion](./concepts/shadow-and-promotion).
+:::
+
+## 7. See what it did, and learn again
+
+- **The flow log.** Every decision is logged beside its session's log, in `~/.stretto/logs/notes/<session>.flow.jsonl`: the lookup made and its probability, or why the flow handed back.
+- **Learn again** when the agent, its prompts or the server change, and review what changed. `flow-diff` exits with 1 when the new flow can do something the old one could not:
 
   ```sh
-  stretto audit --flow ~/.stretto/notes.flow.json --sessions ~/.stretto/notes-new
+  stretto learn --sessions ~/.stretto/logs/notes --domain notes \
+    --habit-only --out ~/.stretto/notes-new.flow.json
+  stretto flow-diff ~/.stretto/notes.flow.json ~/.stretto/notes-new.flow.json
   ```
 
-  At each point where the flow would decide, the audit compares the habit's likeliest option with what the agent did next, per site. To score the lookups themselves, used or not before the agent's next write, run the flow in [shadow mode](./concepts/shadow-and-promotion) and read `stretto promote`'s report.
+- **An audit** scores a flow on sessions it never saw ([audit and review](./concepts/audit-and-review#audit-a-flow)).
 
-## See the whole loop in one command
+## The walkthrough, as a script
 
-From a checkout of the repository, [`scripts/walkthrough.py`](../../scripts/walkthrough.py) runs every step of [the walkthrough](./walkthrough) with a scripted agent in place of an LLM, and checks each outcome. It needs Python 3 and Node 18 or later:
+From a checkout of the repository, [`scripts/walkthrough.py`](../../scripts/walkthrough.py) runs every step of [the walkthrough](./walkthrough) on the official MCP filesystem server, with a scripted agent in place of an LLM, and checks each outcome. It needs Python 3 and Node 18 or later:
 
 ```sh
 git clone https://github.com/alexnodeland/stretto && cd stretto
@@ -145,6 +179,6 @@ python3 scripts/walkthrough.py --bin ~/.cargo/bin
 
 ## Next steps
 
-- Run a new flow in [shadow mode](./concepts/shadow-and-promotion) first, and promote it where its lookups were the agent's own.
-- Learn again as sessions arrive, and review each change with [`stretto flow-diff`](./concepts/audit-and-review#compare-two-flows).
 - Read [how it works](./how-it-works), then the [core concepts](./concepts/sessions).
+- Set up your host from [its integration page](/integrations/).
+- Review each change to a flow with [`stretto flow-diff`](./concepts/audit-and-review#compare-two-flows), as you would code.

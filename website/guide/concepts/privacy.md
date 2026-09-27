@@ -31,7 +31,8 @@ A question carries the customer's first message and up to four later ones, the a
 ## Keep less: retention
 
 ```sh
-stretto-proxy --record ~/.stretto/logs --retain-days 30 ... -- <server command>
+stretto-proxy --record ~/.stretto/logs/orders --retain-days 30 ... \
+  -- <server command>
 ```
 
 When it starts, the proxy deletes the `.jsonl` and `.json` files last modified more than 30 days ago under `--record` and under `--oracle-cache`: the session logs, the flow and confirmation logs beside them, and the cached answers. It prunes at start only, and does not touch logs written elsewhere with `--flow-log` or `--confirm-log`, request dumps, or copies.
@@ -43,7 +44,7 @@ When it starts, the proxy deletes the `.jsonl` and `.json` files last modified m
 ```sh
 # Keep the salt secret. Reuse it when two batches' hashes must match.
 export STRETTO_REDACT_SALT="$(openssl rand -hex 16)"
-stretto redact --sessions ~/.stretto/logs --out shared/logs \
+stretto redact --sessions ~/.stretto/logs/orders --out shared/logs \
   --hash-field user_id,email,name,address,payment_method_id,orders,order_id
 ```
 

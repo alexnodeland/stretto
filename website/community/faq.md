@@ -26,7 +26,7 @@ Deciding took under a millisecond per tool response in the live run (at most 4 m
 
 ## Which hosts and servers does it work with?
 
-Any host that runs MCP servers over stdio, and any MCP server: one run as a command, or one reached over Streamable HTTP with `--upstream`. [Integrations](/integrations/) has the configuration for Claude Code, Claude Desktop, Cursor and VS Code. One proxy wraps one server; an agent with several servers needs one proxy for each.
+Any host that runs MCP servers over stdio, and any MCP server: one run as a command, or one reached over Streamable HTTP with `--upstream`. For Claude Code, Claude Desktop, Cursor and VS Code, `stretto init` prints the configuration ([integrations](/integrations/)). One proxy wraps one server; an agent with several servers needs one proxy for each.
 
 ## Which models does it work with?
 
@@ -50,7 +50,7 @@ Yes: where the agent works through a procedure against the tools with no one to 
 
 ## Why is it not on crates.io?
 
-It depends on a feature of [fugue](https://github.com/alexnodeland/fugue) (`program`) that is not in a fugue release yet. The crate named `stretto` on crates.io is an unrelated cache library; this project's crates are named `stretto-*`. Install from source ([installation](/guide/installation)).
+It depends on a feature of [fugue](https://github.com/alexnodeland/fugue) (`program`) that is not in a fugue release yet. The crate named `stretto` on crates.io is an unrelated cache library; this project's crates are named `stretto-*`. Install from source until the first release is tagged; from then on, each release also ships binaries, install scripts and a container image ([installation](/guide/installation)).
 
 ## What are fugue and Jev?
 

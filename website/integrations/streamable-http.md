@@ -11,7 +11,7 @@ A server you reach over the network, rather than start as a command, speaks MCP'
   "mcpServers": {
     "orders": {
       "command": "stretto-proxy",
-      "args": ["--record", "~/.stretto/logs", "--domain", "orders",
+      "args": ["--record", "~/.stretto/logs/orders", "--domain", "orders",
                "--upstream", "https://example.com/mcp", "--upstream-header", "Authorization=ORDERS_AUTH"],
       "env": { "ORDERS_AUTH": "Bearer …" }
     }
@@ -22,10 +22,12 @@ A server you reach over the network, rather than start as a command, speaks MCP'
 - `--upstream URL` is the server's MCP endpoint (protocol revision 2025-06-18). It takes the place of the command after `--`; the two cannot be combined.
 - `--upstream-header NAME=VAR` sends the header `NAME` with the value of the environment variable `VAR` on every request, such as a bearer token. Repeat it for more headers. Values are never logged, and the log's header records the URL without a user, a password, or the values of query parameters that look like credentials.
 
+`stretto init` configures servers that are started by a command, so write this entry by hand. The proxy's other arguments are the ones `init` prints for a command: here `--record ~/.stretto/logs/orders`, as `init` would record a server named `orders` ([any MCP host](./)).
+
 Recording, flows and everything else work as they do with a command:
 
 ```json
-"args": ["--record", "~/.stretto/logs", "--domain", "orders",
+"args": ["--record", "~/.stretto/logs/orders", "--domain", "orders",
          "--flow", "~/.stretto/orders.flow.json", "--flow-decider", "reach",
          "--upstream", "https://example.com/mcp", "--upstream-header", "Authorization=ORDERS_AUTH"]
 ```

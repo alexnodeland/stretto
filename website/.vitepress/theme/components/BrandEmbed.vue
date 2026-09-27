@@ -7,7 +7,11 @@
 //
 // config.mts checks for the files when the site builds. Until they are there, a
 // build renders nothing here and `npm run dev` shows where the file goes.
-import { computed } from 'vue'
+//
+// The videos play in a 16:9 frame. The explainer's frame is as tall as the
+// explainer: it posts its height as a `stretto-explainer:height` message
+// (brand/README.md, "Explainer").
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useData, withBase } from 'vitepress'
 
 /** Set by config.mts: each brand file's site path, or false while it is missing. */
@@ -18,7 +22,7 @@ const props = withDefaults(
     kind: 'explainer' | 'launch' | 'walkthrough'
     title?: string
     caption?: string
-    /** Width over height of the frame. */
+    /** Width over height of a video's frame. */
     aspect?: string
   }>(),
   { aspect: '16 / 9' }
@@ -59,14 +63,38 @@ const label = computed(
 )
 
 const isDev = import.meta.env.DEV
+
+/**
+ * The explainer's height in px, from its last message. It reports its page's
+ * scrollHeight, which is never less than the frame's own height, so the frame
+ * can grow to fit it but never shrink: start below its height on a wide page.
+ */
+const explainerHeight = ref(720)
+const frame = ref<HTMLIFrameElement | null>(null)
+
+function onMessage(e: MessageEvent) {
+  if (!frame.value || e.source !== frame.value.contentWindow) return
+  const d = e.data as { type?: unknown; height?: unknown } | null
+  if (d?.type !== 'stretto-explainer:height') return
+  const height = Number(d.height)
+  if (Number.isFinite(height) && height > 0) explainerHeight.value = Math.ceil(height)
+}
+
+onMounted(() => {
+  if (props.kind === 'explainer') window.addEventListener('message', onMessage)
+})
+
+onBeforeUnmount(() => window.removeEventListener('message', onMessage))
 </script>
 
 <template>
   <figure v-if="src" class="brand-embed" :class="`brand-embed--${kind}`">
-    <div class="brand-embed__frame" :style="{ aspectRatio: aspect }">
+    <div class="brand-embed__frame" :style="kind === 'explainer' ? undefined : { aspectRatio: aspect }">
       <iframe
         v-if="kind === 'explainer'"
+        ref="frame"
         :src="src"
+        :style="{ height: `${explainerHeight}px` }"
         :title="label"
         loading="lazy"
         allow="fullscreen"
@@ -98,11 +126,11 @@ const isDev = import.meta.env.DEV
 .brand-embed__frame video {
   display: block;
   width: 100%;
-  height: 100%;
   border: 0;
 }
 
 .brand-embed__frame video {
+  height: 100%;
   object-fit: cover;
   background: #000;
 }
