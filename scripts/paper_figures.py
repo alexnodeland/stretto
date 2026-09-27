@@ -17,8 +17,9 @@
   the mean over agents and seeds.
 - `ceilings.svg` (with `--benchmarks`, the rows of
   docs/results/benchmarks-2026-09-27.json): the read-only ceiling per
-  benchmark and domain, the turns a speculator binding from tool results
-  could save, and on top what binding the user's words would add.
+  benchmark and domain (for DTap-Bench's one domain, per harness), the turns
+  a speculator binding from tool results could save, and on top what binding
+  the user's words would add.
 
 The SVGs carry their own light and dark palettes (`prefers-color-scheme`).
 """
@@ -205,9 +206,10 @@ def learning(rows: list[dict], turns: dict, path: Path) -> None:
 
 
 BENCHMARKS = [("tau2-bench", "τ²-bench"), ("tau-bench", "τ-bench"), ("bfcl", "BFCL"), ("agentdojo", "AgentDojo"),
-              ("workbench", "WorkBench")]
+              ("workbench", "WorkBench"), ("dtap", "DTap-Bench customer service")]
 NAMES = {"customer_relationship_manager": "CRM", "project_management": "project mgmt", "multi_domain": "multi-domain",
-         "bfcl": "multi-turn", "slack": "Slack"}
+         "bfcl": "multi-turn", "slack": "Slack", "claudesdk": "Claude Agent SDK", "openaisdk": "OpenAI Agents SDK",
+         "googleadk": "Google ADK"}
 
 
 def ceilings(rows: list[dict], path: Path) -> None:

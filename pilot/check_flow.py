@@ -220,11 +220,15 @@ def exploring(args) -> bool:
 
 
 def label(answer: dict, made: set, recorded: set, turn_of: dict, name: str,
-          ahead: set | None = None, following: tuple | None = None) -> dict:
+          ahead: set | None = None, following: tuple | None = None,
+          at: int | None = None, calls_at: dict | None = None) -> dict:
     """A flow answer with each option's outcome, for `stretto evaluate`:
     `used` if the agent makes the lookup later and it is not made yet; with
     `ahead` (the agent's calls before its next write) only those count, as
-    §2.2's replay rule has it. `next` if it is the agent's very next call."""
+    §2.2's replay rule has it. `next` if it is the agent's very next call.
+    With `at`, the recorded message whose call prompted the decision, a used
+    option also names `use_at`, the message of the agent's call it answers,
+    so that costs can be counted per decision (`scripts/costs.py`)."""
     labels = []
     for o in answer["policy"]["options"]:
         if o.get("arguments") is None:
@@ -235,7 +239,12 @@ def label(answer: dict, made: set, recorded: set, turn_of: dict, name: str,
         used = k in pool and k not in made
         labels.append({"used": used, "detour": k not in pool, "turn": 1.0 / turn_of[k] if used else 0.0,
                        "next": k == following})
-    return {**answer, "labels": labels, "episode": name}
+        if at is not None and calls_at is not None:
+            labels[-1]["use_at"] = next((i for i in calls_at.get(k, []) if i > at), None) if used else None
+    out = {**answer, "labels": labels, "episode": name}
+    if at is not None:
+        out["at"] = at
+    return out
 
 
 async def walk(messages: list, episode: Path, call, task_id: str, guessed: list | None = None) -> dict:
@@ -256,6 +265,12 @@ async def walk(messages: list, episode: Path, call, task_id: str, guessed: list 
     for m in agent:
         for c in m.get("tool_calls") or []:
             turn_of.setdefault(key(c["name"], c["arguments"]), len(m["tool_calls"]))
+    # The messages in which the agent made each call, in order.
+    calls_at: dict[tuple[str, str], list[int]] = {}
+    for i, m in enumerate(messages):
+        if m["role"] == "assistant":
+            for c in m.get("tool_calls") or []:
+                calls_at.setdefault(key(c["name"], c["arguments"]), []).append(i)
     answers = episode / "flow-answers.jsonl"
     answers.unlink(missing_ok=True)
     seen_answers = 0
@@ -385,7 +400,7 @@ async def walk(messages: list, episode: Path, call, task_id: str, guessed: list 
                     answer = json.loads(line)["answer"]
                     if "policy" in answer:
                         decisions.append(label(answer, chain, recorded, turn_of, episode.name,
-                                               ahead_of.get((i, j)), next_of.get((i, j))))
+                                               ahead_of.get((i, j)), next_of.get((i, j)), i, calls_at))
                     if answer.get("action") == "lookup":
                         chain.add(key(answer["tool"], answer.get("arguments") or {}))
             outs = dict(flow_results(text))

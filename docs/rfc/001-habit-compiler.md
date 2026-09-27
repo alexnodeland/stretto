@@ -1213,6 +1213,22 @@ What this changes:
 - **§3.7's evaluation:** a benchmark's published trajectories are enough to replay a flow on, with no environment, which makes every agent that publishes its runs a test set.
 - **Next:** reading the request, since where arguments come from the user's words, as in WorkBench, a flow binding from results has nothing to take; and a live check that agents other than GLM-5.3, in other harnesses, skip the calls a flow has answered.
 
+### 3.29 Amendment 18: across harnesses, and a threshold per decision (2026-09-27)
+
+Amendment 16 left a threshold per decision as the next step on costs, and Amendment 17 left agents in other harnesses. This round tests both from the record.
+
+- **Details:** [the round's results](../results/benchmarks-2026-09-27.md), "Across harnesses" and "A threshold per decision", and [the working paper](../../paper/stretto.md), §3, §4.1–4.2, §6 and Appendix B.
+- **DTap-Bench** (`scripts/dtap_to_tau2.py`). It has 160 benign customer-service tasks, run by seven agents on the Claude Agent SDK, the OpenAI Agents SDK and Google's ADK; the fourth harness, OpenClaw, logs no calls. Tools are marked by their verbs. The harnesses' own calls (`List MCP Tools`, `ToolSearch`) are left out, and results are paired with calls in order, since the Claude Agent SDK names some wrongly. The ceiling is 24.2% of turns: 25–26% on the Claude and OpenAI SDKs, and 7.6% for Gemini on ADK, which batches its reads into parallel turns.
+- **Across harnesses.** Reach leads next-step whatever it learned from: +4.7 points of turns with each agent's own runs (4.2–5.2), +2.2 with the other harnesses' agents (1.7–2.7). A flow from the other harnesses keeps 56% of the agent's own flow's turns, with a third of its detours. Within the OpenAI Agents SDK, a flow from the harness's other models keeps 83–94% for each GPT-5 model. Transfer follows how alike the agents act, not the harness: Opus 4.6 keeps 42% from the other harnesses and 20% from Sonnet 4.5 in its own.
+- **A threshold per decision** (`scripts/per_decision.py`; `check_flow.py` now logs each decision's place, `at`, and each used option's `use_at`). δ is the tool's mean result tokens times the turns left, and β the next turn's input tokens. Evaluated off-policy over logged decisions, which reproduces the sweep's turns saved to within 5.2%, it changes the counted utility by −15% in retail, +7% in airline and +10% in telecom. It raises the threshold early, where retail's lookups of an order's products are scored 0.33 and used 64% of the time. Not adopted: the served threshold stays the domain's (or a site's, from `stretto search`).
+- **Speculative Actions, on its benchmark.** On τ-bench retail, the flows answer 42–45% of the agents' API calls with each call's exact arguments and result, and no model. Speculative Actions' model speculators predicted 22–38% of calls. Their agent differs, and they guess the next step, writes included.
+
+What this changes:
+
+- **§3.7's evaluation:** a benchmark that runs one task set under several harnesses tests whether a flow carries between them, and DTap-Bench does.
+- **§3.3's scores:** a threshold per decision needs each lookup scored right where it is priced. The binding's chance is counted per call; per lookup comes first.
+- **Next:** calibrating each site, DTap-Bench's other thirteen domains, and a live check in another harness.
+
 ## 4. Drawbacks
 
 - **Predictability has a ceiling.**
