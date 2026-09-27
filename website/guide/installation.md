@@ -36,8 +36,8 @@ Or from a checkout:
 ```sh
 git clone https://github.com/alexnodeland/stretto
 cd stretto
-cargo install --path crates/stretto-proxy
-cargo install --path crates/stretto-report
+cargo install --locked --path crates/stretto-proxy
+cargo install --locked --path crates/stretto-report
 ```
 
 Cargo puts the programs in `~/.cargo/bin`. Once releases are tagged, add `--tag vX.Y.Z` to the first command to build one.

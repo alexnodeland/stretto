@@ -6,7 +6,7 @@ Thanks for helping. stretto is a Rust workspace (the product: `stretto`, `strett
 
 ```bash
 git clone https://github.com/alexnodeland/stretto && cd stretto
-cargo build --release          # the toolchain is pinned in rust-toolchain.toml
+cargo build --release --locked # the toolchain is pinned in rust-toolchain.toml
 cargo test
 ```
 

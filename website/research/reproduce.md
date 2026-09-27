@@ -10,7 +10,7 @@ You need a checkout of stretto and Rust. Build once:
 
 ```sh
 git clone https://github.com/alexnodeland/stretto && cd stretto
-cargo build --release
+cargo build --release --locked
 ```
 
 ## Phase 0: no key
