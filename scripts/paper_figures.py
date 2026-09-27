@@ -160,8 +160,10 @@ def learning(rows: list[dict], turns: dict, path: Path) -> None:
     legend(out, left, 16, [("a", "learned from the agent's own sessions", ""),
                            ("b", "learned from four other agents' sessions", ' stroke-dasharray="5 4"')])
     nmax = max((n for v in by.values() for n in v), default=1000)
-    ymax_s = 5 * math.ceil(max((sum(x[0] for x in p) / len(p) for v in by.values() for p in v.values()), default=30) / 5)
-    ymax_d = max(0.5, math.ceil(2 * max((sum(x[1] for x in p) / len(p) for v in by.values() for p in v.values()), default=1)) / 2)
+    top_s = max((sum(x[0] for x in p) / len(p) for v in by.values() for p in v.values()), default=30)
+    top_d = max((sum(x[1] for x in p) / len(p) for v in by.values() for p in v.values()), default=1)
+    step_s, step_d = nice(top_s / 4), nice(top_d / 3)
+    ymax_s, ymax_d = step_s * math.ceil(top_s / step_s), step_d * math.ceil(top_d / step_d)
     ticks = [n for n in (0, 10, 30, 100, 300, 1000) if n <= nmax]
     for i, dom in enumerate(doms):
         x0 = left + i * (pw + gap)
@@ -169,9 +171,9 @@ def learning(rows: list[dict], turns: dict, path: Path) -> None:
         for row, (ymax, label, k) in enumerate(((ymax_s, "LLM turns saved (%)", 0), (ymax_d, "detours per episode", 1))):
             y0 = top + row * (ph + mid)
             sy = lambda v: y0 + ph * (1 - v / ymax)  # noqa: E731
-            steps = 5 if k == 0 else 4
-            for j in range(steps + 1):
-                v = ymax * j / steps
+            step = step_s if k == 0 else step_d
+            for j in range(round(ymax / step) + 1):
+                v = round(step * j, 6)
                 out.append(f'<line x1="{x0}" x2="{x0 + pw}" y1="{sy(v):.1f}" y2="{sy(v):.1f}" stroke="var(--grid)"/>')
                 if i == 0:
                     out.append(f'<text class="m" x="{x0 - 8}" y="{sy(v) + 4:.1f}" text-anchor="end">{v:g}</text>')
