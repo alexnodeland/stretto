@@ -40,9 +40,9 @@ from pathlib import Path
 META = {"List MCP Tools", "ToolSearch", "ListMcpResourcesTool", "ReadMcpResourceTool"}
 # The Claude Agent SDK's own tools, which some agents call: kept as calls, but neither a read nor a write.
 BUILTIN = {"Bash", "Read", "Write", "Edit", "MultiEdit", "Glob", "Grep", "LS", "TodoWrite", "AskUserQuestion",
-           "WebFetch", "WebSearch", "Task", "Skill", "NotebookEdit", "ExitPlanMode"}
+           "WebFetch", "WebSearch", "Task", "Agent", "Skill", "NotebookEdit", "ExitPlanMode"}
 READ_WORDS = {"get", "list", "search", "find", "lookup", "view", "read", "fetch", "query", "count", "describe",
-              "retrieve", "show", "history", "inbox", "info", "health", "meta", "tree", "exists"}
+              "retrieve", "show", "history", "inbox", "info", "health", "meta", "tree", "exists", "browse"}
 WRITE_WORDS = {"create", "update", "add", "delete", "remove", "send", "reply", "forward", "grant", "cancel", "refund",
                "set", "post", "assign", "convert", "merge", "link", "unlink", "invite", "login", "logout", "join",
                "leave", "edit", "transition", "pause", "resume", "modify", "transfer", "apply", "book", "pay",
