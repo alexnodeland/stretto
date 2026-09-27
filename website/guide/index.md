@@ -60,7 +60,7 @@ stretto takes the reads whose arguments an earlier tool result supplies: an orde
 
 ## Status
 
-stretto 0.1.0 is the first release ([changelog](/community/changelog)), and these pages follow the `main` branch. It is pre-1.0: the file formats carry their own versions. It is not on crates.io, because it depends on a [fugue](https://github.com/alexnodeland/fugue) feature that is not in a fugue release yet; install it with the install script, a release archive, Docker or from source: see [installation](./installation).
+stretto is pre-release. 0.1.0 is prepared but not yet tagged ([changelog](/community/changelog)), and these pages follow the `main` branch. It is not on crates.io yet, because it depends on a [fugue](https://github.com/alexnodeland/fugue) feature that is not in a fugue release yet. Until the first release is tagged, install it from source: see [installation](./installation).
 
 ::: warning Not the `stretto` crate
 The crate named `stretto` on crates.io is an unrelated cache library. This project's binary is `stretto`, and its crates are named `stretto-*`.

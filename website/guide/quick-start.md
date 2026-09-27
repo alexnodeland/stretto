@@ -20,18 +20,19 @@ No API key: everything below learns and decides without a model.
 ## 1. Install
 
 ```sh
-curl -fsSL https://github.com/alexnodeland/stretto/releases/latest/download/install.sh | sh
+cargo install --locked --git https://github.com/alexnodeland/stretto \
+  stretto-report stretto-proxy
 stretto doctor
 ```
 
-The install script checks the latest release's archive for your system against its `SHA256SUMS` and puts `stretto`, `stretto-proxy`, `stretto-procedure` and `stretto-mcp-demo` in `~/.local/bin`. On Windows, with Docker, or to build from source, see [installation](./installation). `stretto doctor` then checks the installation: that the other three programs are on your `PATH` at the same version as `stretto`, that `~/.stretto` is writable, whether a TypeSafe key is set (never its value), and which flows and sessions you have. It exits with 1 when something needs fixing. On a first run it prints:
+`cargo install` builds the `main` branch and puts `stretto`, `stretto-proxy`, `stretto-procedure` and `stretto-mcp-demo` in `~/.cargo/bin`. `stretto doctor` then checks the installation: that the other three programs are on your `PATH` at the same version as `stretto`, that `~/.stretto` is writable, whether a TypeSafe key is set (never its value), and which flows and sessions you have. It exits with 1 when something needs fixing. On a first run it prints:
 
 ```text
-stretto 0.1.0 (/home/me/.local/bin/stretto)
+stretto 0.1.0 (/home/me/.cargo/bin/stretto)
 
-ok       stretto-proxy 0.1.0 (/home/me/.local/bin/stretto-proxy)
-ok       stretto-procedure 0.1.0 (/home/me/.local/bin/stretto-procedure)
-ok       stretto-mcp-demo 0.1.0 (/home/me/.local/bin/stretto-mcp-demo)
+ok       stretto-proxy 0.1.0 (/home/me/.cargo/bin/stretto-proxy)
+ok       stretto-procedure 0.1.0 (/home/me/.cargo/bin/stretto-procedure)
+ok       stretto-mcp-demo 0.1.0 (/home/me/.cargo/bin/stretto-mcp-demo)
 note     /home/me/.stretto does not exist yet; `stretto-proxy --record` creates it
 note     TYPESAFE_API_KEY is not set. It is optional: …
 note     no flows in ~/.stretto yet (`stretto learn` writes one)

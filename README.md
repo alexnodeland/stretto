@@ -116,8 +116,9 @@ stretto is also a research project. The paper, [*Compile What the Environment De
 
 ## Status
 
-stretto 0.1.0 is the first release ([changelog](CHANGELOG.md), [release](https://github.com/alexnodeland/stretto/releases/tag/v0.1.0)). It is pre-1.0: the file formats carry their own versions, and the library crates make no stability promise.
+stretto is pre-release.
 - Every piece of the first design is built, tested and measured ([implementation status](docs/design.md#implementation-status-2026-09-26)).
+- 0.1.0 is prepared ([changelog](CHANGELOG.md)) but not yet tagged. The file formats carry their own versions.
 - stretto is not on crates.io yet, because it depends on a [fugue](https://github.com/alexnodeland/fugue) feature that is not released.
 - What is left is on [the roadmap](docs/roadmap.md).
 
