@@ -4,6 +4,22 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ## Unreleased
 
+- **Live runs on other benchmarks** (`pilot/bench/`).
+  - `bench_mcp.py` serves an AgentDojo or BFCL task's tools over MCP, running each call with the benchmark's own code.
+  - `run_bench_episode.py` runs one episode in Claude Code and scores it with the benchmark's own check. It stops with a clear error when the task's server never started.
+  - `run_bench_paired.py` runs every held-out task in both arms, resumably. It runs every task's first arm and then every task's second, so that two arms sharing a prompt prefix do not share the prompt cache.
+  - `analyze_bench.py` pairs the arms by task. It reports:
+    - bootstrap intervals over tasks, with a task's pairs for all models drawn together;
+    - an exact sign test;
+    - rows pooled over models;
+    - named sets of domains (`--set`);
+    - the pairs in which the flow made no lookup, which measure run-to-run variation.
+
+  Results for GLM-5.3 and Claude Haiku 4.5, 244 episodes ([results](docs/results/live-benchmarks-2026-09-27.md)):
+  - In AgentDojo's Slack and travel suites, 10.1% fewer LLM turns (5.8% to 14.0%), with passes unchanged.
+  - Over all of AgentDojo, 6.0% fewer, where the replay projected 7.2%.
+  - No effect in BFCL, whose replay projected 1.6%.
+- `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CITATION.cff`, issue and pull request templates, and `.editorconfig`.
 - DTap-Bench's legal, finance and research domains (200, 200 and 160 tasks) are counted for their ceilings and replayed separately from the six (`scripts/bench/replay.sh dtap-more`, `tables.py`'s `dtap_more_by_source`): reads are 39–77% of their turns and the ceiling 1.4–14.9%; in legal the use-before-write speculator saves 4.7% of turns against 3.9% with the agents' own runs (+0.8 points, 0.7–1.0) and ties with flows from all seven agents, and its scores there are better calibrated (an expected calibration error of 0.009 against 0.042). Its lead is each agent's own reading ahead, which pooled counts average away; weighing the others as a prior (the agent's own runs plus 100 of theirs) keeps it, at 5.6% of turns against 4.7%; over the domains with reads to take, the prior gains in legal and CRM and costs 0.5–0.8 points of the own flows' savings in the other four. In finance and research the two tie. Its browser and macOS domains (34 and 30 tasks) are counted only: where calls act on a screen, almost nothing is in the ceiling. `dtap_to_tau2.py` reads a `browse` (finance's `browse_stock`) and leaves the Claude Agent SDK's `Agent` tool out of reads and writes, as `Task`; no published label changes.
 - `scripts/ceiling.py` counts, per episode, whether every value of every call, writes included, came from a result, a constant or what the user wrote, with none the agent composed: 4–37% of the episodes in the benchmarks without a simulated user, and at most 8% with none from the user's words either, so compiling a procedure once there needs a model to read the request, and most often one to write. Figure 2's per-agent counts of the fifth ceiling are now the single-pick ones its summary and text report (64 rows had come from an experiment that walked the model's ranking).
 - Repeated reads, counted for every replayed agent (`scripts/remade.py --results`): with no write between, agents make again 0.8% of their reads on τ²-bench, 1.0% on τ-bench, 0.9% on BFCL, 1.5% on AgentDojo and 2.6% on WorkBench, most of them by a few models (Qwen3.5 Flash 17.5%, Llama 3.3 70B 6.2%), whose replayed savings are upper bounds, as gpt-oss-120b's are on DTap-Bench.

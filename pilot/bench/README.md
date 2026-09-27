@@ -1,6 +1,6 @@
 # Live runs on other benchmarks
 
-The τ²-bench pilots ran agents live with a flow behind their tools. This folder runs the same setup on other benchmarks' own environments, so what the replays from published trajectories projected ([benchmarks results](../../docs/results/benchmarks-2026-09-27.md)) can be checked on live traffic.
+The τ²-bench pilots ran agents live with a flow behind their tools. This folder runs the same setup on other benchmarks' own environments, so what the replays from published trajectories projected ([benchmarks results](../../docs/results/benchmarks-2026-09-27.md)) can be checked on live traffic. The first round, GLM-5.3 and Claude Haiku 4.5 on AgentDojo and BFCL, is [its own results page](../../docs/results/live-benchmarks-2026-09-27.md), with every episode.
 
 - **Agent:** Claude Code with no built-in tools, on GLM-5.3 through Z.ai's GLM Coding Plan endpoint ([`../glm-claude.sh`](../glm-claude.sh)) or on a Claude model ([`../claude-agent.sh`](../claude-agent.sh)), as in the τ²-bench pilots.
 - **Tools:** [`bench_mcp.py`](bench_mcp.py) serves one task's tools over MCP, running each call with the benchmark's own code against the task's environment, behind `stretto-proxy`, which records the session. Results are printed as the benchmark prints them to its agents, then as the converter turned the published runs into JSON, so the flows learned from those runs find their arguments at the same paths.
@@ -45,8 +45,9 @@ python run_bench_paired.py agentdojo --suites travel slack banking workspace --a
     --flows FLOWS --out runs/agentdojo/glm --credit-cap 300
 python run_bench_paired.py bfcl --bfcl-dir bfcl --sample 20 --agent-cli claude \
     --model claude-haiku-4-5-20251001 --flows FLOWS --out runs/bfcl/haiku
-# Pair the arms task by task
-python analyze_bench.py runs/agentdojo/glm runs/agentdojo/haiku --json summary.json --md summary.md
+# Pair the arms task by task, per model and pooled; --set names a group of domains
+python analyze_bench.py runs/agentdojo/glm runs/agentdojo/haiku --set "Slack and travel=slack,travel" \
+    --json summary.json --md summary.md
 ```
 
 Each episode's folder holds the agent's event stream (`events.jsonl`), the proxy's session log (`log/`), the flow's decisions (`flow.jsonl`), every call the server ran (`trajectory.jsonl`, the flow's lookups included), the environment's final state (`state.pkl`), and `result.json`: the reward, the LLM turns, the agent's calls, tokens, GLM credits and the flow's lookups.

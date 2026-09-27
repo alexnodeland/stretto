@@ -1,0 +1,9247 @@
+[
+ {
+  "model": "glm-5.3",
+  "bench": "agentdojo",
+  "arms": {
+   "reach": {
+    "summary": {
+     "all": {
+      "tasks": 41,
+      "turns": [
+       148,
+       140
+      ],
+      "fewer": 0.05405405405405406,
+      "fewer_ci": [
+       -0.007407407407407307,
+       0.11842105263157898
+      ],
+      "fewer_pairs": 9,
+      "more_pairs": 4,
+      "sign_p": 0.266845703125,
+      "passed": [
+       37.0,
+       37.0
+      ],
+      "tokens_in": [
+       535213,
+       514605
+      ],
+      "tokens_out": [
+       32974,
+       35721
+      ],
+      "credits": [
+       102.8,
+       106.7
+      ],
+      "lookups": 44,
+      "own": 16,
+      "detours": 28,
+      "repeats": 1
+     },
+     "banking": {
+      "tasks": 8,
+      "turns": [
+       25,
+       28
+      ],
+      "fewer": -0.1200000000000001,
+      "fewer_ci": [
+       -0.24,
+       -0.034482758620689724
+      ],
+      "fewer_pairs": 0,
+      "more_pairs": 3,
+      "sign_p": 0.25,
+      "passed": [
+       8.0,
+       8.0
+      ],
+      "tokens_in": [
+       48001,
+       57916
+      ],
+      "tokens_out": [
+       7791,
+       7756
+      ],
+      "credits": [
+       15.7,
+       17.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "detours": 0,
+      "repeats": 0
+     },
+     "banking and workspace": {
+      "tasks": 24,
+      "turns": [
+       74,
+       72
+      ],
+      "fewer": 0.027027027027026973,
+      "fewer_ci": [
+       -0.07462686567164178,
+       0.13793103448275867
+      ],
+      "fewer_pairs": 2,
+      "more_pairs": 3,
+      "sign_p": 1.0,
+      "passed": [
+       23.0,
+       23.0
+      ],
+      "tokens_in": [
+       299435,
+       287354
+      ],
+      "tokens_out": [
+       17831,
+       18331
+      ],
+      "credits": [
+       58.2,
+       60.3
+      ],
+      "lookups": 0,
+      "own": 0,
+      "detours": 0,
+      "repeats": 0
+     },
+     "all, flow silent": {
+      "tasks": 28,
+      "turns": [
+       90,
+       89
+      ],
+      "fewer": 0.011111111111111072,
+      "fewer_ci": [
+       -0.07594936708860756,
+       0.11111111111111116
+      ],
+      "fewer_pairs": 2,
+      "more_pairs": 4,
+      "sign_p": 0.6875,
+      "passed": [
+       26.0,
+       26.0
+      ],
+      "tokens_in": [
+       343949,
+       336936
+      ],
+      "tokens_out": [
+       21861,
+       22733
+      ],
+      "credits": [
+       69.1,
+       71.1
+      ],
+      "lookups": 0,
+      "own": 0,
+      "detours": 0,
+      "repeats": 0
+     },
+     "slack": {
+      "tasks": 9,
+      "turns": [
+       40,
+       37
+      ],
+      "fewer": 0.07499999999999996,
+      "fewer_ci": [
+       0.0,
+       0.15000000000000002
+      ],
+      "fewer_pairs": 3,
+      "more_pairs": 0,
+      "sign_p": 0.25,
+      "passed": [
+       9.0,
+       9.0
+      ],
+      "tokens_in": [
+       68662,
+       66418
+      ],
+      "tokens_out": [
+       5348,
+       4946
+      ],
+      "credits": [
+       14.3,
+       13.9
+      ],
+      "lookups": 33,
+      "own": 9,
+      "detours": 24,
+      "repeats": 0
+     },
+     "Slack and travel": {
+      "tasks": 17,
+      "turns": [
+       74,
+       68
+      ],
+      "fewer": 0.08108108108108103,
+      "fewer_ci": [
+       0.01666666666666672,
+       0.136986301369863
+      ],
+      "fewer_pairs": 7,
+      "more_pairs": 1,
+      "sign_p": 0.0703125,
+      "passed": [
+       14.0,
+       14.0
+      ],
+      "tokens_in": [
+       235778,
+       227251
+      ],
+      "tokens_out": [
+       15143,
+       17390
+      ],
+      "credits": [
+       44.7,
+       46.4
+      ],
+      "lookups": 44,
+      "own": 16,
+      "detours": 28,
+      "repeats": 1
+     },
+     "all, flow acted": {
+      "tasks": 13,
+      "turns": [
+       58,
+       51
+      ],
+      "fewer": 0.12068965517241381,
+      "fewer_ci": [
+       0.06000000000000005,
+       0.1724137931034483
+      ],
+      "fewer_pairs": 7,
+      "more_pairs": 0,
+      "sign_p": 0.015625,
+      "passed": [
+       11.0,
+       11.0
+      ],
+      "tokens_in": [
+       191264,
+       177669
+      ],
+      "tokens_out": [
+       11113,
+       12988
+      ],
+      "credits": [
+       33.8,
+       35.6
+      ],
+      "lookups": 44,
+      "own": 16,
+      "detours": 28,
+      "repeats": 1
+     },
+     "travel": {
+      "tasks": 8,
+      "turns": [
+       34,
+       31
+      ],
+      "fewer": 0.08823529411764708,
+      "fewer_ci": [
+       -0.040000000000000036,
+       0.16666666666666663
+      ],
+      "fewer_pairs": 4,
+      "more_pairs": 1,
+      "sign_p": 0.375,
+      "passed": [
+       5.0,
+       5.0
+      ],
+      "tokens_in": [
+       167116,
+       160833
+      ],
+      "tokens_out": [
+       9795,
+       12444
+      ],
+      "credits": [
+       30.3,
+       32.5
+      ],
+      "lookups": 11,
+      "own": 7,
+      "detours": 4,
+      "repeats": 1
+     },
+     "workspace": {
+      "tasks": 16,
+      "turns": [
+       49,
+       44
+      ],
+      "fewer": 0.10204081632653061,
+      "fewer_ci": [
+       0.0,
+       0.2542372881355932
+      ],
+      "fewer_pairs": 2,
+      "more_pairs": 0,
+      "sign_p": 0.5,
+      "passed": [
+       15.0,
+       15.0
+      ],
+      "tokens_in": [
+       251434,
+       229438
+      ],
+      "tokens_out": [
+       10040,
+       10575
+      ],
+      "credits": [
+       42.5,
+       43.2
+      ],
+      "lookups": 0,
+      "own": 0,
+      "detours": 0,
+      "repeats": 0
+     }
+    },
+    "pairs": [
+     {
+      "model": "glm-5.3",
+      "domain": "banking",
+      "task": "user_task_0",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7274,
+       8179
+      ],
+      "tokens_out": [
+       498,
+       682
+      ],
+      "credits": [
+       1.76,
+       2.19
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "banking",
+      "task": "user_task_1",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       3473,
+       3487
+      ],
+      "tokens_out": [
+       388,
+       413
+      ],
+      "credits": [
+       0.88,
+       0.92
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "banking",
+      "task": "user_task_10",
+      "turns": [
+       2,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       3632,
+       5743
+      ],
+      "tokens_out": [
+       2571,
+       949
+      ],
+      "credits": [
+       3.56,
+       1.86
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "banking",
+      "task": "user_task_11",
+      "turns": [
+       3,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       6037,
+       8790
+      ],
+      "tokens_out": [
+       714,
+       946
+      ],
+      "credits": [
+       1.63,
+       2.22
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "banking",
+      "task": "user_task_12",
+      "turns": [
+       4,
+       5
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7831,
+       12166
+      ],
+      "tokens_out": [
+       1078,
+       2014
+      ],
+      "credits": [
+       2.3,
+       4.02
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "banking",
+      "task": "user_task_13",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7396,
+       7068
+      ],
+      "tokens_out": [
+       820,
+       537
+      ],
+      "credits": [
+       1.87,
+       1.44
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "banking",
+      "task": "user_task_2",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       5746,
+       6347
+      ],
+      "tokens_out": [
+       742,
+       1535
+      ],
+      "credits": [
+       1.62,
+       2.75
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "banking",
+      "task": "user_task_3",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       6612,
+       6136
+      ],
+      "tokens_out": [
+       980,
+       680
+      ],
+      "credits": [
+       2.09,
+       1.64
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "slack",
+      "task": "user_task_0",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       2718,
+       2918
+      ],
+      "tokens_out": [
+       135,
+       115
+      ],
+      "credits": [
+       0.77,
+       0.81
+      ],
+      "lookups": 5,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "slack",
+      "task": "user_task_1",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       6283,
+       6263
+      ],
+      "tokens_out": [
+       458,
+       424
+      ],
+      "credits": [
+       1.24,
+       1.21
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "slack",
+      "task": "user_task_10",
+      "turns": [
+       6,
+       6
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       11420,
+       12226
+      ],
+      "tokens_out": [
+       1075,
+       1008
+      ],
+      "credits": [
+       2.63,
+       2.62
+      ],
+      "lookups": 4,
+      "own": 4,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "slack",
+      "task": "user_task_11",
+      "turns": [
+       7,
+       6
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       12233,
+       10722
+      ],
+      "tokens_out": [
+       807,
+       667
+      ],
+      "credits": [
+       2.24,
+       2.0
+      ],
+      "lookups": 6,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "slack",
+      "task": "user_task_12",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       4165,
+       4656
+      ],
+      "tokens_out": [
+       119,
+       172
+      ],
+      "credits": [
+       0.56,
+       0.73
+      ],
+      "lookups": 4,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "slack",
+      "task": "user_task_13",
+      "turns": [
+       4,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       6324,
+       4855
+      ],
+      "tokens_out": [
+       413,
+       366
+      ],
+      "credits": [
+       1.21,
+       1.03
+      ],
+      "lookups": 4,
+      "own": 4,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "slack",
+      "task": "user_task_2",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       4303,
+       4723
+      ],
+      "tokens_out": [
+       239,
+       256
+      ],
+      "credits": [
+       0.72,
+       0.86
+      ],
+      "lookups": 5,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "slack",
+      "task": "user_task_20",
+      "turns": [
+       7,
+       7
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       15142,
+       15231
+      ],
+      "tokens_out": [
+       1606,
+       1632
+      ],
+      "credits": [
+       3.72,
+       3.74
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "slack",
+      "task": "user_task_3",
+      "turns": [
+       4,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       6074,
+       4824
+      ],
+      "tokens_out": [
+       496,
+       306
+      ],
+      "credits": [
+       1.26,
+       0.95
+      ],
+      "lookups": 5,
+      "own": 1,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "travel",
+      "task": "user_task_0",
+      "turns": [
+       2,
+       3
+      ],
+      "passed": [
+       0.0,
+       1.0
+      ],
+      "tokens_in": [
+       8966,
+       13993
+      ],
+      "tokens_out": [
+       925,
+       1391
+      ],
+      "credits": [
+       3.12,
+       3.2
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "travel",
+      "task": "user_task_1",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       0.0
+      ],
+      "tokens_in": [
+       14123,
+       14095
+      ],
+      "tokens_out": [
+       1041,
+       955
+      ],
+      "credits": [
+       2.79,
+       2.65
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "travel",
+      "task": "user_task_10",
+      "turns": [
+       5,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       23848,
+       19169
+      ],
+      "tokens_out": [
+       1257,
+       864
+      ],
+      "credits": [
+       3.95,
+       3.04
+      ],
+      "lookups": 1,
+      "own": 1,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "travel",
+      "task": "user_task_11",
+      "turns": [
+       5,
+       4
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       25460,
+       22661
+      ],
+      "tokens_out": [
+       1593,
+       3466
+      ],
+      "credits": [
+       4.61,
+       6.84
+      ],
+      "lookups": 1,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "travel",
+      "task": "user_task_12",
+      "turns": [
+       6,
+       6
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       34607,
+       38868
+      ],
+      "tokens_out": [
+       2827,
+       3422
+      ],
+      "credits": [
+       7.31,
+       8.6
+      ],
+      "lookups": 3,
+      "own": 2,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "travel",
+      "task": "user_task_13",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       13099,
+       13658
+      ],
+      "tokens_out": [
+       555,
+       678
+      ],
+      "credits": [
+       1.94,
+       2.23
+      ],
+      "lookups": 3,
+      "own": 1,
+      "repeats": 1,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "travel",
+      "task": "user_task_2",
+      "turns": [
+       5,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       23465,
+       19010
+      ],
+      "tokens_out": [
+       834,
+       840
+      ],
+      "credits": [
+       3.31,
+       2.92
+      ],
+      "lookups": 1,
+      "own": 1,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "travel",
+      "task": "user_task_3",
+      "turns": [
+       5,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       23548,
+       19379
+      ],
+      "tokens_out": [
+       763,
+       828
+      ],
+      "credits": [
+       3.28,
+       3.02
+      ],
+      "lookups": 2,
+      "own": 2,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_0",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7322,
+       7412
+      ],
+      "tokens_out": [
+       295,
+       340
+      ],
+      "credits": [
+       1.05,
+       2.05
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_1",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7573,
+       7518
+      ],
+      "tokens_out": [
+       314,
+       260
+      ],
+      "credits": [
+       1.16,
+       1.09
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_10",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       7126,
+       7126
+      ],
+      "tokens_out": [
+       133,
+       124
+      ],
+      "credits": [
+       0.8,
+       0.78
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_11",
+      "turns": [
+       3,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       11917,
+       7720
+      ],
+      "tokens_out": [
+       722,
+       474
+      ],
+      "credits": [
+       2.15,
+       1.42
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_12",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       11852,
+       11869
+      ],
+      "tokens_out": [
+       424,
+       494
+      ],
+      "credits": [
+       1.74,
+       1.84
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_13",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       19376,
+       19644
+      ],
+      "tokens_out": [
+       1467,
+       1730
+      ],
+      "credits": [
+       4.32,
+       5.64
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_2",
+      "turns": [
+       7,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       31986,
+       12287
+      ],
+      "tokens_out": [
+       997,
+       625
+      ],
+      "credits": [
+       4.38,
+       2.14
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_20",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       11966,
+       12329
+      ],
+      "tokens_out": [
+       534,
+       755
+      ],
+      "credits": [
+       1.91,
+       2.23
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_21",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       12533,
+       12491
+      ],
+      "tokens_out": [
+       759,
+       781
+      ],
+      "credits": [
+       2.31,
+       2.33
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_22",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7806,
+       7807
+      ],
+      "tokens_out": [
+       558,
+       510
+      ],
+      "credits": [
+       1.53,
+       1.49
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_23",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       8013,
+       8023
+      ],
+      "tokens_out": [
+       793,
+       741
+      ],
+      "credits": [
+       1.89,
+       1.79
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_3",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7363,
+       7349
+      ],
+      "tokens_out": [
+       168,
+       276
+      ],
+      "credits": [
+       0.93,
+       1.04
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_30",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7551,
+       7553
+      ],
+      "tokens_out": [
+       184,
+       196
+      ],
+      "credits": [
+       1.0,
+       1.03
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_31",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       25468,
+       25682
+      ],
+      "tokens_out": [
+       472,
+       710
+      ],
+      "credits": [
+       4.74,
+       5.1
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_32",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       38232,
+       39482
+      ],
+      "tokens_out": [
+       563,
+       1058
+      ],
+      "credits": [
+       6.11,
+       7.02
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_33",
+      "turns": [
+       5,
+       5
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       35350,
+       35146
+      ],
+      "tokens_out": [
+       1657,
+       1501
+      ],
+      "credits": [
+       6.46,
+       6.24
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     }
+    ]
+   }
+  }
+ },
+ {
+  "model": "claude-haiku-4-5-20251001",
+  "bench": "agentdojo",
+  "arms": {
+   "reach": {
+    "summary": {
+     "all": {
+      "tasks": 41,
+      "turns": [
+       136,
+       127
+      ],
+      "fewer": 0.06617647058823528,
+      "fewer_ci": [
+       0.01538461538461533,
+       0.11409395973154357
+      ],
+      "fewer_pairs": 10,
+      "more_pairs": 2,
+      "sign_p": 0.03857421875,
+      "passed": [
+       31.0,
+       32.0
+      ],
+      "tokens_in": [
+       658397,
+       614055
+      ],
+      "tokens_out": [
+       43831,
+       43187
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 44,
+      "own": 20,
+      "detours": 24,
+      "repeats": 4
+     },
+     "banking": {
+      "tasks": 8,
+      "turns": [
+       26,
+       24
+      ],
+      "fewer": 0.07692307692307687,
+      "fewer_ci": [
+       0.0,
+       0.1785714285714286
+      ],
+      "fewer_pairs": 2,
+      "more_pairs": 0,
+      "sign_p": 0.5,
+      "passed": [
+       7.0,
+       7.0
+      ],
+      "tokens_in": [
+       78358,
+       71848
+      ],
+      "tokens_out": [
+       7424,
+       7391
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "detours": 0,
+      "repeats": 0
+     },
+     "banking and workspace": {
+      "tasks": 24,
+      "turns": [
+       72,
+       71
+      ],
+      "fewer": 0.01388888888888884,
+      "fewer_ci": [
+       -0.044117647058823595,
+       0.07246376811594202
+      ],
+      "fewer_pairs": 3,
+      "more_pairs": 2,
+      "sign_p": 1.0,
+      "passed": [
+       18.0,
+       19.0
+      ],
+      "tokens_in": [
+       373566,
+       364092
+      ],
+      "tokens_out": [
+       22178,
+       22165
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 1,
+      "own": 0,
+      "detours": 1,
+      "repeats": 0
+     },
+     "all, flow silent": {
+      "tasks": 28,
+      "turns": [
+       88,
+       84
+      ],
+      "fewer": 0.045454545454545414,
+      "fewer_ci": [
+       -0.011494252873563315,
+       0.10204081632653061
+      ],
+      "fewer_pairs": 4,
+      "more_pairs": 1,
+      "sign_p": 0.375,
+      "passed": [
+       20.0,
+       21.0
+      ],
+      "tokens_in": [
+       427341,
+       398967
+      ],
+      "tokens_out": [
+       27124,
+       26739
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "detours": 0,
+      "repeats": 0
+     },
+     "slack": {
+      "tasks": 9,
+      "turns": [
+       35,
+       31
+      ],
+      "fewer": 0.11428571428571432,
+      "fewer_ci": [
+       0.0,
+       0.19444444444444442
+      ],
+      "fewer_pairs": 3,
+      "more_pairs": 0,
+      "sign_p": 0.25,
+      "passed": [
+       9.0,
+       9.0
+      ],
+      "tokens_in": [
+       99322,
+       88681
+      ],
+      "tokens_out": [
+       7274,
+       7557
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 30,
+      "own": 11,
+      "detours": 19,
+      "repeats": 3
+     },
+     "Slack and travel": {
+      "tasks": 17,
+      "turns": [
+       64,
+       56
+      ],
+      "fewer": 0.125,
+      "fewer_ci": [
+       0.05660377358490565,
+       0.18181818181818177
+      ],
+      "fewer_pairs": 7,
+      "more_pairs": 0,
+      "sign_p": 0.015625,
+      "passed": [
+       13.0,
+       13.0
+      ],
+      "tokens_in": [
+       284831,
+       249963
+      ],
+      "tokens_out": [
+       21653,
+       21022
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 43,
+      "own": 20,
+      "detours": 23,
+      "repeats": 4
+     },
+     "all, flow acted": {
+      "tasks": 13,
+      "turns": [
+       48,
+       43
+      ],
+      "fewer": 0.10416666666666663,
+      "fewer_ci": [
+       0.0,
+       0.17647058823529416
+      ],
+      "fewer_pairs": 6,
+      "more_pairs": 1,
+      "sign_p": 0.125,
+      "passed": [
+       11.0,
+       11.0
+      ],
+      "tokens_in": [
+       231056,
+       215088
+      ],
+      "tokens_out": [
+       16707,
+       16448
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 44,
+      "own": 20,
+      "detours": 24,
+      "repeats": 4
+     },
+     "travel": {
+      "tasks": 8,
+      "turns": [
+       29,
+       25
+      ],
+      "fewer": 0.13793103448275867,
+      "fewer_ci": [
+       0.04347826086956519,
+       0.20588235294117652
+      ],
+      "fewer_pairs": 4,
+      "more_pairs": 0,
+      "sign_p": 0.125,
+      "passed": [
+       4.0,
+       4.0
+      ],
+      "tokens_in": [
+       185509,
+       161282
+      ],
+      "tokens_out": [
+       14379,
+       13465
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 13,
+      "own": 9,
+      "detours": 4,
+      "repeats": 1
+     },
+     "workspace": {
+      "tasks": 16,
+      "turns": [
+       46,
+       47
+      ],
+      "fewer": -0.021739130434782705,
+      "fewer_ci": [
+       -0.09523809523809534,
+       0.045454545454545414
+      ],
+      "fewer_pairs": 1,
+      "more_pairs": 2,
+      "sign_p": 1.0,
+      "passed": [
+       11.0,
+       12.0
+      ],
+      "tokens_in": [
+       295208,
+       292244
+      ],
+      "tokens_out": [
+       14754,
+       14774
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 1,
+      "own": 0,
+      "detours": 1,
+      "repeats": 0
+     }
+    },
+    "pairs": [
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "banking",
+      "task": "user_task_0",
+      "turns": [
+       3,
+       2
+      ],
+      "passed": [
+       1.0,
+       0.0
+      ],
+      "tokens_in": [
+       8407,
+       5250
+      ],
+      "tokens_out": [
+       523,
+       442
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "banking",
+      "task": "user_task_1",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       5567,
+       5657
+      ],
+      "tokens_out": [
+       1160,
+       889
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "banking",
+      "task": "user_task_10",
+      "turns": [
+       4,
+       3
+      ],
+      "passed": [
+       0.0,
+       1.0
+      ],
+      "tokens_in": [
+       13190,
+       9050
+      ],
+      "tokens_out": [
+       1126,
+       1044
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "banking",
+      "task": "user_task_11",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       9214,
+       9415
+      ],
+      "tokens_out": [
+       784,
+       927
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "banking",
+      "task": "user_task_12",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       12323,
+       12309
+      ],
+      "tokens_out": [
+       1251,
+       1217
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "banking",
+      "task": "user_task_13",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       8285,
+       8814
+      ],
+      "tokens_out": [
+       653,
+       1044
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "banking",
+      "task": "user_task_2",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       12076,
+       12097
+      ],
+      "tokens_out": [
+       1061,
+       1080
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "banking",
+      "task": "user_task_3",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       9296,
+       9256
+      ],
+      "tokens_out": [
+       866,
+       748
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "slack",
+      "task": "user_task_0",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       4615,
+       4848
+      ],
+      "tokens_out": [
+       294,
+       307
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 5,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "slack",
+      "task": "user_task_1",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       10452,
+       10458
+      ],
+      "tokens_out": [
+       595,
+       605
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "slack",
+      "task": "user_task_10",
+      "turns": [
+       5,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       15650,
+       13069
+      ],
+      "tokens_out": [
+       1381,
+       1421
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 7,
+      "own": 7,
+      "repeats": 3,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "slack",
+      "task": "user_task_11",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       10800,
+       10957
+      ],
+      "tokens_out": [
+       908,
+       994
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "slack",
+      "task": "user_task_12",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7127,
+       7687
+      ],
+      "tokens_out": [
+       285,
+       357
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 4,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "slack",
+      "task": "user_task_13",
+      "turns": [
+       4,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       11096,
+       7921
+      ],
+      "tokens_out": [
+       837,
+       605
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 4,
+      "own": 4,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "slack",
+      "task": "user_task_2",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7428,
+       7878
+      ],
+      "tokens_out": [
+       467,
+       464
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 5,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "slack",
+      "task": "user_task_20",
+      "turns": [
+       7,
+       5
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       24815,
+       18067
+      ],
+      "tokens_out": [
+       2062,
+       2342
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "slack",
+      "task": "user_task_3",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7339,
+       7796
+      ],
+      "tokens_out": [
+       445,
+       462
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 5,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "travel",
+      "task": "user_task_0",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       11337,
+       11355
+      ],
+      "tokens_out": [
+       633,
+       689
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "travel",
+      "task": "user_task_1",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       11776,
+       11612
+      ],
+      "tokens_out": [
+       1423,
+       875
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "travel",
+      "task": "user_task_10",
+      "turns": [
+       4,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       24862,
+       19116
+      ],
+      "tokens_out": [
+       1649,
+       1545
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 1,
+      "own": 1,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "travel",
+      "task": "user_task_11",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       20908,
+       21369
+      ],
+      "tokens_out": [
+       4019,
+       5043
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 3,
+      "own": 2,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "travel",
+      "task": "user_task_12",
+      "turns": [
+       5,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       35144,
+       28393
+      ],
+      "tokens_out": [
+       2803,
+       2045
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 3,
+      "own": 3,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "travel",
+      "task": "user_task_13",
+      "turns": [
+       4,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       23507,
+       18175
+      ],
+      "tokens_out": [
+       862,
+       981
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 3,
+      "own": 0,
+      "repeats": 1,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "travel",
+      "task": "user_task_2",
+      "turns": [
+       5,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       31950,
+       25563
+      ],
+      "tokens_out": [
+       1415,
+       1167
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 1,
+      "own": 1,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "travel",
+      "task": "user_task_3",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       26025,
+       25699
+      ],
+      "tokens_out": [
+       1575,
+       1120
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 2,
+      "own": 2,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_0",
+      "turns": [
+       3,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       15405,
+       27574
+      ],
+      "tokens_out": [
+       675,
+       931
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 1,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_1",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       10139,
+       10107
+      ],
+      "tokens_out": [
+       493,
+       426
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_10",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       9668,
+       9698
+      ],
+      "tokens_out": [
+       183,
+       213
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_11",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       0.0,
+       1.0
+      ],
+      "tokens_in": [
+       10419,
+       10328
+      ],
+      "tokens_out": [
+       918,
+       726
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_12",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       16137,
+       16044
+      ],
+      "tokens_out": [
+       950,
+       858
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_13",
+      "turns": [
+       5,
+       5
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       34167,
+       33673
+      ],
+      "tokens_out": [
+       1809,
+       1690
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_2",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       10160,
+       10124
+      ],
+      "tokens_out": [
+       476,
+       499
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_20",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       16662,
+       16710
+      ],
+      "tokens_out": [
+       1073,
+       1215
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_21",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       16958,
+       17049
+      ],
+      "tokens_out": [
+       1123,
+       1322
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_22",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       10104,
+       10105
+      ],
+      "tokens_out": [
+       637,
+       623
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_23",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       10757,
+       10772
+      ],
+      "tokens_out": [
+       861,
+       902
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_3",
+      "turns": [
+       4,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       20546,
+       15207
+      ],
+      "tokens_out": [
+       565,
+       523
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_30",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       15371,
+       15359
+      ],
+      "tokens_out": [
+       343,
+       413
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_31",
+      "turns": [
+       3,
+       4
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       33418,
+       22808
+      ],
+      "tokens_out": [
+       1887,
+       1438
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_32",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       48608,
+       50175
+      ],
+      "tokens_out": [
+       1721,
+       2028
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_33",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       16689,
+       16511
+      ],
+      "tokens_out": [
+       1040,
+       967
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     }
+    ]
+   }
+  }
+ },
+ {
+  "model": "glm-5.3",
+  "bench": "bfcl",
+  "arms": {
+   "reach": {
+    "summary": {
+     "all": {
+      "tasks": 20,
+      "turns": [
+       216,
+       227
+      ],
+      "fewer": -0.05092592592592582,
+      "fewer_ci": [
+       -0.09251101321585908,
+       -0.009803921568627416
+      ],
+      "fewer_pairs": 3,
+      "more_pairs": 9,
+      "sign_p": 0.14599609375,
+      "passed": [
+       15.0,
+       15.0
+      ],
+      "tokens_in": [
+       929974,
+       996032
+      ],
+      "tokens_out": [
+       21902,
+       24806
+      ],
+      "credits": [
+       118.9,
+       134.0
+      ],
+      "lookups": 10,
+      "own": 4,
+      "detours": 6,
+      "repeats": 3
+     },
+     "bfcl": {
+      "tasks": 20,
+      "turns": [
+       216,
+       227
+      ],
+      "fewer": -0.05092592592592582,
+      "fewer_ci": [
+       -0.09251101321585908,
+       -0.009803921568627416
+      ],
+      "fewer_pairs": 3,
+      "more_pairs": 9,
+      "sign_p": 0.14599609375,
+      "passed": [
+       15.0,
+       15.0
+      ],
+      "tokens_in": [
+       929974,
+       996032
+      ],
+      "tokens_out": [
+       21902,
+       24806
+      ],
+      "credits": [
+       118.9,
+       134.0
+      ],
+      "lookups": 10,
+      "own": 4,
+      "detours": 6,
+      "repeats": 3
+     },
+     "all, flow silent": {
+      "tasks": 12,
+      "turns": [
+       126,
+       136
+      ],
+      "fewer": -0.0793650793650793,
+      "fewer_ci": [
+       -0.13636363636363646,
+       -0.023809523809523725
+      ],
+      "fewer_pairs": 2,
+      "more_pairs": 8,
+      "sign_p": 0.109375,
+      "passed": [
+       10.0,
+       10.0
+      ],
+      "tokens_in": [
+       550903,
+       602052
+      ],
+      "tokens_out": [
+       10670,
+       11606
+      ],
+      "credits": [
+       66.9,
+       75.8
+      ],
+      "lookups": 0,
+      "own": 0,
+      "detours": 0,
+      "repeats": 0
+     },
+     "all, flow acted": {
+      "tasks": 8,
+      "turns": [
+       90,
+       91
+      ],
+      "fewer": -0.011111111111111072,
+      "fewer_ci": [
+       -0.061855670103092786,
+       0.032258064516129004
+      ],
+      "fewer_pairs": 1,
+      "more_pairs": 1,
+      "sign_p": 1.0,
+      "passed": [
+       5.0,
+       5.0
+      ],
+      "tokens_in": [
+       379071,
+       393980
+      ],
+      "tokens_out": [
+       11232,
+       13200
+      ],
+      "credits": [
+       52.0,
+       58.3
+      ],
+      "lookups": 10,
+      "own": 4,
+      "detours": 6,
+      "repeats": 3
+     }
+    },
+    "pairs": [
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_10",
+      "turns": [
+       21,
+       23
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       78038,
+       89364
+      ],
+      "tokens_out": [
+       1494,
+       1834
+      ],
+      "credits": [
+       9.08,
+       10.53
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_101",
+      "turns": [
+       7,
+       7
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       23708,
+       24113
+      ],
+      "tokens_out": [
+       567,
+       673
+      ],
+      "credits": [
+       3.7,
+       3.88
+      ],
+      "lookups": 1,
+      "own": 1,
+      "repeats": 1,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_11",
+      "turns": [
+       6,
+       7
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       27918,
+       33389
+      ],
+      "tokens_out": [
+       492,
+       784
+      ],
+      "credits": [
+       4.28,
+       5.19
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_112",
+      "turns": [
+       9,
+       10
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       39767,
+       45710
+      ],
+      "tokens_out": [
+       830,
+       1202
+      ],
+      "credits": [
+       4.67,
+       6.76
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_12",
+      "turns": [
+       9,
+       11
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       28337,
+       34701
+      ],
+      "tokens_out": [
+       504,
+       566
+      ],
+      "credits": [
+       3.96,
+       3.88
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_122",
+      "turns": [
+       10,
+       9
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       30885,
+       24862
+      ],
+      "tokens_out": [
+       1237,
+       751
+      ],
+      "credits": [
+       4.59,
+       3.9
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_13",
+      "turns": [
+       8,
+       7
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       36419,
+       31923
+      ],
+      "tokens_out": [
+       545,
+       510
+      ],
+      "credits": [
+       3.98,
+       3.52
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_131",
+      "turns": [
+       18,
+       18
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       73975,
+       77971
+      ],
+      "tokens_out": [
+       1885,
+       2263
+      ],
+      "credits": [
+       9.28,
+       10.2
+      ],
+      "lookups": 1,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_133",
+      "turns": [
+       6,
+       6
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       22224,
+       22276
+      ],
+      "tokens_out": [
+       1032,
+       1094
+      ],
+      "credits": [
+       4.25,
+       3.52
+      ],
+      "lookups": 1,
+      "own": 1,
+      "repeats": 1,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_160",
+      "turns": [
+       8,
+       9
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       39793,
+       43657
+      ],
+      "tokens_out": [
+       1309,
+       1192
+      ],
+      "credits": [
+       5.42,
+       6.62
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_170",
+      "turns": [
+       16,
+       16
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       90109,
+       90446
+      ],
+      "tokens_out": [
+       1573,
+       1608
+      ],
+      "credits": [
+       10.18,
+       11.45
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_171",
+      "turns": [
+       9,
+       8
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       47224,
+       49407
+      ],
+      "tokens_out": [
+       2099,
+       3340
+      ],
+      "credits": [
+       7.23,
+       10.22
+      ],
+      "lookups": 1,
+      "own": 1,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_20",
+      "turns": [
+       9,
+       11
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       41649,
+       53019
+      ],
+      "tokens_out": [
+       566,
+       828
+      ],
+      "credits": [
+       4.47,
+       5.86
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_21",
+      "turns": [
+       8,
+       9
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       38434,
+       43825
+      ],
+      "tokens_out": [
+       732,
+       818
+      ],
+      "credits": [
+       4.47,
+       5.04
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_23",
+      "turns": [
+       9,
+       9
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       37697,
+       37432
+      ],
+      "tokens_out": [
+       523,
+       365
+      ],
+      "credits": [
+       5.06,
+       4.82
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_30",
+      "turns": [
+       13,
+       15
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       61857,
+       73724
+      ],
+      "tokens_out": [
+       865,
+       1148
+      ],
+      "credits": [
+       6.69,
+       8.18
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_43",
+      "turns": [
+       10,
+       10
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       40241,
+       39863
+      ],
+      "tokens_out": [
+       743,
+       651
+      ],
+      "credits": [
+       4.61,
+       5.42
+      ],
+      "lookups": 1,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_63",
+      "turns": [
+       13,
+       15
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       65713,
+       73367
+      ],
+      "tokens_out": [
+       2425,
+       2658
+      ],
+      "credits": [
+       9.31,
+       11.21
+      ],
+      "lookups": 2,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_72",
+      "turns": [
+       16,
+       16
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       70011,
+       71505
+      ],
+      "tokens_out": [
+       1472,
+       1701
+      ],
+      "credits": [
+       8.28,
+       8.76
+      ],
+      "lookups": 2,
+      "own": 1,
+      "repeats": 1,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_83",
+      "turns": [
+       11,
+       11
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       35975,
+       35478
+      ],
+      "tokens_out": [
+       1009,
+       820
+      ],
+      "credits": [
+       5.34,
+       5.05
+      ],
+      "lookups": 1,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     }
+    ]
+   }
+  }
+ },
+ {
+  "model": "claude-haiku-4-5-20251001",
+  "bench": "bfcl",
+  "arms": {
+   "reach": {
+    "summary": {
+     "all": {
+      "tasks": 20,
+      "turns": [
+       228,
+       224
+      ],
+      "fewer": 0.01754385964912286,
+      "fewer_ci": [
+       -0.06060606060606055,
+       0.12682926829268293
+      ],
+      "fewer_pairs": 4,
+      "more_pairs": 5,
+      "sign_p": 1.0,
+      "passed": [
+       14.0,
+       14.0
+      ],
+      "tokens_in": [
+       1506206,
+       1505309
+      ],
+      "tokens_out": [
+       37549,
+       36868
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 9,
+      "own": 4,
+      "detours": 5,
+      "repeats": 4
+     },
+     "bfcl": {
+      "tasks": 20,
+      "turns": [
+       228,
+       224
+      ],
+      "fewer": 0.01754385964912286,
+      "fewer_ci": [
+       -0.06060606060606055,
+       0.12682926829268293
+      ],
+      "fewer_pairs": 4,
+      "more_pairs": 5,
+      "sign_p": 1.0,
+      "passed": [
+       14.0,
+       14.0
+      ],
+      "tokens_in": [
+       1506206,
+       1505309
+      ],
+      "tokens_out": [
+       37549,
+       36868
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 9,
+      "own": 4,
+      "detours": 5,
+      "repeats": 4
+     },
+     "all, flow silent": {
+      "tasks": 13,
+      "turns": [
+       154,
+       155
+      ],
+      "fewer": -0.006493506493506551,
+      "fewer_ci": [
+       -0.10526315789473695,
+       0.15573770491803274
+      ],
+      "fewer_pairs": 3,
+      "more_pairs": 5,
+      "sign_p": 0.7265625,
+      "passed": [
+       9.0,
+       9.0
+      ],
+      "tokens_in": [
+       1059141,
+       1115937
+      ],
+      "tokens_out": [
+       22734,
+       24396
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "detours": 0,
+      "repeats": 0
+     },
+     "all, flow acted": {
+      "tasks": 7,
+      "turns": [
+       74,
+       69
+      ],
+      "fewer": 0.06756756756756754,
+      "fewer_ci": [
+       0.0,
+       0.21739130434782605
+      ],
+      "fewer_pairs": 1,
+      "more_pairs": 0,
+      "sign_p": 1.0,
+      "passed": [
+       5.0,
+       5.0
+      ],
+      "tokens_in": [
+       447065,
+       389372
+      ],
+      "tokens_out": [
+       14815,
+       12472
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 9,
+      "own": 4,
+      "detours": 5,
+      "repeats": 4
+     }
+    },
+    "pairs": [
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_10",
+      "turns": [
+       45,
+       49
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       398812,
+       478864
+      ],
+      "tokens_out": [
+       6873,
+       8929
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_101",
+      "turns": [
+       6,
+       6
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       28162,
+       28267
+      ],
+      "tokens_out": [
+       989,
+       923
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 1,
+      "own": 1,
+      "repeats": 1,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_11",
+      "turns": [
+       6,
+       9
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       38481,
+       55602
+      ],
+      "tokens_out": [
+       1613,
+       1100
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_112",
+      "turns": [
+       9,
+       9
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       52955,
+       52779
+      ],
+      "tokens_out": [
+       1184,
+       1222
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_12",
+      "turns": [
+       9,
+       8
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       39742,
+       36286
+      ],
+      "tokens_out": [
+       931,
+       1020
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_122",
+      "turns": [
+       8,
+       8
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       30888,
+       31081
+      ],
+      "tokens_out": [
+       904,
+       973
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_13",
+      "turns": [
+       6,
+       6
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       35301,
+       35121
+      ],
+      "tokens_out": [
+       768,
+       760
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_131",
+      "turns": [
+       16,
+       16
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       91692,
+       90918
+      ],
+      "tokens_out": [
+       2522,
+       2361
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 1,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_133",
+      "turns": [
+       5,
+       5
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       23869,
+       24727
+      ],
+      "tokens_out": [
+       829,
+       1041
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 2,
+      "own": 1,
+      "repeats": 1,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_160",
+      "turns": [
+       8,
+       7
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       52523,
+       42934
+      ],
+      "tokens_out": [
+       1820,
+       1258
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_170",
+      "turns": [
+       14,
+       14
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       106528,
+       106867
+      ],
+      "tokens_out": [
+       2239,
+       2327
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_171",
+      "turns": [
+       11,
+       6
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       102506,
+       43757
+      ],
+      "tokens_out": [
+       5810,
+       3472
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 1,
+      "own": 1,
+      "repeats": 1,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_20",
+      "turns": [
+       9,
+       10
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       55117,
+       62370
+      ],
+      "tokens_out": [
+       988,
+       1063
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_21",
+      "turns": [
+       8,
+       8
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       49764,
+       51436
+      ],
+      "tokens_out": [
+       1243,
+       1516
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_23",
+      "turns": [
+       8,
+       9
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       44540,
+       51551
+      ],
+      "tokens_out": [
+       856,
+       1041
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_30",
+      "turns": [
+       13,
+       5
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       88223,
+       30321
+      ],
+      "tokens_out": [
+       1639,
+       1242
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_43",
+      "turns": [
+       9,
+       9
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       49201,
+       48871
+      ],
+      "tokens_out": [
+       1240,
+       1231
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 1,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_63",
+      "turns": [
+       11,
+       13
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       66267,
+       80725
+      ],
+      "tokens_out": [
+       1676,
+       1945
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_72",
+      "turns": [
+       16,
+       16
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       98248,
+       100484
+      ],
+      "tokens_out": [
+       1883,
+       2072
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 2,
+      "own": 1,
+      "repeats": 1,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_83",
+      "turns": [
+       11,
+       11
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       53387,
+       52348
+      ],
+      "tokens_out": [
+       1542,
+       1372
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 1,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     }
+    ]
+   }
+  }
+ },
+ {
+  "model": "glm-5.3 + claude-haiku-4-5-20251001",
+  "bench": "agentdojo",
+  "arms": {
+   "reach": {
+    "summary": {
+     "all": {
+      "tasks": 82,
+      "turns": [
+       284,
+       267
+      ],
+      "fewer": 0.059859154929577496,
+      "fewer_ci": [
+       0.021201413427561877,
+       0.09900990099009899
+      ],
+      "fewer_pairs": 19,
+      "more_pairs": 6,
+      "sign_p": 0.01463329792022705,
+      "passed": [
+       68.0,
+       69.0
+      ],
+      "tokens_in": [
+       1193610,
+       1128660
+      ],
+      "tokens_out": [
+       76805,
+       78908
+      ],
+      "credits": [
+       102.8,
+       106.7
+      ],
+      "lookups": 88,
+      "own": 36,
+      "detours": 52,
+      "repeats": 5
+     },
+     "banking": {
+      "tasks": 16,
+      "turns": [
+       51,
+       52
+      ],
+      "fewer": -0.019607843137254832,
+      "fewer_ci": [
+       -0.08000000000000007,
+       0.04166666666666663
+      ],
+      "fewer_pairs": 2,
+      "more_pairs": 3,
+      "sign_p": 1.0,
+      "passed": [
+       15.0,
+       15.0
+      ],
+      "tokens_in": [
+       126359,
+       129764
+      ],
+      "tokens_out": [
+       15215,
+       15147
+      ],
+      "credits": [
+       15.7,
+       17.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "detours": 0,
+      "repeats": 0
+     },
+     "banking and workspace": {
+      "tasks": 48,
+      "turns": [
+       146,
+       143
+      ],
+      "fewer": 0.020547945205479423,
+      "fewer_ci": [
+       -0.03571428571428581,
+       0.08724832214765099
+      ],
+      "fewer_pairs": 5,
+      "more_pairs": 5,
+      "sign_p": 1.0,
+      "passed": [
+       41.0,
+       42.0
+      ],
+      "tokens_in": [
+       673001,
+       651446
+      ],
+      "tokens_out": [
+       40009,
+       40496
+      ],
+      "credits": [
+       58.2,
+       60.3
+      ],
+      "lookups": 1,
+      "own": 0,
+      "detours": 1,
+      "repeats": 0
+     },
+     "all, flow silent": {
+      "tasks": 56,
+      "turns": [
+       178,
+       173
+      ],
+      "fewer": 0.028089887640449396,
+      "fewer_ci": [
+       -0.0239520958083832,
+       0.08241758241758246
+      ],
+      "fewer_pairs": 6,
+      "more_pairs": 5,
+      "sign_p": 1.0,
+      "passed": [
+       46.0,
+       47.0
+      ],
+      "tokens_in": [
+       771290,
+       735903
+      ],
+      "tokens_out": [
+       48985,
+       49472
+      ],
+      "credits": [
+       69.1,
+       71.1
+      ],
+      "lookups": 0,
+      "own": 0,
+      "detours": 0,
+      "repeats": 0
+     },
+     "slack": {
+      "tasks": 18,
+      "turns": [
+       75,
+       68
+      ],
+      "fewer": 0.09333333333333338,
+      "fewer_ci": [
+       0.04109589041095896,
+       0.1428571428571429
+      ],
+      "fewer_pairs": 6,
+      "more_pairs": 0,
+      "sign_p": 0.03125,
+      "passed": [
+       18.0,
+       18.0
+      ],
+      "tokens_in": [
+       167984,
+       155099
+      ],
+      "tokens_out": [
+       12622,
+       12503
+      ],
+      "credits": [
+       14.3,
+       13.9
+      ],
+      "lookups": 63,
+      "own": 20,
+      "detours": 43,
+      "repeats": 3
+     },
+     "Slack and travel": {
+      "tasks": 34,
+      "turns": [
+       138,
+       124
+      ],
+      "fewer": 0.10144927536231885,
+      "fewer_ci": [
+       0.05833333333333335,
+       0.13970588235294112
+      ],
+      "fewer_pairs": 14,
+      "more_pairs": 1,
+      "sign_p": 0.0009765625,
+      "passed": [
+       27.0,
+       27.0
+      ],
+      "tokens_in": [
+       520609,
+       477214
+      ],
+      "tokens_out": [
+       36796,
+       38412
+      ],
+      "credits": [
+       44.7,
+       46.4
+      ],
+      "lookups": 87,
+      "own": 36,
+      "detours": 51,
+      "repeats": 5
+     },
+     "all, flow acted": {
+      "tasks": 26,
+      "turns": [
+       106,
+       94
+      ],
+      "fewer": 0.1132075471698113,
+      "fewer_ci": [
+       0.06000000000000005,
+       0.15315315315315314
+      ],
+      "fewer_pairs": 13,
+      "more_pairs": 1,
+      "sign_p": 0.0018310546875,
+      "passed": [
+       22.0,
+       22.0
+      ],
+      "tokens_in": [
+       422320,
+       392757
+      ],
+      "tokens_out": [
+       27820,
+       29436
+      ],
+      "credits": [
+       33.8,
+       35.6
+      ],
+      "lookups": 88,
+      "own": 36,
+      "detours": 52,
+      "repeats": 5
+     },
+     "travel": {
+      "tasks": 16,
+      "turns": [
+       63,
+       56
+      ],
+      "fewer": 0.11111111111111116,
+      "fewer_ci": [
+       0.021739130434782594,
+       0.16417910447761197
+      ],
+      "fewer_pairs": 8,
+      "more_pairs": 1,
+      "sign_p": 0.0390625,
+      "passed": [
+       9.0,
+       9.0
+      ],
+      "tokens_in": [
+       352625,
+       322115
+      ],
+      "tokens_out": [
+       24174,
+       25909
+      ],
+      "credits": [
+       30.3,
+       32.5
+      ],
+      "lookups": 24,
+      "own": 16,
+      "detours": 8,
+      "repeats": 2
+     },
+     "workspace": {
+      "tasks": 32,
+      "turns": [
+       95,
+       91
+      ],
+      "fewer": 0.04210526315789476,
+      "fewer_ci": [
+       -0.032258064516129004,
+       0.13861386138613863
+      ],
+      "fewer_pairs": 3,
+      "more_pairs": 2,
+      "sign_p": 1.0,
+      "passed": [
+       26.0,
+       27.0
+      ],
+      "tokens_in": [
+       546642,
+       521682
+      ],
+      "tokens_out": [
+       24794,
+       25349
+      ],
+      "credits": [
+       42.5,
+       43.2
+      ],
+      "lookups": 1,
+      "own": 0,
+      "detours": 1,
+      "repeats": 0
+     }
+    },
+    "pairs": [
+     {
+      "model": "glm-5.3",
+      "domain": "banking",
+      "task": "user_task_0",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7274,
+       8179
+      ],
+      "tokens_out": [
+       498,
+       682
+      ],
+      "credits": [
+       1.76,
+       2.19
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "banking",
+      "task": "user_task_1",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       3473,
+       3487
+      ],
+      "tokens_out": [
+       388,
+       413
+      ],
+      "credits": [
+       0.88,
+       0.92
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "banking",
+      "task": "user_task_10",
+      "turns": [
+       2,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       3632,
+       5743
+      ],
+      "tokens_out": [
+       2571,
+       949
+      ],
+      "credits": [
+       3.56,
+       1.86
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "banking",
+      "task": "user_task_11",
+      "turns": [
+       3,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       6037,
+       8790
+      ],
+      "tokens_out": [
+       714,
+       946
+      ],
+      "credits": [
+       1.63,
+       2.22
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "banking",
+      "task": "user_task_12",
+      "turns": [
+       4,
+       5
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7831,
+       12166
+      ],
+      "tokens_out": [
+       1078,
+       2014
+      ],
+      "credits": [
+       2.3,
+       4.02
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "banking",
+      "task": "user_task_13",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7396,
+       7068
+      ],
+      "tokens_out": [
+       820,
+       537
+      ],
+      "credits": [
+       1.87,
+       1.44
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "banking",
+      "task": "user_task_2",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       5746,
+       6347
+      ],
+      "tokens_out": [
+       742,
+       1535
+      ],
+      "credits": [
+       1.62,
+       2.75
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "banking",
+      "task": "user_task_3",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       6612,
+       6136
+      ],
+      "tokens_out": [
+       980,
+       680
+      ],
+      "credits": [
+       2.09,
+       1.64
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "slack",
+      "task": "user_task_0",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       2718,
+       2918
+      ],
+      "tokens_out": [
+       135,
+       115
+      ],
+      "credits": [
+       0.77,
+       0.81
+      ],
+      "lookups": 5,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "slack",
+      "task": "user_task_1",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       6283,
+       6263
+      ],
+      "tokens_out": [
+       458,
+       424
+      ],
+      "credits": [
+       1.24,
+       1.21
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "slack",
+      "task": "user_task_10",
+      "turns": [
+       6,
+       6
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       11420,
+       12226
+      ],
+      "tokens_out": [
+       1075,
+       1008
+      ],
+      "credits": [
+       2.63,
+       2.62
+      ],
+      "lookups": 4,
+      "own": 4,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "slack",
+      "task": "user_task_11",
+      "turns": [
+       7,
+       6
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       12233,
+       10722
+      ],
+      "tokens_out": [
+       807,
+       667
+      ],
+      "credits": [
+       2.24,
+       2.0
+      ],
+      "lookups": 6,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "slack",
+      "task": "user_task_12",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       4165,
+       4656
+      ],
+      "tokens_out": [
+       119,
+       172
+      ],
+      "credits": [
+       0.56,
+       0.73
+      ],
+      "lookups": 4,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "slack",
+      "task": "user_task_13",
+      "turns": [
+       4,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       6324,
+       4855
+      ],
+      "tokens_out": [
+       413,
+       366
+      ],
+      "credits": [
+       1.21,
+       1.03
+      ],
+      "lookups": 4,
+      "own": 4,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "slack",
+      "task": "user_task_2",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       4303,
+       4723
+      ],
+      "tokens_out": [
+       239,
+       256
+      ],
+      "credits": [
+       0.72,
+       0.86
+      ],
+      "lookups": 5,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "slack",
+      "task": "user_task_20",
+      "turns": [
+       7,
+       7
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       15142,
+       15231
+      ],
+      "tokens_out": [
+       1606,
+       1632
+      ],
+      "credits": [
+       3.72,
+       3.74
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "slack",
+      "task": "user_task_3",
+      "turns": [
+       4,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       6074,
+       4824
+      ],
+      "tokens_out": [
+       496,
+       306
+      ],
+      "credits": [
+       1.26,
+       0.95
+      ],
+      "lookups": 5,
+      "own": 1,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "travel",
+      "task": "user_task_0",
+      "turns": [
+       2,
+       3
+      ],
+      "passed": [
+       0.0,
+       1.0
+      ],
+      "tokens_in": [
+       8966,
+       13993
+      ],
+      "tokens_out": [
+       925,
+       1391
+      ],
+      "credits": [
+       3.12,
+       3.2
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "travel",
+      "task": "user_task_1",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       0.0
+      ],
+      "tokens_in": [
+       14123,
+       14095
+      ],
+      "tokens_out": [
+       1041,
+       955
+      ],
+      "credits": [
+       2.79,
+       2.65
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "travel",
+      "task": "user_task_10",
+      "turns": [
+       5,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       23848,
+       19169
+      ],
+      "tokens_out": [
+       1257,
+       864
+      ],
+      "credits": [
+       3.95,
+       3.04
+      ],
+      "lookups": 1,
+      "own": 1,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "travel",
+      "task": "user_task_11",
+      "turns": [
+       5,
+       4
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       25460,
+       22661
+      ],
+      "tokens_out": [
+       1593,
+       3466
+      ],
+      "credits": [
+       4.61,
+       6.84
+      ],
+      "lookups": 1,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "travel",
+      "task": "user_task_12",
+      "turns": [
+       6,
+       6
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       34607,
+       38868
+      ],
+      "tokens_out": [
+       2827,
+       3422
+      ],
+      "credits": [
+       7.31,
+       8.6
+      ],
+      "lookups": 3,
+      "own": 2,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "travel",
+      "task": "user_task_13",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       13099,
+       13658
+      ],
+      "tokens_out": [
+       555,
+       678
+      ],
+      "credits": [
+       1.94,
+       2.23
+      ],
+      "lookups": 3,
+      "own": 1,
+      "repeats": 1,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "travel",
+      "task": "user_task_2",
+      "turns": [
+       5,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       23465,
+       19010
+      ],
+      "tokens_out": [
+       834,
+       840
+      ],
+      "credits": [
+       3.31,
+       2.92
+      ],
+      "lookups": 1,
+      "own": 1,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "travel",
+      "task": "user_task_3",
+      "turns": [
+       5,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       23548,
+       19379
+      ],
+      "tokens_out": [
+       763,
+       828
+      ],
+      "credits": [
+       3.28,
+       3.02
+      ],
+      "lookups": 2,
+      "own": 2,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_0",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7322,
+       7412
+      ],
+      "tokens_out": [
+       295,
+       340
+      ],
+      "credits": [
+       1.05,
+       2.05
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_1",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7573,
+       7518
+      ],
+      "tokens_out": [
+       314,
+       260
+      ],
+      "credits": [
+       1.16,
+       1.09
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_10",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       7126,
+       7126
+      ],
+      "tokens_out": [
+       133,
+       124
+      ],
+      "credits": [
+       0.8,
+       0.78
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_11",
+      "turns": [
+       3,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       11917,
+       7720
+      ],
+      "tokens_out": [
+       722,
+       474
+      ],
+      "credits": [
+       2.15,
+       1.42
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_12",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       11852,
+       11869
+      ],
+      "tokens_out": [
+       424,
+       494
+      ],
+      "credits": [
+       1.74,
+       1.84
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_13",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       19376,
+       19644
+      ],
+      "tokens_out": [
+       1467,
+       1730
+      ],
+      "credits": [
+       4.32,
+       5.64
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_2",
+      "turns": [
+       7,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       31986,
+       12287
+      ],
+      "tokens_out": [
+       997,
+       625
+      ],
+      "credits": [
+       4.38,
+       2.14
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_20",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       11966,
+       12329
+      ],
+      "tokens_out": [
+       534,
+       755
+      ],
+      "credits": [
+       1.91,
+       2.23
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_21",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       12533,
+       12491
+      ],
+      "tokens_out": [
+       759,
+       781
+      ],
+      "credits": [
+       2.31,
+       2.33
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_22",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7806,
+       7807
+      ],
+      "tokens_out": [
+       558,
+       510
+      ],
+      "credits": [
+       1.53,
+       1.49
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_23",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       8013,
+       8023
+      ],
+      "tokens_out": [
+       793,
+       741
+      ],
+      "credits": [
+       1.89,
+       1.79
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_3",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7363,
+       7349
+      ],
+      "tokens_out": [
+       168,
+       276
+      ],
+      "credits": [
+       0.93,
+       1.04
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_30",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7551,
+       7553
+      ],
+      "tokens_out": [
+       184,
+       196
+      ],
+      "credits": [
+       1.0,
+       1.03
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_31",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       25468,
+       25682
+      ],
+      "tokens_out": [
+       472,
+       710
+      ],
+      "credits": [
+       4.74,
+       5.1
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_32",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       38232,
+       39482
+      ],
+      "tokens_out": [
+       563,
+       1058
+      ],
+      "credits": [
+       6.11,
+       7.02
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "workspace",
+      "task": "user_task_33",
+      "turns": [
+       5,
+       5
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       35350,
+       35146
+      ],
+      "tokens_out": [
+       1657,
+       1501
+      ],
+      "credits": [
+       6.46,
+       6.24
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "banking",
+      "task": "user_task_0",
+      "turns": [
+       3,
+       2
+      ],
+      "passed": [
+       1.0,
+       0.0
+      ],
+      "tokens_in": [
+       8407,
+       5250
+      ],
+      "tokens_out": [
+       523,
+       442
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "banking",
+      "task": "user_task_1",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       5567,
+       5657
+      ],
+      "tokens_out": [
+       1160,
+       889
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "banking",
+      "task": "user_task_10",
+      "turns": [
+       4,
+       3
+      ],
+      "passed": [
+       0.0,
+       1.0
+      ],
+      "tokens_in": [
+       13190,
+       9050
+      ],
+      "tokens_out": [
+       1126,
+       1044
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "banking",
+      "task": "user_task_11",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       9214,
+       9415
+      ],
+      "tokens_out": [
+       784,
+       927
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "banking",
+      "task": "user_task_12",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       12323,
+       12309
+      ],
+      "tokens_out": [
+       1251,
+       1217
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "banking",
+      "task": "user_task_13",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       8285,
+       8814
+      ],
+      "tokens_out": [
+       653,
+       1044
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "banking",
+      "task": "user_task_2",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       12076,
+       12097
+      ],
+      "tokens_out": [
+       1061,
+       1080
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "banking",
+      "task": "user_task_3",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       9296,
+       9256
+      ],
+      "tokens_out": [
+       866,
+       748
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "slack",
+      "task": "user_task_0",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       4615,
+       4848
+      ],
+      "tokens_out": [
+       294,
+       307
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 5,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "slack",
+      "task": "user_task_1",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       10452,
+       10458
+      ],
+      "tokens_out": [
+       595,
+       605
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "slack",
+      "task": "user_task_10",
+      "turns": [
+       5,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       15650,
+       13069
+      ],
+      "tokens_out": [
+       1381,
+       1421
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 7,
+      "own": 7,
+      "repeats": 3,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "slack",
+      "task": "user_task_11",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       10800,
+       10957
+      ],
+      "tokens_out": [
+       908,
+       994
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "slack",
+      "task": "user_task_12",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7127,
+       7687
+      ],
+      "tokens_out": [
+       285,
+       357
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 4,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "slack",
+      "task": "user_task_13",
+      "turns": [
+       4,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       11096,
+       7921
+      ],
+      "tokens_out": [
+       837,
+       605
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 4,
+      "own": 4,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "slack",
+      "task": "user_task_2",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7428,
+       7878
+      ],
+      "tokens_out": [
+       467,
+       464
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 5,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "slack",
+      "task": "user_task_20",
+      "turns": [
+       7,
+       5
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       24815,
+       18067
+      ],
+      "tokens_out": [
+       2062,
+       2342
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "slack",
+      "task": "user_task_3",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       7339,
+       7796
+      ],
+      "tokens_out": [
+       445,
+       462
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 5,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "travel",
+      "task": "user_task_0",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       11337,
+       11355
+      ],
+      "tokens_out": [
+       633,
+       689
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "travel",
+      "task": "user_task_1",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       11776,
+       11612
+      ],
+      "tokens_out": [
+       1423,
+       875
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "travel",
+      "task": "user_task_10",
+      "turns": [
+       4,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       24862,
+       19116
+      ],
+      "tokens_out": [
+       1649,
+       1545
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 1,
+      "own": 1,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "travel",
+      "task": "user_task_11",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       20908,
+       21369
+      ],
+      "tokens_out": [
+       4019,
+       5043
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 3,
+      "own": 2,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "travel",
+      "task": "user_task_12",
+      "turns": [
+       5,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       35144,
+       28393
+      ],
+      "tokens_out": [
+       2803,
+       2045
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 3,
+      "own": 3,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "travel",
+      "task": "user_task_13",
+      "turns": [
+       4,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       23507,
+       18175
+      ],
+      "tokens_out": [
+       862,
+       981
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 3,
+      "own": 0,
+      "repeats": 1,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "travel",
+      "task": "user_task_2",
+      "turns": [
+       5,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       31950,
+       25563
+      ],
+      "tokens_out": [
+       1415,
+       1167
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 1,
+      "own": 1,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "travel",
+      "task": "user_task_3",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       26025,
+       25699
+      ],
+      "tokens_out": [
+       1575,
+       1120
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 2,
+      "own": 2,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_0",
+      "turns": [
+       3,
+       4
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       15405,
+       27574
+      ],
+      "tokens_out": [
+       675,
+       931
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 1,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_1",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       10139,
+       10107
+      ],
+      "tokens_out": [
+       493,
+       426
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_10",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       9668,
+       9698
+      ],
+      "tokens_out": [
+       183,
+       213
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_11",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       0.0,
+       1.0
+      ],
+      "tokens_in": [
+       10419,
+       10328
+      ],
+      "tokens_out": [
+       918,
+       726
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_12",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       16137,
+       16044
+      ],
+      "tokens_out": [
+       950,
+       858
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_13",
+      "turns": [
+       5,
+       5
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       34167,
+       33673
+      ],
+      "tokens_out": [
+       1809,
+       1690
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_2",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       10160,
+       10124
+      ],
+      "tokens_out": [
+       476,
+       499
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_20",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       16662,
+       16710
+      ],
+      "tokens_out": [
+       1073,
+       1215
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_21",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       16958,
+       17049
+      ],
+      "tokens_out": [
+       1123,
+       1322
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_22",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       10104,
+       10105
+      ],
+      "tokens_out": [
+       637,
+       623
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_23",
+      "turns": [
+       2,
+       2
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       10757,
+       10772
+      ],
+      "tokens_out": [
+       861,
+       902
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_3",
+      "turns": [
+       4,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       20546,
+       15207
+      ],
+      "tokens_out": [
+       565,
+       523
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_30",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       15371,
+       15359
+      ],
+      "tokens_out": [
+       343,
+       413
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_31",
+      "turns": [
+       3,
+       4
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       33418,
+       22808
+      ],
+      "tokens_out": [
+       1887,
+       1438
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_32",
+      "turns": [
+       4,
+       4
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       48608,
+       50175
+      ],
+      "tokens_out": [
+       1721,
+       2028
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "workspace",
+      "task": "user_task_33",
+      "turns": [
+       3,
+       3
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       16689,
+       16511
+      ],
+      "tokens_out": [
+       1040,
+       967
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     }
+    ]
+   }
+  }
+ },
+ {
+  "model": "glm-5.3 + claude-haiku-4-5-20251001",
+  "bench": "bfcl",
+  "arms": {
+   "reach": {
+    "summary": {
+     "all": {
+      "tasks": 40,
+      "turns": [
+       444,
+       451
+      ],
+      "fewer": -0.015765765765765716,
+      "fewer_ci": [
+       -0.0631163708086786,
+       0.042035398230088505
+      ],
+      "fewer_pairs": 7,
+      "more_pairs": 14,
+      "sign_p": 0.18924713134765625,
+      "passed": [
+       29.0,
+       29.0
+      ],
+      "tokens_in": [
+       2436180,
+       2501341
+      ],
+      "tokens_out": [
+       59451,
+       61674
+      ],
+      "credits": [
+       118.9,
+       134.0
+      ],
+      "lookups": 19,
+      "own": 8,
+      "detours": 11,
+      "repeats": 7
+     },
+     "bfcl": {
+      "tasks": 40,
+      "turns": [
+       444,
+       451
+      ],
+      "fewer": -0.015765765765765716,
+      "fewer_ci": [
+       -0.0631163708086786,
+       0.042035398230088505
+      ],
+      "fewer_pairs": 7,
+      "more_pairs": 14,
+      "sign_p": 0.18924713134765625,
+      "passed": [
+       29.0,
+       29.0
+      ],
+      "tokens_in": [
+       2436180,
+       2501341
+      ],
+      "tokens_out": [
+       59451,
+       61674
+      ],
+      "credits": [
+       118.9,
+       134.0
+      ],
+      "lookups": 19,
+      "own": 8,
+      "detours": 11,
+      "repeats": 7
+     },
+     "all, flow silent": {
+      "tasks": 25,
+      "turns": [
+       280,
+       291
+      ],
+      "fewer": -0.03928571428571437,
+      "fewer_ci": [
+       -0.09764309764309775,
+       0.03831417624521072
+      ],
+      "fewer_pairs": 5,
+      "more_pairs": 13,
+      "sign_p": 0.09625244140625,
+      "passed": [
+       19.0,
+       19.0
+      ],
+      "tokens_in": [
+       1610044,
+       1717989
+      ],
+      "tokens_out": [
+       33404,
+       36002
+      ],
+      "credits": [
+       66.9,
+       75.8
+      ],
+      "lookups": 0,
+      "own": 0,
+      "detours": 0,
+      "repeats": 0
+     },
+     "all, flow acted": {
+      "tasks": 15,
+      "turns": [
+       164,
+       160
+      ],
+      "fewer": 0.024390243902439046,
+      "fewer_ci": [
+       -0.03797468354430378,
+       0.11023622047244097
+      ],
+      "fewer_pairs": 2,
+      "more_pairs": 1,
+      "sign_p": 1.0,
+      "passed": [
+       10.0,
+       10.0
+      ],
+      "tokens_in": [
+       826136,
+       783352
+      ],
+      "tokens_out": [
+       26047,
+       25672
+      ],
+      "credits": [
+       52.0,
+       58.3
+      ],
+      "lookups": 19,
+      "own": 8,
+      "detours": 11,
+      "repeats": 7
+     }
+    },
+    "pairs": [
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_10",
+      "turns": [
+       21,
+       23
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       78038,
+       89364
+      ],
+      "tokens_out": [
+       1494,
+       1834
+      ],
+      "credits": [
+       9.08,
+       10.53
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_101",
+      "turns": [
+       7,
+       7
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       23708,
+       24113
+      ],
+      "tokens_out": [
+       567,
+       673
+      ],
+      "credits": [
+       3.7,
+       3.88
+      ],
+      "lookups": 1,
+      "own": 1,
+      "repeats": 1,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_11",
+      "turns": [
+       6,
+       7
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       27918,
+       33389
+      ],
+      "tokens_out": [
+       492,
+       784
+      ],
+      "credits": [
+       4.28,
+       5.19
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_112",
+      "turns": [
+       9,
+       10
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       39767,
+       45710
+      ],
+      "tokens_out": [
+       830,
+       1202
+      ],
+      "credits": [
+       4.67,
+       6.76
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_12",
+      "turns": [
+       9,
+       11
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       28337,
+       34701
+      ],
+      "tokens_out": [
+       504,
+       566
+      ],
+      "credits": [
+       3.96,
+       3.88
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_122",
+      "turns": [
+       10,
+       9
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       30885,
+       24862
+      ],
+      "tokens_out": [
+       1237,
+       751
+      ],
+      "credits": [
+       4.59,
+       3.9
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_13",
+      "turns": [
+       8,
+       7
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       36419,
+       31923
+      ],
+      "tokens_out": [
+       545,
+       510
+      ],
+      "credits": [
+       3.98,
+       3.52
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_131",
+      "turns": [
+       18,
+       18
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       73975,
+       77971
+      ],
+      "tokens_out": [
+       1885,
+       2263
+      ],
+      "credits": [
+       9.28,
+       10.2
+      ],
+      "lookups": 1,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_133",
+      "turns": [
+       6,
+       6
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       22224,
+       22276
+      ],
+      "tokens_out": [
+       1032,
+       1094
+      ],
+      "credits": [
+       4.25,
+       3.52
+      ],
+      "lookups": 1,
+      "own": 1,
+      "repeats": 1,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_160",
+      "turns": [
+       8,
+       9
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       39793,
+       43657
+      ],
+      "tokens_out": [
+       1309,
+       1192
+      ],
+      "credits": [
+       5.42,
+       6.62
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_170",
+      "turns": [
+       16,
+       16
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       90109,
+       90446
+      ],
+      "tokens_out": [
+       1573,
+       1608
+      ],
+      "credits": [
+       10.18,
+       11.45
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_171",
+      "turns": [
+       9,
+       8
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       47224,
+       49407
+      ],
+      "tokens_out": [
+       2099,
+       3340
+      ],
+      "credits": [
+       7.23,
+       10.22
+      ],
+      "lookups": 1,
+      "own": 1,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_20",
+      "turns": [
+       9,
+       11
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       41649,
+       53019
+      ],
+      "tokens_out": [
+       566,
+       828
+      ],
+      "credits": [
+       4.47,
+       5.86
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_21",
+      "turns": [
+       8,
+       9
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       38434,
+       43825
+      ],
+      "tokens_out": [
+       732,
+       818
+      ],
+      "credits": [
+       4.47,
+       5.04
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_23",
+      "turns": [
+       9,
+       9
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       37697,
+       37432
+      ],
+      "tokens_out": [
+       523,
+       365
+      ],
+      "credits": [
+       5.06,
+       4.82
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_30",
+      "turns": [
+       13,
+       15
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       61857,
+       73724
+      ],
+      "tokens_out": [
+       865,
+       1148
+      ],
+      "credits": [
+       6.69,
+       8.18
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_43",
+      "turns": [
+       10,
+       10
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       40241,
+       39863
+      ],
+      "tokens_out": [
+       743,
+       651
+      ],
+      "credits": [
+       4.61,
+       5.42
+      ],
+      "lookups": 1,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_63",
+      "turns": [
+       13,
+       15
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       65713,
+       73367
+      ],
+      "tokens_out": [
+       2425,
+       2658
+      ],
+      "credits": [
+       9.31,
+       11.21
+      ],
+      "lookups": 2,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_72",
+      "turns": [
+       16,
+       16
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       70011,
+       71505
+      ],
+      "tokens_out": [
+       1472,
+       1701
+      ],
+      "credits": [
+       8.28,
+       8.76
+      ],
+      "lookups": 2,
+      "own": 1,
+      "repeats": 1,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "glm-5.3",
+      "domain": "bfcl",
+      "task": "multi_turn_base_83",
+      "turns": [
+       11,
+       11
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       35975,
+       35478
+      ],
+      "tokens_out": [
+       1009,
+       820
+      ],
+      "credits": [
+       5.34,
+       5.05
+      ],
+      "lookups": 1,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_10",
+      "turns": [
+       45,
+       49
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       398812,
+       478864
+      ],
+      "tokens_out": [
+       6873,
+       8929
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_101",
+      "turns": [
+       6,
+       6
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       28162,
+       28267
+      ],
+      "tokens_out": [
+       989,
+       923
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 1,
+      "own": 1,
+      "repeats": 1,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_11",
+      "turns": [
+       6,
+       9
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       38481,
+       55602
+      ],
+      "tokens_out": [
+       1613,
+       1100
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_112",
+      "turns": [
+       9,
+       9
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       52955,
+       52779
+      ],
+      "tokens_out": [
+       1184,
+       1222
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_12",
+      "turns": [
+       9,
+       8
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       39742,
+       36286
+      ],
+      "tokens_out": [
+       931,
+       1020
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_122",
+      "turns": [
+       8,
+       8
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       30888,
+       31081
+      ],
+      "tokens_out": [
+       904,
+       973
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_13",
+      "turns": [
+       6,
+       6
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       35301,
+       35121
+      ],
+      "tokens_out": [
+       768,
+       760
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_131",
+      "turns": [
+       16,
+       16
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       91692,
+       90918
+      ],
+      "tokens_out": [
+       2522,
+       2361
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 1,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_133",
+      "turns": [
+       5,
+       5
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       23869,
+       24727
+      ],
+      "tokens_out": [
+       829,
+       1041
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 2,
+      "own": 1,
+      "repeats": 1,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_160",
+      "turns": [
+       8,
+       7
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       52523,
+       42934
+      ],
+      "tokens_out": [
+       1820,
+       1258
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_170",
+      "turns": [
+       14,
+       14
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       106528,
+       106867
+      ],
+      "tokens_out": [
+       2239,
+       2327
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_171",
+      "turns": [
+       11,
+       6
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       102506,
+       43757
+      ],
+      "tokens_out": [
+       5810,
+       3472
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 1,
+      "own": 1,
+      "repeats": 1,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_20",
+      "turns": [
+       9,
+       10
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       55117,
+       62370
+      ],
+      "tokens_out": [
+       988,
+       1063
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_21",
+      "turns": [
+       8,
+       8
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       49764,
+       51436
+      ],
+      "tokens_out": [
+       1243,
+       1516
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_23",
+      "turns": [
+       8,
+       9
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       44540,
+       51551
+      ],
+      "tokens_out": [
+       856,
+       1041
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_30",
+      "turns": [
+       13,
+       5
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       88223,
+       30321
+      ],
+      "tokens_out": [
+       1639,
+       1242
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_43",
+      "turns": [
+       9,
+       9
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       49201,
+       48871
+      ],
+      "tokens_out": [
+       1240,
+       1231
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 1,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_63",
+      "turns": [
+       11,
+       13
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       66267,
+       80725
+      ],
+      "tokens_out": [
+       1676,
+       1945
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 0,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_72",
+      "turns": [
+       16,
+       16
+      ],
+      "passed": [
+       0.0,
+       0.0
+      ],
+      "tokens_in": [
+       98248,
+       100484
+      ],
+      "tokens_out": [
+       1883,
+       2072
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 2,
+      "own": 1,
+      "repeats": 1,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     },
+     {
+      "model": "claude-haiku-4-5-20251001",
+      "domain": "bfcl",
+      "task": "multi_turn_base_83",
+      "turns": [
+       11,
+       11
+      ],
+      "passed": [
+       1.0,
+       1.0
+      ],
+      "tokens_in": [
+       53387,
+       52348
+      ],
+      "tokens_out": [
+       1542,
+       1372
+      ],
+      "credits": [
+       0.0,
+       0.0
+      ],
+      "lookups": 1,
+      "own": 0,
+      "repeats": 0,
+      "ending": [
+       "agent_stop",
+       "agent_stop"
+      ]
+     }
+    ]
+   }
+  }
+ }
+]

@@ -1,9 +1,9 @@
 # RFC-001: Habit compiler — compiling agent behavior into System-One flows
 
-- **Status:** Accepted (2026-09-23, [fugue#51](https://github.com/alexnodeland/fugue/pull/51)). Amended the same day with what Phase 0 found (§3.12, [fugue#52](https://github.com/alexnodeland/fugue/pull/52)) and with Phase 0b v2's read-only flows and arbitration (§3.13, [fugue#53](https://github.com/alexnodeland/fugue/pull/53)), and on 2026-09-24 with the first live form and pilot (§3.14, [fugue#54](https://github.com/alexnodeland/fugue/pull/54)), with the built implementation, the airline pilot, policy guards and the flow audit (§3.15, [fugue#55](https://github.com/alexnodeland/fugue/pull/55)), with the arms measured before building macro-tools (§3.16, [fugue#56](https://github.com/alexnodeland/fugue/pull/56)), with the habit alone live, fewer traces and Jev as a confirmation judge (§3.17, [fugue#58](https://github.com/alexnodeland/fugue/pull/58)), with a cold start from an agent's own sessions, options from the manifest, a second confirmation question and matching descriptions to records (§3.18, [fugue#59](https://github.com/alexnodeland/fugue/pull/59)), and with an arbiter shipped with the compiler (§3.19, [fugue#60](https://github.com/alexnodeland/fugue/pull/60)). On 2026-09-25 it was amended here with the paired run on every test task (§3.20), the cold start live (§3.21), and counterfactual evaluation, the confirmation judge enforced, the cold start in airline and Claude models (§3.22), with one round of predicate refinement (§3.23), and with one round of flow search in each domain (§3.24). On 2026-09-26 it was amended with what compiling once can take, and a flow that learns from its own sessions (§3.25), and with where compiling once works and what is left of the detours (§3.26). The design was iterated with @alexnodeland on 2026-09-23; the decisions are in §3.11. On 2026-09-25 it moved from fugue's decision log to stretto ([fugue#68](https://github.com/alexnodeland/fugue/pull/68)), where it is amended from now on. [Fugue's copy](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md) keeps fugue's side of it: the mapping onto fugue (§3.2), what fugue decided about its own scope and the six changes to `fugue-ppl` (§3.9), and the spike (Appendix A).
+- **Status:** Accepted (2026-09-23, [fugue#51](https://github.com/alexnodeland/fugue/pull/51)). Amended the same day with what Phase 0 found (§3.12, [fugue#52](https://github.com/alexnodeland/fugue/pull/52)) and with Phase 0b v2's read-only flows and arbitration (§3.13, [fugue#53](https://github.com/alexnodeland/fugue/pull/53)), and on 2026-09-24 with the first live form and pilot (§3.14, [fugue#54](https://github.com/alexnodeland/fugue/pull/54)), with the built implementation, the airline pilot, policy guards and the flow audit (§3.15, [fugue#55](https://github.com/alexnodeland/fugue/pull/55)), with the arms measured before building macro-tools (§3.16, [fugue#56](https://github.com/alexnodeland/fugue/pull/56)), with the habit alone live, fewer traces and Jev as a confirmation judge (§3.17, [fugue#58](https://github.com/alexnodeland/fugue/pull/58)), with a cold start from an agent's own sessions, options from the manifest, a second confirmation question and matching descriptions to records (§3.18, [fugue#59](https://github.com/alexnodeland/fugue/pull/59)), and with an arbiter shipped with the compiler (§3.19, [fugue#60](https://github.com/alexnodeland/fugue/pull/60)). On 2026-09-25 it was amended here with the paired run on every test task (§3.20), the cold start live (§3.21), and counterfactual evaluation, the confirmation judge enforced, the cold start in airline and Claude models (§3.22), with one round of predicate refinement (§3.23), and with one round of flow search in each domain (§3.24). On 2026-09-26 it was amended with what compiling once can take, and a flow that learns from its own sessions (§3.25), with where compiling once works and what is left of the detours (§3.26), and with the probability that matters and a procedure stretto runs (§3.27). On 2026-09-27 it was amended with five benchmarks replayed from the record (§3.28), with agents across harnesses and a threshold per decision (§3.29), and with live runs on AgentDojo and BFCL (§3.30). The design was iterated with @alexnodeland on 2026-09-23; the decisions are in §3.11. On 2026-09-25 it moved from fugue's decision log to stretto ([fugue#68](https://github.com/alexnodeland/fugue/pull/68)), where it is amended from now on. [Fugue's copy](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md) keeps fugue's side of it: the mapping onto fugue (§3.2), what fugue decided about its own scope and the six changes to `fugue-ppl` (§3.9), and the spike (Appendix A).
 - **Authors:** @alexnodeland (drafted with Claude Code)
 - **Created:** 2026-09-23
-- **Updated:** 2026-09-25
+- **Updated:** 2026-09-27
 - **Supersedes / Related:**
   - runnable spike, in fugue: [`docs/decisions/rfc/001-habit-compiler/spike/`](https://github.com/alexnodeland/fugue/tree/main/docs/decisions/rfc/001-habit-compiler/spike);
   - fugue's side of this RFC: [fugue's RFC-001](https://github.com/alexnodeland/fugue/blob/main/docs/decisions/rfc/001-habit-compiler.md), with the six changes to `fugue-ppl` tracked in [fugue#61](https://github.com/alexnodeland/fugue/issues/61);
@@ -1237,6 +1237,38 @@ What this changes:
 - **§3.6's System-One layer, again:** a speculator that binds the user's words needs the conversation, which an MCP proxy does not see; a host that shares it could ask the arbiter's model for the value, which picks it for a third to a half of what the words add (the fifth count).
 - **§3.26's procedures, beyond telecom:** in the benchmarks without a simulated user, 4–37% of episodes pass no value the agent composed, and at most 8% none from the request either, so a procedure compiled there would need a model to read the request and most often one to write.
 - **Next:** calibrating each site and a live check in another harness. DTap-Bench's browser and macOS domains, too small to learn from, have almost no ceiling: their calls act on a screen and return the one they leave. Its legal, finance and research domains are replayed separately: in legal, whose agents walk dockets and opinions, reach saves 4.7% against 3.9% with the agents' own runs (+0.8 points, 0.7–1.0) and 4.3% against 4.0% with the other harnesses', and ties with all seven agents'; finance and research, with ceilings of 4.6% and 1.4%, tie.
+
+### 3.30 Amendment 19: live on AgentDojo and BFCL (2026-09-27)
+
+Amendments 17 and 18 replayed flows from published trajectories, which count savings from the record but cannot show what an agent does when a lookup reaches it early. This round runs two of those benchmarks live in their own environments, with two agents.
+
+- **Details:** [the round's results](../results/live-benchmarks-2026-09-27.md) and [the working paper](../../paper/stretto.md)'s §4.4 (Table 5b) and §6.
+- **The harness** (`pilot/bench/`).
+  - `bench_mcp.py` serves a task's tools over MCP with the benchmark's own code. Results are printed as the benchmark prints them to its agents, then as the converters wrote them, so the flows find their arguments at the paths they learned.
+  - `run_bench_episode.py` scores each episode with the benchmark's own check: AgentDojo's utility and BFCL's `multi_turn_checker`.
+  - `--agent scripted` makes the ground truth's calls through the same proxy, and every held-out task passes in both arms.
+- **The run.**
+  - Agents: GLM-5.3 and Claude Haiku 4.5 in Claude Code. The flows are the published ones, at θ = 0.3.
+  - Tasks: AgentDojo's 41 held-out tasks and 20 of BFCL's 80, each run once per arm, 244 episodes in all.
+- **Where the replay found reads to take, the flow saved turns live.**
+  - In AgentDojo's Slack and travel suites it cut LLM turns by 10.1% (5.8–14.0%): 14 pairs took fewer turns and one more, and passes were unchanged at 27.
+  - In banking and workspace it made one lookup in 48 episodes.
+  - Over all 41 tasks it cut 6.0% (2.1–9.9%), against the replay's 7.2%.
+  - BFCL, projected at 1.6%, shows no effect at 20 tasks per model. Resolving it would take about 900 pairs.
+- **Slack's detours are one binding.** After `get_channels`, the flow reads `general`, as the older agents did on most tasks. These agents read only the channel the request named. That is 36 of AgentDojo's 52 detours. No pair paid for them in turns, and §3.7's shadow mode and promotion are built for this case.
+- **Run-to-run variation, measured.**
+  - In the pairs where the flow made no lookup, both arms ran under the same conditions: the same tools, the same handshake and the same results.
+  - Those pairs differ in turns by up to 8% for one model and in cost by −5% to +13%. So one run per arm resolves a 10% effect in turns, but not cost.
+- **The prompt cache is shared between arms.** Two arms of one task share their prompt's prefix. Run side by side, whichever reaches the model first writes the cache that the other reads. `run_bench_paired.py` now runs every task's first arm, then every task's second.
+
+What this changes:
+
+- **§3.7's evaluation:** a replay's projection is testable live, per domain, before the run. Fixing the domains in which the replay found reads to take is the comparison to make; splitting on whether the flow acted uses the treated run.
+- **§3.7's promotion:** its first live test should be Slack's channel reads.
+- **Next:**
+  - Live promotion on AgentDojo's Slack suite.
+  - Several runs per arm, with the arms run apart, to resolve cost.
+  - A flow learned from these agents' own sessions.
 
 ## 4. Drawbacks
 

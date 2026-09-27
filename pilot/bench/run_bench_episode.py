@@ -53,6 +53,15 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def tools_state(episode: Path) -> dict:
+    """The server's count of calls and whether it ran out of budget, which it writes when it starts."""
+    path = episode / "tools-state.json"
+    if not path.exists():
+        raise RuntimeError(f"the task's server never started (no {path.name}): see {episode / 'log'} and "
+                           f"{episode / 'agent.stderr'}")
+    return json.loads(path.read_text())
+
+
 class AgentDojoTask:
     def __init__(self, args):
         from agentdojo.agent_pipeline.agent_pipeline import load_system_message
@@ -208,7 +217,7 @@ def run_agent(args, bench, episode: Path) -> tuple[list[str], list[list[tuple[st
                 ending = ending if ending == "timeout" else "agent_error"
                 break
             answers.append(answer)
-            if json.loads((episode / "tools-state.json").read_text()).get("over_budget"):
+            if tools_state(episode).get("over_budget"):
                 ending = "max_calls"
                 break
     finally:
@@ -311,7 +320,7 @@ def main() -> None:
     run = run_scripted if args.agent == "scripted" else run_agent
     answers, calls, ending = run(args, bench, episode)
     score = bench.score(episode, answers, calls)
-    tools = json.loads((episode / "tools-state.json").read_text())
+    tools = tools_state(episode)
     result = {
         "bench": args.bench, "domain": bench.domain, "task": args.task, "arm": args.arm,
         "label": args.label or args.arm, "agent": args.agent, "agent_cli": args.agent_cli, "model": args.model,

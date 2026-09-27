@@ -1,11 +1,16 @@
 """Run a benchmark's held-out tasks live, once in each arm, for one agent model.
 
 Each task runs in every arm (`--arms`, by default no flow and the reach flow),
-in an order drawn per task from `--seed`, so neither arm always goes first. An
-episode already recorded (its `result.json`) is kept, so an interrupted run
-resumes, and several runners can share one plan (each episode is taken by the
-runner that first makes its lock folder under `--out/locks`). For GLM, every episode's credits are booked in `credits.jsonl` under
-`--out`, and the run stops before an episode would start past `--credit-cap`.
+in an order drawn per task from `--seed`, so neither arm always goes first. The
+plan runs every task's first arm, then every task's second, so a task's arms
+run apart: two arms share their prompt's prefix, the system prompt, the tools
+and the request, and an arm that ran within the prompt cache's lifetime of the
+other would read what that one wrote, which confounds their cost. An episode
+already recorded (its `result.json`) is kept, so an interrupted run resumes,
+and several runners can share one plan (each episode is taken by the runner
+that first makes its lock folder under `--out/locks`). For GLM, every
+episode's credits are booked in `credits.jsonl` under `--out`, and the run
+stops before an episode would start past `--credit-cap`.
 
 The held-out tasks are those the flows never trained on: the converters hold
 out the first four of every ten tasks in order (`--test-share 0.4`).
@@ -72,11 +77,13 @@ def main() -> None:
     else:
         tasks = bfcl_tasks(args.bfcl_dir, args.category, args.sample, args.seed)[: args.limit]
     rng = random.Random(args.seed)
-    plan = []
+    orders = []
     for suite, task in tasks:
         arms = list(args.arms)
         rng.shuffle(arms)
-        plan += [(suite, task, arm) for arm in arms]
+        orders.append((suite, task, arms))
+    # One pass per position: a task's arms run a pass apart, not back to back.
+    plan = [(suite, task, arms[k]) for k in range(len(args.arms)) for suite, task, arms in orders]
     print(f"{len(tasks)} tasks, {len(plan)} episodes; {spent:.1f} credits booked", file=sys.stderr, flush=True)
     for suite, task, arm in plan:
         result = args.out / arm / f"{suite}-{task}" / "result.json"
