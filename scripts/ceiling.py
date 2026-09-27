@@ -28,6 +28,12 @@ what they wrote (`spans`): `--questions` writes each such argument's question
 as JSON lines, `model_questions.py` asks them, and `--model-answers` reads
 the picks back.
 
+Per episode, it also counts whether every value of every call, writes
+included, came from an earlier result, a constant or what the customer
+wrote, with none the agent composed (`episodes, nothing composed`), and
+whether none came from what the customer wrote either: what a procedure
+compiled once could bind without a model to write, and without one to read.
+
     ceiling.py RESULTS.json... [--tau2 DIR] [--json OUT] [--questions OUT] [--model-answers FILE]
 
 Only the test tasks' episodes, trials 0-3, are counted, as `pilot/check_flow.py`
@@ -201,6 +207,13 @@ def main():
         fixed = constants(sims, domain, writes)
         for s in sims:
             rows = classify(s, domain, writes, fixed, picks, asked)
+            calls = [c for t in anatomy.walk(s, domain, writes)[0] for c in t.get("calls") or []]
+            if calls:
+                composed = any(a["class"] == "generated" and (c["tool"], a["arg"]) not in fixed for c in calls for a in c["args"])
+                said = any(a["class"] == "customer" for c in calls for a in c["args"])
+                tally["episodes with calls"] += 1
+                tally["episodes, nothing composed"] += not composed
+                tally["episodes, nothing composed or from the customer"] += not composed and not said
             for kind, trigger, tool_ok, words_ok, const_ok, shape_ok, model_ok in rows:
                 tally["turns"] += 1
                 tally[f"{kind}, after {trigger}"] += 1

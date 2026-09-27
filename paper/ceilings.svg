@@ -25,13 +25,13 @@
 <text class="t" x="8" y="74" font-weight="600">τ²-bench</text>
 <text class="m" x="142" y="93" text-anchor="end">retail</text>
 <rect x="150" y="82" width="238.6" height="14" rx="2" fill="var(--a)"/>
-<rect x="390.6" y="82" width="2.7" height="14" rx="2" fill="var(--c)"/>
-<rect x="394.3" y="82" width="2.8" height="14" rx="2" fill="var(--b)"/>
+<rect x="390.6" y="82" width="3.2" height="14" rx="2" fill="var(--c)"/>
+<rect x="394.8" y="82" width="2.2" height="14" rx="2" fill="var(--b)"/>
 <text class="t" x="403.0" y="93">34.2 + 1.1</text>
 <text class="m" x="142" y="113" text-anchor="end">airline</text>
 <rect x="150" y="102" width="205.2" height="14" rx="2" fill="var(--a)"/>
-<rect x="357.2" y="102" width="3.5" height="14" rx="2" fill="var(--c)"/>
-<rect x="361.7" y="102" width="2.4" height="14" rx="2" fill="var(--b)"/>
+<rect x="357.2" y="102" width="3.1" height="14" rx="2" fill="var(--c)"/>
+<rect x="361.3" y="102" width="2.8" height="14" rx="2" fill="var(--b)"/>
 <text class="t" x="370.1" y="113">29.5 + 1.1</text>
 <text class="m" x="142" y="133" text-anchor="end">telecom</text>
 <rect x="150" y="122" width="172.0" height="14" rx="2" fill="var(--a)"/>
@@ -40,25 +40,24 @@
 <text class="t" x="8" y="156" font-weight="600">τ-bench</text>
 <text class="m" x="142" y="175" text-anchor="end">retail</text>
 <rect x="150" y="164" width="210.0" height="14" rx="2" fill="var(--a)"/>
-<rect x="362.0" y="164" width="3.5" height="14" rx="2" fill="var(--c)"/>
-<rect x="366.5" y="164" width="3.0" height="14" rx="2" fill="var(--b)"/>
+<rect x="362.0" y="164" width="3.4" height="14" rx="2" fill="var(--c)"/>
+<rect x="366.3" y="164" width="3.2" height="14" rx="2" fill="var(--b)"/>
 <text class="t" x="375.5" y="175">30.1 + 1.2</text>
 <text class="m" x="142" y="195" text-anchor="end">airline</text>
 <rect x="150" y="184" width="169.2" height="14" rx="2" fill="var(--a)"/>
-<rect x="321.2" y="184" width="7.5" height="14" rx="2" fill="var(--c)"/>
-<rect x="329.7" y="184" width="4.5" height="14" rx="2" fill="var(--b)"/>
+<rect x="321.2" y="184" width="6.7" height="14" rx="2" fill="var(--c)"/>
+<rect x="328.9" y="184" width="5.3" height="14" rx="2" fill="var(--b)"/>
 <text class="t" x="340.2" y="195">24.3 + 2.0</text>
 <text class="t" x="8" y="218" font-weight="600">BFCL</text>
 <text class="m" x="142" y="237" text-anchor="end">multi-turn</text>
 <rect x="150" y="226" width="91.5" height="14" rx="2" fill="var(--a)"/>
-<rect x="243.5" y="226" width="17.4" height="14" rx="2" fill="var(--c)"/>
-<rect x="262.0" y="226" width="17.9" height="14" rx="2" fill="var(--b)"/>
+<rect x="243.5" y="226" width="18.8" height="14" rx="2" fill="var(--c)"/>
+<rect x="263.4" y="226" width="16.5" height="14" rx="2" fill="var(--b)"/>
 <text class="t" x="285.9" y="237">13.2 + 5.3</text>
 <text class="t" x="8" y="260" font-weight="600">AgentDojo</text>
 <text class="m" x="142" y="279" text-anchor="end">travel</text>
 <rect x="150" y="268" width="328.6" height="14" rx="2" fill="var(--a)"/>
-<rect x="480.6" y="268" width="33.0" height="14" rx="2" fill="var(--c)"/>
-<rect x="514.6" y="268" width="0.7" height="14" rx="2" fill="var(--b)"/>
+<rect x="480.6" y="268" width="34.7" height="14" rx="2" fill="var(--c)"/>
 <text class="t" x="521.3" y="279">47.1 + 5.1</text>
 <text class="m" x="142" y="299" text-anchor="end">Slack</text>
 <rect x="150" y="288" width="150.3" height="14" rx="2" fill="var(--a)"/>
@@ -69,29 +68,29 @@
 <text class="t" x="227.4" y="319">10.2</text>
 <text class="m" x="142" y="339" text-anchor="end">workspace</text>
 <rect x="150" y="328" width="40.7" height="14" rx="2" fill="var(--a)"/>
-<rect x="192.7" y="328" width="19.9" height="14" rx="2" fill="var(--c)"/>
-<rect x="213.6" y="328" width="36.2" height="14" rx="2" fill="var(--b)"/>
+<rect x="192.7" y="328" width="21.3" height="14" rx="2" fill="var(--c)"/>
+<rect x="215.0" y="328" width="34.7" height="14" rx="2" fill="var(--b)"/>
 <text class="t" x="255.8" y="339">6.0 + 8.3</text>
 <text class="t" x="8" y="362" font-weight="600">WorkBench</text>
 <text class="m" x="142" y="381" text-anchor="end">project mgmt</text>
 <rect x="150" y="370" width="43.5" height="14" rx="2" fill="var(--a)"/>
-<rect x="195.5" y="370" width="23.0" height="14" rx="2" fill="var(--c)"/>
-<rect x="219.5" y="370" width="66.3" height="14" rx="2" fill="var(--b)"/>
+<rect x="195.5" y="370" width="18.7" height="14" rx="2" fill="var(--c)"/>
+<rect x="215.2" y="370" width="70.5" height="14" rx="2" fill="var(--b)"/>
 <text class="t" x="291.7" y="381">6.4 + 13.0</text>
 <text class="m" x="142" y="401" text-anchor="end">multi-domain</text>
 <rect x="150" y="390" width="39.8" height="14" rx="2" fill="var(--a)"/>
-<rect x="191.8" y="390" width="35.6" height="14" rx="2" fill="var(--c)"/>
-<rect x="228.4" y="390" width="18.8" height="14" rx="2" fill="var(--b)"/>
+<rect x="191.8" y="390" width="35.9" height="14" rx="2" fill="var(--c)"/>
+<rect x="228.7" y="390" width="18.5" height="14" rx="2" fill="var(--b)"/>
 <text class="t" x="253.3" y="401">5.8 + 8.1</text>
 <text class="m" x="142" y="421" text-anchor="end">CRM</text>
 <rect x="150" y="410" width="28.3" height="14" rx="2" fill="var(--a)"/>
-<rect x="180.3" y="410" width="17.0" height="14" rx="2" fill="var(--c)"/>
-<rect x="198.3" y="410" width="83.5" height="14" rx="2" fill="var(--b)"/>
+<rect x="180.3" y="410" width="19.1" height="14" rx="2" fill="var(--c)"/>
+<rect x="200.4" y="410" width="81.4" height="14" rx="2" fill="var(--b)"/>
 <text class="t" x="287.8" y="421">4.2 + 14.6</text>
 <text class="m" x="142" y="441" text-anchor="end">email</text>
 <rect x="150" y="430" width="2.8" height="14" rx="2" fill="var(--a)"/>
-<rect x="154.8" y="430" width="13.7" height="14" rx="2" fill="var(--c)"/>
-<rect x="169.4" y="430" width="29.2" height="14" rx="2" fill="var(--b)"/>
+<rect x="154.8" y="430" width="15.8" height="14" rx="2" fill="var(--c)"/>
+<rect x="171.5" y="430" width="27.1" height="14" rx="2" fill="var(--b)"/>
 <text class="t" x="204.6" y="441">0.5 + 6.4</text>
 <text class="m" x="142" y="461" text-anchor="end">calendar</text>
 <rect x="150" y="450" width="0.5" height="14" rx="2" fill="var(--a)"/>
@@ -100,7 +99,7 @@
 <text class="t" x="172.1" y="461">0.1 + 2.2</text>
 <text class="m" x="142" y="481" text-anchor="end">analytics</text>
 <rect x="151.0" y="470" width="0.5" height="14" rx="2" fill="var(--c)"/>
-<rect x="151.8" y="470" width="0.5" height="14" rx="2" fill="var(--b)"/>
+<rect x="151.4" y="470" width="0.5" height="14" rx="2" fill="var(--b)"/>
 <text class="t" x="157.6" y="481">0.0 + 0.2</text>
 <text class="t" x="8" y="504" font-weight="600">DTap-Bench</text>
 <text class="m" x="142" y="523" text-anchor="end">telecom</text>
@@ -115,18 +114,18 @@
 <text class="t" x="391.2" y="543">24.2 + 9.4</text>
 <text class="m" x="142" y="563" text-anchor="end">travel</text>
 <rect x="150" y="552" width="137.6" height="14" rx="2" fill="var(--a)"/>
-<rect x="289.6" y="552" width="1.7" height="14" rx="2" fill="var(--c)"/>
-<rect x="292.3" y="552" width="48.1" height="14" rx="2" fill="var(--b)"/>
+<rect x="289.6" y="552" width="0.5" height="14" rx="2" fill="var(--c)"/>
+<rect x="290.2" y="552" width="50.2" height="14" rx="2" fill="var(--b)"/>
 <text class="t" x="346.4" y="563">19.8 + 7.4</text>
 <text class="m" x="142" y="583" text-anchor="end">CRM</text>
 <rect x="150" y="572" width="79.6" height="14" rx="2" fill="var(--a)"/>
-<rect x="231.6" y="572" width="9.3" height="14" rx="2" fill="var(--c)"/>
-<rect x="242.0" y="572" width="31.1" height="14" rx="2" fill="var(--b)"/>
+<rect x="231.6" y="572" width="10.0" height="14" rx="2" fill="var(--c)"/>
+<rect x="242.6" y="572" width="30.5" height="14" rx="2" fill="var(--b)"/>
 <text class="t" x="279.1" y="583">11.5 + 6.1</text>
 <text class="m" x="142" y="603" text-anchor="end">OS files</text>
 <rect x="150" y="592" width="77.4" height="14" rx="2" fill="var(--a)"/>
-<rect x="229.4" y="592" width="6.8" height="14" rx="2" fill="var(--c)"/>
-<rect x="237.2" y="592" width="9.8" height="14" rx="2" fill="var(--b)"/>
+<rect x="229.4" y="592" width="6.3" height="14" rx="2" fill="var(--c)"/>
+<rect x="236.6" y="592" width="10.4" height="14" rx="2" fill="var(--b)"/>
 <text class="t" x="253.0" y="603">11.2 + 2.7</text>
 <text class="m" x="142" y="623" text-anchor="end">medical</text>
 <rect x="150" y="612" width="25.6" height="14" rx="2" fill="var(--a)"/>
