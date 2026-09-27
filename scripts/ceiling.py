@@ -21,9 +21,14 @@ constant, such as a page size an agent always passes), which a binding that
 learned constants could pass. A fourth, *by shape*, admits instead a value
 of the customer's that is the only one of its shape in what they wrote so far
 (the one email, id, number or date), which a speculator could take from the
-request with no model; names and free text need one.
+request with no model; names and free text need one. A fifth, *by model*,
+admits a value of the customer's that a model, shown what they wrote so far
+and the call (its tool and the argument's name), picks among the spans of
+what they wrote (`spans`): `--questions` writes each such argument's question
+as JSON lines, `model_questions.py` asks them, and `--model-answers` reads
+the picks back.
 
-    ceiling.py RESULTS.json... [--tau2 DIR] [--json OUT]
+    ceiling.py RESULTS.json... [--tau2 DIR] [--json OUT] [--questions OUT] [--model-answers FILE]
 
 Only the test tasks' episodes, trials 0-3, are counted, as `pilot/check_flow.py`
 replays them.
@@ -31,6 +36,7 @@ replays them.
 
 import argparse
 import collections
+import hashlib
 import json
 import re
 import sys
@@ -65,6 +71,37 @@ def by_shape(value: str, said: str) -> bool:
     return {t for t in found if shape(t) == kind} == {value}
 
 
+STOP = set("""a an the and or but if of to in on at by for from with about as into onto than then so
+is are was were be been am do does did have has had i me my we our you your it its this that these those he she
+they them his her their what which who whom when where why how all any some no not please can could would should
+will just also there here up out over after before again once too very""".split())
+SPAN = re.compile(r"[\w.@+#/:-]+")
+MAX_OPTIONS = 255  # a Choice question's limit
+
+
+def words_of(text: str) -> list:
+    """The words of a text, trimmed of the punctuation around them."""
+    return [w for w in (t.strip(".,;:!?-") for t in SPAN.findall(text)) if w]
+
+
+def spans(said: str, longest: int = 6) -> list:
+    """What a model may pick as a value the customer wrote: every run of one to `longest` words of `said` that
+    neither starts nor ends with a common word, the latest first, at most MAX_OPTIONS."""
+    words = words_of(said)
+    ends = {}
+    for n in range(1, longest + 1):
+        for i in range(len(words) - n + 1):
+            run = words[i:i + n]
+            if run[0] in STOP or run[-1] in STOP:
+                continue
+            ends[" ".join(run)] = max(ends.get(" ".join(run), -1), i + n)
+    return sorted(ends, key=lambda s: (-ends[s], len(s)))[:MAX_OPTIONS]
+
+
+def question_key(said: str, tool: str, arg: str) -> str:
+    return hashlib.sha256(json.dumps([said, tool, arg]).encode()).hexdigest()[:24]
+
+
 def domain_of(sims):
     tools = {c["name"] for s in sims for m in s["messages"] for c in m.get("tool_calls") or []}
     for d in ("telecom", "airline", "retail"):
@@ -85,17 +122,19 @@ def constants(sims, domain, writes) -> set:
     return {k for k, v in values.items() if len(v) == 1 and counts[k] >= 5}
 
 
-def classify(sim, domain, writes, fixed=frozenset()):
+def classify(sim, domain, writes, fixed=frozenset(), picks=None, asked=None):
     """Per LLM turn: (kind, trigger, speculable from the tool state, from the
     tool state and the customer's words, from the tool state and the `fixed`
-    constants). Kinds: reply, reads, writes."""
+    constants, by shape, by model). Kinds: reply, reads, writes. `picks` maps
+    a question's key to the model's pick; `asked`, if given, collects the
+    questions of the customer's values in read turns."""
     turns, _, _ = anatomy.walk(sim, domain, writes)
     out = []
     # A lookup is current from the first tool response after the last write.
     responded_since_write = False
     for t in turns:
         if t["kind"] == "reply":
-            out.append(("reply", t["trigger"], False, False, False, False))
+            out.append(("reply", t["trigger"], False, False, False, False, False))
             continue
         calls = t["calls"]
         reads = all(c["kind"] == "read" for c in calls)
@@ -105,7 +144,18 @@ def classify(sim, domain, writes, fixed=frozenset()):
             a["class"] in COPY or (a["class"] == "generated" and (c["tool"], a["arg"]) in fixed) for c in calls for a in c["args"])
         shape_ok = reads and responded_since_write and all(
             a["class"] in COPY or (a["class"] == "customer" and by_shape(a["value"], c.get("said", ""))) for c in calls for a in c["args"])
-        out.append(("reads" if reads else "writes", t["trigger"], tool_ok, words_ok, const_ok, shape_ok))
+        picked = lambda c, a: (picks or {}).get(question_key(c.get("said", ""), c["tool"], a["arg"])) == \
+            " ".join(words_of(a["value"]))  # noqa: E731
+        model_ok = reads and responded_since_write and all(
+            a["class"] in COPY or (a["class"] == "customer" and picked(c, a)) for c in calls for a in c["args"])
+        if asked is not None and reads:
+            for c in calls:
+                for a in c["args"]:
+                    if a["class"] == "customer":
+                        key = question_key(c.get("said", ""), c["tool"], a["arg"])
+                        asked.setdefault(key, {"key": key, "said": c.get("said", ""), "tool": c["tool"], "arg": a["arg"],
+                                               "value": " ".join(words_of(a["value"])), "spans": spans(c.get("said", ""))})
+        out.append(("reads" if reads else "writes", t["trigger"], tool_ok, words_ok, const_ok, shape_ok, model_ok))
         # This turn's results come back before the next turn; a write in it
         # makes earlier lookups stale, and its own response is fresh.
         responded_since_write = True
@@ -117,7 +167,11 @@ def main():
     ap.add_argument("results", nargs="+")
     ap.add_argument("--tau2", default="../tau2-bench")
     ap.add_argument("--json", help="write the table here")
+    ap.add_argument("--questions", help="write the model's questions here (JSON lines)")
+    ap.add_argument("--model-answers", help="the model's picks (JSON: question key -> the span it picked)")
     args = ap.parse_args()
+    picks = json.loads(Path(args.model_answers).read_text()) if args.model_answers else None
+    asked = {} if args.questions else None
     report = {}
     for path in args.results:
         data = json.loads(Path(path).read_text())
@@ -137,14 +191,16 @@ def main():
         per_episode = {}
         fixed = constants(sims, domain, writes)
         for s in sims:
-            rows = classify(s, domain, writes, fixed)
-            for kind, trigger, tool_ok, words_ok, const_ok, shape_ok in rows:
+            rows = classify(s, domain, writes, fixed, picks, asked)
+            for kind, trigger, tool_ok, words_ok, const_ok, shape_ok, model_ok in rows:
                 tally["turns"] += 1
                 tally[f"{kind}, after {trigger}"] += 1
                 tally["ceiling, tool state"] += tool_ok
                 tally["ceiling, with words"] += words_ok
                 tally["ceiling, with constants"] += const_ok
                 tally["ceiling, words by shape"] += shape_ok
+                if picks is not None:
+                    tally["ceiling, words by model"] += model_ok
             # Named as the replays name episodes.
             per_episode[f"task-{s['task_id']}-{s.get('trial', 0)}"] = {
                 "turns": len(rows), "ceiling": sum(r[2] for r in rows), "ceiling_words": sum(r[3] for r in rows),
@@ -157,6 +213,8 @@ def main():
               f"({tally['ceiling, with words'] / n:.1%})")
     if args.json:
         Path(args.json).write_text(json.dumps(report, indent=1) + "\n")
+    if args.questions:
+        Path(args.questions).write_text("".join(json.dumps(q) + "\n" for q in asked.values()))
 
 
 if __name__ == "__main__":

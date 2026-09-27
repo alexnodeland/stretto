@@ -62,6 +62,11 @@ python3 scripts/costs.py .data/tau2-targets/*.json --replays $WORK/replays/tau2-
     --sweep docs/results/reach-2026-09-26.json
 # How often each recorded agent makes a read again with no write between
 python3 scripts/remade.py --results $WORK/dtap/dtap_telecom/*.json --tau2 $WORK/dtap/checkout
+# The user's words read by a model (ceiling.py's fifth count): questions, picks, count
+python3 scripts/ceiling.py $WORK/wb/multi_domain/*.json --tau2 $WORK/wb/checkout --questions q-wb-multi_domain.jsonl
+python3 scripts/model_questions.py q-*.jsonl --out picks.json --oracle jev --oracle-budget 1
+python3 scripts/ceiling.py $WORK/wb/multi_domain/*.json --tau2 $WORK/wb/checkout \
+    --model-answers docs/results/benchmarks-2026-09-27-model-picks.json --json ceiling.json
 ```
 
 `fixture/` holds two replays of DTap-Bench's telecom (GPT-5.1's own flow, both deciders at 0.3) and that domain's ceilings, which CI runs `tables.py` on.

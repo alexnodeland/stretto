@@ -3,7 +3,7 @@
 Every number before this round came from τ²-bench. Its three domains were built for coverage, and its users are LLMs. This round takes the flow to six more benchmarks, whose authors published their agents' trajectories: τ-bench, the Berkeley Function Calling Leaderboard's multi-turn tasks, AgentDojo, WorkBench, DTap-Bench and MCPMark. That is 89 more agents, from GPT-3.5 to models released this year, and 18 new domains. Seven of the agents are built on three agent SDKs: the Claude Agent SDK, the OpenAI Agents SDK and Google's ADK. MCPMark's tasks run on real MCP servers: a filesystem, PostgreSQL, GitHub and Notion. In five of the benchmarks no simulated user speaks: the requests were written by the benchmarks' authors. None of these benchmarks can be re-run cheaply, so the replays answer the flow's lookups from the record itself. [The working paper](../../paper/stretto.md) states the method; this page holds the runs.
 
 - **Replaying from the record.** A lookup the agent's own later call answers, before its next write, is answered by that call's recorded result, which is exact. Any other lookup is a detour whatever it returned, so it gets a stand-in and never counts as a saving. Checked against τ²-bench's environment on the paper's nine agents, this counts 96.7% of the turns the environment replay saves, and keeps 91% of the reach decider's lead over the next-step decider. It finds 55–72% of the detours, so its detours are lower bounds.
-- **The ceiling belongs to the domain.** The read-only ceiling is 3.5% of turns in WorkBench, whose requests name every entity. It is 7.0% on MCPMark's real servers, 13.2% in BFCL, 22.1% in AgentDojo (47.1% in its travel suite), 3.8–34.3% in DTap-Bench's six domains, 24–30% in τ-bench and 29.0% in τ²-bench. Where the user's words carry the arguments, a flow that binds from results has little to take. Reading the request would add 3–7 points in BFCL, AgentDojo, WorkBench and DTap-Bench, against 0.7 in τ²-bench.
+- **The ceiling belongs to the domain.** The read-only ceiling is 3.5% of turns in WorkBench, whose requests name every entity. It is 7.0% on MCPMark's real servers, 13.2% in BFCL, 22.1% in AgentDojo (47.1% in its travel suite), 3.8–34.3% in DTap-Bench's six domains, 24–30% in τ-bench and 29.0% in τ²-bench. Where the user's words carry the arguments, a flow that binds from results has little to take. Reading the request would add 3–7 points in BFCL, AgentDojo, WorkBench and DTap-Bench, against 0.7 in τ²-bench; a model that picks the value among the user's words takes 30–53% of those points, a pattern 0–17%.
 - **Reach saves more where agents read ahead of their next write, and ties elsewhere.**
   - **τ-bench.** Flows learned from τ²-bench's 2025 runs save 22.9% of retail turns for GPT-4o and Claude 3.5 Sonnet, recorded in τ-bench's own harness a year earlier: 76% of the ceiling. Reach is +1.4 points ahead of the next-step decider (0.8–2.1); the two tie in airline.
   - **BFCL.** Learned from eight older models and replayed on ten late-2025 ones, reach saves twice what next-step does at every threshold: 134 turns against 62 at θ = 0.3, +0.85 points of all turns (0.35–1.45).
@@ -113,6 +113,22 @@ Test episodes of the agents each flow is replayed on. The ceiling counts every t
 - **DTap-Bench.** In customer service each request names an order or a customer's email, and the agent walks the order, its shipment, its cases and the guidelines; in telecom it walks the customer's account, bills and tickets. How an agent groups its calls matters as much as the harness: in customer service and travel, Gemini on Google's ADK batches its reads into a few parallel turns (3.5 an episode in customer service, where the others make 8–11). A turn of parallel reads is saved only when every read in it is answered, so its ceiling there is 7.6% and 0.5%, against 13–34% for the other agents. In CRM and telecom it batches less, and its ceiling is 13.5% and 21.7%. In the operating system's files, each request names a path, and the agents list, read and check the files there: 11.2% of turns are in the ceiling, and the path the user wrote adds 2.7 points. In medical, the agents' calls order tests and question a simulated patient, and a test ordered is a write. Six agents make 0–8 reads in 642 runs, and 6 of their 14,657 test turns are in the ceiling. gpt-oss-120b makes 4,056: it lists the patients 824 times and asks for a patient's status 3,231 times, often by an id it made up (`patient_1`, `PLACEHOLDER`), and a quarter of its reads repeat one it made before. 14% of its turns are in the ceiling, nearly all of medical's 3.8%: the agent is part of the ceiling.
 
 The column with the user's words is that bound: 3–7 points more in BFCL, AgentDojo, WorkBench and DTap-Bench (6 without medical, half its turns, where nothing is read), and under 2 in τ²-bench and τ-bench, where the user's details arrive over the conversation and the agent looks the rest up.
+
+**A model reading the request.** Binding the user's words takes a speculator that reads them. `ceiling.py`'s fifth count shows the System-One model what the user wrote so far and the call about to be made, its tool and the argument's name, and asks it to pick the argument's value among the spans of the user's words, one to six words long (`scripts/model_questions.py`, through `stretto ask`: 8,532 questions, about $0.41). A turn counts when every value in it is picked right. Of the points the user's words add, a pattern and the model take:
+
+| Benchmark | Words add (points) | A pattern takes | The model takes | Values picked right |
+|---|---|---|---|---|
+| WorkBench | 7.4 | 0% | 39% | 34–81% by domain |
+| BFCL | 5.3 | 2% | 53% | 61% |
+| AgentDojo | 4.9 | 4% | 48% | 58–100% by suite |
+| MCPMark | 3.6 | 1% | 2% | 3–16% by server |
+| DTap-Bench | 3.0 | 17% | 30% | 28–97% by domain |
+| τ-bench | 1.5 | 16% | 53% | 74% |
+| τ²-bench | 0.7 | 31% | 50% | 83% |
+
+- **About half where a pattern takes almost none.** The model takes about half of what the words add in BFCL, AgentDojo and both τ-benches, and two fifths in WorkBench. The instruction was revised once, on WorkBench multi-domain's 185 questions, where the model had picked spans with words around the value (59% right; told to pick exactly the value, 70%), and then fixed for every set. The picks are in [benchmarks-2026-09-27-model-picks.json](benchmarks-2026-09-27-model-picks.json), and every earlier count is unchanged.
+- **MCPMark's values are composed.** They are SQL, paths and titles the agent writes; 18–41% of them are a span of the request, and neither a pattern nor the model takes them.
+- **A request that names several values needs an order.** In DTap-Bench's travel a request names several cities, and the agent looks each up with the same tool: one pick per call finds one of them, as a binding that picks one record of a listing would. 82% of travel's questions are picked right, and 1% of its turns. A speculator that reads the request needs the binder's list rule too: the values in the order the agent takes them.
 
 **The format is part of the ceiling.** Read as its tools print them — YAML records, Python dicts, and listings of a label with one name a line — AgentDojo's results hold few values a parser can find. Its ceiling was 10.0% of turns (Slack 0.5%, travel 26.0%). Read as JSON, with the same values, it is 22.1%. A deployment serves MCP tools, whose results are usually JSON, and the converter writes them so (`as_json`).
 
@@ -311,7 +327,7 @@ With the count, the WorkBench flows make no lookup at all in the 13,869 turns of
 
 ## What is next
 
-- **Reading the request.** Binding the user's words would add 3–7 points of turns in BFCL, AgentDojo, WorkBench and DTap-Bench. That takes a speculator that reads the request for the values a search takes, such as a customer's name or a date, where this one reads only results. A pattern will not do: counted in the ceiling (`scripts/ceiling.py`'s fourth count), taking the only email, id, number or date the user wrote recovers none of those points in WorkBench, 1% in MCPMark, 2% in BFCL, 4% in AgentDojo and 17% in DTap-Bench (half of customer service's, and none of the other domains'), against 31% of τ²-bench's 0.7. The rest are names and free text.
+- **Reading the request.** A model that picks the value among the user's words takes 30–53% of what the words add in WorkBench, BFCL, AgentDojo and DTap-Bench, where a pattern takes 0–17% (above). A speculator that reads the request needs the conversation, which an MCP proxy does not see, a model to read it, and, where a request names several values for one call, the order in which the agent takes them.
 - **More domains.** DTap-Bench's other domains with benign runs (browser, finance, legal, macOS and research) have 4–34 tasks each, too few to hold out 40% of them and learn from the rest.
 - **Calibration per site.** A threshold per decision needs each lookup's score right where it is priced. Retail's lookups of an order's products are scored as the tool's chance (0.43) times the argument's (0.76) and used 64% of the time; counting each lookup's own use at its site would score them directly.
 - **Live, with other agents.** The replays assume an agent skips a call a lookup already answered, which GLM-5.3 did live. The DTap-Bench replays count what agents in three other harnesses would have skipped, not whether they would have. That six of the seven seldom repeat their own reads says they would; it remains to be checked live.
@@ -357,6 +373,12 @@ for d in crm telecom travel os-filesystem medical; do
   python3 scripts/dtap_to_tau2.py --runs dtap-runs --domain $d --name "dtap_${d//-/_}" --out $WORK/dtap
 done
 python3 scripts/remade.py --results $WORK/dtap/dtap_telecom/*.json --tau2 $WORK/dtap/checkout      # repeated reads
+
+# The user's words read by a model: each set's questions, the model's picks (Jev, through `stretto ask`), the fifth count
+python3 scripts/ceiling.py $WORK/wb/multi_domain/*.json --tau2 $WORK/wb/checkout --questions q-wb-multi_domain.jsonl
+python3 scripts/model_questions.py q-*.jsonl --out picks.json --oracle jev --oracle-budget 1
+python3 scripts/ceiling.py $WORK/wb/multi_domain/*.json --tau2 $WORK/wb/checkout \
+    --model-answers docs/results/benchmarks-2026-09-27-model-picks.json --json ceiling-wb-multi_domain.json
 
 # Learn from the older agents, replay the newer ones from the record (here AgentDojo's travel suite)
 target/release/stretto learn --results $WORK/dojo/travel/gpt-4-0125-preview.json ... \
