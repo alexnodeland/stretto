@@ -253,7 +253,11 @@ pub fn check_files(report: &mut Report, dir: &Path, home: &Path) {
             short(dir)
         ));
     } else {
-        report.ok(format!("{} flows in {}:", found.flows.len(), short(dir)));
+        report.ok(format!(
+            "{} in {}:",
+            count(found.flows.len(), "flow"),
+            short(dir)
+        ));
         for path in &found.flows {
             match Flow::load(path) {
                 Ok(flow) => report.item(format!("{}: {}", short(path), describe(&flow))),
@@ -268,15 +272,21 @@ pub fn check_files(report: &mut Report, dir: &Path, home: &Path) {
         report.note(format!("no recorded sessions in {} yet", short(dir)));
     } else {
         report.ok(format!("recorded sessions in {}:", short(dir)));
-        for (dir, (count, domains)) in &found.sessions {
+        for (dir, (n, domains)) in &found.sessions {
             let domains: Vec<&str> = domains.iter().map(String::as_str).collect();
             report.item(format!(
-                "{}: {count} sessions, domain {}",
+                "{}: {}, domain {}",
                 short(dir),
+                count(*n, "session"),
                 domains.join(", ")
             ));
         }
     }
+}
+
+/// `n` and the noun, plural unless `n` is 1.
+fn count(n: usize, noun: &str) -> String {
+    format!("{n} {noun}{}", if n == 1 { "" } else { "s" })
 }
 
 /// A flow in a few words: its domain, what it learned from, how it decides.
@@ -292,9 +302,9 @@ pub fn describe(flow: &Flow) -> String {
         ""
     };
     format!(
-        "domain {}, from {} sessions, decides {decides}{promoted}",
+        "domain {}, from {}, decides {decides}{promoted}",
         flow.domain(),
-        flow.provenance().habit_episodes
+        count(flow.provenance().habit_episodes, "session")
     )
 }
 
