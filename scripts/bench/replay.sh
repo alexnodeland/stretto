@@ -15,7 +15,7 @@
 #             DTap-Bench's from each agent's own runs, its harness's other agents, the other harnesses and all
 #   mcpm-own  MCPMark's newer models, each with a flow from its own training runs
 #   mcpm-const, dtap-const
-#             the same own flows learned with `learn --constants` (DTap-Bench's customer service and CRM)
+#             the same own flows learned with `learn --constants` (DTap-Bench's customer service, CRM and OS files)
 #   ceilings  each set's read-only ceiling (ceiling.py)
 #
 # Environment: WORK (default work), TAU2 (τ²-bench's checkout, default ../tau2-bench), PY (a Python with τ²-bench
@@ -242,9 +242,9 @@ mcpm_own() { # [SET]: each newer model's flow from its own training runs, replay
   done
 }
 
-dtap_const() { # each agent's own flow with its constants, in the two domains whose ceiling they raise
+dtap_const() { # each agent's own flow with its constants, in the domains whose ceiling they raise
   local x=$WORK/dtap d f
-  for d in customer_service dtap_crm; do
+  for d in customer_service dtap_crm dtap_os_filesystem; do
     for a in $(cd "$x/$d" && ls -- *.json | sed 's/\.json$//'); do
       f=$FLOWS/dtap-const/$d/own-$a.flow.json
       learn "$f" "$d" "$x/checkout" "$x/$d/$a.json"
