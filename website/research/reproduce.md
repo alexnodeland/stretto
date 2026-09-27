@@ -63,7 +63,7 @@ The trace-only sets take minutes to an hour each; the sets that replay against �
 
 ## Live runs
 
-The live pilots ran GLM-5.3 in Claude Code on a Z.ai coding plan, with τ²-bench's tools served over MCP behind `stretto-proxy`. They spend a model's credits, so each needs a budget before it starts. [`pilot/`](../../pilot/README.md) holds the harness, and the recorded episodes are published: `pilot/rescore.py` reproduces every recorded reward from them ([the episodes](../../docs/results/episodes-2026-09-24.md)).
+The live pilots ran GLM-5.3 in Claude Code on a Z.ai coding plan, with τ²-bench's tools served over MCP behind `stretto-proxy`. The live runs on AgentDojo and BFCL use the same setup with each benchmark's own tools, served by [`pilot/bench/`](../../pilot/bench/README.md); [their page](./live) gives the commands. They spend a model's credits, so each needs a budget before it starts. [`pilot/`](../../pilot/README.md) holds the harness, and the recorded episodes are published: `pilot/rescore.py` reproduces every recorded reward from them ([the episodes](../../docs/results/episodes-2026-09-24.md)).
 
 ## Paper figures
 

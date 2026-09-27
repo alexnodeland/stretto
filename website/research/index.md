@@ -17,6 +17,7 @@ The headline numbers, each with its evidence in [the claims ledger](./claims):
 | Claim | Number | Evidence |
 |---|---|---|
 | It works live with no model of its own | GLM-5.3 took 27.9% fewer LLM turns (19.1–35.9%) on 28 retail and airline tasks; 21 passed, against 24 | Live |
+| It holds live beyond τ²-bench | In AgentDojo's Slack and travel suites, GLM-5.3 and Claude Haiku 4.5 took 10.1% fewer LLM turns (5.8–14.0%), with passes unchanged; 6.0% over all 41 tasks, where the replay projected 7.2%. BFCL, projected at 1.6%, shows none | Live, in the benchmarks' own environments |
 | The speculator takes most of retail's ceiling | 86.4% of it [80.2, 93.1], 10.2 points more than the next-step speculator [6.7, 14.2] | Replay, nine agents it never saw |
 | The ceiling is the domain's | 3.5% of turns in WorkBench to 47.1% in AgentDojo's travel suite; 29.0% in τ²-bench | Record, 89 more agents on six benchmarks |
 | Where no user speaks, compile once | 35 of 40 held-out solo telecom tasks with no model; 39 of 40 with GLM-5.3 on its four hand-backs, at 0.48 LLM turns per ticket against 15.9 | Environment and live |
@@ -30,6 +31,7 @@ The headline numbers, each with its evidence in [the claims ledger](./claims):
 | [Claims and evidence](./claims) | Each number in the paper's abstract and contributions, the kind of evidence it rests on, and what recomputes it |
 | [Results index](./results) | Every results page, in the order it was found, with what each found |
 | [Seven benchmarks](./benchmarks) | τ²-bench's results carried to τ-bench, BFCL, AgentDojo, WorkBench, DTap-Bench and MCPMark |
+| [Live on AgentDojo and BFCL](./live) | Two agents run live in two of those benchmarks' own environments, with and without the published flow, and promotion on the agents' own sessions |
 | [Reproduce the results](./reproduce) | The commands, from Phase 0 with no key to the benchmarks round |
 | [Design summary](/reference/design) | The decisions, and the implementation status of each piece |
 | [Research notebook](/notebook/) | The illustrated notebook of the rounds through 2026-09-25, the project's first site |
