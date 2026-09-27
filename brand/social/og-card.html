@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>stretto: social card</title>
+<meta name="viewport" content="width=1200">
+<!--
+  The source of og-card.png (1200 x 630). Rendered by brand/tools/render_assets.mjs.
+  Fonts load from ../fonts; colors are brand/tokens.css's dark theme.
+-->
+<style>
+  @font-face { font-family: "Inter"; src: url("../fonts/Inter-Variable.subset.woff2") format("woff2"); font-weight: 100 900; }
+  @font-face { font-family: "JetBrains Mono"; src: url("../fonts/JetBrainsMono-Regular.subset.woff2") format("woff2"); font-weight: 400; }
+  :root {
+    --bg: #0b0f11; --surface: #121719; --surface-2: #191f21; --border: #272f32;
+    --text: #eceff0; --muted: #b3bcbf; --subtle: #909a9d;
+    --accent: #5dd2d8; --graphic: #33c0c7; --turn: #4d575b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    width: 1200px; height: 630px; overflow: hidden;
+    background: var(--bg); color: var(--text);
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+  }
+  .card { position: relative; width: 1200px; height: 630px; padding: 60px 64px 56px; display: grid;
+    grid-template-columns: 560px 1fr; grid-template-rows: auto 1fr auto; column-gap: 56px; }
+  .brand { grid-column: 1 / 3; display: flex; justify-content: space-between; align-items: center; }
+  .brand img { height: 38px; display: block; }
+  .tags { font: 500 17px/1 "Inter"; color: var(--subtle); letter-spacing: 0.01em; }
+  .tags span + span::before { content: "·"; margin: 0 10px; color: var(--border); }
+  .copy { align-self: center; }
+  h1 { margin: 0; font-weight: 640; font-size: 74px; line-height: 1.02; letter-spacing: -0.035em;
+    font-variation-settings: "opsz" 32; }
+  .sub { margin: 22px 0 0; font-size: 25px; line-height: 1.38; color: var(--muted); letter-spacing: -0.005em; }
+  .sub b { color: var(--text); font-weight: 560; }
+  .score { align-self: center; background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
+    padding: 26px 26px 20px; }
+  .score svg { display: block; }
+  .lane-label { font: 600 13px/1 "Inter"; letter-spacing: 0.08em; text-transform: uppercase; fill: var(--subtle); }
+  .lane-label.on { fill: var(--accent); }
+  .legend { display: flex; gap: 18px; margin-top: 14px; font-size: 14px; color: var(--subtle); }
+  .legend i { display: inline-block; width: 18px; height: 8px; border-radius: 2px; margin-right: 7px; vertical-align: 1px; }
+  .result { grid-column: 1 / 3; display: flex; align-items: baseline; gap: 18px; border-top: 1px solid var(--border);
+    padding-top: 22px; }
+  .num { font-weight: 650; font-size: 46px; letter-spacing: -0.03em; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .what { font-weight: 560; font-size: 25px; letter-spacing: -0.01em; }
+  .scope { font-size: 18px; color: var(--muted); margin-left: auto; text-align: right; line-height: 1.35; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brand">
+    <img src="../logo/stretto-lockup-dark.svg" alt="stretto">
+    <div class="tags"><span>Open source</span><span>MIT</span><span>Rust</span><span>alexnodeland.github.io/stretto</span></div>
+  </div>
+
+  <div class="copy">
+    <h1>Read ahead of your agent.</h1>
+    <p class="sub">stretto learns which reads your MCP agent makes next and serves them <b>in the same tool result</b>, so it needs fewer LLM turns.</p>
+  </div>
+
+  <div class="score" aria-hidden="true">
+    <!-- A schematic, not data (it shows no measured numbers): one episode's LLM turns, without and with the flow.
+         The two reads that followed the lookup ride in its result instead of taking turns. -->
+    <svg width="438" height="196" viewBox="0 0 438 196">
+      <text class="lane-label" x="0" y="13">Without</text>
+      <g fill="#4d575b">
+        <rect x="0" y="28" width="50" height="22" rx="5"/>
+        <rect x="56" y="28" width="50" height="22" rx="5"/>
+        <rect x="224" y="28" width="50" height="22" rx="5"/>
+        <rect x="280" y="28" width="50" height="22" rx="5"/>
+        <rect x="336" y="28" width="50" height="22" rx="5"/>
+      </g>
+      <!-- the two turns that only read what the second turn's result named -->
+      <g fill="#0b292c" stroke="#33c0c7" stroke-width="1.5">
+        <rect x="112.75" y="28.75" width="48.5" height="20.5" rx="4.5"/>
+        <rect x="168.75" y="28.75" width="48.5" height="20.5" rx="4.5"/>
+      </g>
+      <text class="lane-label on" x="0" y="100">With stretto</text>
+      <g fill="#4d575b">
+        <rect x="0" y="115" width="50" height="22" rx="5"/>
+        <rect x="56" y="115" width="50" height="22" rx="5"/>
+        <rect x="112" y="115" width="50" height="22" rx="5"/>
+        <rect x="168" y="115" width="50" height="22" rx="5"/>
+        <rect x="224" y="115" width="50" height="22" rx="5"/>
+      </g>
+      <!-- the same two reads, made by stretto, riding in the second turn's result -->
+      <path d="M81 137 V152 H90 M81 152 V170 H104" stroke="#33c0c7" stroke-width="1.5" fill="none" opacity="0.6"/>
+      <g fill="#33c0c7">
+        <rect x="90" y="146" width="48" height="12" rx="3"/>
+        <rect x="104" y="164" width="48" height="12" rx="3"/>
+      </g>
+      <!-- the turns it no longer takes -->
+      <g fill="none" stroke="#3a4448" stroke-width="1.5" stroke-dasharray="4 4">
+        <rect x="280.75" y="115.75" width="48.5" height="20.5" rx="4.5"/>
+        <rect x="336.75" y="115.75" width="48.5" height="20.5" rx="4.5"/>
+      </g>
+    </svg>
+    <div class="legend"><span><i style="background:#4d575b"></i>LLM turn</span><span><i style="background:#0b292c;box-shadow:inset 0 0 0 1.5px #33c0c7"></i>a turn that only reads</span><span><i style="background:#33c0c7"></i>stretto's read</span></div>
+  </div>
+
+  <div class="result">
+    <span class="num">27.9%</span>
+    <span class="what">fewer LLM turns</span>
+    <span class="scope">Live: GLM-5.3 on 28 τ²-bench retail and airline tasks<br>95% CI 19.1–35.9%, paired with the recorded baseline</span>
+  </div>
+</div>
+</body>
+</html>
