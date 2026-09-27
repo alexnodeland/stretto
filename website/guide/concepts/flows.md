@@ -55,7 +55,7 @@ Every estimate in a flow is a posterior predictive of conjugate counts, so learn
 2. Learn again from the sessions recorded since, or from all of them.
 3. Compare the new flow with the one being served, with [`stretto flow-diff`](./audit-and-review#compare-two-flows). It exits with 1 when the new flow can do something the old one could not, such as a new lookup or a new source for an argument.
 
-Other agents' sessions can teach a flow too. Where agents act alike, they teach as much as the agent's own; where they do not, only the agent's own sessions teach its habits. In τ²-bench's telecom domain, a hundred of an agent's own sessions saved 15.2% of its turns, against 12.6% from all 1,184 of four other agents' ([the paper, §4.3](/research/paper#43-learning-from-few-sessions)).
+Other agents' sessions can teach a flow too. Where agents act alike, they teach as much as the agent's own; where they do not, only the agent's own sessions teach its habits. Replayed in τ²-bench's telecom domain, a hundred of an agent's own sessions saved 15.2% of its turns, against 12.6% from all 1,184 of four other agents' ([the paper, §4.3](/research/paper#43-learning-from-few-sessions)).
 
 ## The run after each call
 

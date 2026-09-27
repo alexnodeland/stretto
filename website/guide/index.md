@@ -4,9 +4,9 @@ description: stretto learns which reads an LLM agent makes next, and where their
 
 # What is stretto?
 
-stretto makes tool-using LLM agents take fewer turns. It watches an agent's tool calls through an MCP proxy, learns from them which reads the agent makes next and where their arguments come from, and then makes those reads for it. After each of the agent's own calls, the results of the reads the agent would have asked for next ride in the same tool result. The agent sees them before it asks, and skips the turns it would have spent asking.
+stretto makes tool-using LLM agents take fewer turns. It watches an agent's tool calls through an MCP proxy, learns from them which reads the agent makes next and where their arguments come from, and then makes those reads for it. After each of the agent's own calls, the results of the reads it was about to ask for ride in the same tool result. The agent sees them before it asks, and skips the turns it would have spent asking.
 
-It does this without a model of its own, without a new tool, and without changing the agent's prompt. It only ever reads: a flow never calls a tool the server marks as a write, so a wrong guess costs one extra lookup and never an action.
+It needs no new tool and no change to the agent's prompt, and, deciding by counts alone, no model of its own. It only ever reads: a flow never calls a tool the server marks as a write, so a wrong guess costs one extra lookup and never an action.
 
 ::: tip The name
 In a fugue, a *stretto* is where entries of the subject overlap and compress. stretto does that to an agent's tool calls: the reads the agent would make one turn at a time arrive together.
@@ -54,7 +54,7 @@ Every command and option is in the [CLI reference](/reference/cli).
 
 ## Where it helps
 
-stretto takes the reads whose arguments an earlier tool result supplies: an order id listed in the customer's record, a file a search found, the hotels a city's listing named. How much of an agent's work that is depends on the domain. On seven benchmarks it runs from 3.5% of LLM turns, where each request names what to read, to 47.1%, where one listing names what every later read takes ([the claims](/research/claims)). Replies to the user, writes, and reads that only the user's words can name stay with the model.
+stretto takes the reads whose arguments an earlier tool result supplies: an order id listed in the customer's record, a file a search found, the hotels a city's listing named. How much of an agent's work that is, the *read-only ceiling*, depends on the domain. Across seven benchmarks it runs from 3.5% of LLM turns, where each request names what to read, to 47.1%, where one listing names what every later read takes ([the claims](/research/claims)). Replies to the user, writes, and reads that only the user's words can name stay with the model.
 
 [Why stretto?](./why) says more about when it pays, with the evidence.
 

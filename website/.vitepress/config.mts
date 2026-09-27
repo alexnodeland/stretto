@@ -9,6 +9,8 @@ const srcDir = fileURLToPath(new URL('..', import.meta.url))
 const repoRoot = path.resolve(srcDir, '..')
 
 const base = '/stretto/'
+// `vitepress build` sets NODE_ENV before it reads this file; `vitepress dev` does not.
+const isBuild = process.env.NODE_ENV === 'production'
 const siteUrl = 'https://alexnodeland.github.io/stretto/'
 const repoUrl = 'https://github.com/alexnodeland/stretto'
 const branch = 'main'
@@ -63,7 +65,7 @@ const guide: DefaultTheme.SidebarItem[] = [
       { text: 'Sessions and recording', link: '/guide/concepts/sessions' },
       { text: 'Flows', link: '/guide/concepts/flows' },
       { text: 'Lookups and detours', link: '/guide/concepts/lookups' },
-      { text: 'Deciders: habit, reach, arbiter', link: '/guide/concepts/deciders' },
+      { text: 'Deciders: reach, habit, arbiter', link: '/guide/concepts/deciders' },
       { text: 'Bindings', link: '/guide/concepts/bindings' },
       { text: 'Shadow mode and promotion', link: '/guide/concepts/shadow-and-promotion' },
       { text: 'Audit and review', link: '/guide/concepts/audit-and-review' },
@@ -209,7 +211,8 @@ export default defineConfigWithTheme<ThemeConfig>({
         // The research notebook was the whole site before; it now lives at /notebook/,
         // copied in as a static page (scripts/copy-notebook.mjs).
         moved: { 'https://alexnodeland.github.io/stretto': '/notebook/' },
-        staticPaths: ['/notebook/']
+        staticPaths: ['/notebook/'],
+        devServer: !isBuild
       })
 
       // ```mermaid blocks render as diagrams, in the browser.

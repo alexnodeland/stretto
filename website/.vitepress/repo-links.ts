@@ -10,7 +10,7 @@
 //   points at that page, keeping its #fragment;
 // - a link to any other repository file or folder points at it on GitHub;
 // - an image stored outside `website/` is imported from where it is, so Vite copies it
-//   into the build;
+//   into the build (and `vitepress dev` serves it from there);
 // - a link to a file that does not exist fails the build, as VitePress's own dead-link
 //   check does for pages.
 //
@@ -48,6 +48,11 @@ export interface RepoLinksOptions {
   staticPaths?: string[]
   /** Fail the render when a link points at a file that does not exist (default true). */
   strict?: boolean
+  /**
+   * Rendering for `vitepress dev`: an image outside the site is served from where it is,
+   * through Vite's /@fs/ route. In a build it is imported, and Vite copies it.
+   */
+  devServer?: boolean
 }
 
 export interface SiteSources {
@@ -176,7 +181,7 @@ function locate(src: string, files: string[]): Range[] {
 }
 
 export function repoLinks(md: MarkdownRenderer, options: RepoLinksOptions) {
-  const { repoRoot, srcDir, base, repoUrl, branch, pages, moved = {}, staticPaths = [], strict = true } = options
+  const { repoRoot, srcDir, base, repoUrl, branch, pages, moved = {}, staticPaths = [], strict = true, devServer = false } = options
   const shown = (file: string) => posix(path.relative(repoRoot, file))
 
   md.core.ruler.push('stretto_repo_links', (state) => {
@@ -257,6 +262,7 @@ export function repoLinks(md: MarkdownRenderer, options: RepoLinksOptions) {
         problems.push(`image ${src} (in ${shown(source)}): ${shown(abs)} does not exist`)
         return undefined
       }
+      if (devServer) return `${base}@fs${posix(abs).startsWith('/') ? '' : '/'}${posix(abs)}`
       // Relative to the page, so that Vite imports the file and copies it into the build.
       const rel = posix(path.relative(path.dirname(page), abs))
       return rel.startsWith('.') ? rel : './' + rel

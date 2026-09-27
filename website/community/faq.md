@@ -42,7 +42,7 @@ Fewer than you might think, if they cover the kinds of request the agent sees. R
 
 ## Does any data leave my machine?
 
-Only to the MCP server the proxy fronts, unless you use the arbiter or the confirmation judge, which send questions, with parts of the conversation and recent results, to Jev. Session logs hold everything the tools read and return, verbatim, so keep them where that data may live ([privacy](/guide/concepts/privacy)).
+Only to the MCP server the proxy fronts, unless you ask a System-One model: serving with the arbiter, running the confirmation judge, or learning an arbiter (`stretto learn` without `--habit-only`) sends questions, with parts of the conversation and recent results, to Jev. Session logs hold everything the tools read and return, verbatim, so keep them where that data may live ([privacy](/guide/concepts/privacy)).
 
 ## Can I use it where there is no user?
 

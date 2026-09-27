@@ -66,7 +66,8 @@ In your MCP host's configuration, put `stretto-proxy` where the server's command
     "notes": {
       "command": "stretto-proxy",
       "args": ["--record", "~/.stretto/notes", "--domain", "notes",
-               "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "/home/me/notes"]
+               "--", "npx", "-y", "@modelcontextprotocol/server-filesystem",
+               "/home/me/notes"]
     }
   }
 }
@@ -89,8 +90,10 @@ A flow only calls tools the server marks `readOnlyHint: true`. The filesystem se
 stretto learn --sessions ~/.stretto/notes --domain notes --habit-only --out ~/.stretto/notes.flow.json
 ```
 
+With [the walkthrough](./walkthrough)'s eight sessions, it prints:
+
 ```text
-stretto: learned the notes flow from 8 sessions (14 tools) and wrote notes.flow.json
+stretto: learned the notes flow from 8 sessions (14 tools) and wrote /home/me/.stretto/notes.flow.json
 ```
 
 `--habit-only` asks no model: the flow learns from counts alone. It records which lookup followed which call, how often, and where each lookup's arguments came from in an earlier result.
@@ -112,7 +115,8 @@ Add the flow to the proxy's arguments:
 ```json
 "args": ["--record", "~/.stretto/notes", "--domain", "notes",
          "--flow", "~/.stretto/notes.flow.json", "--flow-decider", "reach",
-         "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "/home/me/notes"]
+         "--", "npx", "-y", "@modelcontextprotocol/server-filesystem",
+         "/home/me/notes"]
 ```
 
 Restart the server in your host. From now on, after each of the agent's calls, the flow makes the lookups whose chance of being used before the agent's next write, times the chance their arguments are the agent's, is at least 0.3 (`--flow-threshold`). Their results ride in the same tool result, under `--- Also looked up automatically ... ---`.
@@ -125,10 +129,10 @@ Restart the server in your host. From now on, after each of the agent's calls, t
 - **An audit.** Score the flow on sessions it never saw, recorded without it:
 
   ```sh
-  stretto audit --flow ~/.stretto/notes.flow.json --sessions ~/.stretto/notes-new --decider reach
+  stretto audit --flow ~/.stretto/notes.flow.json --sessions ~/.stretto/notes-new
   ```
 
-  At each point where the flow would decide, the audit compares its likeliest option with what the agent did next, per site.
+  At each point where the flow would decide, the audit compares the habit's likeliest option with what the agent did next, per site. To score the lookups themselves, used or not before the agent's next write, run the flow in [shadow mode](./concepts/shadow-and-promotion) and read `stretto promote`'s report.
 
 ## See the whole loop in one command
 

@@ -14,7 +14,8 @@ Both editors start stdio MCP servers from a JSON file. Put `stretto-proxy` in pl
     "notes": {
       "command": "stretto-proxy",
       "args": ["--record", "~/.stretto/notes", "--domain", "notes",
-               "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "/home/me/notes"]
+               "--", "npx", "-y", "@modelcontextprotocol/server-filesystem",
+               "/home/me/notes"]
     }
   }
 }
@@ -27,7 +28,8 @@ Both editors start stdio MCP servers from a JSON file. Put `stretto-proxy` in pl
       "type": "stdio",
       "command": "stretto-proxy",
       "args": ["--record", "~/.stretto/notes", "--domain", "notes",
-               "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "/home/me/notes"]
+               "--", "npx", "-y", "@modelcontextprotocol/server-filesystem",
+               "/home/me/notes"]
     }
   }
 }
@@ -45,7 +47,8 @@ Once you have [learned and reviewed a flow](/guide/quick-start#4-learn-a-flow), 
 ```json
 "args": ["--record", "~/.stretto/notes", "--domain", "notes",
          "--flow", "~/.stretto/notes.flow.json", "--flow-decider", "reach",
-         "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "/home/me/notes"]
+         "--", "npx", "-y", "@modelcontextprotocol/server-filesystem",
+         "/home/me/notes"]
 ```
 
 ## Notes

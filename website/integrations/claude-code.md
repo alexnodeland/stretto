@@ -16,7 +16,8 @@ A `.mcp.json` file at the project's root configures servers for everyone working
     "notes": {
       "command": "stretto-proxy",
       "args": ["--record", "~/.stretto/notes", "--domain", "notes",
-               "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "/home/me/notes"]
+               "--", "npx", "-y", "@modelcontextprotocol/server-filesystem",
+               "/home/me/notes"]
     }
   }
 }
@@ -47,7 +48,8 @@ Once you have [learned and reviewed a flow](/guide/quick-start#4-learn-a-flow), 
 ```json
 "args": ["--record", "~/.stretto/notes", "--domain", "notes",
          "--flow", "~/.stretto/notes.flow.json", "--flow-decider", "reach",
-         "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "/home/me/notes"]
+         "--", "npx", "-y", "@modelcontextprotocol/server-filesystem",
+         "/home/me/notes"]
 ```
 
 Claude Code then sees each flow lookup inside the result of the call it made, under `--- Also looked up automatically ... ---`. Run the flow with `--flow-shadow` first if you want to see what it would do before it acts ([shadow mode](/guide/concepts/shadow-and-promotion)).

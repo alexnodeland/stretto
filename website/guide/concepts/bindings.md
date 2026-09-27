@@ -45,8 +45,8 @@ In the walkthrough, the binding picked the agent's own `path` at 12 of its 14 re
 
 Nearly every detour in the research was the right lookup of the wrong record. Two counts in the flow cover the cases that produced them:
 
-- **A record the customer did not ask about** (`named_other`). Once the customer has named one record, the flow counts how often the agent went on to read another. Replayed, that cut GLM-5's airline detours from 56 to 4 at no cost in turns ([results](../../../docs/results/named-other-2026-09-26.md)).
-- **The record already found** (`described_read`). After the agent has read the record holding a value the customer gave, such as the line with a ticket's phone number, the flow counts how often it read another of the list. In τ²-bench's solo telecom replays that halved the flow's detours ([results](../../../docs/results/telecom-flows-2026-09-26.md)).
+- **A record the customer did not ask about** (`named_other`). When the customer has named one record of a list, a lookup of another is scored by how often, in training, the agent went on to read another in that case. Replayed, that cut GLM-5's airline detours from 56 to 4 at no cost in turns ([results](../../../docs/results/named-other-2026-09-26.md)).
+- **The record already found** (`described_read`). Once the record holding a value the customer gave has been read, such as the line with a ticket's phone number, a lookup of the next record of the list is scored by how often the agent read on in that case in training. In τ²-bench's solo telecom replays that halved the flow's detours ([results](../../../docs/results/telecom-flows-2026-09-26.md)).
 
 ## Lists, searches and constants
 

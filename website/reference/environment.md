@@ -4,21 +4,51 @@ description: The environment variables stretto reads - the optional TypeSafe key
 
 # Environment variables
 
-stretto needs no environment variable to record sessions, learn flows with the habit alone, serve them with the `reach` or `habit` decider, review, audit, promote, redact, or run a procedure. The TypeSafe variables matter only for what asks a System-One model.
-
-| Variable | Read by | What it does |
-|---|---|---|
-| `TYPESAFE_API_KEY` | anything that asks Jev | The key for TypeSafe's System-One model, Jev. Optional: see [when it is needed](#when-a-key-is-needed). Never logged. |
-| `TYPESAFE_API_KEY_FILE` | the same | A file holding the key, read when `TYPESAFE_API_KEY` is not set. Useful when the proxy runs under an agent's process, which should not hold the key itself. |
-| `TYPESAFE_BASE_URL` | the same | Where Jev is. Default `https://api.typesafe.ai`. |
-| `TYPESAFE_DEFAULT_MODEL` | the same | The model id to request when `--oracle-model` is not given. Default `jev-latest`. |
-| `SSL_CERT_FILE` | the same | A PEM bundle of extra root certificates for the connection to Jev, such as a proxy's. |
-| `STRETTO_REDACT_SALT` | `stretto redact` | The salt for pseudonymized values. `--salt-env` names another variable. Keep it secret, and the same for batches whose hashes should match. |
-| any, by name | `stretto-proxy --upstream-header NAME=VAR` | The value of the header `NAME` sent to a Streamable HTTP server, such as `ORDERS_AUTH` holding `Bearer …`. Never logged. |
-| `HOME` (or `USERPROFILE`) | `stretto-proxy` | Where a leading `~` in the proxy's path options points. |
-| `STRETTO_BLESS` | the test suite | Set when running `cargo test`, it rewrites the generated documentation (the [CLI reference](./cli), the examples in [reviewing flows](./review)) instead of failing on a difference. |
+stretto needs no environment variable to record sessions, learn flows with the habit alone, serve them with the `reach` or `habit` decider, review, audit, promote, redact, or run a procedure. The TypeSafe variables matter only for what asks a System-One model ([when a key is needed](#when-a-key-is-needed)).
 
 The wrapped server inherits the proxy's environment, so the variables a server needs go in the host's `env` block as usual. The proxy never records its environment.
+
+## The System-One model
+
+These are read by every command that asks TypeSafe's System-One model, Jev.
+
+### `TYPESAFE_API_KEY`
+
+The key for Jev. Optional: only the arbiter decider, the confirmation judge and some offline commands need it. Never logged.
+
+### `TYPESAFE_API_KEY_FILE`
+
+A file holding the key, read when `TYPESAFE_API_KEY` is not set. Useful when the proxy runs under an agent's process, which should not hold the key itself: the process gets the file's path, not the key.
+
+### `TYPESAFE_BASE_URL`
+
+Where Jev is. Default `https://api.typesafe.ai`.
+
+### `TYPESAFE_DEFAULT_MODEL`
+
+The model id to request when `--oracle-model` is not given. Default `jev-latest`.
+
+### `SSL_CERT_FILE`
+
+A PEM bundle of extra root certificates for the connection to Jev, such as a network proxy's.
+
+## Everything else
+
+### `STRETTO_REDACT_SALT`
+
+The salt `stretto redact` hashes values with. `--salt-env` names another variable. Keep it secret, and keep it the same for batches whose hashes should match.
+
+### Upstream header values
+
+`stretto-proxy --upstream-header NAME=VAR` sends the header `NAME` to a Streamable HTTP server with the value of the variable `VAR`, such as `ORDERS_AUTH` holding `Bearer …`. Any variable name works. The values are never logged.
+
+### `HOME`
+
+Where a leading `~` in the proxy's path options points (`USERPROFILE` when `HOME` is not set).
+
+### `STRETTO_BLESS`
+
+For the test suite. Set while running `cargo test`, it rewrites the generated documentation, the [CLI reference](./cli) and the examples in [reviewing flows](./review), instead of failing on a difference.
 
 ## When a key is needed
 

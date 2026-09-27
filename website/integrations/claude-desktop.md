@@ -17,7 +17,8 @@ Put `stretto-proxy` in place of the server's command, and the server's command a
     "notes": {
       "command": "/Users/me/.cargo/bin/stretto-proxy",
       "args": ["--record", "~/.stretto/notes", "--domain", "notes",
-               "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "/Users/me/notes"]
+               "--", "npx", "-y", "@modelcontextprotocol/server-filesystem",
+               "/Users/me/notes"]
     }
   }
 }
@@ -36,7 +37,8 @@ Once you have [learned and reviewed a flow](/guide/quick-start#4-learn-a-flow), 
 ```json
 "args": ["--record", "~/.stretto/notes", "--domain", "notes",
          "--flow", "~/.stretto/notes.flow.json", "--flow-decider", "reach",
-         "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "/Users/me/notes"]
+         "--", "npx", "-y", "@modelcontextprotocol/server-filesystem",
+         "/Users/me/notes"]
 ```
 
 ## When a server does not start

@@ -7,7 +7,7 @@ description: What stretto-proxy does after each of the agent's tool calls, how a
 <!-- BRAND SLOT: the animated explainer (website/public/explainer/index.html). Renders nothing until the file is there. -->
 <BrandEmbed kind="explainer" />
 
-stretto sits where MCP already puts a server: between the agent's host and the server. The host starts `stretto-proxy` as if it were the server, and the proxy starts the real one. Everything the two send each other passes through the proxy unchanged, except for one thing: when the proxy serves a flow, it adds the results of the lookups the flow made to the result of the agent's call.
+stretto sits where MCP already puts a server: between the agent's host and the server. The host starts `stretto-proxy` as if it were the server, and the proxy starts the real one. Everything the two send each other passes through the proxy unchanged unless you ask for more: when the proxy serves a flow, it adds the results of the lookups the flow made to the result of the agent's call.
 
 ## One call, step by step
 
@@ -54,7 +54,7 @@ A flow only makes reads: it calls only tools it learned as lookups and that the 
 
 <HowItWorks />
 
-Recording never stops: the proxy logs sessions whether or not it serves a flow. So the sessions a flow serves are new training data, and learning again is cheap. `stretto flow-diff` then says whether the new flow can do anything the old one could not, and exits with 1 if so, which fits a pull request ([audit and review](./concepts/audit-and-review)).
+With `--record`, the proxy logs sessions whether or not it serves a flow. So the sessions a flow serves are new training data, and learning again is cheap. `stretto flow-diff` then says whether the new flow can do anything the old one could not, and exits with 1 if so, which fits a pull request ([audit and review](./concepts/audit-and-review)).
 
 A new flow can start in [shadow mode](./concepts/shadow-and-promotion): it decides and logs what it would look up, but makes nothing, and `stretto promote` then keeps it to the sites where its lookups were the agent's own.
 
