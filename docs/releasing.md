@@ -7,6 +7,10 @@ A version tag, `vX.Y.Z`, pushed to the commit on `main` to release, starts two w
 
 Nothing is published to crates.io ([below](#cratesio)). [docs/install.md](install.md) is what users read.
 
+## Check a release first
+
+Run the Release workflow by hand from the Actions tab with *dry_run* checked, the default. It builds and packages the five targets and runs each binary's `--version` where the runner can. It also writes `SHA256SUMS`, the installers and the formula. It uploads all of that as the run's artifact `release`, and tags and publishes nothing, so a build that fails on macOS or Windows shows up before any tag does.
+
 ## Cut a release
 
 1. **Choose the version.** Before 1.0, bump the minor version for a change that a user must act on, such as a flow format this version no longer reads, and the patch version otherwise.
