@@ -78,9 +78,10 @@ const label = computed(
 const isDev = import.meta.env.DEV
 
 /**
- * The explainer's height in px, from its last message. It reports its page's
- * scrollHeight, which is never less than the frame's own height, so the frame
- * can grow to fit it but never shrink: start below its height on a wide page.
+ * The explainer's height in px, from its last message. It reports its
+ * content's height whenever that changes, so the frame follows it: on a phone,
+ * where each step is as tall as its own content, it grows and shrinks with the
+ * step shown.
  */
 const explainerHeight = ref(720)
 const frame = ref<HTMLIFrameElement | null>(null)

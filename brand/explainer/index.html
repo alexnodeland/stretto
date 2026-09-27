@@ -64,6 +64,7 @@
     -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
   }
   code, .mono { font-family: var(--mono); font-size: 0.9em; }
+  .nowrap { white-space: nowrap; }
   a { color: var(--accent); text-underline-offset: 2px; text-decoration-thickness: 1px; }
   a:hover { color: var(--accent-hover); }
   :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
@@ -367,7 +368,7 @@
       <div class="caption">
         <h2>Where stretto sits</h2>
         <p><code>stretto-proxy</code> wraps any MCP server. The MCP host runs it in place of the server's command, and it forwards every message both ways, unchanged. The agent keeps its prompt and its tools. Until you give the proxy a flow, it only forwards and records.</p>
-        <p class="scope"><code>stretto init</code> prints the host's configuration, for Claude Code, Claude Desktop, Cursor or VS Code. One proxy per server: the server's command after <code>--</code>, or a Streamable HTTP server with <code>--upstream</code>.</p>
+        <p class="scope"><code>stretto init</code> prints the host's configuration, for Claude Code, Claude Desktop, Cursor or VS Code. One proxy per server: the server's command after <code>--</code>, or a Streamable HTTP server with <code class="nowrap">--upstream</code>.</p>
       </div>
     </section>
 
@@ -815,9 +816,11 @@
   root.classList.toggle('no-motion', reduce.matches);
 
   // Embedding: report the height, and follow the parent's theme.
+  // The content's height, not the document's: that is never less than the
+  // frame, so a frame sized to it could grow but never shrink back.
   function postHeight() {
     if (window.parent === window) return;
-    window.parent.postMessage({ type: 'stretto-explainer:height', height: Math.ceil(document.documentElement.scrollHeight) }, '*');
+    window.parent.postMessage({ type: 'stretto-explainer:height', height: Math.ceil(document.body.getBoundingClientRect().height) }, '*');
   }
   window.addEventListener('message', e => {
     const d = e.data || {};
