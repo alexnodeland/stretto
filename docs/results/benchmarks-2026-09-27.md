@@ -214,7 +214,17 @@ The rule raises the threshold early, where a detour rides in the most turns, and
 - **Telecom gains by raising.** The agents that use fewer lookups than scored gain most: GPT-5.2 +57% and +102%, GLM-5 +30%.
 - **Airline gains by lowering**, with five times the detours, each late and cheap.
 
-A threshold per decision is only as good as each score where it is priced, and the scores are calibrated on average, not site by site. The average threshold forgives a score that is off where the costs are extreme. Calibrating each site, for instance a product lookup's chance counted per lookup rather than as the tool's chance times the argument's, would come first.
+A threshold per decision is only as good as each score where it is priced, and the scores are calibrated on average, not site by site. The average threshold forgives a score that is off where the costs are extreme.
+
+**Calibrating each site first** (`--recalibrate WEIGHT`). Each lookup is scored instead by the rate at which lookups at its site (site, tool and binding's chance) were used, counted in the other half of the agent's test tasks, with the model's score as a Beta prior of WEIGHT lookups. The two halves are scored in turn, so no lookup is scored on its own outcome.
+
+| Domain | θ*, recalibrated (40) | Per decision, recalibrated (40) | θ*, recalibrated (10) | Per decision, recalibrated (10) |
+|---|---|---|---|---|
+| Retail | −1.0% | −3.5% | +0.5% | −3.2% |
+| Airline | +1.0% | +4.6% | −14.1% | −1.2% |
+| Telecom | +2.5% | +2.7% | −0.4% | +0.6% |
+
+Changes are against θ* with the model's scores. Calibrating the sites removes most of retail's loss, which was the miscalibrated sites', and leaves the threshold per decision within 5% of θ* everywhere. With a prior of 10 lookups it overfits airline's twenty test tasks. The served threshold stays the domain's: pricing each decision gains little once the scores are right on average, and costs much where they are not.
 
 ## What the binder learned
 
@@ -290,7 +300,7 @@ python3 scripts/calibration.py replays/c-travel-*-habit-0.3 --versus replays/c-t
 python3 pilot/check_flow.py --domain retail --trials 0 1 2 3 --results .data/tau2-targets/glm-5_enabled_retail_gpt-5.2_4trials.json \
     --flow pool-retail.flow.json --flow-decider reach --flow-threshold 0.1 --flow-oracle replay --explore 0 \
     --in-process --tau2 ../tau2-bench --out perdec/c-retail-glm-5_enabled_retail_gpt-5.2_4trials   # each agent and domain
-python3 scripts/per_decision.py --replays perdec --results .data/tau2-targets --sweep sweep --tau2 ../tau2-bench
+python3 scripts/per_decision.py --replays perdec --results .data/tau2-targets --sweep sweep --tau2 ../tau2-bench --recalibrate 40
 ```
 
 The rows behind every table are in [benchmarks-2026-09-27.json](benchmarks-2026-09-27.json): the trace-versus-environment comparison, each agent's ceiling, every replay's totals and episodes, the calibration summaries, the list ablation, the WorkBench runs before bare calls were counted, DTap-Bench by the flow's source, and the per-decision evaluation. The flows every replay served are in [benchmarks-2026-09-27-flows.tar.gz](benchmarks-2026-09-27-flows.tar.gz).

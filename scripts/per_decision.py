@@ -23,10 +23,13 @@ flat thresholds, check the result against the sweep's actual replays
 
 `--replays` holds `c-<domain>-<name>/decisions.jsonl` for results
 `<name>.json` in `--results`. Prints, per domain and pooled over agents, the
-counted utility of flat thresholds, of the domain's θ* (its pooled β and δ
-from `costs.py`, `--theta-star`), and of three per-decision rules: the
-threshold per decision, and that threshold capped at θ* from above or from
-below (`lower only`, `raise only`).
+counted utility of flat thresholds, of the domain's θ* (Appendix B's pooled
+β and δ from `costs.py`), and of three per-decision rules: the threshold per
+decision, and that threshold capped at θ* from above or from below (`lower
+only`, `raise only`). With `--recalibrate WEIGHT`, also θ* and the threshold
+per decision with each lookup scored by its own site's rate of use (site,
+tool and binding's chance), counted on the other half of the tasks and shrunk
+towards the model's score as a prior of WEIGHT lookups.
 """
 
 import argparse
@@ -78,7 +81,38 @@ def positions(msgs):
     return after, nxt
 
 
-def evaluate(decisions, eps, cpt, mean_tok, rule) -> dict:
+def calibration(decisions, weight: float) -> dict:
+    """Each site's own rate of use, counted: for (site, tool, binding's chance) the options weighed there and how
+    many the agent used, to shrink the model's score towards, Beta-binomial with the score as prior mean."""
+    counts = defaultdict(lambda: [0, 0])
+    for d in decisions:
+        for o, lab in zip(d["policy"]["options"], d["labels"]):
+            if o.get("arguments") is None or o.get("binding") is None or not (lab["used"] or lab["detour"]):
+                continue
+            k = (d.get("site"), o["tool"], round(o["binding"], 2))
+            counts[k][0] += 1
+            counts[k][1] += lab["used"]
+    return {"counts": counts, "weight": weight}
+
+
+def half(d) -> int:
+    """A decision's half of the tasks, for cross-fitting."""
+    t = str(d["policy"].get("task_id") or d.get("episode", ""))
+    return int(t) % 2 if t.isdigit() else sum(map(ord, t)) % 2
+
+
+def score(o, d, cal) -> tuple[float, float]:
+    """The rule's two tests: the tool's chance and the lookup's (times its binding's), or with `cal`, the
+    lookup's chance recalibrated at its site for both."""
+    v = o["p"] * o["binding"]
+    if cal is None:
+        return o["p"], v
+    n, used = cal["counts"].get((d.get("site"), o["tool"], round(o["binding"], 2)), (0, 0))
+    q = (used + cal["weight"] * v) / (n + cal["weight"])
+    return q, q
+
+
+def evaluate(decisions, eps, cpt, mean_tok, rule, cal=None) -> dict:
     saved = util = 0.0
     detours = lookups = 0
     by_ep = defaultdict(list)
@@ -102,8 +136,8 @@ def evaluate(decisions, eps, cpt, mean_tok, rule) -> dict:
                     delta = mean_tok.get(o["tool"], 0.0) * after[at]
                     beta = nxt[at] + call_tok * max(0, after[at] - 1)
                     th = rule(delta / (beta + delta) if beta + delta > 0 else 1.0)
-                    v = o["p"] * o["binding"]
-                    if o["p"] >= th and v >= th:
+                    q, v = score(o, d, cal)
+                    if q >= th and v >= th:
                         cand.append((v, o, lab, delta, call_tok))
                 if not cand:
                     break
@@ -129,6 +163,9 @@ def main():
     ap.add_argument("--sweep", type=Path, help="actual replays sw-<domain>-<name>-reach-<θ>, to check flat thresholds against")
     ap.add_argument("--tau2", type=Path, default=Path("../tau2-bench"))
     ap.add_argument("--thetas", default="0.1,0.15,0.2,0.3,0.4,0.5")
+    ap.add_argument("--recalibrate", type=float, metavar="WEIGHT",
+                    help="also score each lookup by its site's own rate of use, counted on the other half of the tasks "
+                         "(cross-fitted), with the model's score as a prior of this many lookups")
     ap.add_argument("--json", type=Path)
     args = ap.parse_args()
     thetas = [float(x) for x in args.thetas.split(",")]
@@ -148,6 +185,13 @@ def main():
         row["per decision"] = evaluate(decisions, eps, cpt, mean_tok, lambda x: x)
         row["lower only"] = evaluate(decisions, eps, cpt, mean_tok, lambda x: min(star, x))
         row["raise only"] = evaluate(decisions, eps, cpt, mean_tok, lambda x: max(star, x))
+        if args.recalibrate:
+            for k, rule in [("theta star, recalibrated", lambda x: star), ("per decision, recalibrated", lambda x: x)]:
+                parts = []
+                for f in (0, 1):
+                    cal = calibration([x for x in decisions if half(x) != f], args.recalibrate)
+                    parts.append(evaluate([x for x in decisions if half(x) == f], eps, cpt, mean_tok, rule, cal))
+                row[k] = {m: parts[0][m] + parts[1][m] for m in parts[0]}
         rows[d.name] = row
         for t in thetas if args.sweep else []:
             chk = args.sweep / f"sw-{dom}-{name}-reach-{t:g}" / "check.json"
@@ -167,11 +211,13 @@ def main():
         base = sum(r["theta star"]["util"] for r in rs)
         summary[dom] = {}
         print(f"{dom} ({len(rs)} agents, θ* = {THETA_STAR[dom]})")
-        for k in ["theta star", "per decision", "lower only", "raise only"]:
+        for k in ["theta star", "per decision", "lower only", "raise only", "theta star, recalibrated", "per decision, recalibrated"]:
+            if k not in rs[0]:
+                continue
             tot = {m: sum(r[k][m] for r in rs) for m in ("util", "saved", "detours", "lookups")}
             change = [r[k]["util"] / r["theta star"]["util"] - 1 for r in rs if r["theta star"]["util"] > 0]
             summary[dom][k] = {**tot, "change": tot["util"] / base - 1, "per_agent_change": [min(change), max(change)]}
-            print(f"  {k:13s} utility {tot['util'] / 1e6:6.2f}M tokens ({tot['util'] / base - 1:+.1%}; per agent {min(change):+.0%} to {max(change):+.0%})"
+            print(f"  {k:26s} utility {tot['util'] / 1e6:6.2f}M tokens ({tot['util'] / base - 1:+.1%}; per agent {min(change):+.0%} to {max(change):+.0%})"
                   f"  saved {tot['saved']:7.1f}  detours {tot['detours']:5d}")
     if args.json:
         args.json.write_text(json.dumps({"validation": validation, "summary": summary, "rows": rows}, indent=1) + "\n")
