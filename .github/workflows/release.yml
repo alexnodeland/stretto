@@ -3,29 +3,49 @@ name: Release
 # Makes a GitHub release whose notes are the version's section of
 # CHANGELOG.md, on a version tag (v0.1.0), or when run by hand from the
 # Actions tab, which tags the commit it runs on v<the version in Cargo.toml>
-# first. Nothing is published to crates.io.
+# first. The release carries the binaries for five targets, an archive each
+# with LICENSE and README.md, their SHA256SUMS, install.sh, install.ps1 and
+# a Homebrew formula with the checksums filled in. A tag with a hyphen
+# (v0.2.0-rc.1) makes a pre-release, which install.sh does not take as the
+# latest. Nothing is published to crates.io. docs/releasing.md has the
+# steps.
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
-  release:
+  # The tag and the notes first, so that a tag that is not Cargo.toml's
+  # version, or a missing CHANGELOG.md section, fails before any build.
+  notes:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
       - name: The tag
+        id: tag
         run: |
+          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
           if [ "$GITHUB_EVENT_NAME" = push ]; then
-            echo "TAG=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+            tag=$GITHUB_REF_NAME
+            if [ "$tag" != "v$version" ]; then
+              echo "::error::the tag is $tag, but the version in Cargo.toml is $version"
+              exit 1
+            fi
           else
-            version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
-            echo "TAG=v$version" >> "$GITHUB_ENV"
+            tag=v$version
           fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - name: Notes from CHANGELOG.md
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
           awk -v head="## ${TAG#v} " '
             /^## / { if (found) exit; if (index($0, head) == 1) { found = 1; next } }
@@ -34,12 +54,106 @@ jobs:
             | perl -pe 's{\]\((?!https?://|#)([^)]+)\)}{](https://github.com/$ENV{GITHUB_REPOSITORY}/blob/$ENV{TAG}/$1)}g' \
             > notes.md
           test -s notes.md
-      - name: Create the release
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: notes
+          path: notes.md
+          if-no-files-found: error
+
+  build:
+    needs: notes
+    name: build (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Built on Ubuntu 22.04, the Linux binaries need glibc 2.35 or later.
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-22.04-arm
+          # Both macOS targets build on Apple silicon, whose SDK targets Intel
+          # too; GitHub is retiring its Intel macOS runners.
+          - target: aarch64-apple-darwin
+            os: macos-14
+          - target: x86_64-apple-darwin
+            os: macos-14
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    env:
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Build
+        shell: bash
+        run: cargo build --locked --release --target "$TARGET" -p stretto-report -p stretto-proxy
+      - name: Package
+        shell: bash
         run: |
-          if [ "$GITHUB_EVENT_NAME" = push ]; then
-            gh release create "$TAG" --verify-tag --title "stretto $TAG" --notes-file notes.md
-          else
-            gh release create "$TAG" --target "$GITHUB_SHA" --title "stretto $TAG" --notes-file notes.md
+          name=stretto-$TARGET
+          exe=
+          case $TARGET in *-windows-*) exe=.exe ;; esac
+          mkdir "$name"
+          for bin in stretto stretto-proxy stretto-procedure stretto-mcp-demo; do
+            cp "target/$TARGET/release/$bin$exe" "$name/"
+          done
+          cp LICENSE README.md "$name/"
+          # Each binary answers --version, where the runner can run it.
+          if [ "$TARGET" != x86_64-apple-darwin ]; then
+            for bin in stretto stretto-proxy stretto-procedure stretto-mcp-demo; do
+              "./$name/$bin$exe" --version
+            done
           fi
+          if [ -n "$exe" ]; then
+            7z a -tzip "$name.zip" "$name" > /dev/null
+          else
+            COPYFILE_DISABLE=1 tar -czf "$name.tar.gz" "$name"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stretto-${{ matrix.target }}
+          path: stretto-${{ matrix.target }}.*
+          if-no-files-found: error
+
+  release:
+    needs: [notes, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # the release, and its tag when run by hand
+      actions: write # the container workflow, when run by hand
+    env:
+      TAG: ${{ needs.notes.outputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums, the installers and the Homebrew formula
+        working-directory: dist
+        run: |
+          sha256sum stretto-*.tar.gz stretto-*.zip > SHA256SUMS
+          cat SHA256SUMS
+          cp ../install.sh ../install.ps1 .
+          sh ../packaging/homebrew/fill.sh "$TAG" SHA256SUMS > stretto.rb
+      - name: Create the release
+        run: |
+          set -- --title "stretto $TAG" --notes-file dist/notes.md
+          case $TAG in *-*) set -- "$@" --prerelease ;; esac
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            set -- "$@" --verify-tag
+          else
+            set -- "$@" --target "$GITHUB_SHA"
+          fi
+          gh release create "$TAG" "$@" dist/stretto-*.tar.gz dist/stretto-*.zip \
+            dist/SHA256SUMS dist/install.sh dist/install.ps1 dist/stretto.rb
+      # A tag that the workflow's own token creates starts no other workflow,
+      # so when run by hand, start the container workflow on the new tag.
+      - name: The container image, when run by hand
+        if: github.event_name == 'workflow_dispatch'
+        run: gh workflow run container.yml --ref "$TAG"
