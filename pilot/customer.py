@@ -67,7 +67,10 @@ def reply(
         except json.JSONDecodeError:
             out = {"is_error": True, "result": done.stdout[-500:] or done.stderr[-500:]}
         if not out.get("is_error") and out.get("result"):
-            return out["result"].strip(), out.get("usage", {})
+            # With the reply's cost at list prices, which a Claude customer's
+            # output reports beside its usage.
+            usage = out.get("usage", {}) | ({"total_cost_usd": out["total_cost_usd"]} if "total_cost_usd" in out else {})
+            return out["result"].strip(), usage
         last = str(out.get("result"))
         time.sleep(5 * (attempt + 1))
     raise RuntimeError(f"customer simulator failed: {last}")

@@ -32,6 +32,8 @@ PATH=~/.venvs/tau2/bin:$PATH python run_episode.py --task-id 90 --out runs/pilot
 
 `--confirm-judge log|enforce` adds [the confirmation judge](../crates/stretto-proxy/README.md) to the guards arm: the proxy puts each write the guards check for a confirmation to Jev as well, logs the judgment in `log/*.confirm.jsonl`, and in `enforce` refuses a write Jev fails. `--confirm-second proposed` asks the second question too, and `--confirm-second-shadow` only logs its answer. The proxy runs under the agent's process, so the harness hands it Jev's key in a file only the proxy opens (`TYPESAFE_API_KEY_FILE`): mode 0600, outside the episode directory, and deleted when the agent exits. The agent's process gets the file's path, never the key. `--label` names the arm's directory under `--out`, so two judge settings can share one. `result.json` lists the judgments.
 
+`--batch-reads` ends the agent's system prompt with the sample prompt for maximum parallel efficiency from Anthropic's prompting guide, word for word: the prompting baseline a flow has to beat. It combines with any arm. With a Claude agent, `result.json` also records the agent's and the customer's cost at list prices (`total_cost_usd`) and the subscription's last reported windows (`rate_limit`). `--flow-oracle mock` with `--flow` needs no `--oracle-cache`: the mock never reads one, and the habit and reach deciders never ask it.
+
 `--record-context` hands the proxy the conversation, as the guards arm does, so the session log in `log/` can train a flow with `stretto learn` (see the cold start below). `--read-only-hints` makes `tau2_mcp.py` mark τ²-bench's read tools `readOnlyHint: true` and its writes `false` in `tools/list`, as a real server would, so `stretto learn --sessions` takes the tools' kinds from the log and needs no `--manifest`. The pilots ran without it, so their agents all saw the same tool list. `--flow` serves a compiled or learned flow instead of compiling one per episode.
 
 The flows arm needs `cargo build --release -p stretto-report` and a replay cache holding the goal-free v2 answers. `--arm habit` runs the same flow on the habit alone; it still compiles from the cache, but asks Jev nothing live. Fill it with `stretto phase0 --oracle jev --questions v2 --predicates data/predicates-v2.json --no-intent`, or import the published bundles (the v2 bundle and its goal-free supplement, in `docs/results/`). Pilot tasks come from the test split, so the habit never trained on them. Each task is judged by the arbiter of its own fold, which never saw it.
@@ -46,6 +48,15 @@ The episode directory (`runs/pilot/baseline/task-90/`) holds everything:
 - in the flows arm, every flow answer (`flow.jsonl`) and `flow-serve`'s log.
 
 `rescore.py` scores recorded episodes again with τ²-bench's evaluator. By default it uses the database check, as the pilots did, and it can apply τ²-bench's communication check or each task's full reward basis (`--scoring communicate`, `--scoring basis`). The published pilots' episodes are in `docs/results/*-episodes.tar.gz` ([the episodes page](../docs/results/episodes-2026-09-24.md)), and `rescore.py` reproduces every recorded reward from them.
+
+## Paired trials on a Claude subscription
+
+[`run_trials.py`](run_trials.py) runs every task, trial and arm of a design (`baseline`, `reach`, `batch`, `batch-reach`) with Claude models as agent and customer, a few episodes at a time, and resumes where a stopped run left off. Before each episode it reads the subscription's windows from the agent's stream: it stops once the seven-day window reaches `--week-cap`, and waits for the five-hour window to reset once that reaches `--window-cap`. [`analyze_trials.py`](analyze_trials.py) reports pass^k, turns, tokens, cost and time for each arm, and compares each pair of arms on the same tasks and trials. See [the plan](../docs/results/frontier-2026-09-27-plan.md).
+
+```bash
+PATH=~/.venvs/tau2/bin:$PATH python run_trials.py --model claude-sonnet-5 --out runs/frontier/sonnet
+PATH=~/.venvs/tau2/bin:$PATH python analyze_trials.py runs/frontier/sonnet --markdown
+```
 
 ## Results so far
 

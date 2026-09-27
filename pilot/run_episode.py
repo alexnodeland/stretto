@@ -54,6 +54,11 @@ of the ticket's outcome failed (the cascade).
 (`claude-agent.sh`, with `--model`), and `--customer-cli claude
 --customer-model M` the customer.
 
+`--batch-reads` adds Anthropic's sample prompt for parallel tool calls to the
+agent's system prompt (BATCH_READS): the baseline a flow must beat when the
+agent is simply asked to make its independent calls at once. It combines with
+any arm.
+
     python run_episode.py --task-id 90 --out runs/pilot
     python run_episode.py --task-id 90 --out runs/pilot --arm flows \
         --oracle-cache ../.oracle-cache
@@ -93,6 +98,22 @@ STOPS = (STOP, TRANSFER, OUT_OF_SCOPE)
 FLOW_ARMS = {"flows": "arbiter", "habit": "habit", "reach": "reach"}
 # τ²-bench's solo agent never speaks; its first turn has no message to answer.
 SOLO_START = "Start on the ticket."
+# `--batch-reads`: the sample prompt for maximum parallel efficiency in
+# Anthropic's prompting guide ("Optimize parallel tool calling",
+# platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices),
+# word for word, as one paragraph.
+BATCH_READS = (
+    "<use_parallel_tool_calls>\n"
+    "If you intend to call multiple tools and there are no dependencies between the tool calls, "
+    "make all of the independent tool calls in parallel. Prioritize calling tools simultaneously "
+    "whenever the actions can be done in parallel rather than sequentially. For example, when "
+    "reading 3 files, run 3 tool calls in parallel to read all 3 files into context at the same "
+    "time. Maximize use of parallel tool calls where possible to increase speed and efficiency. "
+    "However, if some tool calls depend on previous calls to inform dependent values like the "
+    "parameters, do NOT call these tools in parallel and instead call them sequentially. Never "
+    "use placeholders or guess missing parameters in tool calls.\n"
+    "</use_parallel_tool_calls>"
+)
 
 
 def now() -> str:
@@ -104,7 +125,7 @@ def start_flow(args, episode: Path) -> tuple[subprocess.Popen, str]:
     listens, return it and its address."""
     serving = [
         "--oracle", args.flow_oracle,
-        "--oracle-cache", str(args.oracle_cache),
+    ] + (["--oracle-cache", str(args.oracle_cache)] if args.oracle_cache else []) + [
         "--threshold", str(args.flow_threshold),
         "--decider", getattr(args, "flow_decider", "arbiter"),
         "--max-questions", str(getattr(args, "flow_max_questions", 300)),
@@ -236,13 +257,22 @@ def main() -> None:
         "or a stretto-procedure run)",
     )
     parser.add_argument(
+        "--batch-reads", action="store_true",
+        help="add Anthropic's sample prompt for parallel tool calls to the agent's system prompt "
+        "(BATCH_READS): the prompting baseline",
+    )
+    parser.add_argument(
         "--read-only-hints", action="store_true",
         help="mark τ²-bench's read tools readOnlyHint: true (writes false) in tools/list, as a real "
         "server would, so `stretto learn` needs no --manifest (off in the pilots)",
     )
     args = parser.parse_args()
-    if args.arm in FLOW_ARMS and not args.oracle_cache:
-        parser.error(f"the {args.arm} arm needs --oracle-cache")
+    # The mock oracle never reads a cache; nor is it asked by the habit or
+    # reach decider, so a served flow file needs no cache with it.
+    if args.arm in FLOW_ARMS and not args.oracle_cache and args.flow_oracle != "mock":
+        parser.error(f"the {args.arm} arm needs --oracle-cache, or --flow-oracle mock")
+    if args.arm in FLOW_ARMS and not args.oracle_cache and not args.flow:
+        parser.error(f"the {args.arm} arm compiles a flow here: give it --oracle-cache, or a --flow")
     if args.confirm_judge and (args.arm != "guards" or not args.oracle_cache):
         parser.error("--confirm-judge needs --arm guards and --oracle-cache")
     if args.confirm_second and not args.confirm_judge:
@@ -257,6 +287,8 @@ def main() -> None:
         parser.error("--handback needs --solo")
     if args.solo and (args.arm == "guards" or args.record_context):
         parser.error("--solo has no conversation for the guards arm or --record-context")
+    if args.solo and args.batch_reads:
+        parser.error("--batch-reads adds to the conversational system prompt, not --solo's")
     args.flow_decider = FLOW_ARMS.get(args.arm, "arbiter")
 
     task = next(
@@ -309,7 +341,8 @@ def main() -> None:
         say("assistant", GREETING)
         say("user", first)
 
-    python = Path(subprocess.check_output(["which", "python"], text=True).strip())
+    # The tools run in this interpreter's environment, which has τ²-bench.
+    python = Path(sys.executable)
     judge, server_env = [], {}
     if args.confirm_judge:
         judge = [
@@ -363,6 +396,8 @@ def main() -> None:
         system = SYSTEM_PROMPT.format(
             agent_instruction=AGENT_INSTRUCTION, domain_policy=env.get_policy()
         )
+        if args.batch_reads:
+            system += "\n" + BATCH_READS
     agent = subprocess.Popen(
         [
             str(WRAPPERS[args.agent_cli]), "-p", "--bare", "--tools", "",
@@ -499,15 +534,24 @@ def main() -> None:
     # LLM turns and calls, from the agent's own event stream.
     responses: dict[str, int] = {}
     results = []
+    # A Claude Code subscription's last reported windows (a Claude agent only).
+    rate_limit = None
     for line in (episode / "events.jsonl").read_text().splitlines():
         event = json.loads(line)
+        if event.get("type") == "rate_limit_event":
+            rate_limit = event.get("rate_limit_info")
         if event.get("type") == "assistant":
             message = event.get("message", {})
             calls = sum(1 for b in message.get("content", []) if b.get("type") == "tool_use")
             key = message.get("id") or str(len(responses))
             responses[key] = responses.get(key, 0) + calls
         elif event.get("type") == "result":
-            results.append({k: event.get(k) for k in ("num_turns", "usage", "is_error", "modelUsage")})
+            # `usage` is the turn's; `modelUsage` and `total_cost_usd` (at list
+            # prices) are the session's so far.
+            results.append({
+                k: event.get(k)
+                for k in ("num_turns", "usage", "is_error", "modelUsage", "total_cost_usd", "duration_ms", "duration_api_ms")
+            })
     tools = json.loads((episode / "tools-state.json").read_text())
     # The proxy's refusals, from its session log (guards arm).
     refusals = []
@@ -569,6 +613,8 @@ def main() -> None:
         "customer_turns": len(customer_usage),
         "agent_results": results,
         "customer_usage": customer_usage,
+        "batch_reads": args.batch_reads,
+        "rate_limit": rate_limit,
         "duration_s": round(time.time() - t0, 1),
     }
     (episode / "result.json").write_text(json.dumps(result, indent=1))
