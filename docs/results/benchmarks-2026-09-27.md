@@ -222,7 +222,18 @@ Turns saved by reach over the six domains, by the flow's source, with the share 
 - **Own flows overreach where sessions are few.** In customer service, learned from 96 runs of one agent, the flows score high and miss: of the reach flows' lookups scored 0.8–0.9, a quarter were used. Learned from all seven agents, they keep 90% of the own flows' turns with 60% of their detours (over the six domains, 92% with 91%).
 - **Reach leads in every domain with reads to take, least in CRM and the operating system's files**, whose ceilings are 11.5% and 11.2% (+0.1 to +1.1 points). With the agents' own runs it takes 86% of travel's ceiling and 38% of telecom's. In medical both deciders make the same lookups, gpt-oss-120b's, and save 49 of its 20,062 turns.
 
-**Do agents skip what they already have?** The replay assumes that an agent that sees a lookup's result does not make the call itself. The record shows how often an agent makes a read again that it already made, with no write between, as an agent that ignored a lookup's result would (`scripts/remade.py --results`). Six of the seven agents did so for 22 of their 21,524 reads over the six domains, in all three harnesses. gpt-oss-120b did so for 1,919 of its 8,471 (23%; 7 of 766 in the operating system's files, 995 of 4,056 in medical), so its replayed savings are upper bounds. On MCPMark's four real servers, the nine replayed models made 3.4% of their reads again after the same read had succeeded, and 0.8% more after it had failed: the Claude and GPT-5 models under 1%, Kimi K2 and Gemini 2.5 Pro under 2%, and Qwen3 Max, o3 and Grok 4 5.5%, 8.3% and 9.3%.
+**Do agents skip what they already have?** The replay assumes that an agent that sees a lookup's result does not make the call itself. The record shows how often an agent makes a read again that it already made, with no write between, as an agent that ignored a lookup's result would (`scripts/remade.py --results`). Six of the seven agents did so for 22 of their 21,524 reads over the six domains, in all three harnesses. gpt-oss-120b did so for 1,919 of its 8,471 (23%; 7 of 766 in the operating system's files, 995 of 4,056 in medical), so its replayed savings are upper bounds. Counted the same way for every replayed agent of the other benchmarks (`scripts/remade.py --results`):
+
+| Benchmark | Agents | Reads | Made again, no write between | Most by one agent |
+|---|---|---|---|---|
+| τ²-bench | 9 (27 runs) | 58,129 | 0.8% | 4.1% (one run) |
+| τ-bench | 2 | 10,608 | 1.0% | 1.1% |
+| BFCL | 10 | 7,880 | 0.9% | 2.0% (DeepSeek V3.2) |
+| AgentDojo | 10 | 2,390 | 1.5% | 6.2% (Llama 3.3 70B) |
+| WorkBench | 14 | 21,060 | 2.6% | 17.5% (Qwen3.5 Flash) |
+| DTap-Bench | 7 | 29,995 | 6.5% | 23% (gpt-oss-120b) |
+
+The median agent of each benchmark repeats at most 1.1% of its reads; a few models repeat many, and their replayed savings are upper bounds. On MCPMark's four real servers, the nine replayed models made 3.4% of their reads again after the same read had succeeded, and 0.8% more after it had failed: the Claude and GPT-5 models under 1%, Kimi K2 and Gemini 2.5 Pro under 2%, and Qwen3 Max, o3 and Grok 4 5.5%, 8.3% and 9.3%.
 
 ### Calibration
 
@@ -334,7 +345,7 @@ With the count, the WorkBench flows make no lookup at all in the 13,869 turns of
 
 ## Caveats
 
-- **Counterfactual turns.** A replay counts what the flow would have spared an agent that otherwise acted as recorded. Live, GLM-5.3 made none of the flow's 101 lookups again (the paper, §6). The 72 agents here were never run with a flow. Six of DTap-Bench's seven agents repeated 22 of their 21,524 reads with no write between; gpt-oss-120b repeated 23%, and its savings are upper bounds.
+- **Counterfactual turns.** A replay counts what the flow would have spared an agent that otherwise acted as recorded. Live, GLM-5.3 made none of the flow's 101 lookups again (the paper, §6). The 72 agents here were never run with a flow. Six of DTap-Bench's seven agents repeated 22 of their 21,524 reads with no write between; gpt-oss-120b repeated 23%, and its savings are upper bounds. On the other benchmarks agents repeat 0.8–2.6% of their reads, most of them by a few models (Qwen3.5 Flash 17.5% in WorkBench).
 - **Detours are lower bounds.** They are 55–72% of the environment's on τ²-bench, and the reach decider's lead in savings comes with more detours than these tables show. The paper's costs make one saved turn worth about 2.4 detours in retail and about 7 in airline and telecom.
 - **One trial each.** BFCL, AgentDojo, WorkBench and DTap-Bench publish one run per model and task (DTap-Bench's latest, where a task was run again), so their intervals are over tasks, with every agent's episode of a task drawn together.
 - **Constants.** Counted in the ceiling (`scripts/ceiling.py`'s third count), arguments an agent passes with one value every time would add 5.2 points of Notion's turns, 2.2 of DTap-Bench's OS files', 2.0 of its CRM's, 0.8 of its customer service's and 0.1 of BFCL's, and nothing in the other domains. `learn --constants` learns them; AgentDojo banking's agents pass a different number of transactions from task to task.
