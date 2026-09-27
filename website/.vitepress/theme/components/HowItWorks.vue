@@ -31,24 +31,31 @@ const steps = [
 </script>
 
 <template>
-  <ol class="how-it-works">
-    <li v-for="(step, index) in steps" :key="step.title" class="how-it-works__step">
-      <a class="how-it-works__card" :href="withBase(step.link)">
-        <span class="how-it-works__number" aria-hidden="true">{{ index + 1 }}</span>
-        <span class="how-it-works__title">{{ step.title }}</span>
-        <span class="how-it-works__text">{{ step.text }}</span>
-        <code class="how-it-works__code">{{ step.code }}</code>
-      </a>
-    </li>
-  </ol>
+  <div class="how-it-works-frame">
+    <ol class="how-it-works">
+      <li v-for="(step, index) in steps" :key="step.title" class="how-it-works__step">
+        <a class="how-it-works__card" :href="withBase(step.link)">
+          <span class="how-it-works__number" aria-hidden="true">{{ index + 1 }}</span>
+          <span class="how-it-works__title">{{ step.title }}</span>
+          <span class="how-it-works__text">{{ step.text }}</span>
+          <code class="how-it-works__code"><template v-for="(word, i) in step.code.split(' ')" :key="i">{{ i ? ' ' : '' }}<span class="how-it-works__word">{{ word }}</span></template></code>
+        </a>
+      </li>
+    </ol>
+  </div>
 </template>
 
 <style scoped>
+.how-it-works-frame {
+  container-type: inline-size;
+  margin: 24px 0 8px;
+}
+
 .how-it-works {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
-  margin: 24px 0 8px;
+  margin: 0;
   padding: 0;
   list-style: none;
   counter-reset: none;
@@ -124,6 +131,25 @@ const steps = [
   color: var(--vp-c-text-1);
   background: var(--vp-c-bg);
   overflow-wrap: anywhere;
+}
+
+/* A command breaks between its words, not after a flag's hyphens; only a
+   word wider than the box breaks inside itself. */
+.how-it-works__word {
+  display: inline-block;
+  max-width: 100%;
+}
+
+/* Four steps side by side need the home page's width. In a page's text
+   column, their commands would break inside words: two by two there. */
+@container (max-width: 879px) {
+  .how-it-works {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .how-it-works__step:nth-child(odd)::before {
+    display: none;
+  }
 }
 
 @media (max-width: 959px) {
