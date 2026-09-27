@@ -43,7 +43,7 @@ Each message rests on one row of [docs/results/claims.md](../docs/results/claims
 
 Supporting facts, from the paper, for longer copy:
 
-- **Reads only.** A flow calls only tools the server does not mark `readOnlyHint: false`, and `--flow-tools` narrows that further. Since reads leave the state unchanged until the next write, a speculator that only reads cannot change what a write does (§2.2, Proposition 1). Its worst case is a detour.
+- **Reads only.** A flow calls only tools the server does not mark `readOnlyHint: false`, and `--flow-tools` narrows that further. Since reads leave the state unchanged, a speculator that only reads can change an episode only through what the agent reads, never through the tools (§2.2, Proposition 1). Its worst case is a detour.
 - **The threshold is a ratio of costs.** Live, a detour carried 2,530 input tokens over the rest of its episode and a saved turn saved 6,000, so the threshold is about 0.3 (§2.3, §3).
 - **The live run held the replay's assumption.** Of the speculator's 101 lookups, GLM-5.3 made none again before the next write. Deciding took under a millisecond per tool response, at most 4 ms (§4.4).
 - **Input tokens.** In the same live run, input tokens fell 21.9% (95% CI 9.9–32.9%) (§4.4).

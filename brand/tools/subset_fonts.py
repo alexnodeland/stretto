@@ -59,7 +59,7 @@ def main() -> None:
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     make_subset(args.inter, args.out / "Inter-Variable.subset.woff2", TEXT_RANGES)
-    for weight in ("Regular", "Medium", "Bold"):
+    for weight in ("Regular", "Bold"):
         make_subset(args.mono_dir / f"JetBrainsMono-{weight}.woff2",
                     args.out / f"JetBrainsMono-{weight}.subset.woff2", MONO_RANGES)
 
