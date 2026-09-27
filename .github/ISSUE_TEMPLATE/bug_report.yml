@@ -1,0 +1,42 @@
+name: Bug report
+description: Something in stretto does not work as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. For a security issue, please report privately instead (see SECURITY.md).
+        Before attaching a session log or a flow, check it for personal data; `stretto redact` pseudonymizes sessions.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `stretto --version` (and `stretto-proxy --version` if it is involved)
+      placeholder: stretto 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS and architecture; how you installed stretto; the MCP host and server, if relevant
+      placeholder: Ubuntu 24.04 x86_64, from source; Claude Code with the filesystem server
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you ran, what you expected, and what you got instead
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: The smallest set of commands, flags and files that shows the problem
+      render: shell
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output and logs
+      description: The error output, and the relevant lines of the proxy's stderr or session log
+      render: text

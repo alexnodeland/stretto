@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use stretto or its results, please cite the software and the paper."
+title: "stretto: compile what the environment decides"
+type: software
+authors:
+  - family-names: Nodeland
+    given-names: Alex
+repository-code: "https://github.com/alexnodeland/stretto"
+url: "https://alexnodeland.github.io/stretto/"
+license: MIT
+version: 0.1.0
+keywords:
+  - LLM agents
+  - Model Context Protocol
+  - speculative execution
+  - tool use
+  - probabilistic programming
+preferred-citation:
+  type: article
+  title: "Compile What the Environment Decides"
+  authors:
+    - family-names: Nodeland
+      given-names: Alex
+  year: 2026
+  status: preprint
+  url: "https://github.com/alexnodeland/stretto/blob/main/paper/stretto.md"
