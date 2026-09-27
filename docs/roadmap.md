@@ -7,6 +7,7 @@ Every piece of the first design is built: the flow compiler, the MCP proxy, the 
 - live runs with Claude models as the agent and as the customer, on ten retail tasks and fewer ([results](results/claude-models-2026-09-25.md));
 - a paired run on every retail and airline test task: 80 pairs, with 25.5% fewer LLM turns and the pass rate within −7.5 to +6.25 points ([results](results/paired-2026-09-25.md)).
 - a flow deciding on the chance of use before the next write, with no model, on 28 of those tasks: 27.9% fewer LLM turns (19.1% to 35.9%) ([results](results/reach-2026-09-26.md#live)).
+- the same flow live in AgentDojo's and BFCL's own environments, with GLM-5.3 and Claude Haiku 4.5: 10.1% fewer LLM turns (5.8% to 14.0%) in the AgentDojo suites where the replay found reads to take, with passes unchanged, and no effect in BFCL, as its replay projected ([results](results/live-benchmarks-2026-09-27.md)).
 
 What is left is tracked in GitHub issues, all of them sub-issues of [#1](https://github.com/alexnodeland/stretto/issues/1). This page groups them and says why each matters. The changes RFC-001 §3.9 asks of fugue itself are tracked in fugue's [#61](https://github.com/alexnodeland/fugue/issues/61).
 
@@ -67,15 +68,16 @@ These cost Jev dollars, CPU time or people's time, and no LLM runs.
 | [#27](https://github.com/alexnodeland/stretto/issues/27) | Done: `run_episode.py --read-only-hints` marks τ²-bench's read-only tools in `tools/list`, so pilot recordings learn without `--manifest` |
 | [#28](https://github.com/alexnodeland/stretto/issues/28) | Done: `check_flow.py --in-process --jobs N` makes the tools' calls in one process and replays in parallel; `replay_study.py` runs a resumable list of replays |
 | [#29](https://github.com/alexnodeland/stretto/issues/29) | Done: the pilots' recorded episodes are [published](results/episodes-2026-09-24.md) |
-| [#30](https://github.com/alexnodeland/stretto/issues/30) | A first release, 0.1.0 |
+| [#30](https://github.com/alexnodeland/stretto/issues/30) | A first release, 0.1.0. Ready: the release workflow builds five targets with checksums, `install.sh`, `install.ps1`, a Homebrew formula and the image `ghcr.io/alexnodeland/stretto`, and a manual dry run checks them ([releasing](releasing.md)). It waits on the tag |
+| [#40](https://github.com/alexnodeland/stretto/issues/40) | `promote` and the proxy should not look up a call the agent has already asked for in the same LLM turn. Found live on AgentDojo's Slack suite ([results](results/live-benchmarks-2026-09-27.md#promotion-on-the-agents-own-sessions-live)) |
 
 ## Documentation
 
 | Issue | What |
 |---|---|
-| [#31](https://github.com/alexnodeland/stretto/issues/31) | The flow IR and arbiter file formats |
-| [#32](https://github.com/alexnodeland/stretto/issues/32) | A CLI reference, generated from the code |
-| [#33](https://github.com/alexnodeland/stretto/issues/33) | A walkthrough with your own MCP server |
+| [#31](https://github.com/alexnodeland/stretto/issues/31) | Done: the flow IR and arbiter file formats ([formats](formats.md)), with a test that every field is named |
+| [#32](https://github.com/alexnodeland/stretto/issues/32) | Done: the CLI reference, generated from the code and kept current by a test ([cli](cli.md)) |
+| [#33](https://github.com/alexnodeland/stretto/issues/33) | Done: the walkthrough on the official MCP filesystem server, run in CI ([walkthrough](walkthrough.md)), and recorded as a video. The documentation site, with a guide, integrations, the reference and the research, is at [alexnodeland.github.io/stretto](https://alexnodeland.github.io/stretto/) |
 
 ## In fugue
 

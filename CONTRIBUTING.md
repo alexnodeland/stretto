@@ -40,6 +40,9 @@ cd website && npm ci && npm run dev
 | `docs/` | Design, formats, privacy, review, the CLI reference, RFC-001, and the results pages |
 | `paper/` | The working paper |
 | `website/` | The documentation site |
+| `brand/` | The brand kit: logo, tokens, messaging, the explainer and the videos, with the scripts that rebuild them ([brand/README.md](brand/README.md)) |
+| `examples/quickstart/` | The no-key quickstart that CI runs |
+| `packaging/` | The Homebrew formula and the installers' test; `install.sh`, `install.ps1` and the `Dockerfile` are at the root |
 
 ## Making a change
 
