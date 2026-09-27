@@ -1216,7 +1216,9 @@ pub struct Bindings {
     /// Per lookup argument that took one value in every call of the lookup
     /// that passed it in training, at least five, in at least half of the
     /// lookup's calls, and was never found in an earlier output: that value,
-    /// such as a page size an agent always passes. The binding passes it as
+    /// such as a page size an agent always passes; never an id or an email a
+    /// user wrote.
+    /// The binding passes it as
     /// the agent did, so that the lookup is the agent's own call. Learned
     /// only with `learn --constants`; empty otherwise, as in flows learned
     /// before it was, which make their lookups without such arguments.
@@ -1568,7 +1570,23 @@ impl Bindings {
             })
             .collect();
         if constants {
+            // What the users wrote: an id or an email one of them gave (a string
+            // with a digit or an @) is their data, however many sessions shared
+            // it, and is never a constant.
+            let said = episodes
+                .iter()
+                .flat_map(|ep| ep.events.iter())
+                .filter_map(|e| match e {
+                    Event::User { text } => Some(text.to_lowercase()),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
             for ((tool, arg), (n, distinct, value)) in values_of {
+                if matches!(&value, Value::String(v) if (keyish(v) || v.contains('@')) && mentions(&said, v))
+                {
+                    continue;
+                }
                 let calls = b.args.get(&tool).map_or(0, |(calls, _)| *calls);
                 let key = (tool, arg);
                 let traced = |t: Option<&Traced>| t.is_some_and(|t| !t.found.is_empty());
@@ -3224,5 +3242,27 @@ pub(crate) mod tests {
         assert!(Bindings::learn_with(&varied, &manifest(), true)
             .constants()
             .is_empty());
+        // Nor is an id the user wrote, though every session shared it.
+        let mut shared = training.clone();
+        for ep in &mut shared {
+            ep.events[0] = Event::User {
+                text: "help with my orders, I am c_1234, ann@shop.com".to_string(),
+            };
+            for e in &mut ep.events {
+                if let Event::Assistant { calls, .. } = e {
+                    if calls[0].name == "get_order_details" {
+                        calls[0].arguments["customer"] = json!("c_1234");
+                        calls[0].arguments["email"] = json!("ann@shop.com");
+                    }
+                }
+            }
+        }
+        let learned = Bindings::learn_with(&shared, &manifest(), true);
+        let args: Vec<&str> = learned
+            .constants()
+            .keys()
+            .map(|(_, a)| a.as_str())
+            .collect();
+        assert_eq!(args, vec!["page_size"]);
     }
 }

@@ -151,7 +151,7 @@ Learned with `learn --constants`, each own flow also passes the arguments its ag
 | DTap-Bench CRM (7 agents) | 62 / 82 | 0.02 / 0.03 |
 | DTap-Bench customer service; MCPMark filesystem, PostgreSQL, GitHub | unchanged | unchanged |
 
-o3's lookups now pass the page size it always passes, and its detours fall from 173 to 23. GPT-5's page size was a required argument the flow could not bind, so it made no block lookups; now it makes them, and saves 6 turns at 43 detours. In CRM, GPT-5.4's own flow saves 18 turns instead of 4. Over MCPMark's four servers, the own flows save 0.57% of turns with constants, against 0.44% without. Most of what constants add to Notion's ceiling is still the walk's: which block comes next.
+o3's lookups now pass the page size it always passes, and its detours fall from 173 to 23. GPT-5's page size was a required argument the flow could not bind, so it made no block lookups; now it makes them, and saves 6 turns at 43 detours. In CRM, GPT-5.4's own flow saves 18 turns instead of 4. Over MCPMark's four servers, the own flows save 0.57% of turns with constants, against 0.44% without. Most of what constants add to Notion's ceiling is still the walk's: which block comes next. A string a user wrote with a digit or an @, an id or an email, is never learned as a constant, however many sessions shared it: of these flows, that drops only the repository EasyR1 from Kimi K2's GitHub flow, which its users named, and GitHub's own flows save no turns and make no detours either way.
 
 ### Across harnesses
 
