@@ -101,6 +101,9 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 - `stretto-console` stops on Ctrl-C or SIGTERM while a browser has the console open. Before, the page's stream of live updates kept it serving until the page was closed, and a container's stop waited for its timeout.
 - `stretto-console --open` opens the URL with `$BROWSER` when it is set.
 - `stretto init --upstream URL [--upstream-header NAME=VAR]` configures the proxy in front of a Streamable HTTP server.
+- A server in the console sets what the proxy does on writes, and how long it keeps what it records ([#36](https://github.com/alexnodeland/stretto/issues/36)). Under *Writes and retention*: the policy guards, the confirmation judge, logging or enforcing, with the file the host appends the conversation to, `stretto_commit`, and a number of days. Its configuration for each host passes them to `stretto-proxy` (`--guards`, `--confirm-judge` with `--context`, `--commit`, `--retain-days`).
+  - `stretto init` takes the same options.
+  - The guards need a domain that has them, retail or airline, and the judge needs the guards. The console and `init` refuse a setup that the proxy would refuse when it starts.
 - `stretto doctor --data DIR` checks a data directory other than `~/.stretto`; the console's doctor job checks the one it serves.
 - `stretto_report::review::view` returns a flow's review as data, which `flow-show` renders from; `review::diff`'s result lists its changes by heading and serializes.
 

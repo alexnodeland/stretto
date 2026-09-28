@@ -68,7 +68,26 @@ describe('the server form’s checks', () => {
     record_dir: null,
     decider: null,
     threshold: null,
+    guards: false,
+    judge: null,
+    commit: false,
+    retain_days: null,
   }
+
+  it('checks the guards, the judge and retention as the console does', () => {
+    const retail = { ...base, name: 'retail', guards: true, commit: true, retain_days: 7 }
+    expect(checkServer(retail)).toEqual({})
+    expect(checkServer({ ...base, guards: true }).guards).toMatch(
+      /no policy guards for orders: retail and airline have them/,
+    )
+    expect(checkServer({ ...base, name: '', guards: true }).guards).toMatch(/this server/)
+    expect(checkServer({ ...retail, judge: { mode: 'log', context: '  ' } }).context).toMatch(
+      /conversation/,
+    )
+    for (const days of [0, 1.5, -3]) {
+      expect(checkServer({ ...retail, retain_days: days }).retain_days).toMatch(/at least one/)
+    }
+  })
 
   it('accepts a good server and names every problem by field', () => {
     expect(checkServer(base)).toEqual({})

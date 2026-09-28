@@ -2,7 +2,9 @@
 /**
  * A server's setup: its name (the domain), where it is (a command or an
  * HTTP URL, with the variables it needs by name only), what the proxy does
- * with it (record, shadow, serve), and the flow and its settings.
+ * with it (record, shadow, serve), the flow and its settings, and the
+ * guards, the confirmation judge, stretto_commit and how long sessions are
+ * kept.
  */
 import { computed, reactive, ref, toRaw, watch } from 'vue'
 import { Globe, Plus, SquareTerminal, X } from '@lucide/vue'
@@ -10,9 +12,9 @@ import UiField from '../ui/UiField.vue'
 import UiSegmented from '../ui/UiSegmented.vue'
 import UiButton from '../ui/UiButton.vue'
 import UiCode from '../ui/UiCode.vue'
-import type { DeciderName, FlowSummary, ServerInput, ServerMode } from '@/api/types'
+import type { DeciderName, FlowSummary, JudgeMode, ServerInput, ServerMode } from '@/api/types'
 import { splitCommand } from '@/lib/shell'
-import { checkEnvName, checkServer, type ServerErrors } from '@/lib/validate'
+import { checkEnvName, checkServer, GUARDED_DOMAINS, type ServerErrors } from '@/lib/validate'
 import { commandText } from '@/lib/format'
 
 export interface ServerModel {
@@ -29,6 +31,14 @@ export interface ServerModel {
   decider: '' | DeciderName
   /** As typed: a number input's v-model gives a number, an empty one a string. */
   threshold: string | number
+  guards: boolean
+  /** The confirmation judge on guarded writes: off, or how it acts. */
+  judge: '' | JudgeMode
+  /** The file the host appends the conversation to, which the judge reads. */
+  context: string
+  commit: boolean
+  /** Days to keep sessions, as typed. */
+  retain_days: string | number
 }
 
 const props = defineProps<{
@@ -68,9 +78,12 @@ const flowOptions = computed(() =>
 )
 const flowIsOther = ref(!!m.flow && !flowOptions.value.some((o) => o.value === m.flow))
 
+const guarded = computed(() => GUARDED_DOMAINS.includes(m.name.trim()))
+
 function toInput(): ServerInput {
   const typed = String(m.threshold ?? '').trim()
   const threshold = typed === '' ? null : Number(typed)
+  const days = String(m.retain_days ?? '').trim()
   return {
     name: m.name.trim(),
     description: m.description.trim() || null,
@@ -89,6 +102,10 @@ function toInput(): ServerInput {
     record_dir: m.record_dir.trim() || null,
     decider: m.mode === 'record' ? null : m.decider || null,
     threshold: m.mode === 'record' ? null : threshold,
+    guards: m.guards,
+    judge: m.guards && m.judge ? { mode: m.judge, context: m.context.trim() } : null,
+    commit: m.commit,
+    retain_days: days === '' ? null : Number(days),
   }
 }
 
@@ -131,6 +148,11 @@ const preview = computed(() => {
       args.push('--flow-threshold', String(i.threshold))
     if (i.mode === 'shadow') args.push('--flow-shadow')
   }
+  if (i.retain_days !== null && i.retain_days !== undefined && !Number.isNaN(i.retain_days))
+    args.push('--retain-days', String(i.retain_days))
+  if (i.guards) args.push('--guards')
+  if (i.judge) args.push('--confirm-judge', i.judge.mode, '--context', i.judge.context || '<file>')
+  if (i.commit) args.push('--commit')
   if (i.upstream.kind === 'http') {
     args.push('--upstream', i.upstream.url || '<url>')
     for (const h of i.upstream.headers) args.push('--upstream-header', `${h.name}=${h.env}`)
@@ -460,6 +482,97 @@ const modes: { value: ServerMode; title: string; body: string }[] = [
     </section>
 
     <section class="sf-section">
+      <h2 class="sf-h">Writes and retention</h2>
+      <label class="check">
+        <input
+          v-model="m.guards"
+          type="checkbox"
+          :disabled="!guarded && !m.guards"
+          data-testid="server-guards"
+          @change="touched.add('guards')"
+        />
+        <span class="check-text">
+          <span class="check-title">Policy guards</span>
+          <span class="caption"
+            >Check each of the agent’s calls against the domain’s rules, and refuse the ones they
+            fail (<span class="mono">--guards</span>). Retail and airline have guards.</span
+          >
+        </span>
+      </label>
+      <p v-if="shown('guards')" class="field-error">{{ shown('guards') }}</p>
+      <div v-if="m.guards" class="sf-row">
+        <UiField
+          v-slot="{ id, describedby }"
+          label="Confirmation judge"
+          optional
+          hint="Also ask the System-One model whether the customer confirmed each write the guards check for a confirmation. The proxy asks Jev, so it needs TYPESAFE_API_KEY."
+        >
+          <select
+            :id="id"
+            v-model="m.judge"
+            class="select"
+            :aria-describedby="describedby"
+            data-testid="server-judge"
+          >
+            <option value="">Off</option>
+            <option value="log">log: record its judgments</option>
+            <option value="enforce">enforce: refuse the writes it fails</option>
+          </select>
+        </UiField>
+        <UiField
+          v-if="m.judge"
+          v-slot="{ id, describedby, invalid }"
+          label="The conversation"
+          hint="The file the host appends the conversation to, as JSON lines, which the judge reads (--context)."
+          :error="shown('context')"
+        >
+          <input
+            :id="id"
+            v-model="m.context"
+            class="input mono"
+            :aria-describedby="describedby"
+            :aria-invalid="invalid"
+            :placeholder="`~/.stretto/context/${m.name || '<name>'}.jsonl`"
+            spellcheck="false"
+            data-testid="server-context"
+            @blur="touched.add('context')"
+          />
+        </UiField>
+      </div>
+      <label class="check">
+        <input v-model="m.commit" type="checkbox" data-testid="server-commit" />
+        <span class="check-text">
+          <span class="check-title"><span class="mono">stretto_commit</span></span>
+          <span class="caption"
+            >Offer the agent a tool that makes several calls in one, in order, each checked by the
+            guards (<span class="mono">--commit</span>).</span
+          >
+        </span>
+      </label>
+      <UiField
+        v-slot="{ id, describedby, invalid }"
+        label="Keep sessions for"
+        optional
+        hint="Days. When the proxy starts, it deletes what is older: the sessions it recorded, with the logs beside them, and its cached answers (--retain-days). Empty keeps everything."
+        :error="shown('retain_days')"
+      >
+        <input
+          :id="id"
+          v-model="m.retain_days"
+          class="input num days"
+          type="number"
+          min="1"
+          step="1"
+          :aria-describedby="describedby"
+          :aria-invalid="invalid"
+          placeholder="All"
+          data-testid="server-retain"
+          @blur="touched.add('retain_days')"
+        />
+      </UiField>
+    </section>
+
+    <section class="sf-section">
       <h2 class="sf-h">The proxy’s command line</h2>
       <p class="caption">
         A preview. The console writes the exact one, and each host’s configuration, when you save.
@@ -620,6 +733,24 @@ const modes: { value: ServerMode; title: string; body: string }[] = [
 .flow-pick {
   display: flex;
   gap: 8px;
+}
+
+.check-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.check-title {
+  font-weight: 600;
+}
+
+.check input:disabled {
+  cursor: not-allowed;
+}
+
+.days {
+  max-width: 160px;
 }
 
 .sf-actions {

@@ -1472,10 +1472,32 @@ fn init_prints_or_writes_each_hosts_configuration() {
             "--upstream https://example.com --upstream-header Authorization",
             "NAME=VAR",
         ),
+        (
+            "--guards -- server",
+            "no policy guards for notes; retail and airline have them",
+        ),
     ] {
         t.fails(&format!("init --host cursor --domain notes {args}"), error);
     }
     assert!(super::host_path("").is_err());
+    // The guards, the judge, stretto_commit and retention, for the proxy.
+    let said = t
+        .run(
+            "init --host claude-code --domain retail --guards --confirm-judge log \
+             --context ~/.stretto/context/retail.jsonl --commit --retain-days 30 -- server",
+        )
+        .ok();
+    assert!(
+        said.contains(
+            "--retain-days 30 --guards --confirm-judge log --context \
+             ~/.stretto/context/retail.jsonl --commit -- server"
+        ),
+        "{said}"
+    );
+    let said = t
+        .run("init --host cursor --domain airline --guards --confirm-judge enforce --context ctx.jsonl -- server")
+        .ok();
+    assert!(said.contains("\"enforce\""), "{said}");
 }
 
 #[test]
@@ -1557,6 +1579,7 @@ fn numbers_out_of_range_are_refused() {
         "learn --sessions s --domain d --out f --surprise 0.9 --surprise-window 0",
         "serve --flow f --surprise 0",
         "serve --flow f --surprise never",
+        "init --host cursor --domain d --retain-days 0 -- s",
     ] {
         assert_eq!(
             parse_error(args),

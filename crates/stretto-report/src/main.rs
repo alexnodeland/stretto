@@ -973,6 +973,30 @@ struct InitArgs {
     /// With --write, replace an existing file, with any other servers in it.
     #[arg(long, requires = "write")]
     force: bool,
+    /// Check each of the agent's calls against the domain's policy guards,
+    /// and refuse the ones they fail (`stretto-proxy --guards`). `retail`
+    /// and `airline` have guards.
+    #[arg(long)]
+    guards: bool,
+    /// Also put each write the guards check for a confirmation to the
+    /// System-One model: `log` records its judgments, `enforce` refuses the
+    /// writes it fails (`stretto-proxy --confirm-judge`). The proxy needs
+    /// TYPESAFE_API_KEY, and the conversation in --context.
+    #[arg(long, value_enum, value_name = "MODE", requires_all = ["guards", "context"])]
+    confirm_judge: Option<JudgeMode>,
+    /// The file the host appends the conversation to, as JSON lines, which
+    /// the confirmation judge reads (`stretto-proxy --context`).
+    #[arg(long, value_name = "FILE", requires = "confirm_judge")]
+    context: Option<String>,
+    /// Offer `stretto_commit`: several calls in one, in order, each checked
+    /// by the guards (`stretto-proxy --commit`).
+    #[arg(long)]
+    commit: bool,
+    /// When the proxy starts, delete what is older than this many days: the
+    /// sessions it recorded, with the logs beside them, and its cached
+    /// answers (`stretto-proxy --retain-days`).
+    #[arg(long, value_name = "DAYS", value_parser = clap::value_parser!(u64).range(1..))]
+    retain_days: Option<u64>,
     /// A Streamable HTTP server, such as `https://example.com/mcp`, in place
     /// of a server command: the proxy connects to it (`stretto-proxy
     /// --upstream`).
@@ -1505,6 +1529,13 @@ enum DeciderArg {
 enum SecondArg {
     Described,
     Proposed,
+}
+
+/// How the confirmation judge acts (`init --confirm-judge`).
+#[derive(Clone, Copy, PartialEq, ValueEnum)]
+enum JudgeMode {
+    Log,
+    Enforce,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -2623,6 +2654,18 @@ fn init(args: InitArgs, env: &mut Env) -> Result<()> {
         }
         None => None,
     };
+    if args.guards && stretto_report::guards::Guards::for_domain(&domain).is_none() {
+        anyhow::bail!(
+            "--guards: there are no policy guards for {domain}; retail and airline have them"
+        );
+    }
+    let judge = match (args.confirm_judge, args.context) {
+        (Some(mode), Some(context)) => Some(init::Judge {
+            enforce: mode == JudgeMode::Enforce,
+            context: host_path(&context)?,
+        }),
+        _ => None,
+    };
     let host = Host::from(args.host);
     let setup = Setup {
         flow: flow.map(|(path, loaded)| Served {
@@ -2638,6 +2681,12 @@ fn init(args: InitArgs, env: &mut Env) -> Result<()> {
         proxy: proxy_command(host, env),
         server,
         upstream,
+        policy: init::Policy {
+            guards: args.guards,
+            judge,
+            commit: args.commit,
+            retain_days: args.retain_days,
+        },
     };
     match &args.write {
         Some(path) => {

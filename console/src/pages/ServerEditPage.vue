@@ -37,6 +37,11 @@ function blank(): ServerModel {
     record_dir: '',
     decider: '',
     threshold: '',
+    guards: false,
+    judge: '',
+    context: '',
+    commit: false,
+    retain_days: '',
   }
 }
 
@@ -54,6 +59,11 @@ function fromView(s: ServerView): ServerModel {
     record_dir: s.record_dir ?? '',
     decider: s.decider ?? '',
     threshold: s.threshold === null ? '' : String(s.threshold),
+    guards: s.guards,
+    judge: s.judge?.mode ?? '',
+    context: s.judge?.context ?? '',
+    commit: s.commit,
+    retain_days: s.retain_days === null ? '' : String(s.retain_days),
   }
 }
 

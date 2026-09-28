@@ -66,6 +66,16 @@ export function defaultRecord(name: string, mode: ServerEntry['mode']): string {
   return `~/.stretto/${mode === 'shadow' ? 'shadow' : 'logs'}/${name}`
 }
 
+/** The guards, the judge, stretto_commit and retention: the proxy's options, and init's. */
+function policyArgs(entry: ServerEntry): string[] {
+  const args: string[] = []
+  if (entry.retain_days !== null) args.push('--retain-days', String(entry.retain_days))
+  if (entry.guards) args.push('--guards')
+  if (entry.judge) args.push('--confirm-judge', entry.judge.mode, '--context', entry.judge.context)
+  if (entry.commit) args.push('--commit')
+  return args
+}
+
 /** stretto_report::init::Setup::args, with the console's extras (threshold, HTTP). */
 export function proxyArgs(world: World, entry: ServerEntry): string[] {
   const args = [
@@ -83,6 +93,7 @@ export function proxyArgs(world: World, entry: ServerEntry): string[] {
     if (entry.threshold !== null) args.push('--flow-threshold', String(entry.threshold))
     if (entry.mode === 'shadow') args.push('--flow-shadow')
   }
+  args.push(...policyArgs(entry))
   if (entry.upstream.kind === 'http') {
     args.push('--upstream', entry.upstream.url)
     for (const h of entry.upstream.headers) args.push('--upstream-header', `${h.name}=${h.env}`)
@@ -187,7 +198,10 @@ export function hostConfig(world: World, entry: ServerEntry, host: HostName): Ho
 /** stretto_report::init::next_steps, from the step the server is at. */
 function nextSteps(world: World, entry: ServerEntry, host: HostName): string {
   const d = entry.name
-  const init = `stretto init --host ${host} --domain ${d}`
+  const init = [
+    `stretto init --host ${host} --domain ${d}`,
+    ...policyArgs(entry).map(shellQuote),
+  ].join(' ')
   const server =
     entry.upstream.kind === 'stdio'
       ? entry.upstream.command.map(shellQuote).join(' ')
@@ -235,6 +249,8 @@ function nextSteps(world: World, entry: ServerEntry, host: HostName): string {
     out += `\n${i + 1}. ${first}\n`
     for (const line of rest) out += `     ${line}\n`
   })
+  if (entry.judge)
+    out += `\nThe confirmation judge asks TypeSafe's Jev about each write the guards check for a confirmation: give the server TYPESAFE_API_KEY (or TYPESAFE_API_KEY_FILE) in the host's \`env\`. It reads the conversation from ${entry.judge.context}, which the host appends to, one JSON line per message: {"role": "user" | "assistant", "content": text}.\n`
   return out
 }
 

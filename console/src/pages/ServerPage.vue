@@ -20,7 +20,7 @@ import { useResource } from '@/composables/useResource'
 import { useTitle } from '@/composables/useTitle'
 import { readOnly } from '@/stores/auth'
 import { toast } from '@/stores/toasts'
-import { commandText, formatCount, formatDateTime, upstreamText } from '@/lib/format'
+import { commandText, formatCount, formatDateTime, plural, upstreamText } from '@/lib/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -182,12 +182,34 @@ async function remove() {
                 <dt>Threshold</dt>
                 <dd class="num">{{ server.threshold ?? '0.3 (the proxy’s default)' }}</dd>
               </template>
+              <dt>Guards</dt>
+              <dd data-testid="server-guards">
+                <template v-if="server.guards">
+                  on<template v-if="server.judge"
+                    >, with the confirmation judge ({{ server.judge.mode }}) reading
+                    <span class="mono small">{{ server.judge.context }}</span></template
+                  >
+                </template>
+                <span v-else class="subtle">off</span>
+              </dd>
+              <dt><span class="mono">stretto_commit</span></dt>
+              <dd>
+                <template v-if="server.commit">offered</template>
+                <span v-else class="subtle">not offered</span>
+              </dd>
               <dt>Records to</dt>
               <dd class="mono small">
                 {{
                   server.record_dir ??
                   `~/.stretto/${server.mode === 'shadow' ? 'shadow' : 'logs'}/${server.name}`
                 }}
+              </dd>
+              <dt>Keeps sessions</dt>
+              <dd data-testid="server-retain">
+                <template v-if="server.retain_days !== null">{{
+                  plural(server.retain_days, 'day')
+                }}</template>
+                <span v-else class="subtle">all</span>
               </dd>
               <dt>Sessions</dt>
               <dd>

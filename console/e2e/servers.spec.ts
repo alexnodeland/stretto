@@ -41,6 +41,34 @@ test('adding a server checks the form, then gives each host’s configuration', 
   expect(copied).toContain('"servers"')
 })
 
+test('a retail server takes the guards, the judge, stretto_commit and retention', async ({
+  page,
+}) => {
+  await page.goto('/servers/new')
+  await page.getByTestId('server-name').fill('retail')
+  await page.getByTestId('server-command').fill('retail-mcp')
+  await page.getByTestId('server-guards').check()
+  await page.getByTestId('server-judge').selectOption('log')
+  await page.getByTestId('server-context').fill('~/.stretto/context/retail.jsonl')
+  await page.getByTestId('server-commit').check()
+  await page.getByTestId('server-retain').fill('30')
+  await expect(
+    page.getByText(
+      'stretto-proxy --record ~/.stretto/logs/retail --domain retail --retain-days 30 --guards --confirm-judge log --context ~/.stretto/context/retail.jsonl --commit -- retail-mcp',
+    ),
+  ).toBeVisible()
+  await page.getByTestId('server-save').click()
+
+  await expect(page).toHaveURL(/\/servers\/retail$/)
+  await expect(page.getByTestId('server-guards')).toContainText(
+    'on, with the confirmation judge (log) reading ~/.stretto/context/retail.jsonl',
+  )
+  await expect(page.getByTestId('server-retain')).toHaveText('30 days')
+  await expect(page.getByTestId('host-snippet')).toContainText(
+    '--retain-days 30 --guards --confirm-judge log',
+  )
+})
+
 test('testing the connection lists the tools and their kinds', async ({ page }) => {
   await page.goto('/servers/shop')
   await page.getByTestId('probe').click()

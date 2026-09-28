@@ -758,6 +758,11 @@ Usage: stretto init [OPTIONS] --host <HOST> [-- <SERVER_COMMAND>...]
 - `--record <DIR>`: Where the proxy records sessions (default: ~/.stretto/logs/NAME, or ~/.stretto/shadow/NAME with --shadow).
 - `--write <PATH>`: Write the host's configuration file here instead of printing it (for Claude Code, a project's .mcp.json). An existing file is left as it is, unless --force is given.
 - `--force`: With --write, replace an existing file, with any other servers in it.
+- `--guards`: Check each of the agent's calls against the domain's policy guards, and refuse the ones they fail (`stretto-proxy --guards`). `retail` and `airline` have guards.
+- `--confirm-judge <MODE>` (one of `log`, `enforce`): Also put each write the guards check for a confirmation to the System-One model: `log` records its judgments, `enforce` refuses the writes it fails (`stretto-proxy --confirm-judge`). The proxy needs TYPESAFE_API_KEY, and the conversation in --context.
+- `--context <FILE>`: The file the host appends the conversation to, as JSON lines, which the confirmation judge reads (`stretto-proxy --context`).
+- `--commit`: Offer `stretto_commit`: several calls in one, in order, each checked by the guards (`stretto-proxy --commit`).
+- `--retain-days <DAYS>`: When the proxy starts, delete what is older than this many days: the sessions it recorded, with the logs beside them, and its cached answers (`stretto-proxy --retain-days`).
 - `--upstream <URL>`: A Streamable HTTP server, such as `https://example.com/mcp`, in place of a server command: the proxy connects to it (`stretto-proxy --upstream`).
 - `--upstream-header <NAME=VAR>` (repeatable): With --upstream: send header NAME with the value of environment variable VAR, which the host gives the proxy in its `env` (`stretto-proxy --upstream-header`). The value is not written.
 

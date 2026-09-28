@@ -44,6 +44,8 @@ export type * from "./JobKind";
 export type * from "./JobList";
 export type * from "./JobRequest";
 export type * from "./JobStatus";
+export type * from "./Judge";
+export type * from "./JudgeMode";
 export type * from "./LookupView";
 export type * from "./Meta";
 export type * from "./ModeCounts";

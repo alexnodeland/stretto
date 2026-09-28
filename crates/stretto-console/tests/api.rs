@@ -1604,6 +1604,79 @@ async fn servers_are_created_changed_and_removed() {
 }
 
 #[tokio::test]
+async fn a_servers_guards_judge_commit_and_retention_reach_the_proxy() {
+    let c = console("server-policy", |_| {});
+    let body = json!({
+        "name": "retail",
+        "upstream": {"kind": "stdio", "command": ["retail-mcp"]},
+        "mode": "record",
+        "guards": true,
+        "judge": {"mode": "enforce", "context": "~/.stretto/context/retail.jsonl"},
+        "commit": true,
+        "retain_days": 30
+    });
+    let created = c
+        .call(Method::POST, "/api/servers", Some(body.clone()))
+        .await;
+    assert_eq!(created.status, StatusCode::OK, "{}", created.text());
+    let v = created.json();
+    assert_eq!(v["judge"]["mode"], "enforce");
+    let args: Vec<&str> = v["proxy_args"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| a.as_str().unwrap())
+        .collect();
+    assert_eq!(
+        &args[4..],
+        [
+            "--retain-days",
+            "30",
+            "--guards",
+            "--confirm-judge",
+            "enforce",
+            "--context",
+            "~/.stretto/context/retail.jsonl",
+            "--commit",
+            "--",
+            "retail-mcp"
+        ]
+    );
+    let config = c
+        .get("/api/servers/retail/config?host=claude-code")
+        .await
+        .json();
+    assert!(config["snippet"]
+        .as_str()
+        .unwrap()
+        .contains("--guards --confirm-judge enforce"));
+    // The next steps keep them, and say what the judge needs.
+    let steps = config["next_steps"].as_str().unwrap();
+    assert!(
+        steps.contains("--domain retail --retain-days 30 --guards --confirm-judge enforce"),
+        "{steps}"
+    );
+    assert!(
+        steps.contains("reads the conversation from ~/.stretto/context/retail.jsonl"),
+        "{steps}"
+    );
+    // Guards are the domain's, and the judge asks about the writes they check.
+    let mut unguarded = body.clone();
+    unguarded["name"] = json!("shop-guarded");
+    let mut judge_alone = body.clone();
+    judge_alone["name"] = json!("airline");
+    judge_alone["guards"] = json!(false);
+    for (changed, says) in [
+        (unguarded, "no policy guards for shop-guarded"),
+        (judge_alone, "turn the guards on"),
+    ] {
+        let refused = c.call(Method::POST, "/api/servers", Some(changed)).await;
+        assert_eq!(refused.status, StatusCode::BAD_REQUEST);
+        assert!(refused.json()["error"].as_str().unwrap().contains(says));
+    }
+}
+
+#[tokio::test]
 async fn host_configuration_is_what_stretto_init_prints() {
     let c = console("config", |_| {});
     let cursor = c.get("/api/servers/shop/config?host=cursor").await.json();

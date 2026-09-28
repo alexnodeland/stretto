@@ -99,6 +99,62 @@ impl Served {
     }
 }
 
+/// What the proxy does besides recording and running a flow: the policy
+/// guards on the agent's calls, the confirmation judge on its writes,
+/// `stretto_commit`, and how long it keeps sessions.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Policy {
+    /// Check each of the agent's calls against the domain's policy guards,
+    /// and refuse the ones they fail (`--guards`).
+    pub guards: bool,
+    /// Put each write the guards check for a confirmation to the System-One
+    /// model too (`--confirm-judge`).
+    pub judge: Option<Judge>,
+    /// Offer `stretto_commit`, several calls in one, each checked by the
+    /// guards (`--commit`).
+    pub commit: bool,
+    /// When the proxy starts, delete what is older than this many days: the
+    /// sessions it recorded, with the logs beside them, and its cached
+    /// answers (`--retain-days`).
+    pub retain_days: Option<u64>,
+}
+
+/// The confirmation judge the proxy asks about writes.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Judge {
+    /// Refuse the writes it fails, rather than only log its judgments.
+    pub enforce: bool,
+    /// The file the host appends the conversation to, which the judge reads
+    /// (`--context`), as the host passes it.
+    pub context: String,
+}
+
+impl Policy {
+    /// The proxy's arguments for it.
+    fn args(&self) -> Vec<String> {
+        let mut args = Vec::new();
+        if let Some(days) = self.retain_days {
+            args.extend(["--retain-days".to_string(), days.to_string()]);
+        }
+        if self.guards {
+            args.push("--guards".to_string());
+        }
+        if let Some(judge) = &self.judge {
+            let mode = if judge.enforce { "enforce" } else { "log" };
+            args.extend([
+                "--confirm-judge".to_string(),
+                mode.to_string(),
+                "--context".to_string(),
+                judge.context.clone(),
+            ]);
+        }
+        if self.commit {
+            args.push("--commit".to_string());
+        }
+        args
+    }
+}
+
 /// A Streamable HTTP server behind the proxy (`stretto-proxy --upstream`),
 /// in place of a command.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -127,6 +183,8 @@ pub struct Setup {
     pub server: Vec<String>,
     /// A Streamable HTTP server, in place of a command.
     pub upstream: Option<Upstream>,
+    /// The guards, the judge, `stretto_commit` and retention.
+    pub policy: Policy,
 }
 
 impl Setup {
@@ -158,6 +216,7 @@ impl Setup {
                 args.push("--flow-shadow".into());
             }
         }
+        args.extend(self.policy.args());
         args.extend(self.target());
         args
     }
@@ -300,6 +359,14 @@ pub fn expand_home(path: &str, home: Option<&Path>) -> PathBuf {
 /// run. `init` is how to call `stretto init` again for the same host and
 /// server, up to the options that differ.
 pub fn next_steps(setup: &Setup, init: &str) -> String {
+    // The guards, the judge, `stretto_commit` and retention are init's
+    // options too, the same at every step.
+    let mut init = init.to_string();
+    for word in setup.policy.args() {
+        init.push(' ');
+        init.push_str(&shell_quote(&word));
+    }
+    let init = init.as_str();
     let d = &setup.domain;
     let server: Vec<String> = setup.target().iter().map(|w| shell_quote(w)).collect();
     let server = server.join(" ");
@@ -389,6 +456,15 @@ pub fn next_steps(setup: &Setup, init: &str) -> String {
              with `--flow-decider habit`, which needs no key.\n",
         );
     }
+    if let Some(judge) = &setup.policy.judge {
+        out.push_str(&format!(
+            "\nThe confirmation judge asks TypeSafe's Jev about each write the guards check for a \
+             confirmation: give the server TYPESAFE_API_KEY (or TYPESAFE_API_KEY_FILE) in the \
+             host's `env`. It reads the conversation from {}, which the host appends to, one JSON \
+             line per message: {{\"role\": \"user\" | \"assistant\", \"content\": text}}.\n",
+            judge.context
+        ));
+    }
     out
 }
 
@@ -441,6 +517,7 @@ mod tests {
             .map(String::from)
             .to_vec(),
             upstream: None,
+            policy: Policy::default(),
         }
     }
 
@@ -718,6 +795,35 @@ mod tests {
         assert_eq!(expand_home("~bob/f", Some(home)), Path::new("~bob/f"));
         assert_eq!(expand_home("~/f", None), Path::new("~/f"));
         assert_eq!(expand_home("/abs/f", Some(home)), Path::new("/abs/f"));
+    }
+
+    #[test]
+    fn the_next_steps_keep_the_policy_and_say_what_the_judge_needs() {
+        let mut s = setup(None);
+        s.domain = "retail".to_string();
+        s.policy = Policy {
+            guards: true,
+            judge: Some(Judge {
+                enforce: false,
+                context: "~/.stretto/context/retail.jsonl".to_string(),
+            }),
+            commit: true,
+            retain_days: Some(30),
+        };
+        let steps = next_steps(&s, "stretto init --host cursor --domain retail");
+        assert!(
+            steps.contains(
+                "stretto init --host cursor --domain retail --retain-days 30 --guards \
+                 --confirm-judge log --context ~/.stretto/context/retail.jsonl --commit \
+                 --flow ~/.stretto/retail.flow.json --shadow -- npx"
+            ),
+            "{steps}"
+        );
+        assert!(
+            steps.contains("reads the conversation from ~/.stretto/context/retail.jsonl"),
+            "{steps}"
+        );
+        assert!(!next_steps(&setup(None), INIT).contains("confirmation judge"));
     }
 
     #[test]
