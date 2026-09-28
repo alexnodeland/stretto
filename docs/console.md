@@ -114,7 +114,7 @@ It never edits an MCP host's configuration: it shows the snippet to paste, as `s
 
 ## Jobs
 
-Jobs run the `stretto` CLI in the data directory, one at a time, in the order they were queued, with the console's environment. So a job that fits an arbiter needs `TYPESAFE_API_KEY` (or `TYPESAFE_API_KEY_FILE`) where the console runs, and `redact` needs `STRETTO_REDACT_SALT`. The console only checks whether they are set. `learn` and `promote` never write over an existing file unless you ask. `doctor` checks `~/.stretto`, whichever data directory the console serves. A job cannot be stopped from the page: stopping the console stops it, and the job is marked as failed at the next start.
+Jobs run the `stretto` CLI in the data directory, one at a time, in the order they were queued, with the console's environment. So a job that fits an arbiter needs `TYPESAFE_API_KEY` (or `TYPESAFE_API_KEY_FILE`) where the console runs, and `redact` needs `STRETTO_REDACT_SALT`. The console only checks whether they are set. `learn` and `promote` never write over an existing file unless you ask. `doctor` checks the data directory the console serves. A job cannot be stopped from the page: stopping the console stops it, and the job is marked as failed at the next start.
 
 ## Limits
 
