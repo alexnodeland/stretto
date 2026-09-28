@@ -9,6 +9,7 @@
 //! step the configuration is at.
 
 use crate::flow::Decider;
+use crate::surprise::Override;
 use anyhow::{bail, Context, Result};
 use serde_json::{json, Value};
 use std::io::Write;
@@ -81,6 +82,9 @@ pub struct Served {
     /// The threshold to serve it at (`--flow-threshold`), in place of the
     /// proxy's.
     pub threshold: Option<f64>,
+    /// Its surprise gate, off or at another threshold (`--flow-surprise`),
+    /// in place of the one it stores.
+    pub surprise: Option<Override>,
 }
 
 impl Served {
@@ -211,6 +215,9 @@ impl Setup {
             }
             if let Some(threshold) = flow.threshold {
                 args.extend(["--flow-threshold".into(), threshold.to_string()]);
+            }
+            if let Some(surprise) = flow.surprise {
+                args.extend(["--flow-surprise".into(), surprise.to_string()]);
             }
             if flow.shadow {
                 args.push("--flow-shadow".into());
@@ -547,6 +554,7 @@ mod tests {
             shadow: true,
             decide_with: None,
             threshold: None,
+            surprise: None,
         }));
         assert_eq!(
             shadow.args()[..9],
@@ -570,6 +578,7 @@ mod tests {
             shadow: false,
             decide_with: None,
             threshold: None,
+            surprise: None,
         }));
         assert_eq!(
             older.args()[4..8],
@@ -583,6 +592,7 @@ mod tests {
             shadow: false,
             decide_with: None,
             threshold: None,
+            surprise: None,
         }));
         assert!(!arbiter.args().contains(&"--flow-decider".to_string()));
         assert!(!arbiter.args().contains(&"--flow-shadow".to_string()));
@@ -667,6 +677,7 @@ mod tests {
                 shadow: true,
                 decide_with: None,
                 threshold: None,
+                surprise: None,
             })),
             INIT,
         );
@@ -684,6 +695,7 @@ mod tests {
             shadow: true,
             decide_with: None,
             threshold: None,
+            surprise: None,
         }));
         custom.record = "/srv/shadow".to_string();
         let custom = next_steps(&custom, INIT);
@@ -701,6 +713,7 @@ mod tests {
                 shadow: false,
                 decide_with: None,
                 threshold: None,
+                surprise: None,
             })),
             INIT,
         );
@@ -720,6 +733,7 @@ mod tests {
             shadow: false,
             decide_with: Some(Decider::Habit),
             threshold: Some(0.5),
+            surprise: Some(Override::Off),
         }));
         s.server.clear();
         s.upstream = Some(Upstream {
@@ -735,6 +749,8 @@ mod tests {
                 "habit",
                 "--flow-threshold",
                 "0.5",
+                "--flow-surprise",
+                "off",
                 "--upstream",
                 "https://example.com/mcp",
                 "--upstream-header",

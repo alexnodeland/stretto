@@ -2675,6 +2675,7 @@ fn init(args: InitArgs, env: &mut Env) -> Result<()> {
             shadow: args.shadow,
             decide_with: None,
             threshold: None,
+            surprise: None,
         }),
         domain,
         record,

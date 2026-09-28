@@ -43,6 +43,18 @@ const deciderText = computed(() => {
     : 'the flow’s default'
 })
 
+/** The flow's surprise gate as the proxy serves it: the server's, else the flow's own. */
+const surpriseText = computed(() => {
+  const s = server.value
+  if (!s?.flow) return '—'
+  if (s.surprise?.kind === 'off') return 'off'
+  if (s.surprise) return `${s.surprise.nats} nats, in place of the flow’s`
+  const g = s.flow_summary?.surprise
+  if (g)
+    return `${g.window} steps above ${g.threshold.toFixed(2)} nats (the flow’s${g.quantile == null ? '' : `, learned at the ${g.quantile} quantile`})`
+  return 'none: the flow never hands back for surprise'
+})
+
 const confirmDelete = ref(false)
 const deleting = ref(false)
 async function remove() {
@@ -181,6 +193,8 @@ async function remove() {
                 <dd>{{ deciderText }}</dd>
                 <dt>Threshold</dt>
                 <dd class="num">{{ server.threshold ?? '0.3 (the proxy’s default)' }}</dd>
+                <dt>Surprise gate</dt>
+                <dd data-testid="server-surprise">{{ surpriseText }}</dd>
               </template>
               <dt>Guards</dt>
               <dd data-testid="server-guards">

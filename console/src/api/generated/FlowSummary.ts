@@ -2,6 +2,7 @@
 import type { DeciderName } from "./DeciderName";
 import type { PromotedCounts } from "./PromotedCounts";
 import type { StageLink } from "./StageLink";
+import type { SurpriseGate } from "./SurpriseGate";
 import type { ToolCounts } from "./ToolCounts";
 
 /**
@@ -37,6 +38,11 @@ sites: number,
  * Distinct lookups it may make.
  */
 lookups: number, promoted: PromotedCounts | null, 
+/**
+ * When it hands back for the rest of a session that surprises it, if
+ * it has a surprise gate.
+ */
+surprise: SurpriseGate | null, 
 /**
  * The registry's servers whose flow is this file.
  */

@@ -12,6 +12,7 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 use stretto_report::flow::Provenance;
 use stretto_report::review::{self, BindingView, DiffSection, FlowTool, PromotionView, SiteView};
+use stretto_report::surprise::SurpriseGate;
 #[cfg(feature = "ts")]
 use ts_rs::TS;
 
@@ -79,6 +80,9 @@ pub struct FlowSummary {
     /// Distinct lookups it may make.
     pub lookups: usize,
     pub promoted: Option<PromotedCounts>,
+    /// When it hands back for the rest of a session that surprises it, if
+    /// it has a surprise gate.
+    pub surprise: Option<SurpriseGate>,
     /// The registry's servers whose flow is this file.
     pub served_by: Vec<String>,
     /// Its part in staged learning, if it has one.

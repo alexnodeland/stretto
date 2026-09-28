@@ -39,6 +39,21 @@ test('a served session shows each turn, and the lookups stretto read ahead under
   ).toBeVisible()
 })
 
+test('a session that surprised its flow is marked in the list, and says where on its page', async ({
+  page,
+}) => {
+  await page.goto('/sessions?mode=served')
+  const badge = page.getByTestId('session-surprised')
+  await expect(badge).toHaveCount(1)
+  await page.locator('tr', { has: badge }).locator('a.st-id').click()
+  const notice = page.getByTestId('surprised-notice')
+  await expect(notice).toContainText('The session surprised the flow after call')
+  await expect(notice).toContainText(
+    "5 of the agent's steps in a row averaged 3.42 nats, above 3.10",
+  )
+  await expect(notice).toContainText('From there the flow handed back after every call.')
+})
+
 test('the decisions tab lists every decision, and the raw log its lines', async ({ page }) => {
   const key = await sessionKey(page, 'served')
   await page.goto(`/sessions/${key}`)

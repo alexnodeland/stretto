@@ -14,6 +14,11 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 - **Replayed** on GLM-5's and Claude 3.7 Sonnet's τ²-bench test episodes, retail and airline, at five quantiles over four windows ([results](docs/results/surprise-2026-09-28.md)). At the quantiles a deployment would choose, 0.8 to 0.99, turns saved and detours moved by at most one in 62 of 64 runs. Where the gate tripped, the flow had already made 90% or more of its lookups. No setting paid in more than one of the four agent and domain pairs, so the default stays off. `scripts/surprise_study.py` replays it.
 - `pilot/tau2_mcp.py` and `trace_env.py` give the flow's lookups the proxy's ids (`stretto-1`, …), and `pilot/check_flow.py` and `run_episode.py` take `--flow-surprise`.
 - In the libraries: `stretto_report::surprise`; `Flow::surprise`, `with_surprise` and `with_surprise_override`.
+- **In the console** ([#36](https://github.com/alexnodeland/stretto/issues/36)):
+  - A server serves its flow with the gate the flow stores, with none, or at another threshold, which its configuration for each host passes to the proxy (`--flow-surprise`). The form says what the chosen flow's own gate does.
+  - A flow's summary carries its gate (`surprise`), and a session's says whether it tripped (`surprised`).
+  - The sessions list marks a session that surprised its flow, and the session's page says after which call the gate tripped and what it measured.
+  - In the libraries: `surprise::SURPRISED`, how a hand-back for surprise begins its reason; `init::Served::surprise`.
 
 ### Staged flows
 

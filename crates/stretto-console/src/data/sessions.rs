@@ -491,6 +491,11 @@ pub fn analyze(file: &SessionFile) -> Result<Analysis, String> {
             .iter()
             .filter(|d| d.action == DecisionAction::Lookup && d.shadow)
             .count(),
+        surprised: decisions.iter().any(|d| {
+            d.reason
+                .as_deref()
+                .is_some_and(|r| r.starts_with(stretto_report::surprise::SURPRISED))
+        }),
         writes: agent.iter().filter(|c| c.kind == ToolKind::Write).count(),
         upstream: upstream(&log.header.server_command),
         size_bytes,
@@ -1014,6 +1019,42 @@ mod tests {
             .map(|t| (t.name.as_str(), t.destructive_hint))
             .collect();
         assert_eq!(tools, [("get", None), ("put", Some(true))]);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn a_session_that_tripped_the_flows_surprise_gate_says_so() {
+        let dir = temp("surprised");
+        let served = fixture("served/shop");
+        let name = "20260928T020401.117Z-14662";
+        for ext in ["jsonl", "flow.jsonl"] {
+            std::fs::copy(
+                served.join(format!("{name}.{ext}")),
+                dir.join(format!("{name}.{ext}")),
+            )
+            .unwrap();
+        }
+        let file = SessionFile {
+            key: "s".into(),
+            path: dir.join(format!("{name}.jsonl")),
+            rel: format!("{name}.jsonl"),
+            flow_log: Some(dir.join(format!("{name}.flow.jsonl"))),
+            confirm_log: None,
+        };
+        // Its hand-backs are the flow's own: none for surprise.
+        let before = analyze(&file).unwrap().summary;
+        assert!(before.hand_backs > 0 && !before.surprised);
+        let tripped = json!({"action": "hand_back", "address": "decide#9", "after": 3,
+            "site": "get_user_details", "shadow": true,
+            "reason": format!("{}: 5 of the agent's steps in a row averaged 4.10 nats, above 3.00",
+                stretto_report::surprise::SURPRISED)});
+        let mut log = std::fs::read_to_string(file.flow_log.as_ref().unwrap()).unwrap();
+        log.push_str(&format!("{tripped}\n"));
+        std::fs::write(file.flow_log.as_ref().unwrap(), log).unwrap();
+        // In shadow too: the session surprised the flow either way.
+        let after = analyze(&file).unwrap().summary;
+        assert!(after.surprised);
+        assert_eq!(after.hand_backs, before.hand_backs);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

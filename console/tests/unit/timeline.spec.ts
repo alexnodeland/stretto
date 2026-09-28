@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { buildTimeline, decisionValue } from '@/lib/timeline'
+import { buildTimeline, decisionValue, surprisedAt } from '@/lib/timeline'
 import { Recorder } from '../../mock/fixtures/recorder.ts'
 import { servedShopSession, shopSpec } from '../../mock/fixtures/world.ts'
 import { SHOP_TOOLS, shop } from '../../mock/fixtures/tools.ts'
 
 const mid = (a: number, b: number) => (a + b) / 2
 
-function served(kind: 'cancel' | 'status' | 'typo') {
+function served(kind: 'cancel' | 'status' | 'typo' | 'surprise') {
   const rec = servedShopSession(
     shopSpec(1_790_000_000_000, 4242, 'served', 'logs/shop'),
     41,
@@ -17,6 +17,20 @@ function served(kind: 'cancel' | 'status' | 'typo') {
 }
 
 describe('a session, turn by turn', () => {
+  it('finds where the flow’s surprise gate tripped, and what it measured', () => {
+    expect(surprisedAt(served('status').decisions)).toBeNull()
+    const detail = served('surprise')
+    expect(detail.summary.surprised).toBe(true)
+    const at = surprisedAt(detail.decisions)!
+    // The first of the two hand-backs for surprise: after the first read again.
+    const firstRead = detail.calls.filter(
+      (c) => c.tool === 'get_order_details' && c.by === 'agent',
+    )[0]!
+    expect(at.after).toBe(firstRead.id)
+    expect(at.measured).toBe("5 of the agent's steps in a row averaged 3.42 nats, above 3.10")
+    expect(served('status').summary.surprised).toBe(false)
+  })
+
   it('puts the conversation where it fell, and each turn’s calls in order', () => {
     const detail = served('cancel')
     const entries = buildTimeline(detail)

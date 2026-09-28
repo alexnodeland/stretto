@@ -56,6 +56,7 @@ export type ServerErrors = Partial<
     | 'headers'
     | 'flow'
     | 'threshold'
+    | 'surprise'
     | 'guards'
     | 'context'
     | 'retain_days',
@@ -93,6 +94,9 @@ export function checkServer(input: ServerInput, taken: readonly string[] = []): 
   }
   const threshold = checkThreshold(input.threshold ?? null)
   if (threshold) errors.threshold = threshold
+  const surprise = input.surprise ?? null
+  if (surprise?.kind === 'threshold' && !(Number.isFinite(surprise.nats) && surprise.nats > 0))
+    errors.surprise = 'Give the threshold in nats, above 0.'
   if (input.guards && !GUARDED_DOMAINS.includes(input.name))
     errors.guards = `There are no policy guards for ${input.name || 'this server'}: retail and airline have them.`
   if (input.judge && !input.judge.context.trim())

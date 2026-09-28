@@ -4,7 +4,7 @@
  * the session id is its link, so the keyboard reaches it too.
  */
 import { useRouter } from 'vue-router'
-import { TriangleAlert } from '@lucide/vue'
+import { TriangleAlert, Zap } from '@lucide/vue'
 import ModeBadge from './ModeBadge.vue'
 import UiRelTime from './ui/UiRelTime.vue'
 import type { SessionSummary } from '@/api/types'
@@ -78,6 +78,15 @@ function open(session: SessionSummary, event: MouseEvent) {
               <span v-else :class="{ subtle: !s.flow_lookups }">{{
                 formatCount(s.flow_lookups)
               }}</span>
+              <span
+                v-if="s.surprised"
+                class="text-warn st-surprised"
+                title="The session surprised the flow: it handed back for the rest of the session"
+                data-testid="session-surprised"
+              >
+                <Zap :size="13" :stroke-width="2.2" aria-hidden="true" />
+                <span class="sr-only">surprised the flow</span>
+              </span>
             </td>
             <td v-if="!compact" class="num">
               <span v-if="s.errors" class="text-danger st-err">
@@ -107,6 +116,7 @@ function open(session: SessionSummary, event: MouseEvent) {
             <span v-if="s.mode === 'served'">{{ plural(s.flow_lookups, 'lookup') }}</span>
             <span v-if="s.mode === 'shadow'">{{ formatCount(s.shadow_lookups) }} in shadow</span>
             <span v-if="s.errors" class="text-danger">{{ plural(s.errors, 'error') }}</span>
+            <span v-if="s.surprised" class="text-warn">surprised the flow</span>
             <UiRelTime :ms="s.started_unix_ms" />
           </span>
         </RouterLink>
@@ -142,6 +152,12 @@ a.st-id:hover {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+.st-surprised {
+  display: inline-flex;
+  vertical-align: -2px;
+  margin-left: 6px;
 }
 
 .st-list {

@@ -32,6 +32,22 @@ export type TimelineEntry =
   | { type: 'turn'; t: number; turn: Turn; calls: CallItem[] }
 
 /** The value a decision is weighed on against the threshold: the lookup's probability times its binding's chance. */
+/** How the reason of a hand-back for surprise begins (`stretto_report::surprise::SURPRISED`). */
+export const SURPRISED = 'the session surprised the flow'
+
+/**
+ * Where the flow's surprise gate tripped, if it did: the call it decided
+ * after, and what the gate measured there. From there the flow hands back
+ * after every call.
+ */
+export function surprisedAt(
+  decisions: readonly Pick<FlowDecision, 'after' | 'reason'>[],
+): { after: string; measured: string } | null {
+  const d = decisions.find((x) => x.reason?.startsWith(SURPRISED))
+  if (!d?.reason) return null
+  return { after: d.after, measured: d.reason.slice(SURPRISED.length).replace(/^:\s*/, '') }
+}
+
 export function decisionValue(d: Pick<FlowDecision, 'prob' | 'binding'>): number | null {
   if (d.prob === null) return null
   return d.prob * (d.binding ?? 1)

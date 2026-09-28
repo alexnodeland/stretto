@@ -2,6 +2,7 @@
 import type { DeciderName } from "./DeciderName";
 import type { Judge } from "./Judge";
 import type { ServerMode } from "./ServerMode";
+import type { Surprise } from "./Surprise";
 import type { Upstream } from "./Upstream";
 
 /**
@@ -31,6 +32,11 @@ decider: DeciderName | null,
  * The threshold to serve the flow at, in place of the proxy's 0.3.
  */
 threshold: number | null, 
+/**
+ * The flow's surprise gate, off or at another threshold, in place of
+ * the one the flow stores.
+ */
+surprise: Surprise | null, 
 /**
  * Check each of the agent's calls against the domain's policy guards,
  * and refuse the ones they fail (`--guards`). `retail` and `airline`
