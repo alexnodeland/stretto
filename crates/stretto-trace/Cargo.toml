@@ -13,8 +13,13 @@ readme.workspace = true
 keywords.workspace = true
 categories = ["development-tools", "parsing"]
 
+[features]
+# TypeScript declarations (ts-rs) for the types `stretto-console` serves.
+ts = ["dep:ts-rs"]
+
 [dependencies]
 anyhow.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
+ts-rs = { workspace = true, optional = true }

@@ -17,6 +17,11 @@ categories = ["command-line-utilities", "development-tools"]
 name = "stretto"
 path = "src/main.rs"
 
+[features]
+# TypeScript declarations (ts-rs) for the views that `stretto-console`
+# serves, such as `review::FlowView`.
+ts = ["dep:ts-rs", "stretto-trace/ts"]
+
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
@@ -29,3 +34,4 @@ serde_json.workspace = true
 stretto-model.workspace = true
 stretto-oracle.workspace = true
 stretto-trace.workspace = true
+ts-rs = { workspace = true, optional = true }
