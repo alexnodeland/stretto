@@ -56,6 +56,10 @@ pub struct EncodedEpisode {
     /// A coarse, episode-level condition such as the intent a macro-tool call
     /// names; 0 when unused. Only [`GroupedModel`] reads it.
     pub group: u32,
+    /// How much each of its steps counts when a model is fitted: 1, or less
+    /// for an older episode a model is to forget (see
+    /// [`EncodedEpisode::with_weight`]).
+    pub weight: f64,
 }
 
 impl EncodedEpisode {
@@ -86,12 +90,21 @@ impl EncodedEpisode {
             symbols,
             success,
             group: 0,
+            weight: 1.0,
         }
     }
 
     /// The same episode, conditioned on `group`.
     pub fn with_group(mut self, group: u32) -> Self {
         self.group = group;
+        self
+    }
+
+    /// The same episode, each of its steps counting `weight` observations
+    /// when a model is fitted: exponential forgetting weighs older
+    /// episodes less (RFC-001 §3.3).
+    pub fn with_weight(mut self, weight: f64) -> Self {
+        self.weight = weight;
         self
     }
 }
@@ -142,12 +155,13 @@ impl BackoffModel {
         }
     }
 
-    /// A model trained on `episodes`.
+    /// A model trained on `episodes`, each step counting its episode's
+    /// weight.
     pub fn fit(order: usize, alpha: f64, vocab_size: usize, episodes: &[EncodedEpisode]) -> Self {
         let mut m = Self::new(order, alpha, vocab_size);
         for ep in episodes {
             for t in 0..ep.actions.len() {
-                m.observe(&ep.symbols[..t], ep.actions[t]);
+                m.observe_weighted(&ep.symbols[..t], [ep.actions[t]], ep.weight);
             }
         }
         m
@@ -183,16 +197,37 @@ impl BackoffModel {
         history: &[Symbol],
         actions: impl IntoIterator<Item = u32> + Clone,
     ) {
+        self.observe_weighted(history, actions, 1.0);
+    }
+
+    /// [`BackoffModel::observe_set`], counting `weight` observations.
+    pub fn observe_weighted(
+        &mut self,
+        history: &[Symbol],
+        actions: impl IntoIterator<Item = u32> + Clone,
+        weight: f64,
+    ) {
         for j in 0..=self.order {
             let c = self.levels[j]
                 .0
                 .entry(Self::context(history, j))
                 .or_default();
             for action in actions.clone() {
-                *c.by_action.entry(action).or_insert(0.0) += 1.0;
+                *c.by_action.entry(action).or_insert(0.0) += weight;
             }
-            c.total += 1.0;
+            c.total += weight;
         }
+    }
+
+    /// How often training took `action`, in any context, weighted as it was
+    /// fitted: 0 for an action it never saw.
+    pub fn count(&self, action: u32) -> f64 {
+        self.levels[0]
+            .0
+            .get(&[][..])
+            .and_then(|c| c.by_action.get(&action))
+            .copied()
+            .unwrap_or(0.0)
     }
 
     /// A model of what comes before the next write, trained on `episodes`:
@@ -217,7 +252,7 @@ impl BackoffModel {
                     .collect();
                 before.sort_unstable();
                 before.dedup();
-                m.observe_set(&ep.symbols[..t], before);
+                m.observe_weighted(&ep.symbols[..t], before, ep.weight);
             }
         }
         m
@@ -328,8 +363,8 @@ impl GroupedModel {
             for t in 0..ep.actions.len() {
                 let key = (ep.group, BackoffModel::context(&ep.symbols[..t], order));
                 let c = top.entry(key).or_default();
-                *c.by_action.entry(ep.actions[t]).or_insert(0.0) += 1.0;
-                c.total += 1.0;
+                *c.by_action.entry(ep.actions[t]).or_insert(0.0) += ep.weight;
+                c.total += ep.weight;
             }
         }
         Self { base, beta, top }
@@ -575,6 +610,7 @@ mod tests {
             symbols: actions.iter().map(|a| a * 4).collect(),
             success: true,
             group: 0,
+            weight: 1.0,
         }
     }
 
@@ -663,6 +699,28 @@ mod tests {
         let e = ep(&[1, 2]).with_group(1);
         let z: f64 = grouped.predict_at(&e, 1).iter().sum();
         assert!((z - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn older_episodes_weigh_less_once_forgotten() {
+        // An old habit, 1 then 2, twice as often as the new one, 1 then 3;
+        // weighed at a tenth, the old one loses.
+        let old = || ep(&[1, 2]).with_weight(0.1);
+        let mut data: Vec<EncodedEpisode> = (0..20).map(|_| old()).collect();
+        data.extend((0..10).map(|_| ep(&[1, 3])));
+        let after_one = &data[0].symbols[..1];
+        let habit = BackoffModel::fit(1, 0.5, 5, &data);
+        let new = habit.prob(after_one, 3);
+        assert!(new > 0.7, "{new}");
+        let grouped = GroupedModel::fit(1, 0.5, 0.5, 5, &data);
+        assert!(grouped.prob_at(&data[20], 1, 3) > 0.7);
+        let reach = BackoffModel::fit_reach(1, 0.5, 5, &data, |a| a == 4);
+        assert!(reach.prob(after_one, 3) > reach.prob(after_one, 2));
+        // Training's counts, as weighed: none for an action it never saw.
+        assert!((habit.count(2) - 2.0).abs() < 1e-9);
+        assert!((habit.count(3) - 10.0).abs() < 1e-9);
+        assert_eq!(habit.count(4), 0.0);
+        assert_eq!(BackoffModel::new(1, 0.5, 5).count(1), 0.0);
     }
 
     #[test]

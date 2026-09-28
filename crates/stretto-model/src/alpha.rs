@@ -90,6 +90,7 @@ mod tests {
             symbols: actions.iter().map(|a| a * 4).collect(),
             success: true,
             group: 0,
+            weight: 1.0,
         }
     }
 

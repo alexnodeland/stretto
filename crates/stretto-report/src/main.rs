@@ -177,6 +177,13 @@ enum Command {
         /// habit, the sites and the bindings again from every session.
         #[arg(help_heading = "The arbiter", long, conflicts_with = "habit_only")]
         refit_habit: bool,
+        /// Forget old sessions: one this many sessions older than the newest
+        /// counts half in the habit, one twice as old a quarter. Sessions are
+        /// taken in the order they started (with `--results`, as listed).
+        /// Relearn with it once `stretto drift` says the agent changed, to
+        /// follow the change without discarding every earlier session.
+        #[arg(help_heading = "The habit", value_name = "SESSIONS", long, value_parser = positive)]
+        half_life: Option<f64>,
         /// Ask no System-One model while learning: every session trains the
         /// habit, and the flow serves this arbiter instead. It is an arbiter
         /// file (`export-arbiter`; `data/arbiters/` ships two), or a flow
@@ -471,6 +478,63 @@ enum Command {
         #[arg(help_heading = "Output", value_name = "FILE", long)]
         out: Option<PathBuf>,
         /// Also write the audit as JSON here.
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
+        json: Option<PathBuf>,
+    },
+    /// Watch for the agent changing under a flow: score recorded sessions in
+    /// the order they ran, as `audit` does, for surprise, disagreement and
+    /// the share of steps at sites the flow does not know, and sound an
+    /// alarm when Bayesian online change-point detection puts a change on a
+    /// recent session, naming the sites that moved. Exits with 1 while the
+    /// alarm sounds after the last session, 2 on an error.
+    Drift {
+        /// The flow IR the sessions were served with.
+        #[arg(help_heading = "Inputs", value_name = "FILE", long)]
+        flow: PathBuf,
+        /// Sessions recorded by stretto-proxy (a directory of `*.jsonl`),
+        /// taken in the order they started.
+        #[arg(help_heading = "Inputs", value_name = "DIR", long)]
+        sessions: Option<PathBuf>,
+        /// τ²-bench results files, their episodes taken in the order listed
+        /// and before any --sessions, as a flow compiled from benchmark runs
+        /// serves a deployment later; files for other domains are skipped.
+        #[arg(help_heading = "Inputs", value_name = "FILE", long = "results")]
+        results: Vec<PathBuf>,
+        /// With --results: keep only the test split of this τ²-bench
+        /// checkout, the tasks a flow compiled from it never trained on.
+        #[arg(help_heading = "Inputs", value_name = "DIR", long)]
+        tau2: Option<PathBuf>,
+        /// How the flow decides: `habit` (the default: it predicts the
+        /// agent's next step and asks nothing), `arbiter` (answered by
+        /// --oracle) or `reach`.
+        #[arg(help_heading = "The System-One model", long, value_enum, default_value_t = DeciderArg::Habit)]
+        decider: DeciderArg,
+        /// Who answers the arbiter's questions: `replay` (the cache only),
+        /// `jev` (needs TYPESAFE_API_KEY) or `mock`.
+        #[arg(help_heading = "The System-One model", long, value_enum, default_value_t = OracleArg::Replay)]
+        oracle: OracleArg,
+        /// Replay cache for oracle answers.
+        #[arg(
+            help_heading = "The System-One model",
+            value_name = "DIR",
+            long,
+            default_value = ".oracle-cache"
+        )]
+        oracle_cache: PathBuf,
+        /// The prior chance that the agent changes after any one session.
+        #[arg(help_heading = "The alarm", value_name = "P", long, default_value_t = 0.01, value_parser = probability)]
+        hazard: f64,
+        /// How recent a change the alarm reports, in sessions (at least 3:
+        /// a change needs three sessions of the new run to count).
+        #[arg(help_heading = "The alarm", value_name = "SESSIONS", long, default_value_t = 10, value_parser = clap::value_parser!(u64).range(3..))]
+        window: u64,
+        /// The probability of a recent change that sounds the alarm.
+        #[arg(help_heading = "The alarm", value_name = "P", long, default_value_t = 0.5, value_parser = probability)]
+        threshold: f64,
+        /// Write the Markdown report here (default: stdout).
+        #[arg(help_heading = "Output", value_name = "FILE", long)]
+        out: Option<PathBuf>,
+        /// Also write every session's scores and the alarms as JSON here.
         #[arg(help_heading = "Output", value_name = "FILE", long)]
         json: Option<PathBuf>,
     },
@@ -1335,6 +1399,7 @@ fn run() -> Result<()> {
             habit_only,
             constants,
             refit_habit,
+            half_life,
             arbiter_from,
             manifest_options,
             domain,
@@ -1396,6 +1461,7 @@ fn run() -> Result<()> {
             config.domains = vec![domain.clone()];
             config.refit_habit = refit_habit;
             config.constants = constants;
+            config.half_life = half_life;
             let flow = if let Some(path) = arbiter_from {
                 let habit =
                     phase0::compile_habit_flow_from_episodes(&config, &episodes, &manifest)?;
@@ -1670,6 +1736,75 @@ fn run() -> Result<()> {
                 write(&path, &serde_json::to_vec_pretty(&audit)?)?;
             }
             Ok(())
+        }
+        Command::Drift {
+            flow,
+            sessions,
+            results,
+            tau2,
+            decider,
+            oracle,
+            oracle_cache,
+            hazard,
+            window,
+            threshold,
+            out,
+            json,
+        } => {
+            let run = || -> Result<bool> {
+                let flow = stretto_report::flow::Flow::load(&flow)?;
+                let domain = flow.domain().to_string();
+                // Benchmark runs first, as a flow is compiled from them before
+                // it serves a deployment's sessions.
+                let episodes: Vec<stretto_trace::Episode> =
+                    recorded(&domain, None, &results, tau2.as_deref(), &[])?
+                        .into_iter()
+                        .chain(recorded(&domain, sessions.as_deref(), &[], None, &[])?)
+                        .map(|r| r.episode)
+                        .collect();
+                let decider = Decider::from(decider);
+                if decider == Decider::Arbiter && !flow.has_arbiter() {
+                    anyhow::bail!("the flow has no arbiter: watch it with --decider habit");
+                }
+                if decider == Decider::Reach && !flow.has_reach() {
+                    anyhow::bail!("the flow has no counts for --decider reach: learn it again");
+                }
+                let mut sc = ShadowConfig::new(oracle_kind(oracle));
+                sc.cache_dir = oracle_cache;
+                let oracle = sc.build()?;
+                let settings = stretto_report::drift::Settings {
+                    hazard,
+                    window: window as usize,
+                    threshold,
+                };
+                let d = stretto_report::drift::drift(
+                    &flow,
+                    &episodes,
+                    oracle.as_ref(),
+                    decider,
+                    settings,
+                );
+                let md = stretto_report::drift::markdown(&d);
+                match out {
+                    Some(path) => write(&path, md.as_bytes())?,
+                    None => print!("{md}"),
+                }
+                if let Some(path) = json {
+                    write(&path, &serde_json::to_vec_pretty(&d)?)?;
+                }
+                if d.sounding {
+                    eprintln!("stretto: the agent changed; the flow may no longer fit");
+                }
+                Ok(d.sounding)
+            };
+            match run() {
+                Ok(false) => Ok(()),
+                Ok(true) => std::process::exit(1),
+                Err(e) => {
+                    eprintln!("stretto: {e:#}");
+                    std::process::exit(2)
+                }
+            }
         }
         Command::FlowShow {
             flow,
@@ -2716,6 +2851,22 @@ fn recorded(
         );
     }
     Ok(episodes)
+}
+
+/// A number above zero, as an option takes it.
+fn positive(arg: &str) -> std::result::Result<f64, String> {
+    match arg.parse::<f64>() {
+        Ok(x) if x > 0.0 && x.is_finite() => Ok(x),
+        _ => Err(format!("{arg} is not a number above zero")),
+    }
+}
+
+/// A probability above zero and at most one, as an option takes it.
+fn probability(arg: &str) -> std::result::Result<f64, String> {
+    match arg.parse::<f64>() {
+        Ok(p) if p > 0.0 && p <= 1.0 => Ok(p),
+        _ => Err(format!("{arg} is not a probability above 0 and at most 1")),
+    }
 }
 
 fn oracle_kind(kind: OracleArg) -> OracleKind {

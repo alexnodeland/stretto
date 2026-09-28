@@ -549,6 +549,13 @@ impl Flow {
         self.sites.names()
     }
 
+    /// Whether training saw the agent call `tool`. After a tool it never
+    /// saw, the agent is at a site the flow does not know ([`crate::drift`]).
+    pub fn trained_on(&self, tool: &str) -> bool {
+        let id = self.vocab.id(&Action::Tool(tool.to_string()));
+        self.habit.base().count(id) > 0.0
+    }
+
     /// Its per-site thresholds (see [`Flow::with_thresholds`]).
     pub fn thresholds(&self) -> &BTreeMap<String, f64> {
         &self.thresholds

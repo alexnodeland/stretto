@@ -21,6 +21,7 @@ Compile an agent's recorded behavior into flows, serve them, and measure them ag
 | [`confirm`](#stretto-confirm) | Judge the customer's confirmation before each write with a System-One model, next to the guards' word list, on τ²-bench's published trajectories. |
 | [`match`](#stretto-match) | Match descriptions to records (RFC-001). |
 | [`audit`](#stretto-audit) | Audit a flow against recorded episodes. |
+| [`drift`](#stretto-drift) | Watch for the agent changing under a flow. |
 | [`flow-show`](#stretto-flow-show) | Show a flow as a reviewer reads it (Markdown). |
 | [`flow-diff`](#stretto-flow-diff) | What changed from one flow to another, as a change list for a pull request (Markdown). |
 | [`evaluate`](#stretto-evaluate) | Estimate what another rule would have done on a flow's logged decisions (RFC-001 §3.7). |
@@ -233,6 +234,10 @@ Usage: stretto learn [OPTIONS] --domain <NAME> --out <FILE>
 
 - `--constants`: Also pass, as the agent did, each argument it passed with one value in every call of a lookup, at least five, and in at least half of them, such as a page size, so that the flow's lookups are the agent's own calls.
 
+**The habit**
+
+- `--half-life <SESSIONS>`: Forget old sessions: one this many sessions older than the newest counts half in the habit, one twice as old a quarter. Sessions are taken in the order they started (with `--results`, as listed). Relearn with it once `stretto drift` says the agent changed, to follow the change without discarding every earlier session.
+
 **Output**
 
 - `--out <FILE>` (required): Where to write the flow.
@@ -364,6 +369,38 @@ Usage: stretto audit [OPTIONS] --flow <FILE>
 
 - `--out <FILE>`: Write the Markdown report here (default: stdout).
 - `--json <FILE>`: Also write the audit as JSON here.
+
+### `stretto drift`
+
+Watch for the agent changing under a flow: score recorded sessions in the order they ran, as `audit` does, for surprise, disagreement and the share of steps at sites the flow does not know, and sound an alarm when Bayesian online change-point detection puts a change on a recent session, naming the sites that moved. Exits with 1 while the alarm sounds after the last session, 2 on an error.
+
+```text
+Usage: stretto drift [OPTIONS] --flow <FILE>
+```
+
+**Inputs**
+
+- `--flow <FILE>` (required): The flow IR the sessions were served with.
+- `--sessions <DIR>`: Sessions recorded by stretto-proxy (a directory of `*.jsonl`), taken in the order they started.
+- `--results <FILE>` (repeatable): τ²-bench results files, their episodes taken in the order listed and before any --sessions, as a flow compiled from benchmark runs serves a deployment later; files for other domains are skipped.
+- `--tau2 <DIR>`: With --results: keep only the test split of this τ²-bench checkout, the tasks a flow compiled from it never trained on.
+
+**The System-One model**
+
+- `--decider <DECIDER>` (one of `arbiter`, `habit`, `reach`; default `habit`): How the flow decides: `habit` (the default: it predicts the agent's next step and asks nothing), `arbiter` (answered by --oracle) or `reach`.
+- `--oracle <ORACLE>` (one of `jev`, `replay`, `mock`; default `replay`): Who answers the arbiter's questions: `replay` (the cache only), `jev` (needs TYPESAFE_API_KEY) or `mock`.
+- `--oracle-cache <DIR>` (default `.oracle-cache`): Replay cache for oracle answers.
+
+**The alarm**
+
+- `--hazard <P>` (default `0.01`): The prior chance that the agent changes after any one session.
+- `--window <SESSIONS>` (default `10`): How recent a change the alarm reports, in sessions (at least 3: a change needs three sessions of the new run to count).
+- `--threshold <P>` (default `0.5`): The probability of a recent change that sounds the alarm.
+
+**Output**
+
+- `--out <FILE>`: Write the Markdown report here (default: stdout).
+- `--json <FILE>`: Also write every session's scores and the alarms as JSON here.
 
 ### `stretto flow-show`
 

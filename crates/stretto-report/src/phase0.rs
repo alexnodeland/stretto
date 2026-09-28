@@ -114,6 +114,11 @@ pub struct Config {
     /// Learn the arguments the agent passed with one value every time as
     /// constants the bindings pass (`learn --constants`).
     pub constants: bool,
+    /// Forget old episodes (`learn --half-life`): each counts `0.5^(age /
+    /// half_life)` in the habit, its age the number of episodes given after
+    /// it, so the last counts fully (RFC-001 §3.3). `None` counts every
+    /// episode fully.
+    pub half_life: Option<f64>,
 }
 
 /// A results file for a transfer target, optionally relabeled.
@@ -177,6 +182,7 @@ impl Config {
             pooled_arbiter: false,
             refit_habit: false,
             constants: false,
+            half_life: None,
         }
     }
 }
@@ -932,6 +938,8 @@ fn domain(
 
 struct Prepared<'a> {
     ep: &'a Episode,
+    /// How much it counts in the habit (see [`Config::half_life`]).
+    weight: f64,
     steps: Vec<Step>,
     outputs: Vec<StepOutput>,
     turns: Vec<usize>,
@@ -1009,12 +1017,21 @@ fn featured(
 ) -> Result<(FeaturedReport, Option<Flow>)> {
     let train_ids: HashSet<&str> = split.train.iter().map(String::as_str).collect();
     let test_ids: HashSet<&str> = split.test.iter().map(String::as_str).collect();
+    // With forgetting, an episode's weight halves every `half_life` episodes
+    // given after it; targets are never trained on.
+    let weight = |age: usize| {
+        config
+            .half_life
+            .map_or(1.0, |h| 0.5f64.powf(age as f64 / h))
+    };
     let prepared: Vec<Prepared> = episodes
         .iter()
-        .map(|ep| (ep, false))
-        .chain(targets.iter().map(|ep| (ep, true)))
-        .map(|(ep, target)| Prepared {
+        .enumerate()
+        .map(|(i, ep)| (ep, false, weight(episodes.len() - 1 - i)))
+        .chain(targets.iter().map(|ep| (ep, true, 1.0)))
+        .map(|(ep, target, weight)| Prepared {
             ep,
+            weight,
             steps: steps(ep),
             outputs: step_outputs(ep),
             turns: step_turns(ep),
@@ -1076,6 +1093,7 @@ fn featured(
         let f = map.features(&p.outputs);
         EncodedEpisode::encode_with_features(&p.steps, Some(&f), vocab, p.success)
             .with_group(intent_ids[p.intent.as_str()])
+            .with_weight(p.weight)
     };
     let train: Vec<EncodedEpisode> = habit_set.iter().map(encode).collect();
     let test: Vec<EncodedEpisode> = test_set.iter().map(encode).collect();

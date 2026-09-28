@@ -1072,6 +1072,7 @@ mod tests {
             symbols: vec![4, 8],
             success: true,
             group: 0,
+            weight: 1.0,
         };
         let fickle = |a: u32| EncodedEpisode {
             actions: vec![3, a],
@@ -1079,6 +1080,7 @@ mod tests {
             symbols: vec![12, a * 4],
             success: true,
             group: 0,
+            weight: 1.0,
         };
         let train: Vec<(u64, EncodedEpisode)> = (0..60u64)
             .flat_map(|i| [(i, steady.clone()), (i, fickle(1 + (i % 2) as u32))])
