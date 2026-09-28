@@ -2492,11 +2492,12 @@ async fn a_job_is_cancelled_queued_or_running() {
     // It prints a line, and another later, so the job's progress is
     // announced. What it starts outlives it: that holds the pipes open,
     // prints once `sleep`, which keeps the FIFO open, has been killed, and
-    // then ends.
+    // then ends. It says it is ready only once the FIFO is open at both
+    // ends, so a cancel from then on closes it, whichever process it kills.
     let stretto = fake_stretto(
         &bin,
-        "echo started\nsleep 0.3\necho ready\nmkfifo gate\n(read x < gate; echo after) &\n\
-         exec 3>gate\nexec sleep 30\n",
+        "echo started\nsleep 0.3\nmkfifo gate\n(read x < gate; echo after) &\n\
+         exec 3>gate\necho ready\nexec sleep 30\n",
     );
     let c = console("cancel", |config| config.binaries.stretto = Some(stretto));
     let doctor = || c.call(Method::POST, "/api/jobs", Some(json!({"kind": "doctor"})));
