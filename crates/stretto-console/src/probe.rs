@@ -386,7 +386,7 @@ async fn read_answer(
             )),
         };
     }
-    let mut buffer = String::new();
+    let mut stream = EventStream::default();
     loop {
         let chunk = response
             .chunk()
@@ -395,20 +395,43 @@ async fn read_answer(
             .ok_or_else(|| {
                 format!("the server's event stream ended before it answered {method}")
             })?;
-        buffer.push_str(&String::from_utf8_lossy(&chunk).replace("\r\n", "\n"));
-        while let Some(end) = buffer.find("\n\n") {
-            let event: String = buffer.drain(..end + 2).collect();
-            let data: Vec<&str> = event
-                .lines()
-                .filter_map(|l| l.strip_prefix("data:"))
-                .map(|d| d.strip_prefix(' ').unwrap_or(d))
-                .collect();
-            if let Ok(message) = serde_json::from_str::<Value>(&data.join("\n")) {
+        for data in stream.push(&chunk) {
+            if let Ok(message) = serde_json::from_str::<Value>(&data) {
                 if answers(&message, id) {
                     return answer(&message, method);
                 }
             }
         }
+    }
+}
+
+/// A Server-Sent Events stream, read as its chunks arrive.
+#[derive(Default)]
+struct EventStream {
+    /// What came after the last complete event, carriage returns left out.
+    buffer: Vec<u8>,
+}
+
+impl EventStream {
+    /// Add `chunk`, and take the data of each event it completed: the
+    /// `data:` lines of an event, joined. An event ends at a blank line.
+    fn push(&mut self, chunk: &[u8]) -> Vec<String> {
+        self.buffer
+            .extend(chunk.iter().copied().filter(|b| *b != b'\r'));
+        let mut out = Vec::new();
+        while let Some(end) = self.buffer.windows(2).position(|w| w == b"\n\n") {
+            let event: Vec<u8> = self.buffer.drain(..end + 2).collect();
+            let text = String::from_utf8_lossy(&event);
+            let data: Vec<&str> = text
+                .lines()
+                .filter_map(|l| l.strip_prefix("data:"))
+                .map(|d| d.strip_prefix(' ').unwrap_or(d))
+                .collect();
+            if !data.is_empty() {
+                out.push(data.join("\n"));
+            }
+        }
+        out
     }
 }
 
@@ -463,6 +486,26 @@ mod tests {
                  so the Authorization header cannot be sent"
             )
         );
+    }
+
+    #[test]
+    fn events_are_read_across_chunks() {
+        let mut stream = EventStream::default();
+        // A comment, a notification, then the response, cut mid-event and
+        // mid-character, with CRLF line ends.
+        let text = ": ok\r\n\r\nevent: message\r\ndata: {\"method\":\"notifications/message\"}\r\n\r\nevent: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":1,\r\ndata: \"result\":{\"é\":1}}\r\n\r\n";
+        let bytes = text.as_bytes();
+        let cut = text.find('é').unwrap() + 1;
+        let mut data = stream.push(&bytes[..25]);
+        data.extend(stream.push(&bytes[25..cut]));
+        data.extend(stream.push(&bytes[cut..]));
+        assert_eq!(data.len(), 2, "{data:?}");
+        assert_eq!(data[0], "{\"method\":\"notifications/message\"}");
+        let response: Value = serde_json::from_str(&data[1]).unwrap();
+        assert!(answers(&response, 1));
+        assert_eq!(answer(&response, "initialize").unwrap(), json!({"é": 1}));
+        assert!(stream.push(b"data: {}").is_empty());
+        assert_eq!(stream.push(b"\n\n"), ["{}"]);
     }
 
     #[test]

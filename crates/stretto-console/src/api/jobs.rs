@@ -325,12 +325,6 @@ pub fn plan(state: &State, id: &str, request: JobRequest) -> ApiResult<Plan> {
                 constants.unwrap_or(false),
             );
             check_domain(&domain).map_err(|e| ApiError::bad_request(e.to_string()))?;
-            let from = dir("sessions", &sessions)?;
-            let to = match &out {
-                Some(o) => resolve("out", o)?,
-                None => root.join(format!("{domain}.flow.json")),
-            };
-            fresh(&to, overwrite)?;
             if !habit_only && !state.key_set() {
                 return Err(ApiError::bad_request(
                     "fitting an arbiter asks TypeSafe's Jev, and neither TYPESAFE_API_KEY nor \
@@ -338,6 +332,12 @@ pub fn plan(state: &State, id: &str, request: JobRequest) -> ApiResult<Plan> {
                      habit_only",
                 ));
             }
+            let from = dir("sessions", &sessions)?;
+            let to = match &out {
+                Some(o) => resolve("out", o)?,
+                None => root.join(format!("{domain}.flow.json")),
+            };
+            fresh(&to, overwrite)?;
             let mut args = vec![
                 "learn".into(),
                 "--sessions".into(),
