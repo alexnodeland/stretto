@@ -13,6 +13,7 @@ website/.vitepress/cache/
 website/public/notebook/
 website/public/explainer/
 website/public/media/
+website/public/paper/
 # The console's UI (console/): what npm, Vite, Vitest and Playwright write
 console/node_modules/
 console/dist/

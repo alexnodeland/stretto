@@ -106,4 +106,4 @@ The agent made 1 call where it had made 3. [The walkthrough](/guide/walkthrough)
   </a>
 </div>
 
-Read [why stretto](/guide/why) for where these come from and what they do not show, or [the paper](/research/paper) for the model behind them.
+Read [why stretto](/guide/why) for where these come from and what they do not show, or [the paper](/research/paper) ([PDF](/paper/stretto.pdf)) for the model behind them.

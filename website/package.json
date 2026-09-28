@@ -5,8 +5,8 @@
   "description": "The stretto documentation site, built with VitePress.",
   "license": "MIT",
   "scripts": {
-    "dev": "node scripts/copy-notebook.mjs && node scripts/copy-brand.mjs && vitepress dev",
-    "build": "node scripts/copy-notebook.mjs && node scripts/copy-brand.mjs && vitepress build",
+    "dev": "node scripts/copy-notebook.mjs && node scripts/copy-brand.mjs && node scripts/copy-paper.mjs && vitepress dev",
+    "build": "node scripts/copy-notebook.mjs && node scripts/copy-brand.mjs && node scripts/copy-paper.mjs && vitepress build",
     "preview": "vitepress preview"
   },
   "devDependencies": {

@@ -13,6 +13,7 @@
   <a href="https://github.com/alexnodeland/stretto/actions/workflows/ci.yml"><img src="https://github.com/alexnodeland/stretto/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
   <a href="https://stretto.alexnodeland.com/"><img src="https://img.shields.io/badge/docs-guide%20%C2%B7%20reference%20%C2%B7%20research-02767b" alt="Documentation"></a>
   <a href="paper/stretto.md"><img src="https://img.shields.io/badge/paper-Compile%20What%20the%20Environment%20Decides-4a5557" alt="Paper"></a>
+  <a href="paper/latex/stretto.pdf"><img src="https://img.shields.io/badge/paper-PDF-4a5557" alt="The paper as a PDF"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-4a5557" alt="MIT license"></a>
 </p>
 
@@ -116,7 +117,7 @@ From a checkout, `make console` builds the UI and serves `~/.stretto` on 127.0.0
 
 ## Research
 
-stretto is also a research project. The paper, [*Compile What the Environment Decides*](paper/stretto.md), states the model and asks three questions:
+stretto is also a research project. The paper, [*Compile What the Environment Decides*](paper/stretto.md) ([PDF](paper/latex/stretto.pdf)), states the model and asks three questions:
 - which of an agent's decisions a program learned from traces can take over;
 - why a read-only speculator should decide on the chance of use before the next write, at a threshold set by costs;
 - what a procedure compiled once does where no user speaks.
@@ -162,7 +163,7 @@ Issues and pull requests are welcome.
 
 ## Citing
 
-If you use stretto or its results, please cite the paper ([CITATION.cff](CITATION.cff)):
+If you use stretto or its results, please cite the paper ([PDF](paper/latex/stretto.pdf), [CITATION.cff](CITATION.cff)):
 
 ```bibtex
 @misc{nodeland2026compile,

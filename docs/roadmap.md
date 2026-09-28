@@ -79,6 +79,7 @@ These cost Jev dollars, CPU time or people's time, and no LLM runs.
 | [#31](https://github.com/alexnodeland/stretto/issues/31) | Done: the flow IR and arbiter file formats ([formats](formats.md)), with a test that every field is named |
 | [#32](https://github.com/alexnodeland/stretto/issues/32) | Done: the CLI reference, generated from the code and kept current by a test ([cli](cli.md)) |
 | [#33](https://github.com/alexnodeland/stretto/issues/33) | Done: the walkthrough on the official MCP filesystem server, run in CI ([walkthrough](walkthrough.md)), and recorded as a video. The documentation site, with a guide, integrations, the reference and the research, is at [stretto.alexnodeland.com](https://stretto.alexnodeland.com/) |
+| [#74](https://github.com/alexnodeland/stretto/issues/74) | Done: the paper's PDF, built from the Markdown in `paper/latex/`, is served with the site at [/paper/stretto.pdf](https://stretto.alexnodeland.com/paper/stretto.pdf) and linked beside the paper wherever the site and the README link it |
 
 ## In fugue
 
