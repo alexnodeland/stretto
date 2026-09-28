@@ -37,7 +37,7 @@ use stretto_model::{Action, Outcome, Step, Vocab};
 use stretto_oracle::{
     request_key, Answer, MockOracle, NoulCriteria, Oracle, Question, Request, Response,
 };
-use stretto_trace::{Episode, Event, ToolKind, ToolManifest};
+use stretto_trace::{Episode, Event, ToolCall, ToolKind, ToolManifest};
 
 /// The option that hands the decision back to the LLM.
 pub const RESPOND: &str = "respond";
@@ -338,6 +338,7 @@ pub fn decisions(
     let mut out = Vec::new();
     for (i, se) in episodes.iter().enumerate() {
         let (items, step_items) = timeline(se.episode);
+        let calls: Vec<&ToolCall> = se.episode.tool_calls().collect();
         let is_tool = |k: usize| matches!(se.steps[k].action, Action::Tool(_));
         let mut call = 0;
         for k in 0..se.steps.len() {
@@ -368,12 +369,9 @@ pub fn decisions(
             let (Some(c), ArgNeed::ClosedSet) = (this_call, se.needs[k]) else {
                 continue;
             };
-            let Item::Tool {
+            let ToolCall {
                 name, arguments, ..
-            } = &items[step_items[k]]
-            else {
-                continue;
-            };
+            } = calls[c];
             let leaves = se.sources.get(c).map(Vec::as_slice).unwrap_or(&[]);
             let asked: BTreeSet<&str> = leaves
                 .iter()
@@ -392,14 +390,7 @@ pub fn decisions(
                     .and_then(|o| o.iter().next().cloned());
                 let request = match options {
                     Some(o) if o.len() >= 2 => {
-                        let others: serde_json::Map<String, Value> = match arguments {
-                            Value::Object(m) => m
-                                .iter()
-                                .filter(|(k, _)| k.as_str() != arg)
-                                .map(|(k, v)| (k.clone(), v.clone()))
-                                .collect(),
-                            _ => Default::default(),
-                        };
+                        let others = other_arguments(arguments, arg);
                         let call = json!({"tool": name, "other_arguments": others});
                         Some(Request {
                             model: model.to_string(),
@@ -669,6 +660,7 @@ pub fn decisions_v2(
     let mut out = Vec::new();
     for (i, se) in episodes.iter().enumerate() {
         let (items, step_items) = timeline(se.episode);
+        let calls: Vec<&ToolCall> = se.episode.tool_calls().collect();
         let is_tool = |k: usize| matches!(se.steps[k].action, Action::Tool(_));
         let mut call = 0;
         for k in 0..se.steps.len() {
@@ -710,12 +702,9 @@ pub fn decisions_v2(
             let (Some(c), ArgNeed::ClosedSet) = (this_call, se.needs[k]) else {
                 continue;
             };
-            let Item::Tool {
+            let ToolCall {
                 name, arguments, ..
-            } = &items[step_items[k]]
-            else {
-                continue;
-            };
+            } = calls[c];
             if !sites.is_read(name) {
                 continue;
             }
@@ -740,14 +729,7 @@ pub fn decisions_v2(
                 let numeric = value.is_some_and(Value::is_number);
                 let request = match options {
                     Some(o) if o.len() >= 2 && !numeric => {
-                        let others: serde_json::Map<String, Value> = match arguments {
-                            Value::Object(m) => m
-                                .iter()
-                                .filter(|(k, _)| k.as_str() != arg)
-                                .map(|(k, v)| (k.clone(), v.clone()))
-                                .collect(),
-                            _ => Default::default(),
-                        };
+                        let others = other_arguments(arguments, arg);
                         let pending = json!({"tool": name, "other_arguments": others});
                         Some(Request {
                             model: model.to_string(),
@@ -1327,6 +1309,17 @@ fn value_key(v: &Value) -> String {
     }
 }
 
+/// A call's arguments other than `arg`, the one asked about.
+fn other_arguments(arguments: &Value, arg: &str) -> serde_json::Map<String, Value> {
+    arguments
+        .as_object()
+        .into_iter()
+        .flatten()
+        .filter(|(k, _)| k.as_str() != arg)
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect()
+}
+
 fn next_question(manifest: &ToolManifest) -> Question {
     let mut criteria = BTreeMap::from([(RESPOND.to_string(), RESPOND_CRITERION.to_string())]);
     for name in manifest.tools.keys() {
@@ -1455,28 +1448,7 @@ fn slice(before: &[Item], goal: &str, pending: Option<Value>) -> Value {
         Item::Agent(t) if !t.trim().is_empty() => Some(t),
         _ => None,
     });
-    let tools: Vec<&Item> = before
-        .iter()
-        .filter(|i| matches!(i, Item::Tool { .. }))
-        .collect();
-    let split = tools.len().saturating_sub(RECENT_RESULTS);
-    let earlier: Vec<String> = tools[split.saturating_sub(MAX_EARLIER)..split]
-        .iter()
-        .filter_map(|i| match i {
-            Item::Tool {
-                name,
-                arguments,
-                error,
-                ..
-            } => Some(format!(
-                "{name}({}) → {}",
-                clip(&arguments.to_string(), 160),
-                if *error { "error" } else { "ok" }
-            )),
-            _ => None,
-        })
-        .collect();
-    let latest: Vec<Value> = tools[split..]
+    let tools: Vec<(&String, &Value, &String, bool)> = before
         .iter()
         .filter_map(|i| match i {
             Item::Tool {
@@ -1484,18 +1456,33 @@ fn slice(before: &[Item], goal: &str, pending: Option<Value>) -> Value {
                 arguments,
                 result,
                 error,
-            } => {
-                let mut v = json!({
-                    "tool_call": name,
-                    "arguments": arguments,
-                    "result": clip(result, MAX_RESULT_V2),
-                });
-                if *error {
-                    v["error"] = json!(true);
-                }
-                Some(v)
-            }
+            } => Some((name, arguments, result, *error)),
             _ => None,
+        })
+        .collect();
+    let split = tools.len().saturating_sub(RECENT_RESULTS);
+    let earlier: Vec<String> = tools[split.saturating_sub(MAX_EARLIER)..split]
+        .iter()
+        .map(|(name, arguments, _, error)| {
+            format!(
+                "{name}({}) → {}",
+                clip(&arguments.to_string(), 160),
+                if *error { "error" } else { "ok" }
+            )
+        })
+        .collect();
+    let latest: Vec<Value> = tools[split..]
+        .iter()
+        .map(|(name, arguments, result, error)| {
+            let mut v = json!({
+                "tool_call": name,
+                "arguments": arguments,
+                "result": clip(result, MAX_RESULT_V2),
+            });
+            if *error {
+                v["error"] = json!(true);
+            }
+            v
         })
         .collect();
     let mut s = json!({
@@ -1760,13 +1747,12 @@ mod tests {
         assert!(arg.state["pending_call"]["other_arguments"]
             .get("reason")
             .is_none());
-        match &ds[0].request.as_ref().unwrap().questions["next"] {
-            Question::Choice { criteria, .. } => {
-                assert_eq!(criteria.len(), 3);
-                assert_eq!(criteria["cancel"], "Cancel a pending order.");
-            }
-            other => panic!("{other:?}"),
-        }
+        let next = &ds[0].request.as_ref().unwrap().questions["next"];
+        assert!(
+            matches!(next, Question::Choice { criteria, .. }
+                if criteria.len() == 3 && criteria["cancel"] == "Cancel a pending order."),
+            "{next:?}"
+        );
     }
 
     #[test]
@@ -1969,5 +1955,618 @@ mod tests {
         assert_eq!(clip("  abcdef ", 3), "abc…");
         assert_eq!(clip("ab", 3), "ab");
         assert_eq!(clip("ééé", 2), "éé…");
+    }
+
+    fn tool_call(id: &str, name: &str, arguments: Value) -> Event {
+        Event::Assistant {
+            text: None,
+            calls: vec![ToolCall {
+                id: id.into(),
+                name: name.into(),
+                arguments,
+            }],
+            usage: None,
+        }
+    }
+
+    fn tool_result(id: &str, name: &str, error: bool, content: &str) -> Event {
+        Event::ToolResult {
+            call_id: id.into(),
+            name: name.into(),
+            error,
+            content: content.into(),
+        }
+    }
+
+    fn said(text: &str) -> Event {
+        Event::Assistant {
+            text: Some(text.into()),
+            calls: vec![],
+            usage: None,
+        }
+    }
+
+    /// A request told apart from others by `n`, with `questions`.
+    fn request_with(n: usize, questions: BTreeMap<String, Question>) -> Request {
+        Request {
+            model: "m".into(),
+            state: json!({ "n": n }),
+            questions,
+        }
+    }
+
+    fn choice_of(options: &[&str]) -> Question {
+        Question::Choice {
+            instructions: "next?".into(),
+            criteria: options
+                .iter()
+                .map(|o| (o.to_string(), format!("{o}.")))
+                .collect(),
+        }
+    }
+
+    fn decision(kind: Kind, step: usize, actual: &str, request: Option<Request>) -> Decision {
+        Decision {
+            episode: 0,
+            step,
+            kind,
+            tool: None,
+            actual: actual.into(),
+            agent: actual.into(),
+            request,
+            fixed: None,
+        }
+    }
+
+    fn answered(pairs: Vec<(&Request, Vec<(&str, Answer)>)>) -> Asked {
+        Asked {
+            responses: pairs
+                .into_iter()
+                .map(|(r, answers)| {
+                    let answers = answers
+                        .into_iter()
+                        .map(|(id, a)| (id.to_string(), a))
+                        .collect();
+                    (
+                        request_key(r),
+                        Response {
+                            model: "m".into(),
+                            answers,
+                            usage: Default::default(),
+                        },
+                    )
+                })
+                .collect(),
+            distinct: 0,
+            attempted: 0,
+            errors: 0,
+            first_error: None,
+        }
+    }
+
+    fn picked(pick: &str, probs: &[(&str, f64)]) -> Answer {
+        Answer::Choice {
+            choice: pick.into(),
+            probabilities: probs.iter().map(|(o, p)| (o.to_string(), *p)).collect(),
+            confidence: 0.9,
+        }
+    }
+
+    const MOCK: MockOracle = MockOracle {
+        confidence: 0.6,
+        noul: 0.5,
+    };
+
+    /// `n` distinct next-step decisions.
+    fn many(n: usize) -> Vec<Decision> {
+        (0..n)
+            .map(|i| {
+                let questions =
+                    BTreeMap::from([("next".to_string(), choice_of(&["get", RESPOND]))]);
+                decision(Kind::Next, 1, RESPOND, Some(request_with(i, questions)))
+            })
+            .collect()
+    }
+
+    /// Fails the requests whose `n` it names, and answers the rest as the
+    /// mock does.
+    struct FailsOn(fn(u64) -> bool);
+
+    impl Oracle for FailsOn {
+        fn ask(&self, r: &Request) -> Result<Response> {
+            let n = r.state["n"].as_u64().unwrap_or(0);
+            if (self.0)(n) {
+                bail!("fails on {n}")
+            }
+            MOCK.ask(r)
+        }
+    }
+
+    #[test]
+    fn each_oracle_is_built_without_asking_anything() {
+        let dir = std::env::temp_dir().join(format!("stretto-shadow-build-{}", std::process::id()));
+        let mut replay = ShadowConfig::new(OracleKind::Replay);
+        replay.cache_dir = dir.clone();
+        let oracle = replay.build().unwrap();
+        // A replay cache answers only what it holds.
+        assert!(oracle.ask(&request_with(0, BTreeMap::new())).is_err());
+        // Jev needs its key to build; it asks nothing until a question comes.
+        let _ = ShadowConfig::new(OracleKind::Jev).build();
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn asking_limits_dumps_budgets_and_counts_failures() {
+        let dir = std::env::temp_dir().join(format!("stretto-shadow-ask-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut config = ShadowConfig::new(OracleKind::Mock);
+        config.concurrency = 1;
+        // A limit asks only the first few, and a dump writes what is asked,
+        // a file per domain.
+        config.limit = Some(3);
+        config.dump = Some(dir.join("asked.jsonl"));
+        let asked = ask(&MOCK, &many(5), &config, "retail").unwrap();
+        assert_eq!((asked.distinct, asked.attempted), (5, 3));
+        let dumped = std::fs::read_to_string(dir.join("asked-retail.jsonl")).unwrap();
+        assert_eq!(dumped.lines().count(), 3);
+        assert_eq!(
+            per_domain(std::path::Path::new("log"), "airline"),
+            PathBuf::from("log-airline")
+        );
+        // Over the budget at Jev's price, nothing is asked.
+        let mut jev = ShadowConfig::new(OracleKind::Jev);
+        jev.budget = 0.0;
+        let err = ask(&MOCK, &many(2), &jev, "retail").err().unwrap();
+        assert!(err.to_string().contains("exceeds the budget"), "{err}");
+        // A few failures are counted; mostly failures stop the run.
+        let mut config = ShadowConfig::new(OracleKind::Mock);
+        config.concurrency = 1;
+        let asked = ask(&FailsOn(|n| n % 10 == 0), &many(30), &config, "retail").unwrap();
+        assert_eq!((asked.attempted, asked.errors), (30, 3));
+        assert!(asked.first_error.unwrap().contains("fails on"));
+        let err = ask(&FailsOn(|_| true), &many(30), &config, "retail")
+            .err()
+            .unwrap();
+        assert!(
+            err.to_string()
+                .starts_with("stopped after 20 of 20 questions failed"),
+            "{err}"
+        );
+        // A long run says how far it got.
+        assert_eq!(
+            ask(&MOCK, &many(500), &config, "retail").unwrap().attempted,
+            500
+        );
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn answers_count_only_where_they_fit_their_questions() {
+        // An argument decision reads the "value" question.
+        let value = request_with(
+            1,
+            BTreeMap::from([("value".to_string(), choice_of(&["a", "b"]))]),
+        );
+        let arg = decision(Kind::Arg("x".into()), 1, "b", Some(value.clone()));
+        let asked = answered(vec![(
+            &value,
+            vec![("value", picked("b", &[("a", 0.3), ("b", 0.7)]))],
+        )]);
+        assert_eq!(score(&arg, &asked).unwrap().pick, "b");
+        // The split is for next steps only.
+        assert!(score_split(&arg, &asked).is_none());
+        // An answer that is no choice, or a question that is none.
+        let next = request_with(
+            2,
+            BTreeMap::from([("next".to_string(), choice_of(&["get", RESPOND]))]),
+        );
+        let d = decision(Kind::Next, 1, RESPOND, Some(next.clone()));
+        let asked = answered(vec![(&next, vec![("next", Answer::Noul { noul: 0.4 })])]);
+        assert!(score(&d, &asked).is_none());
+        let yes_no = Question::Noul {
+            instructions: "?".into(),
+            criteria: None,
+        };
+        let odd = request_with(3, BTreeMap::from([("next".to_string(), yes_no)]));
+        let d = decision(Kind::Next, 1, RESPOND, Some(odd.clone()));
+        let asked = answered(vec![(
+            &odd,
+            vec![
+                ("next", picked(RESPOND, &[(RESPOND, 1.0)])),
+                ("go_on", Answer::Noul { noul: 0.5 }),
+            ],
+        )]);
+        assert!(score(&d, &asked).is_none());
+        assert!(score_split(&d, &asked).is_none());
+        // With two lookups, the split needs the stop question, and the tool
+        // question shares out going on.
+        let two = request_with(
+            4,
+            BTreeMap::from([("next".to_string(), choice_of(&["a", "b", RESPOND]))]),
+        );
+        let d = decision(Kind::Next, 1, "a", Some(two.clone()));
+        let asked = answered(vec![(&two, vec![("next", picked("a", &[("a", 0.5)]))])]);
+        assert!(score_split(&d, &asked).is_none());
+        let asked = answered(vec![(
+            &two,
+            vec![
+                ("go_on", Answer::Noul { noul: 0.8 }),
+                ("tool", picked("a", &[("a", 0.75), ("b", 0.25)])),
+            ],
+        )]);
+        let s = score_split(&d, &asked).unwrap();
+        assert!((s.probs["a"] - 0.6).abs() < 1e-9 && (s.probs["b"] - 0.2).abs() < 1e-9);
+        assert_eq!(s.pick, "a");
+        let asked = answered(vec![(&two, vec![("go_on", Answer::Noul { noul: 0.8 })])]);
+        assert!(score_split(&d, &asked).is_none());
+        // A site with no lookups hands back without asking.
+        let mut handed = decision(Kind::Next, 1, RESPOND, None);
+        handed.fixed = Some(RESPOND.to_string());
+        assert_eq!(score_split(&handed, &asked).unwrap().pick, RESPOND);
+    }
+
+    #[test]
+    fn a_steps_arguments_count_only_when_every_one_is_answered() {
+        let vocab = Vocab::build(std::iter::empty::<&Step>(), ["get_order"]);
+        let arg = |step, actual: &str| decision(Kind::Arg("x".into()), step, actual, None);
+        let ds = [
+            arg(0, "x"),
+            arg(0, "y"),
+            arg(1, "x"),
+            arg(1, "y"),
+            arg(2, "x"),
+        ];
+        let s = |pick: &str, p: f64| {
+            Some(Scored::of(
+                BTreeMap::from([(pick.to_string(), p)]),
+                pick.to_string(),
+                pick,
+            ))
+        };
+        let scored = vec![s("x", 0.9), s("y", 0.6), s("x", 0.8), None, s("z", 0.7)];
+        let refs: Vec<&Decision> = ds.iter().collect();
+        let (_, args) = projection_answers(&refs, &scored, 3, &vocab);
+        assert_eq!(
+            args,
+            vec![
+                Some(OracleArgs {
+                    agrees: true,
+                    prob: 0.6
+                }),
+                None,
+                Some(OracleArgs {
+                    agrees: false,
+                    prob: 0.7
+                }),
+            ]
+        );
+    }
+
+    #[test]
+    fn candidates_are_asked_alone_at_asked_next_steps() {
+        let p = Predicate {
+            id: "more".into(),
+            favors: Favors::AnyLookup,
+            question: "Is more to read?".into(),
+            yes: "Yes.".into(),
+            no: "No.".into(),
+        };
+        let next = request_with(
+            1,
+            BTreeMap::from([("next".to_string(), choice_of(&["a", RESPOND]))]),
+        );
+        let d = decision(Kind::Next, 1, "a", Some(next.clone()));
+        let alone = candidate_request(&d, &p).unwrap();
+        assert_eq!(alone.state, next.state);
+        assert_eq!(alone.questions.keys().collect::<Vec<_>>(), ["pred_more"]);
+        let asked = answered(vec![(
+            &alone,
+            vec![("pred_more", Answer::Noul { noul: 0.9 })],
+        )]);
+        assert_eq!(
+            candidate_answers(&d, std::slice::from_ref(&p), &asked),
+            BTreeMap::from([("more".to_string(), 0.9)])
+        );
+        // An answer of another kind, an argument decision, or one settled
+        // without asking has no candidate answers.
+        let odd = answered(vec![(&alone, vec![("pred_more", picked("a", &[]))])]);
+        assert!(candidate_answers(&d, std::slice::from_ref(&p), &odd).is_empty());
+        assert!(
+            candidate_request(&decision(Kind::Arg("x".into()), 1, "a", Some(next)), &p).is_none()
+        );
+        assert!(candidate_request(&decision(Kind::Next, 1, "a", None), &p).is_none());
+    }
+
+    /// Reads that are learned lookups everywhere, and one write.
+    fn orders_manifest() -> ToolManifest {
+        ToolManifest {
+            domain: "retail".into(),
+            tools: BTreeMap::from([
+                ("get_order".to_string(), ToolKind::Read),
+                ("list_orders".to_string(), ToolKind::Read),
+                ("cancel".to_string(), ToolKind::Write),
+            ]),
+            docs: BTreeMap::new(),
+        }
+    }
+
+    /// The customer names an order that is not found, then two others; the
+    /// agent reads three orders, one of them filtered, then the list, and
+    /// cancels one.
+    fn orders_episode() -> Episode {
+        let order = |id: &str| format!(r#"{{"order_id": "{id}", "status": "pending"}}"#);
+        Episode {
+            events: vec![
+                Event::User {
+                    text: "Check #W1 please".into(),
+                },
+                said("Let me look."),
+                tool_call("1", "get_order", json!({"order_id": "#W1"})),
+                tool_result("1", "get_order", true, "not found"),
+                Event::User {
+                    text: "Sorry, I meant #W2, or #W3".into(),
+                },
+                tool_call("2", "get_order", json!({"order_id": "#W2"})),
+                tool_result("2", "get_order", false, &order("#W2")),
+                tool_call(
+                    "3",
+                    "get_order",
+                    json!({"order_id": "#W3", "sort": "newest", "limit": 5, "view": "full"}),
+                ),
+                tool_result("3", "get_order", false, &order("#W3")),
+                tool_call("4", "get_order", json!({"order_id": "#W4"})),
+                tool_result("4", "get_order", false, &order("#W4")),
+                tool_call("5", "list_orders", json!({})),
+                tool_result("5", "list_orders", false, "#W2, #W3, #W4"),
+                tool_call(
+                    "6",
+                    "cancel",
+                    json!({"order_id": "#W2", "reason": "no longer needed"}),
+                ),
+                tool_result("6", "cancel", false, r#"{"status": "cancelled"}"#),
+                said("Done."),
+            ],
+            ..episode()
+        }
+    }
+
+    #[test]
+    fn v2_asks_at_failed_sites_with_hints_and_argument_questions() {
+        let ep = orders_episode();
+        let st = steps(&ep);
+        let manifest = orders_manifest();
+        // Training: after an order, another order or the list; after a
+        // failed read or the list, an order.
+        let read = |name: &str, outcome| Step {
+            action: Action::Tool(name.into()),
+            outcome,
+        };
+        let train = vec![
+            read("get_order", Outcome::Err),
+            read("get_order", Outcome::Ok),
+            read("get_order", Outcome::Ok),
+            read("list_orders", Outcome::Ok),
+            read("get_order", Outcome::Ok),
+        ];
+        let mut sites = Sites::learn([train.as_slice()], &manifest);
+        sites.learn_feeds([&ep, &ep, &ep], &manifest);
+        assert!(sites.hint("list_orders").is_some());
+        let sources = call_sources(&ep);
+        // The third read's arguments need closed-set choices, and so do the
+        // write's, which the flow hands back.
+        let mut needs = vec![ArgNeed::Bound; st.len()];
+        needs[3] = ArgNeed::ClosedSet;
+        needs[6] = ArgNeed::ClosedSet;
+        let closed = BTreeMap::from([
+            (
+                ("get_order".to_string(), "sort".to_string()),
+                BTreeSet::from(["newest".to_string(), "oldest".to_string()]),
+            ),
+            (
+                ("get_order".to_string(), "limit".to_string()),
+                BTreeSet::from(["5".to_string(), "10".to_string()]),
+            ),
+            (
+                ("get_order".to_string(), "view".to_string()),
+                BTreeSet::from(["full".to_string()]),
+            ),
+        ]);
+        let se = ShadowEpisode {
+            episode: &ep,
+            steps: &st,
+            sources: &sources,
+            needs: &needs,
+            goal: "",
+        };
+        let ds = decisions_v2(&[se], &manifest, &closed, &sites, &[], "m");
+        // After the failed read, the question says so.
+        let first = ds[0].request.as_ref().unwrap();
+        let next = &first.questions["next"];
+        assert!(
+            matches!(next, Question::Choice { instructions, .. }
+                if instructions.contains("returned an error")),
+            "{next:?}"
+        );
+        // Two lookups at a site: which one, too; each with what it supplies.
+        let second = ds[1].request.as_ref().unwrap();
+        assert!(second.questions.contains_key("tool"));
+        assert!(serde_json::to_string(&second.questions["next"])
+            .unwrap()
+            .contains("Its results supply"));
+        // The state: the first and later customer messages, the agent's
+        // last words, and the failed read.
+        assert_eq!(second.state["customer_request"], "Check #W1 please");
+        assert_eq!(
+            second.state["later_customer_messages"][0],
+            "Sorry, I meant #W2, or #W3"
+        );
+        assert_eq!(second.state["agent_last_message"], "Let me look.");
+        assert!(second.state.get("flow_goal").is_none());
+        assert_eq!(second.state["latest_results"][0]["error"], true);
+        // The third read's arguments: the sort is asked, the limit is a
+        // number, and the view took one value only.
+        let args: Vec<(&Kind, bool, Option<&str>)> = ds
+            .iter()
+            .filter(|d| matches!(d.kind, Kind::Arg(_)))
+            .map(|d| (&d.kind, d.request.is_some(), d.fixed.as_deref()))
+            .collect();
+        assert_eq!(
+            args,
+            vec![
+                (&Kind::Arg("limit".into()), false, None),
+                (&Kind::Arg("sort".into()), true, None),
+                (&Kind::Arg("view".into()), false, Some("full")),
+            ]
+        );
+        let sort = ds
+            .iter()
+            .find(|d| d.kind == Kind::Arg("sort".into()))
+            .unwrap();
+        let pending = &sort.request.as_ref().unwrap().state["pending_call"];
+        assert_eq!(pending["other_arguments"]["view"], "full");
+        assert!(pending["other_arguments"].get("sort").is_none());
+        // After the list, the reads before the latest four are one line
+        // each.
+        let last = ds
+            .iter()
+            .rfind(|d| d.kind == Kind::Next && d.request.is_some())
+            .unwrap();
+        let state = &last.request.as_ref().unwrap().state;
+        assert!(state["earlier_lookups"][0]
+            .as_str()
+            .unwrap()
+            .ends_with("→ error"));
+    }
+
+    #[test]
+    fn v1_arguments_ask_only_among_two_values_or_more() {
+        let ep = orders_episode();
+        let st = steps(&ep);
+        let sources = call_sources(&ep);
+        let mut needs = vec![ArgNeed::Bound; st.len()];
+        needs[3] = ArgNeed::ClosedSet;
+        let closed = BTreeMap::from([
+            (
+                ("get_order".to_string(), "sort".to_string()),
+                BTreeSet::from(["newest".to_string(), "oldest".to_string()]),
+            ),
+            (
+                ("get_order".to_string(), "view".to_string()),
+                BTreeSet::from(["full".to_string()]),
+            ),
+        ]);
+        let se = ShadowEpisode {
+            episode: &ep,
+            steps: &st,
+            sources: &sources,
+            needs: &needs,
+            goal: "cancel",
+        };
+        let ds = decisions(&[se], &orders_manifest(), &closed, "m");
+        let args: Vec<(&Kind, bool, Option<&str>)> = ds
+            .iter()
+            .filter(|d| matches!(d.kind, Kind::Arg(_)))
+            .map(|d| (&d.kind, d.request.is_some(), d.fixed.as_deref()))
+            .collect();
+        // The limit is short, so asked, but no value of it is known.
+        assert_eq!(
+            args,
+            vec![
+                (&Kind::Arg("limit".into()), false, None),
+                (&Kind::Arg("sort".into()), true, None),
+                (&Kind::Arg("view".into()), false, Some("full")),
+            ]
+        );
+        // The transcript marks the failed read, and keeps the agent's words.
+        let state = &ds.last().unwrap().request.as_ref().unwrap().state;
+        let transcript = state["transcript"].as_array().unwrap();
+        assert!(transcript.iter().any(|t| t["error"] == true));
+        assert!(transcript.iter().any(|t| t["agent"] == "Let me look."));
+    }
+
+    #[test]
+    fn hints_rank_arguments_and_writes_and_survive_a_round_trip() {
+        let feeds = BTreeMap::from([(
+            "get_order".to_string(),
+            BTreeMap::from([
+                (("cancel".to_string(), "order_id".to_string()), 3),
+                (("refund".to_string(), "order_id".to_string()), 3),
+                (("refund".to_string(), "amount".to_string()), 6),
+                (("refund".to_string(), "note".to_string()), 2),
+            ]),
+        )]);
+        let sites = Sites {
+            feeds,
+            ..Sites::default()
+        };
+        // Ties go by name: `amount` before `order_id`, `cancel` before
+        // `refund`; a use in fewer than three episodes is no hint.
+        let hint = "Its results supply `amount` for `refund`, and `order_id` for `cancel` or \
+                    `refund`.";
+        assert_eq!(sites.hint("get_order").as_deref(), Some(hint));
+        assert!(sites.hint("list_orders").is_none());
+        let back: Sites = serde_json::from_str(&serde_json::to_string(&sites).unwrap()).unwrap();
+        assert_eq!(back.feeds, sites.feeds);
+    }
+
+    #[test]
+    fn a_state_before_any_customer_message_has_no_request() {
+        let ep = Episode {
+            events: vec![
+                tool_call("1", "get_order", json!({"order_id": "#W1"})),
+                tool_result("1", "get_order", false, "{}"),
+                said("Found it."),
+            ],
+            ..episode()
+        };
+        let st = steps(&ep);
+        let sources = call_sources(&ep);
+        let needs = vec![ArgNeed::Bound; st.len()];
+        let se = ShadowEpisode {
+            episode: &ep,
+            steps: &st,
+            sources: &sources,
+            needs: &needs,
+            goal: "",
+        };
+        let ds = decisions(&[se], &orders_manifest(), &BTreeMap::new(), "m");
+        let state = &ds[0].request.as_ref().unwrap().state;
+        assert!(state["customer_request"].is_null());
+        assert_eq!(state["transcript"][0]["tool_call"], "get_order");
+    }
+
+    #[test]
+    fn feeds_trace_every_leaf_of_a_writes_arguments() {
+        // A refund record, with a list and a number, read from the order;
+        // and a write whose arguments are not a record at all.
+        let ep = Episode {
+            events: vec![
+                tool_call("1", "get_order", json!({"order_id": "#W1"})),
+                tool_result(
+                    "1",
+                    "get_order",
+                    false,
+                    r##"{"order_id": "#W1", "items": ["lamp-123"], "total": 4567}"##,
+                ),
+                tool_call(
+                    "2",
+                    "cancel",
+                    json!({"refund": {"items": ["lamp-123"], "amount": 4567, "express": true}}),
+                ),
+                tool_result("2", "cancel", false, "{}"),
+                tool_call("3", "cancel", json!("#W1")),
+            ],
+            ..episode()
+        };
+        let mut sites = Sites::learn([steps(&ep).as_slice()], &manifest());
+        sites.learn_feeds([&ep, &ep, &ep], &manifest());
+        assert_eq!(
+            sites.hint("get_order").as_deref(),
+            Some("Its results supply `refund` for `cancel`.")
+        );
+        // Values of arguments that are no record are no closed set.
+        assert!(closed_values([&ep])
+            .keys()
+            .all(|(tool, _)| tool == "get_order"));
     }
 }
