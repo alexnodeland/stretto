@@ -314,11 +314,9 @@ pub fn plan(state: &State, id: &str, request: JobRequest) -> ApiResult<Plan> {
                 shown(state, path)
             )));
         }
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| {
-                ApiError::internal(format!("creating {}: {e}", shown(state, parent)))
-            })?;
-        }
+        let parent = path.parent().unwrap_or(root);
+        std::fs::create_dir_all(parent)
+            .map_err(|e| ApiError::internal(format!("creating {}: {e}", shown(state, parent))))?;
         Ok(())
     };
     let s = |p: &PathBuf| p.display().to_string();
@@ -524,7 +522,7 @@ pub fn plan(state: &State, id: &str, request: JobRequest) -> ApiResult<Plan> {
             keep_shared,
             hash_fields,
         } => {
-            if !crate::env_set("STRETTO_REDACT_SALT") {
+            if !state.config.env.is_set("STRETTO_REDACT_SALT") {
                 return Err(ApiError::bad_request(
                     "redacting needs a salt: set STRETTO_REDACT_SALT in the console's \
                      environment (docs/privacy.md)",

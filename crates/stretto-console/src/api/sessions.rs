@@ -380,10 +380,15 @@ pub async fn raw(State(state): State<Shared>, Path(key): Path<String>) -> ApiRes
             .ok_or_else(|| ApiError::not_found(format!("no session {key:?}")))
     })
     .await?;
-    let bytes = tokio::fs::read(&file.path)
-        .await
-        .map_err(|e| ApiError::internal(format!("reading {}: {e}", file.rel)))?;
+    let bytes = read(&file.path, &file.rel).await?;
     Ok(download(bytes, "application/x-ndjson", &file.path))
+}
+
+/// The bytes of the file at `path`, named `rel` if it cannot be read.
+pub async fn read(path: &std::path::Path, rel: &str) -> ApiResult<Vec<u8>> {
+    tokio::fs::read(path)
+        .await
+        .map_err(|e| ApiError::internal(format!("reading {rel}: {e}")))
 }
 
 /// `DELETE /api/sessions/:key`: the log and the logs beside it go to the

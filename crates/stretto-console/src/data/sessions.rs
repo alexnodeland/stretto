@@ -69,7 +69,10 @@ pub fn load(file: &SessionFile) -> Loaded {
 /// with what the cache holds for it.
 pub fn all(state: &State) -> Vec<(SessionSummary, Arc<Loaded>)> {
     let catalog = crate::data::catalog(state.data_dir());
-    let mut cache = state.cache.lock().unwrap_or_else(|e| e.into_inner());
+    let mut cache = state
+        .cache
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let mut out: Vec<(SessionSummary, Arc<Loaded>)> = catalog
         .sessions
         .iter()
@@ -83,9 +86,7 @@ pub fn all(state: &State) -> Vec<(SessionSummary, Arc<Loaded>)> {
         .collect();
     cache.retain(&catalog);
     out.sort_by(|(a, _), (b, _)| {
-        b.started_unix_ms
-            .cmp(&a.started_unix_ms)
-            .then_with(|| b.session_id.cmp(&a.session_id))
+        (b.started_unix_ms, &b.session_id).cmp(&(a.started_unix_ms, &a.session_id))
     });
     out
 }
@@ -93,7 +94,10 @@ pub fn all(state: &State) -> Vec<(SessionSummary, Arc<Loaded>)> {
 /// The logs in the data directory that could not be read, with why.
 pub fn unreadable(state: &State) -> Vec<(String, String)> {
     let catalog = crate::data::catalog(state.data_dir());
-    let mut cache = state.cache.lock().unwrap_or_else(|e| e.into_inner());
+    let mut cache = state
+        .cache
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     catalog
         .sessions
         .iter()
@@ -179,8 +183,9 @@ pub fn analyze(file: &SessionFile) -> Result<Analysis, String> {
     // client (from the server), by id, with their method.
     let mut to_server: HashMap<String, String> = HashMap::new();
     let mut to_client: HashMap<String, String> = HashMap::new();
-    // The agent's `stretto_commit` calls the proxy has not answered yet.
-    let mut commits: Vec<String> = Vec::new();
+    // The agent's `stretto_commit` calls the proxy has not answered yet:
+    // each id's key, and the id as the API shows it.
+    let mut commits: Vec<(String, String)> = Vec::new();
     // The agent's call the server answered last: a flow runs after it.
     let mut last_answered: Option<String> = None;
     let mut client_name: Option<String> = None;
@@ -291,13 +296,13 @@ pub fn analyze(file: &SessionFile) -> Result<Analysis, String> {
                             let from_client = from == Peer::Client;
                             let (by, after) = if from_client {
                                 (CallBy::Agent, None)
-                            } else if let Some(commit) = commits.last() {
-                                (CallBy::Agent, Some(commit_id(commit)))
+                            } else if let Some((_, commit)) = commits.last() {
+                                (CallBy::Agent, Some(commit.clone()))
                             } else {
                                 (CallBy::Flow, last_answered.clone())
                             };
                             if from_client && tool == COMMIT_TOOL {
-                                commits.push(key.clone());
+                                commits.push((key.clone(), id_string(id)));
                             }
                             // A reused id replaces the call it named before,
                             // as stretto_trace reads it.
@@ -372,7 +377,7 @@ pub fn analyze(file: &SessionFile) -> Result<Analysis, String> {
                             }
                         }
                         if from == Peer::Proxy {
-                            commits.retain(|c| *c != key);
+                            commits.retain(|(c, _)| *c != key);
                         }
                         if from == Peer::Server && awaiting_lists.remove(&key) {
                             let tools = m.pointer("/result/tools").and_then(Value::as_array);
@@ -740,11 +745,6 @@ pub fn id_string(id: &Value) -> String {
         Value::String(s) => s.clone(),
         other => other.to_string(),
     }
-}
-
-/// The call id of a commit, from the key it is held by (the id as JSON).
-fn commit_id(key: &str) -> String {
-    serde_json::from_str::<Value>(key).map_or_else(|_| key.to_string(), |v| id_string(&v))
 }
 
 fn event_from(peer: Peer) -> EventFrom {

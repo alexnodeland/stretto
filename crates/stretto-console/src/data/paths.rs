@@ -7,7 +7,7 @@
 //! links followed, inside the directory it started from. The scan ([`keep`])
 //! follows a link only where it stays inside the data directory.
 
-use std::path::{Component, Path, PathBuf, Prefix};
+use std::path::{Component, Path, PathBuf};
 
 /// Whether the scan of `root` (whose canonical form is `canonical`) takes
 /// `path`: not the console's own directory, and not a symbolic link that
@@ -23,6 +23,12 @@ pub fn keep(root: &Path, canonical: &Path, path: &Path) -> bool {
         Ok(_) => true,
         Err(_) => false,
     }
+}
+
+/// `path` with its links resolved, or as it is where that fails (it does
+/// not exist).
+pub fn canonical(path: &Path) -> PathBuf {
+    std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
 }
 
 /// `path` relative to `root`, with `/` between its parts; the whole path
@@ -97,6 +103,13 @@ fn full_path(data_dir: &Path, input: &str) -> Result<Option<PathBuf>, String> {
     if path.is_absolute() {
         return Ok(Some(path.to_path_buf()));
     }
+    rooted(data_dir, path, input)
+}
+
+/// A path with a root and no drive, or a drive and no root: only Windows
+/// writes these.
+#[cfg(windows)]
+fn rooted(data_dir: &Path, path: &Path, input: &str) -> Result<Option<PathBuf>, String> {
     if path.has_root() {
         let mut full = PathBuf::new();
         if let Some(Component::Prefix(drive)) = plain(data_dir).components().next() {
@@ -113,11 +126,19 @@ fn full_path(data_dir: &Path, input: &str) -> Result<Option<PathBuf>, String> {
     Ok(None)
 }
 
+/// Elsewhere a path that is not absolute has no root and no drive.
+#[cfg(not(windows))]
+fn rooted(_: &Path, _: &Path, _: &str) -> Result<Option<PathBuf>, String> {
+    Ok(None)
+}
+
 /// `path` with a Windows drive or share written as a person writes it: the
 /// canonical form there is verbatim (`\\?\C:\x`), and a typed path is not
 /// (`C:\x`, or `c:\x`), so they compare only in this form. Other paths, and
 /// every path elsewhere, are as they are.
+#[cfg(windows)]
 fn plain(path: &Path) -> PathBuf {
+    use std::path::Prefix;
     let mut parts = path.components();
     let Some(Component::Prefix(prefix)) = parts.next() else {
         return path.to_path_buf();
@@ -137,8 +158,15 @@ fn plain(path: &Path) -> PathBuf {
     out
 }
 
+#[cfg(not(windows))]
+fn plain(path: &Path) -> PathBuf {
+    path.to_path_buf()
+}
+
 /// `base` joined with `rest`, which must stay inside `base`, links followed.
 fn inside(base: &Path, rest: &Path, input: &str) -> Result<PathBuf, String> {
+    // What follows `~/` is a full path only on Windows (`~/C:\x`).
+    #[cfg(windows)]
     if rest.is_absolute() {
         return Err(format!("{input}: expected a relative path"));
     }
@@ -149,7 +177,7 @@ fn inside(base: &Path, rest: &Path, input: &str) -> Result<PathBuf, String> {
     }
     // The deepest part that exists, with its links followed, must still be
     // inside the base.
-    let canonical_base = std::fs::canonicalize(base).unwrap_or_else(|_| base.to_path_buf());
+    let canonical_base = canonical(base);
     let mut existing = joined.as_path();
     while existing.starts_with(base) {
         if std::fs::symlink_metadata(existing).is_ok() {
@@ -242,6 +270,23 @@ mod tests {
         let outside = r("/etc/passwd").unwrap_err();
         assert!(outside.contains("outside the data directory"), "{outside}");
         assert!(resolve(&data, None, "~/x").is_err());
+        // `..` may not climb above the root, from a full path or a relative one.
+        let above = "../".repeat(40);
+        for bad in ["/../x".to_string(), above] {
+            let e = r(&bad).unwrap_err();
+            assert!(e.ends_with(".. climbs out of the root"), "{e}");
+        }
+        // A home that does not exist yet is taken as it is.
+        let missing = root.join("no-home");
+        assert_eq!(
+            resolve(&data, Some(&missing), "~/x").unwrap(),
+            missing.join("x")
+        );
+        // So is a relative data directory, down to its end.
+        assert_eq!(
+            resolve(Path::new(""), None, "nowhere/./x").unwrap(),
+            PathBuf::from("nowhere/x")
+        );
         std::fs::remove_dir_all(&root).unwrap();
     }
 
@@ -263,6 +308,9 @@ mod tests {
             .unwrap_err()
             .contains("outside the data directory"));
         assert!(r("C:logs").unwrap_err().contains("not a full path"));
+        let home = root.join("home");
+        let e = resolve(&data, Some(&home), r"~/C:\x").unwrap_err();
+        assert!(e.contains("expected a relative path"), "{e}");
         std::fs::remove_dir_all(&root).unwrap();
     }
 
@@ -286,6 +334,7 @@ mod tests {
         assert!(keep(&data, &data, &data.join("in")));
         assert!(!keep(&data, &data, &data.join("dangling")));
         assert!(!keep(&data, &data, &data.join("console")));
+        assert!(!keep(&data, &data, &data.join("missing")));
         std::fs::remove_dir_all(&root).unwrap();
     }
 
@@ -308,5 +357,6 @@ mod tests {
             Some(PathBuf::from("/a/c"))
         );
         assert_eq!(normalize(Path::new("/..")), None);
+        assert_eq!(normalize(Path::new("./a")), Some(PathBuf::from("a")));
     }
 }

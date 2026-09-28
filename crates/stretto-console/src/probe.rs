@@ -31,11 +31,21 @@ const MAX_PAGES: usize = 20;
 
 /// Ask the server behind `upstream` who it is and what tools it lists.
 pub async fn probe(upstream: &Upstream) -> ProbeResult {
+    probe_within(upstream, TIMEOUT, &|name| std::env::var(name).ok()).await
+}
+
+/// [`probe`], giving the whole exchange `timeout`, and taking the values of
+/// the headers the registry names from `var`.
+pub async fn probe_within(
+    upstream: &Upstream,
+    timeout: Duration,
+    var: &(dyn Fn(&str) -> Option<String> + Sync),
+) -> ProbeResult {
     let started = Instant::now();
-    let answered = tokio::time::timeout(TIMEOUT, async {
+    let answered = tokio::time::timeout(timeout, async {
         match upstream {
             Upstream::Stdio { command, .. } => stdio(command).await,
-            Upstream::Http { url, headers } => http(url, headers).await,
+            Upstream::Http { url, headers } => http(url, headers, var).await,
         }
     })
     .await;
@@ -48,7 +58,7 @@ pub async fn probe(upstream: &Upstream) -> ProbeResult {
         Err(_) => ProbeResult {
             error: Some(format!(
                 "the server did not answer within {} s",
-                TIMEOUT.as_secs()
+                timeout.as_secs_f64()
             )),
             ..ProbeResult::default()
         },
@@ -135,14 +145,14 @@ async fn stdio(command: &[String]) -> Result<ProbeResult, String> {
     let mut stdin = child.stdin.take().ok_or("no stdin")?;
     let mut lines = BufReader::new(child.stdout.take().ok_or("no stdout")?).lines();
     let exchange = async {
-        send(&mut stdin, &initialize(1)).await?;
+        send(&mut stdin, &initialize(1)).await;
         let init = receive(&mut stdin, &mut lines, 1, "initialize").await?;
-        send(&mut stdin, &initialized()).await?;
+        send(&mut stdin, &initialized()).await;
         let mut tools = Vec::new();
         let mut cursor: Option<String> = None;
         for page in 0..MAX_PAGES {
             let id = 2 + page as u64;
-            send(&mut stdin, &tools_list(id, cursor.as_deref())).await?;
+            send(&mut stdin, &tools_list(id, cursor.as_deref())).await;
             let listed = receive(&mut stdin, &mut lines, id, "tools/list").await?;
             tools.extend(
                 listed
@@ -177,19 +187,11 @@ async fn stdio(command: &[String]) -> Result<ProbeResult, String> {
 /// Write `message` to the server. A server that no longer reads (it
 /// exited, or closed its input) is not an error here: reading on, the probe
 /// reports the answer that does not come, with the exit status.
-async fn send(stdin: &mut ChildStdin, message: &Value) -> Result<(), String> {
+async fn send(stdin: &mut ChildStdin, message: &Value) {
     let mut line = message.to_string();
     line.push('\n');
-    let written = async {
-        stdin.write_all(line.as_bytes()).await?;
-        stdin.flush().await
-    };
-    match written.await {
-        Err(e) if e.kind() != std::io::ErrorKind::BrokenPipe => {
-            Err(format!("writing to the server: {e}"))
-        }
-        _ => Ok(()),
-    }
+    let _ = stdin.write_all(line.as_bytes()).await;
+    let _ = stdin.flush().await;
 }
 
 /// The server's answer to request `id`. Lines that are not JSON are
@@ -216,7 +218,7 @@ async fn receive(
         if let (Some(_), Some(their)) = (message.get("method"), message.get("id")) {
             let refusal = json!({"jsonrpc": "2.0", "id": their,
                 "error": {"code": -32601, "message": "Method not found"}});
-            send(stdin, &refusal).await?;
+            send(stdin, &refusal).await;
         }
     }
 }
@@ -226,13 +228,17 @@ async fn receive(
 const SESSION: &str = "mcp-session-id";
 const PROTOCOL: &str = "mcp-protocol-version";
 
-async fn http(url: &str, headers: &[HeaderRef]) -> Result<ProbeResult, String> {
+async fn http(
+    url: &str,
+    headers: &[HeaderRef],
+    var: &(dyn Fn(&str) -> Option<String> + Sync),
+) -> Result<ProbeResult, String> {
     let mut extra = reqwest::header::HeaderMap::new();
     for h in headers {
         let name = reqwest::header::HeaderName::from_bytes(h.name.as_bytes())
             .map_err(|_| format!("{:?} is not a header name", h.name))?;
         // The value is read to be sent, and goes nowhere else.
-        let value = std::env::var(&h.env).map_err(|_| {
+        let value = var(&h.env).ok_or_else(|| {
             format!(
                 "{} is not set in the console's environment, so the {} header cannot be sent",
                 h.env, h.name
@@ -243,11 +249,12 @@ async fn http(url: &str, headers: &[HeaderRef]) -> Result<ProbeResult, String> {
         value.set_sensitive(true);
         extra.insert(name, value);
     }
+    // With rustls and its own roots, a client with timeouts always builds.
     let client = reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(10))
         .timeout(TIMEOUT)
         .build()
-        .map_err(|e| format!("building the HTTP client: {e}"))?;
+        .expect("an HTTP client with timeouts builds");
     let mut session: Option<String> = None;
     let mut protocol: Option<String> = None;
     let exchange = async {
@@ -489,7 +496,7 @@ mod tests {
             .unwrap();
         let mut stdin = child.stdin.take().unwrap();
         child.wait().await.unwrap();
-        assert_eq!(send(&mut stdin, &initialize(1)).await, Ok(()));
+        send(&mut stdin, &initialize(1)).await;
     }
 
     #[tokio::test]

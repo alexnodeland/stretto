@@ -283,10 +283,10 @@ pub async fn probe(
             else {
                 return Ok(Vec::new());
             };
-            Ok(match flows::load(&path).flow {
-                Ok(flow) => flows::tool_warnings(&flow, &tools, "the server"),
-                Err(_) => Vec::new(),
-            })
+            let flow = flows::load(&path).flow;
+            Ok(flow
+                .map(|flow| flows::tool_warnings(&flow, &tools, "the server"))
+                .unwrap_or_default())
         })
         .await?;
     }
@@ -304,8 +304,7 @@ fn load(state: &State) -> ApiResult<Registry> {
 }
 
 fn save(state: &State, registry: &Registry) -> ApiResult<()> {
-    registry::save(state.data_dir(), registry)
-        .map_err(|e| ApiError::internal(format!("writing {}: {e}", registry::FILE)))
+    registry::save(state.data_dir(), registry).map_err(ApiError::internal)
 }
 
 /// `entry` with the console's knowledge of it.
@@ -328,10 +327,14 @@ pub fn view(
     let mut flow_summary = None;
     let loaded = flow_path.as_ref().map(|p| flows::load(p));
     match (&entry.flow, &flow_path, &loaded) {
-        (None, _, _) if entry.mode != ServerMode::Record => issues.push(format!(
-            "mode is {} but no flow is set",
-            mode_name(entry.mode)
-        )),
+        (None, _, _) if entry.mode != ServerMode::Record => {
+            let mode = if entry.mode == ServerMode::Shadow {
+                "shadow"
+            } else {
+                "serve"
+            };
+            issues.push(format!("mode is {mode} but no flow is set"))
+        }
         (Some(_), Some(path), Some(loaded)) => {
             if !path.is_file() {
                 issues.push(format!("flow not found: {}", paths::display(path, home)));
@@ -389,8 +392,7 @@ pub fn view(
             let found = if p.components().count() > 1 {
                 p.is_file()
             } else {
-                let path = std::env::var_os("PATH").unwrap_or_default();
-                stretto_report::doctor::which(program, &path).is_some()
+                stretto_report::doctor::which(program, &state.config.env.path).is_some()
             };
             if !found {
                 issues.push(format!(
@@ -406,14 +408,6 @@ pub fn view(
         flow_summary,
         issues,
         entry: entry.clone(),
-    }
-}
-
-fn mode_name(mode: ServerMode) -> &'static str {
-    match mode {
-        ServerMode::Record => "record",
-        ServerMode::Shadow => "shadow",
-        ServerMode::Serve => "serve",
     }
 }
 
@@ -481,8 +475,7 @@ pub fn setup(state: &State, entry: &ServerEntry, host: Host) -> Setup {
 /// when it is only beside the console.
 fn proxy_command(state: &State, host: Host) -> String {
     let name = "stretto-proxy";
-    let path = std::env::var_os("PATH").unwrap_or_default();
-    if let Some(found) = stretto_report::doctor::which(name, &path) {
+    if let Some(found) = stretto_report::doctor::which(name, &state.config.env.path) {
         if host == Host::ClaudeDesktop {
             return found.display().to_string();
         }

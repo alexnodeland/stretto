@@ -307,10 +307,11 @@ fn health_of_setup(state: &State, out: &mut Vec<HealthItem>) {
         }
     }
     let mut report = Report::default();
+    let env = &state.config.env;
     doctor::check_key(
         &mut report,
-        crate::env_set("TYPESAFE_API_KEY"),
-        crate::env_set("TYPESAFE_API_KEY_FILE"),
+        env.is_set("TYPESAFE_API_KEY"),
+        env.is_set("TYPESAFE_API_KEY_FILE"),
     );
     out.extend(from_report(&report, HealthLevel::Warn));
 }
@@ -357,6 +358,13 @@ mod tests {
                 item(HealthLevel::Error, "broken"),
                 item(HealthLevel::Error, "a detail"),
             ]
+        );
+        // A detail with no line before it is a note.
+        let mut alone = Report::default();
+        alone.item("a detail");
+        assert_eq!(
+            from_report(&alone, HealthLevel::Error),
+            [item(HealthLevel::Note, "a detail")]
         );
     }
 }

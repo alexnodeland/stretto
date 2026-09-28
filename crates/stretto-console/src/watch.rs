@@ -137,9 +137,8 @@ pub fn spawn(state: Shared) -> tokio::task::JoinHandle<()> {
                 continue;
             }
             let root = state.data_dir().to_path_buf();
-            let Ok(now) = tokio::task::spawn_blocking(move || snapshot(&root)).await else {
-                continue;
-            };
+            let now = tokio::task::spawn_blocking(move || snapshot(&root)).await;
+            let Ok(now) = now else { continue };
             if let Some(before) = &before {
                 for change in changes(before, &now) {
                     let _ = state.events.send(Event::Changed(change));

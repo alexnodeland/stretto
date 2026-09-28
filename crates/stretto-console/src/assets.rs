@@ -11,6 +11,7 @@ use axum::body::Body;
 use axum::http::{header, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 
+#[cfg(not(debug_assertions))]
 #[derive(rust_embed::RustEmbed)]
 #[folder = "../../console/dist"]
 #[allow_missing = true]
@@ -27,19 +28,16 @@ fn get(path: &str) -> Option<rust_embed::EmbeddedFile> {
     Ui::get(path)
 }
 
-/// The UI's file `path`, from `console/dist` as it is now. rust-embed's debug
-/// build reads the files from disk, but only from under the folder's path as
-/// it was when this crate compiled. If console/dist did not exist then
-/// (`make ci`, then `make console`), that path keeps its `..`, no file is
-/// under it, and the UI never shows; so this looks in the folder itself too.
+/// The UI's file `path`, from `console/dist` as it is now. (rust-embed's own
+/// debug build reads from disk too, but only from under the folder's path as
+/// it was when this crate compiled: if console/dist did not exist then, as
+/// after `make ci` and then `make console`, the UI would never show.)
 #[cfg(debug_assertions)]
 fn get(path: &str) -> Option<rust_embed::EmbeddedFile> {
-    Ui::get(path).or_else(|| {
-        read_under(
-            &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../console/dist"),
-            path,
-        )
-    })
+    read_under(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../console/dist"),
+        path,
+    )
 }
 
 /// File `path` under folder `dir`, if it is a file there, and inside it once
@@ -82,6 +80,11 @@ cargo build --release -p stretto-console</pre>
 
 /// The response for UI path `path`.
 pub async fn serve(path: &str) -> Response {
+    serve_from(path, &get)
+}
+
+/// The response for UI path `path`, with the UI's files from `get`.
+fn serve_from(path: &str, get: &dyn Fn(&str) -> Option<rust_embed::EmbeddedFile>) -> Response {
     let path = path.trim_start_matches('/');
     // No way up and out of the UI's folder.
     let safe = !path
@@ -173,7 +176,57 @@ fn html(page: &'static str) -> Response {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_file, read_under};
+    use super::*;
+    use axum::body::to_bytes;
+
+    async fn text(response: Response) -> String {
+        let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        String::from_utf8(bytes.to_vec()).unwrap()
+    }
+
+    #[tokio::test]
+    async fn a_path_is_a_file_of_the_build_or_a_route_of_the_app() {
+        let dist = std::env::temp_dir().join(format!(
+            "stretto-console-assets-serve-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dist);
+        std::fs::create_dir_all(dist.join("assets")).unwrap();
+        std::fs::write(dist.join("index.html"), "<!doctype html>").unwrap();
+        std::fs::write(dist.join("assets/app.js"), "export {}").unwrap();
+        let built = |path: &str| read_under(&dist, path);
+
+        let page = serve_from("/", &built);
+        assert_eq!(page.headers()[header::CACHE_CONTROL], "no-cache");
+        assert_eq!(text(page).await, "<!doctype html>");
+        let script = serve_from("/assets/app.js", &built);
+        assert_eq!(
+            script.headers()[header::CACHE_CONTROL],
+            "public, max-age=31536000, immutable"
+        );
+        assert_eq!(script.headers()[header::CONTENT_TYPE], "text/javascript");
+        // A route of the app, with a dot in its key, is the page.
+        let route = serve_from("/flows/shop.promoted", &built);
+        assert_eq!(text(route).await, "<!doctype html>");
+        for missing in [
+            "/assets/gone.js",
+            "/favicon.ico",
+            "/../secret.txt",
+            "/a/./b",
+        ] {
+            let answer = serve_from(missing, &built);
+            assert_eq!(answer.status(), StatusCode::NOT_FOUND, "{missing}");
+        }
+
+        // No UI built: the page that says how to build it.
+        let none = serve_from("/sessions", &|_| None);
+        assert_eq!(
+            none.headers()[header::CONTENT_TYPE],
+            "text/html; charset=utf-8"
+        );
+        assert_eq!(text(none).await, NO_UI);
+        std::fs::remove_dir_all(&dist).unwrap();
+    }
 
     #[test]
     fn a_file_is_read_from_under_its_folder_and_never_from_outside() {
