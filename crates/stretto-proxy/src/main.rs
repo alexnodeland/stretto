@@ -174,7 +174,8 @@ struct Cli {
     )]
     confirm_log: Option<PathBuf>,
     /// Add `stretto_commit`, which makes several calls in one, in order,
-    /// each checked by the guards.
+    /// each checked by the guards, and a sentence on when to use it to the
+    /// server's instructions.
     #[arg(help_heading = "Writes", long)]
     commit: bool,
     /// Read the conversation from this file, which the host appends to as

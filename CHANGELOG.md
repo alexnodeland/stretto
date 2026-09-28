@@ -36,6 +36,10 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
   On AgentDojo's Slack it no longer promotes sites whose lookups the agents had already asked for.
 - In the libraries: `stretto_trace::mcp::episode_sent`, `mcp::SAME_TURN_MS` and `Episode::after_call`. In `stretto_report`, `flow::PER_CALL`, `promote::promote_served`, and `promote::score` over `promote::Recorded` sessions with a `promote::Serving`; `promote::one_call_per_turn` is gone. `Flow::next_explored` takes the calls still on their way.
 
+### `stretto-proxy`
+
+- With `--commit`, the proxy tells the agent when to use `stretto_commit`: a sentence after the server's own `instructions` in its answer to `initialize`, which hosts such as Claude Code put in the system prompt ([#37](https://github.com/alexnodeland/stretto/issues/37)).
+
 ### The console
 
 - `stretto-console`, a new crate and binary: the server of stretto's management plane, a local web app over the data directory (`~/.stretto`, `--data` or `$STRETTO_HOME`). Its JSON API lists and shows the recorded sessions call by call, with each of the flow's lookups and the decision that made it; the flows, as `stretto flow-show` reviews them and as `stretto flow-diff` compares them; a registry of the MCP servers stretto fronts (`servers.json`), with the host configuration `stretto init` prints for each and a live test of the connection; and jobs that run the `stretto` CLI (`learn`, `promote`, `audit`, `redact`, `doctor`). It requires a token (a cookie, or a bearer), a header on every change, and a loopback Host under `--no-auth`; `--read-only` changes nothing ([its README](crates/stretto-console/README.md)). The UI is `console/`; its API types are generated from the Rust.
