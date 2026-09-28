@@ -1,149 +1,149 @@
 WEBVTT
 
 1
-00:00:00.500 --> 00:00:03.664
+00:00:00.500 --> 00:00:03.699
 Record, learn, review, audit and serve a flow,
 
 2
-00:00:03.664 --> 00:00:08.890
+00:00:03.699 --> 00:00:08.985
 on the official MCP filesystem server, with the release binaries and no key.
 
 3
-00:00:08.890 --> 00:00:10.816
+00:00:08.985 --> 00:00:10.932
 Every command runs as shown.
 
 4
-00:00:12.516 --> 00:00:16.886
+00:00:12.632 --> 00:00:17.415
 stretto doctor checks the binaries on PATH and ~/.stretto,
 
 5
-00:00:16.886 --> 00:00:19.146
+00:00:17.415 --> 00:00:19.889
 and says what a key would add.
 
 6
-00:00:19.146 --> 00:00:20.879
+00:00:19.889 --> 00:00:21.786
 Nothing here needs one.
 
 7
-00:00:22.276 --> 00:00:26.846
+00:00:22.886 --> 00:00:27.360
 A folder of notes, served by the official MCP filesystem server.
 
 8
-00:00:26.846 --> 00:00:31.273
+00:00:27.360 --> 00:00:31.693
 stretto init prints the host's configuration: for Claude Code,
 
 9
-00:00:31.273 --> 00:00:36.343
+00:00:31.693 --> 00:00:36.656
 a claude mcp add command that puts stretto-proxy in the server's place.
 
 10
-00:00:36.943 --> 00:00:41.189
+00:00:37.256 --> 00:00:41.549
 Its next steps go to stderr; the rest of this walkthrough runs them.
 
 11
-00:00:41.189 --> 00:00:44.810
+00:00:41.549 --> 00:00:45.211
 A scripted agent starts the proxy with the same arguments.
 
 12
-00:00:45.910 --> 00:00:47.487
+00:00:46.311 --> 00:00:48.047
 Use the agent as usual.
 
 13
-00:00:47.487 --> 00:00:50.505
+00:00:48.047 --> 00:00:51.367
 Here a scripted agent stands in for the LLM:
 
 14
-00:00:50.505 --> 00:00:53.659
+00:00:51.367 --> 00:00:54.839
 it searches the notes and reads what it finds,
 
 15
-00:00:53.659 --> 00:00:58.528
+00:00:54.839 --> 00:01:00.197
 through the proxy, which records each session in ~/.stretto/logs/notes.
 
 16
-00:01:05.790 --> 00:01:10.198
+00:01:06.190 --> 00:01:10.893
 --habit-only asks no model: stretto counts which reads followed which calls,
 
 17
-00:01:10.198 --> 00:01:12.287
+00:01:10.893 --> 00:01:13.120
 and where their arguments came from.
 
 18
-00:01:16.046 --> 00:01:19.162
+00:01:16.447 --> 00:01:19.825
 A flow is a JSON file to review before serving it.
 
 19
-00:01:19.162 --> 00:01:21.406
+00:01:19.825 --> 00:01:22.257
 flow-show renders it for a reviewer:
 
 20
-00:01:21.406 --> 00:01:25.893
+00:01:22.257 --> 00:01:27.122
 what it may look up after each call, and where each argument comes from.
 
 21
-00:01:26.893 --> 00:01:29.144
+00:01:28.122 --> 00:01:30.666
 After a search, the flow reads a file:
 
 22
-00:01:29.144 --> 00:01:31.988
+00:01:30.666 --> 00:01:33.880
 the agent did so after every search in training.
 
 23
-00:01:35.554 --> 00:01:38.512
+00:01:36.783 --> 00:01:40.067
 The file's path comes from the search's own result:
 
 24
-00:01:38.512 --> 00:01:41.527
+00:01:40.067 --> 00:01:43.415
 one line of it, or all of it when it found one file.
 
 25
-00:01:45.403 --> 00:01:47.956
+00:01:46.631 --> 00:01:49.489
 Record three more sessions without the flow,
 
 26
-00:01:47.956 --> 00:01:50.975
+00:01:49.489 --> 00:01:52.867
 then score the agent's steps under it, site by site.
 
 27
-00:02:05.861 --> 00:02:08.566
+00:02:07.090 --> 00:02:10.048
 The same request, without the flow and with it.
 
 28
-00:02:08.566 --> 00:02:11.674
+00:02:10.048 --> 00:02:13.447
 With it, the flow's reads ride in the search's result,
 
 29
-00:02:11.674 --> 00:02:14.495
+00:02:13.447 --> 00:02:16.532
 and the agent skips the calls it would have made.
 
 30
-00:02:17.621 --> 00:02:20.590
+00:02:18.849 --> 00:02:22.027
 With the flow, served by the proxy behind the agent's calls:
 
 31
-00:02:20.590 --> 00:02:22.273
+00:02:22.027 --> 00:02:23.827
 --flow ~/.stretto/notes.flow.json.
 
 32
-00:02:22.273 --> 00:02:25.638
+00:02:23.827 --> 00:02:27.428
 It has no arbiter, so the proxy decides with reach, asking no model.
 
 33
-00:02:28.689 --> 00:02:33.122
+00:02:29.918 --> 00:02:34.669
 The flow log says why: each lookup's probability and its binding's chance,
 
 34
-00:02:33.122 --> 00:02:34.560
+00:02:34.669 --> 00:02:36.210
 then why it handed back.
 
 35
-00:02:36.892 --> 00:02:39.334
+00:02:38.121 --> 00:02:40.819
 The audit's sessions are new training data.
 
 36
-00:02:39.334 --> 00:02:43.536
+00:02:40.819 --> 00:02:45.463
 Learn from all eleven, and diff the new flow against the one being served.
 
 37
-00:03:00.471 --> 00:03:02.976
+00:03:01.699 --> 00:03:05.009
 The walkthrough, step by step, is in the docs.

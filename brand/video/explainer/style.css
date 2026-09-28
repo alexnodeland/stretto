@@ -1,0 +1,18 @@
+/* The explainer video's stage: 1920 x 1080, the brand's dark palette. */
+@font-face { font-family: "Inter"; src: url("../../fonts/Inter-Variable.subset.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "JetBrains Mono"; src: url("../../fonts/JetBrainsMono-Regular.subset.woff2") format("woff2"); font-weight: 400; }
+@font-face { font-family: "JetBrains Mono"; src: url("../../fonts/JetBrainsMono-Bold.subset.woff2") format("woff2"); font-weight: 700; }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #0b0f11; }
+body { width: 1920px; height: 1080px; overflow: hidden; -webkit-font-smoothing: antialiased; }
+#stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #0b0f11; }
+#scene { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; }
+.cam { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; }
+.cam > svg { position: absolute; left: 0; top: 0; overflow: visible; }
+canvas { position: absolute; left: 0; top: 0; }
+#vignette { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 72% 70% at 50% 48%, rgba(0,0,0,0) 55%, rgba(3,5,6,0.42) 82%, rgba(2,3,4,0.72) 100%); }
+#ov { position: absolute; left: 0; top: 0; overflow: hidden; }
+text { font-kerning: normal; }
+text { white-space: pre; }

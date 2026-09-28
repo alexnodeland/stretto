@@ -1,6 +1,25 @@
-# The voice-over (video/narrate.py): Kokoro-82M, run locally with ONNX Runtime.
-#   python3 -m venv .venv-voice && .venv-voice/bin/pip install -r brand/video/requirements-narrate.txt
-# The model files (kokoro-v1.0.onnx, voices-v1.0.bin) come from
-# https://github.com/thewh1teagle/kokoro-onnx/releases/tag/model-files-v1.0
-kokoro-onnx==0.6.1
+# The voice-over (video/narrate.py): Chatterbox, run locally on CPU, and
+# faster-whisper, which checks every line and times its words. torch comes
+# from PyTorch's CPU index (the default index would pull the far larger CUDA
+# build), and chatterbox-tts goes in without its declared dependencies, which
+# add gradio for its demo app; the ones this needs are pinned below:
+#   python3 -m venv .venv-voice
+#   .venv-voice/bin/pip install --index-url https://download.pytorch.org/whl/cpu torch==2.6.0 torchaudio==2.6.0
+#   .venv-voice/bin/pip install --no-deps chatterbox-tts==0.1.7
+#   .venv-voice/bin/pip install -r brand/video/requirements-narrate.txt
+# The models (Chatterbox from huggingface.co/ResembleAI/chatterbox, MIT, about
+# 3.2 GB; faster-whisper's small.en, about 0.5 GB) are fetched on first use.
+numpy==1.26.4
 soundfile==0.14.0
+transformers==5.2.0
+diffusers==0.29.0
+librosa==0.11.0
+s3tokenizer==0.3.0
+resemble-perth==1.0.1
+conformer==0.3.2
+safetensors==0.5.3
+spacy-pkuseg==1.0.1
+pykakasi==2.3.0
+pyloudnorm==0.2.0
+omegaconf==2.3.1
+faster-whisper==1.2.1

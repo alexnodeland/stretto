@@ -111,7 +111,7 @@ export function voiceTrack(clips, duration, out) {
 // A caption's pieces: its sentences, and a sentence longer than `max`
 // characters split again at the clause break nearest its middle, if that
 // leaves both halves long enough to read.
-function cuePieces(text, max = 84) {
+export function cuePieces(text, max = 84) {
   const split = s => {
     if (s.length <= max) return [s];
     // A break leaving a piece too short to read is no break.
@@ -151,6 +151,78 @@ export function writeVtt(lines, out) {
       cues.push(`${stamp(at)} --> ${stamp(at + d)}\n${p}`);
       at += d;
     }
+  }
+  fs.writeFileSync(out, `WEBVTT\n\n${cues.map((c, i) => `${i + 1}\n${c}`).join('\n\n')}\n`);
+}
+
+// Each word of `text` with a time from the voice's own words ([{w, start,
+// end}], as a speech aligner heard them). The two lists are aligned by edit
+// distance on their letters and digits, so a word the aligner misheard
+// ("Strato" for "stretto", "30%" for "thirty percent") still takes its place,
+// and a word it did not hear at all is placed between its neighbours.
+export function alignWords(text, words) {
+  const norm = w => String(w).toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g, '');
+  const A = text.split(/\s+/).filter(Boolean);
+  const a = A.map(norm), b = words.map(w => norm(w.w ?? w.word ?? ''));
+  const n = a.length, m = b.length;
+  const lev = (x, y) => {
+    let prev = Array.from({ length: y.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= x.length; i++) {
+      const cur = [i];
+      for (let j = 1; j <= y.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (x[i - 1] === y[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+    return prev[y.length];
+  };
+  const sub = (x, y) => (x === y ? 0 : !x || !y ? 1 : Math.min(1, lev(x, y) / Math.max(x.length, y.length)));
+  const GAP = 0.8;
+  const D = Array.from({ length: n + 1 }, (_, i) => Float64Array.from({ length: m + 1 }, (_, j) => (i + j) * GAP));
+  for (let i = 1; i <= n; i++) for (let j = 1; j <= m; j++)
+    D[i][j] = Math.min(D[i - 1][j - 1] + sub(a[i - 1], b[j - 1]), D[i - 1][j] + GAP, D[i][j - 1] + GAP);
+  const at = new Array(n).fill(-1);
+  for (let i = n, j = m; i > 0 && j > 0;) {
+    if (Math.abs(D[i][j] - (D[i - 1][j - 1] + sub(a[i - 1], b[j - 1]))) < 1e-9) { at[i - 1] = j - 1; i--; j--; }
+    else if (Math.abs(D[i][j] - (D[i - 1][j] + GAP)) < 1e-9) i--;
+    else j--;
+  }
+  const end = m ? +words[m - 1].end : 0;
+  return A.map((w, i) => {
+    if (at[i] >= 0) return { w, start: +words[at[i]].start, end: +words[at[i]].end };
+    // Between the nearest aligned words on either side.
+    let p = i - 1, q = i + 1;
+    while (p >= 0 && at[p] < 0) p--;
+    while (q < n && at[q] < 0) q++;
+    const t0 = p >= 0 ? +words[at[p]].end : 0, t1 = q < n ? +words[at[q]].start : end;
+    const k = (i - p) / (q - p);
+    return { w, start: t0 + (t1 - t0) * k, end: t0 + (t1 - t0) * Math.min(1, k + 1 / (q - p)) };
+  });
+}
+
+// Captions as writeVtt makes them, but timed by the voice's own words where
+// a line has them ([{w, start, end}], from its clip's start): each piece
+// starts when its first word is spoken, and holds until the next piece. A
+// line without word timings, or a piece whose words are not found, gets its
+// share of the line by length, as writeVtt gives it.
+export function writeVttWords(lines, out) {
+  const stamp = s => {
+    const ms = Math.max(0, Math.round(s * 1000));
+    const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, sec = Math.floor(ms / 1000) % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(ms % 1000).padStart(3, '0')}`;
+  };
+  const cues = [];
+  for (const { text, t, duration, words } of lines) {
+    const parts = cuePieces(text);
+    const total = parts.reduce((a, p) => a + p.length, 0);
+    let acc = 0;
+    const starts = parts.map(p => { const at = t + (duration * acc) / total; acc += p.length; return at; });
+    if (words && words.length) {
+      // Each piece starts when its first word is spoken (see alignWords).
+      const timed = alignWords(text, words);
+      let k = 0;
+      parts.forEach((p, i) => { starts[i] = t + timed[Math.min(k, timed.length - 1)].start; k += p.split(/\s+/).filter(Boolean).length; });
+    }
+    for (let i = 1; i < starts.length; i++) starts[i] = Math.max(starts[i], starts[i - 1] + 0.5);
+    parts.forEach((p, i) => cues.push(`${stamp(starts[i])} --> ${stamp(i + 1 < parts.length ? starts[i + 1] : t + duration)}\n${p}`));
   }
   fs.writeFileSync(out, `WEBVTT\n\n${cues.map((c, i) => `${i + 1}\n${c}`).join('\n\n')}\n`);
 }

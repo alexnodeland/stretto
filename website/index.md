@@ -52,8 +52,8 @@ features:
 
 <HowItWorks />
 
-<!-- BRAND SLOT: the animated explainer (website/public/explainer/index.html). Renders nothing until the file is there. -->
-<BrandEmbed kind="explainer" />
+<!-- BRAND SLOT: the explainer video (website/public/media/explainer.mp4). Embedded once; renders nothing until the file is there. -->
+<BrandEmbed kind="explainer" caption="stretto, explained in under three minutes." />
 
 ## What the agent sees
 
@@ -98,6 +98,3 @@ The agent made 1 call where it had made 3. [The walkthrough](/guide/walkthrough)
 </div>
 
 Read [why stretto](/guide/why) for where these come from and what they do not show, or [the paper](/research/paper) for the model behind them.
-
-<!-- BRAND SLOT: the launch video (website/public/media/launch.mp4, poster media/launch-poster.png). Renders nothing until the file is there. -->
-<BrandEmbed kind="launch" caption="stretto in two minutes." />

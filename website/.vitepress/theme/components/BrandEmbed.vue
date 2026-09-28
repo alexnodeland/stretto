@@ -1,33 +1,36 @@
 <script setup lang="ts">
-// BRAND SLOT. Embeds a piece of the brand kit once its file is in website/public/:
+// BRAND SLOT. Embeds one of the brand kit's videos once its file is in website/public/:
 //
-//   kind="explainer"    public/explainer/index.html   (an iframe)
-//   kind="launch"       public/media/launch.mp4       (a video, poster media/launch-poster.png, captions media/launch.vtt)
-//   kind="walkthrough"  public/media/walkthrough.mp4  (a video, poster media/walkthrough-poster.png, captions media/walkthrough.vtt)
+//   kind="explainer"    public/media/explainer.mp4    (poster media/explainer-poster.png, captions media/explainer.vtt;
+//                       its caption links the interactive explainer, public/explainer/index.html, when it is there)
+//   kind="walkthrough"  public/media/walkthrough.mp4  (poster media/walkthrough-poster.png, captions media/walkthrough.vtt)
 //
 // config.mts checks for the files when the site builds. Until they are there, a
-// build renders nothing here and `npm run dev` shows where the file goes.
-//
-// The videos play in a 16:9 frame. The explainer's frame is as tall as the
-// explainer: it posts its height as a `stretto-explainer:height` message
-// (brand/README.md, "Explainer").
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+// build renders nothing here and `npm run dev` shows where the file goes. Each
+// video plays in a 16:9 frame; embed each once per page.
+import { computed } from 'vue'
 import { useData, withBase } from 'vitepress'
 
 /** Set by config.mts: each brand file's site path, or false while it is missing. */
 type BrandAssets = Partial<
   Record<
-    'explainer' | 'launchVideo' | 'launchPoster' | 'launchCaptions' | 'walkthroughVideo' | 'walkthroughPoster' | 'walkthroughCaptions',
+    | 'explainerVideo'
+    | 'explainerPoster'
+    | 'explainerCaptions'
+    | 'explainerPage'
+    | 'walkthroughVideo'
+    | 'walkthroughPoster'
+    | 'walkthroughCaptions',
     string | false
   >
 >
 
 const props = withDefaults(
   defineProps<{
-    kind: 'explainer' | 'launch' | 'walkthrough'
+    kind: 'explainer' | 'walkthrough'
     title?: string
     caption?: string
-    /** Width over height of a video's frame. */
+    /** Width over height of the video's frame. */
     aspect?: string
   }>(),
   { aspect: '16 / 9' }
@@ -37,87 +40,46 @@ const { theme } = useData()
 const assets = computed(() => (theme.value as { brandAssets?: BrandAssets }).brandAssets)
 
 const expected = {
-  explainer: 'explainer/index.html',
-  launch: 'media/launch.mp4',
+  explainer: 'media/explainer.mp4',
   walkthrough: 'media/walkthrough.mp4'
 }
 
-const src = computed(() => {
+const file = (key: 'Video' | 'Poster' | 'Captions') => {
   const a = assets.value
-  if (!a) return false
-  if (props.kind === 'explainer') return a.explainer ? withBase('/explainer/') : false
-  const video = props.kind === 'launch' ? a.launchVideo : a.walkthroughVideo
-  return video ? withBase(video) : false
-})
+  const path = a?.[`${props.kind}${key}` as keyof BrandAssets]
+  return path ? withBase(path) : undefined
+}
 
-const poster = computed(() => {
-  const a = assets.value
-  if (!a || props.kind === 'explainer') return undefined
-  const file = props.kind === 'launch' ? a.launchPoster : a.walkthroughPoster
-  return file ? withBase(file) : undefined
-})
-
+const src = computed(() => file('Video') ?? false)
+const poster = computed(() => file('Poster'))
 /** The voice-over's captions, WebVTT, off until the viewer turns them on. */
-const captions = computed(() => {
-  const a = assets.value
-  if (!a || props.kind === 'explainer') return undefined
-  const file = props.kind === 'launch' ? a.launchCaptions : a.walkthroughCaptions
-  return file ? withBase(file) : undefined
-})
+const captions = computed(() => file('Captions'))
+/** The interactive explainer, a static page outside the router (so the link sets target). */
+const page = computed(() => (props.kind === 'explainer' && assets.value?.explainerPage ? withBase('/explainer/') : undefined))
 
 const label = computed(
   () =>
     props.title ??
     {
-      explainer: 'How stretto works, animated',
-      launch: 'stretto in two minutes',
+      explainer: 'How stretto works, explained in under three minutes',
       walkthrough: 'The walkthrough, recorded'
     }[props.kind]
 )
 
 const isDev = import.meta.env.DEV
-
-/**
- * The explainer's height in px, from its last message. It reports its
- * content's height whenever that changes, so the frame follows it: on a phone,
- * where each step is as tall as its own content, it grows and shrinks with the
- * step shown.
- */
-const explainerHeight = ref(720)
-const frame = ref<HTMLIFrameElement | null>(null)
-
-function onMessage(e: MessageEvent) {
-  if (!frame.value || e.source !== frame.value.contentWindow) return
-  const d = e.data as { type?: unknown; height?: unknown } | null
-  if (d?.type !== 'stretto-explainer:height') return
-  const height = Number(d.height)
-  if (Number.isFinite(height) && height > 0) explainerHeight.value = Math.ceil(height)
-}
-
-onMounted(() => {
-  if (props.kind === 'explainer') window.addEventListener('message', onMessage)
-})
-
-onBeforeUnmount(() => window.removeEventListener('message', onMessage))
 </script>
 
 <template>
   <figure v-if="src" class="brand-embed" :class="`brand-embed--${kind}`">
-    <div class="brand-embed__frame" :style="kind === 'explainer' ? undefined : { aspectRatio: aspect }">
-      <iframe
-        v-if="kind === 'explainer'"
-        ref="frame"
-        :src="src"
-        :style="{ height: `${explainerHeight}px` }"
-        :title="label"
-        loading="lazy"
-        allow="fullscreen"
-      />
-      <video v-else :src="src" :poster="poster" :aria-label="label" controls playsinline preload="none">
+    <div class="brand-embed__frame" :style="{ aspectRatio: aspect }">
+      <video :src="src" :poster="poster" :aria-label="label" controls playsinline preload="none">
         <track v-if="captions" kind="captions" :src="captions" srclang="en" label="English" />
       </video>
     </div>
-    <figcaption v-if="caption" class="brand-embed__caption">{{ caption }}</figcaption>
+    <figcaption v-if="caption || page" class="brand-embed__caption">
+      {{ caption }}
+      <a v-if="page" :href="page" target="_self">Step through it at your own pace.</a>
+    </figcaption>
   </figure>
   <p v-else-if="isDev" class="brand-embed--missing">
     Brand slot ({{ kind }}): copy the brand kit's file to <code>website/public/{{ expected[kind] }}</code> to show it here.
@@ -138,7 +100,6 @@ onBeforeUnmount(() => window.removeEventListener('message', onMessage))
   background: var(--vp-c-bg-soft);
 }
 
-.brand-embed__frame iframe,
 .brand-embed__frame video {
   display: block;
   width: 100%;

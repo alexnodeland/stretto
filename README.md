@@ -19,9 +19,9 @@
 stretto learns, from your agent's recorded tool calls, which reads it makes next and where their arguments come from, and serves them through an MCP proxy in the same tool result, so the agent needs fewer LLM turns.
 
 <p align="center">
-  <a href="https://alexnodeland.github.io/stretto/"><img src="brand/media/launch-teaser.gif" alt="An agent's call comes back with the reads it would have asked for next" width="720"></a>
+  <a href="https://alexnodeland.github.io/stretto/"><img src="brand/media/explainer-teaser.gif" alt="An agent's call comes back with the reads it would have asked for next" width="720"></a>
   <br>
-  <sub><a href="https://alexnodeland.github.io/stretto/">The launch video and the interactive explainer</a> · <a href="https://alexnodeland.github.io/stretto/guide/quick-start">the walkthrough video</a></sub>
+  <sub><a href="https://alexnodeland.github.io/stretto/">The explainer video</a> · <a href="https://alexnodeland.github.io/stretto/explainer/">the interactive explainer</a> · <a href="https://alexnodeland.github.io/stretto/guide/quick-start">the walkthrough video</a></sub>
 </p>
 
 - **Any agent, any MCP server.** `stretto-proxy` wraps a server run as a command or reached over Streamable HTTP. The agent, the host and the server stay as they are.

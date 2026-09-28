@@ -1,6 +1,6 @@
 # stretto brand kit
 
-Everything stretto shows the world, and the sources to make it again: the logo, colors and type, the words, a social card, a visual explainer, a launch video and a terminal walkthrough, the last three narrated. The tone is calm and exact: stretto makes the reads an agent would make next, and says how much that saves only with the model, the benchmark and the kind of evidence next to the number.
+Everything stretto shows the world, and the sources to make it again: the logo, colors and type, the words, a social card, an interactive explainer, an explainer video and a terminal walkthrough, the last three narrated. The tone is calm and exact: stretto makes the reads an agent would make next, and says how much that saves only with the model, the benchmark and the kind of evidence next to the number.
 
 | What | Where | Made by |
 |---|---|---|
@@ -10,10 +10,10 @@ Everything stretto shows the world, and the sources to make it again: the logo, 
 | Fonts | [`fonts/`](fonts/): Inter and JetBrains Mono, subset, with their licenses | `tools/subset_fonts.py` |
 | Words | [`messaging.md`](messaging.md): taglines, descriptions, key messages, terms | by hand, from `docs/results/claims.md` |
 | Social card | `social/og-card.png` (1200 × 630), from `social/og-card.html` | `tools/render_assets.mjs` |
-| Visual explainer | [`explainer/index.html`](explainer/index.html), one self-contained file; its narration in `explainer/audio/` | by hand; fonts by `tools/embed_fonts.py` |
-| Launch video | `media/launch.mp4`, `launch-poster.png`, `launch.vtt`, `launch-teaser.gif`, `launch-teaser.webm` | `video/launch/render.mjs` |
+| Interactive explainer | [`explainer/index.html`](explainer/index.html), one self-contained file; its narration in `explainer/audio/` | by hand; fonts by `tools/embed_fonts.py` |
+| Explainer video | `media/explainer.mp4`, `explainer-poster.png`, `explainer.vtt`, `explainer-teaser.gif`, `explainer-teaser.webm` | [`video/explainer/`](video/explainer/README.md), with `video/music.py` and `video/sfx.py` |
 | Walkthrough video | `media/walkthrough.mp4`, `walkthrough-poster.png`, `walkthrough.vtt` | `video/walkthrough/` (capture, then render) |
-| Voice-over | the lines in `video/launch/narration.json`, `video/walkthrough/narration.json` (with the walkthrough's captions) and `explainer/narration.json` | `video/narrate.py`, with Kokoro-82M |
+| Voice-over | the lines in `video/explainer/narration.json`, `video/walkthrough/narration.json` (with the walkthrough's captions) and `explainer/narration.json` | `video/narrate.py`, with Chatterbox |
 
 ## Logo
 
@@ -65,13 +65,13 @@ Both are under the [SIL Open Font License 1.1](fonts/LICENSE-Inter.txt) ([JetBra
 <meta property="og:image" content="https://alexnodeland.github.io/stretto/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="stretto: Read ahead of your agent. Live, GLM-5.3 took 27.9% fewer LLM turns on 28 τ²-bench retail and airline tasks.">
+<meta property="og:image:alt" content="stretto: Read ahead of your agent. Live on 28 τ²-bench retail and airline tasks, Claude Sonnet 5, Claude Haiku 4.5 and GLM-5.3 took 20–28% fewer LLM turns.">
 <meta name="twitter:card" content="summary_large_image">
 ```
 
-## Explainer
+## Interactive explainer
 
-`explainer/index.html` explains stretto in seven steps: where the proxy sits, recording sessions, learning a flow, serving it, what a detour costs, the decision rule, and the results with their scope. It is one file with its styles, script, drawings and fonts inline (180 KB), so it can be served from anywhere, and it links out only to the paper, the claims ledger and the walkthrough on GitHub.
+`explainer/index.html` explains stretto in seven steps: where the proxy sits, recording sessions, learning a flow, serving it, what a detour costs, the decision rule, and the results with their scope. It is one file with its styles, script, drawings and fonts inline (180 KB), so it can be served from anywhere, and it links out only to the live results, the claims ledger and the walkthrough on GitHub.
 
 - **Controls:** play and pause, previous and next, a progress bar whose segments jump to a step; the arrow keys, Home and End; space or K to play and pause; swipes on touch screens. It starts playing once it is in view and stops after the last step.
 - **Narration:** the speaker button, or M, reads each step aloud: `audio/step-N.mp3` beside the page (0.9 MB in all, fetched only once the sound is on). It is off at first, since browsers play sound only after a click. With it on, a playing explainer moves on when a step's line has finished. Served without `audio/`, the button hides itself.
@@ -100,31 +100,33 @@ It is 760 px tall at 1000 px wide and 876 px at 720 px, the same for every step;
 
 | File | Length | Size | Notes |
 |---|---|---|---|
-| `media/launch.mp4` | 114.3 s, 1920 × 1080, 30 fps | 7.8 MB | H.264 High, yuv420p, BT.709, faststart; the voice-over in AAC, at -16 LUFS |
-| `media/launch.vtt` | 29 cues | 2 KB | The voice-over's captions (WebVTT) |
-| `media/launch-poster.png` | 1920 × 1080 | 73 KB | The lockup and tagline, at 3.9 s |
-| `media/launch-teaser.gif` | 8 s loop, 1280 × 720, 15 fps | 0.45 MB | For the README |
-| `media/launch-teaser.webm` | 8 s loop, 1280 × 720 | 0.12 MB | For the site (VP9) |
-| `media/walkthrough.mp4` | 186.5 s, 1920 × 1080, 30 fps | 12.2 MB | The same encoding as the launch video |
+| `media/explainer.mp4` | 165.9 s, 1920 × 1080, 30 fps | 16.9 MB | H.264 High, yuv420p, BT.709, faststart; voice, music and effects in AAC, at -16 LUFS |
+| `media/explainer.vtt` | 43 cues | 4 KB | The voice-over's captions (WebVTT), each starting on its first spoken word |
+| `media/explainer-poster.png` | 1920 × 1080 | 1.2 MB | stretto holding a result, with the two reads it made clipped under it |
+| `media/explainer-teaser.gif` | 8 s loop, 1280 × 720, 15 fps | 1.1 MB | For the README |
+| `media/explainer-teaser.webm` | 8 s loop, 1280 × 720 | 0.3 MB | For the site (VP9) |
+| `media/walkthrough.mp4` | 187.7 s, 1920 × 1080, 30 fps | 12.3 MB | H.264 High, faststart; the voice-over in AAC, at -16 LUFS |
 | `media/walkthrough.vtt` | 37 cues | 3 KB | The voice-over's captions (WebVTT) |
 | `media/walkthrough-poster.png` | 1920 × 1080 | 179 KB | The served session: the two reads riding in the search's result |
 
-**The launch video** is narrated, and its titles and captions carry the same story with the sound off: the problem (an LLM turn per call, many of them fixed by what the tools returned), the idea, how it works (record, learn, serve, the decision rule), the results with their scope, and how to start. Its source is `video/launch/`: `index.html` lays out a 1920 × 1080 stage and `timeline.js` keyframes every property as a function of time, so a frame at t is always the same frame. Preview it in a browser with `index.html?play`, or one frame with `index.html?t=42`. Its voice-over is `video/launch/narration.json`: each line starts a set time into its scene, and `timeline.js` holds the scene until the line has finished.
+**The explainer video** tells the story in eleven scenes of motion graphics over one illustrated world, with a camera that pans, zooms, dives and flies over it: an agent's turns and what they cost; the turns the tools had already decided; stretto making those reads, inside the result the agent asked for; why it cannot change anything; how a flow is learned and reviewed; the rule that decides a lookup; the live results; the prompt baseline; and how to start. Its titles and captions carry the story with the sound off. [`video/explainer/README.md`](video/explainer/README.md) lists the scenes, the camera moves and transitions, and how the timing follows the voice: every scene holds until its line has finished, and its beats land on the words that name them.
 
 **The walkthrough** is a real terminal session, with the release binaries on the official MCP filesystem server, a scripted agent standing in for the LLM, and no key: `stretto doctor`, then `stretto init` printing Claude Code's configuration, then the loop `docs/walkthrough.md` runs (record, learn, review, audit, serve, learn again). `video/walkthrough/script.sh` is the command list; `capture.py` runs it in a pseudo-terminal, with a small allowlisted environment and the working directory as `HOME` (the binaries copied into its `.cargo/bin`, where `cargo install` puts them), and records every byte of output with its timing to `walkthrough.cast` (asciicast v2, with markers for steps, captions and commands); `render.mjs` draws the cast as a terminal, with a title card per step, and pipes the frames to ffmpeg. The only change to the output is the working directory's path, shown as `/home/me` as in the docs. The voice says the intro, each caption as it appears (`video/walkthrough/narration.json` gives a spoken form where the text on screen has paths or flags), and the outro; `term.js` holds each caption until its line has finished.
 
 ```html
-<video controls preload="none" poster="/stretto/media/launch-poster.png" width="1920" height="1080" style="width: 100%; height: auto;">
-  <source src="/stretto/media/launch.mp4" type="video/mp4">
-  <track kind="captions" src="/stretto/media/launch.vtt" srclang="en" label="English">
+<video controls preload="none" poster="/stretto/media/explainer-poster.png" width="1920" height="1080" style="width: 100%; height: auto;">
+  <source src="/stretto/media/explainer.mp4" type="video/mp4">
+  <track kind="captions" src="/stretto/media/explainer.vtt" srclang="en" label="English">
 </video>
 ```
 
-**The voice** is Kokoro-82M, an open text-to-speech model, run locally: one voice (`af_heart`) at one pace, every line at one loudness. `video/narrate.py` makes the clips; the text is written for reading, and its `SAY` table turns flags, versions and symbols into what the voice should say (`GLM-5.3`, "GLM five point three"). The phonemizer says "stretto" as "STRED-oh", so `PHONEMES` gives it the musical term's held double t. Every line was checked by transcribing the clips with Whisper.
+**The voice** is Chatterbox (Resemble AI, MIT), an open text-to-speech model run locally, in its own voice: one voice at one pace, every line at one loudness, for both videos and the interactive explainer. `video/narrate.py` speaks each line a sentence at a time, trims each piece, slows it by at most a fifth toward 160 words a minute (the model speaks fast), and joins the pieces with pauses that fit their punctuation. Then it transcribes the line back with faster-whisper and speaks it again, from another seed, if a word went missing or the pace stayed too fast; the manifest keeps the time of every word, which the explainer video times its beats and captions by. The text is written for reading, and `SAY`, with each script's `say` fields, turns versions, acronyms and numbers into what the voice should say (`GLM-5.3`, "G L M five point three"). "stretto" is said the American way, STRED-oh, with the t flapped.
+
+**The music and effects** are synthesized, not sampled. `video/music.py` writes a bed in D major whose six-note motif enters three times, each entry before the last has finished, a stretto, landing with the mark's three bars; the explainer's renderer runs it with the timeline's own times. `video/sfx.py` writes the whooshes, pops, ticks, clicks, the thump and the chime.
 
 ## Rebuilding
 
-Requirements: Node 18 or later, Python 3.10 or later, and for the walkthrough the stretto binaries, npx (the filesystem server comes from npm) and jq. For the voice-over, `video/requirements-narrate.txt` and Kokoro's two model files (340 MB). No step needs a key.
+Requirements: Node 18 or later, Python 3.10 or later, and for the walkthrough the stretto binaries, npx (the filesystem server comes from npm) and jq. For the voice-over, `video/requirements-narrate.txt` (its header gives the order, with torch's CPU build) and about 4 GB for the models it fetches on first use. No step needs a key.
 
 ```sh
 cd brand
@@ -137,20 +139,26 @@ node tools/render_assets.mjs                   # favicon.ico, the PNG icons, soc
 node tools/contrast.mjs --check                # after changing tokens.css
 .venv/bin/python tools/embed_fonts.py explainer/index.html   # after editing the explainer's text
 
-# The voice-over: the clips for both videos and the explainer's audio/ (about a minute).
-python3 -m venv .venv-voice && .venv-voice/bin/pip install -r video/requirements-narrate.txt
-KOKORO_DIR=/path/to/kokoro-model-files .venv-voice/bin/python video/narrate.py
+# The voice-over: every line of both videos and the interactive explainer's audio/
+# (about 40 minutes on 4 CPUs; a line whose words have not changed is kept).
+python3 -m venv .venv-voice
+.venv-voice/bin/pip install --index-url https://download.pytorch.org/whl/cpu torch==2.6.0 torchaudio==2.6.0
+.venv-voice/bin/pip install --no-deps chatterbox-tts==0.1.7
+.venv-voice/bin/pip install -r video/requirements-narrate.txt
+.venv-voice/bin/python video/narrate.py
 
-node video/launch/render.mjs                   # media/launch.mp4, launch.vtt, the poster and the teaser (about 5 minutes)
+# The explainer video: the effects once, then the render, which makes the music (about 15 minutes).
+.venv-voice/bin/python video/sfx.py
+PYTHON=.venv-voice/bin/python node video/explainer/render.mjs
 
 # The walkthrough: record it, then render it (about 7 minutes).
 python3 video/walkthrough/capture.py --bin /path/to/stretto/binaries
 node video/walkthrough/render.mjs
 ```
 
-Without the voice-over's clips (`video/out/voice/`, made by `narrate.py`), the renderers make silent videos at the scenes' own lengths. After a change to the words alone, `narrate.py` then `render.mjs --audio-only` puts the new voice-over into the video there is, as long as no line got longer: a longer line changes the pacing, and needs a full render.
+Without the voice-over's clips (`video/out/voice/`, made by `narrate.py`), the renderers make silent videos at the scenes' own lengths. After a change to the words alone, `narrate.py` then `render.mjs --audio-only` puts the new voice-over into the video there is, as long as no line changed length: a line of another length changes the pacing, and needs a full render.
 
-Frames are piped straight into ffmpeg; nothing is written to disk but the outputs. `--stills 12,40.5 --stills-dir DIR` on either renderer writes single frames instead, to check a change. Set `CHROMIUM_PATH` to use a Chromium other than Playwright's.
+Frames are piped straight into ffmpeg; nothing is written to disk but the outputs. `--stills 12,40.5` on either renderer writes single frames instead, to check a change (`--stills-dir DIR` for the walkthrough's). Set `CHROMIUM_PATH` to use a Chromium other than Playwright's.
 
 **When the CLI changes,** edit `video/walkthrough/script.sh` and record again. A step is a `step TITLE CAPTION` line followed by `run COMMAND` lines (`note CAPTION` changes the caption between commands); a new step is a new block in the order it belongs, and the capture and the renderer need no change. `bash video/walkthrough/script.sh` runs the same steps in a terminal, without recording, in a temporary directory that it makes `HOME`.
 
@@ -165,7 +173,7 @@ Copy into `website/public/` (served at `/stretto/`):
 | `explainer/index.html` | `explainer/index.html` |
 | `logo/stretto-lockup.svg`, `logo/stretto-lockup-dark.svg`, `logo/stretto-mark.svg` | `logo/` (for the header) |
 | `explainer/audio/step-1.mp3` … `step-7.mp3` | `explainer/audio/` |
-| `media/launch.mp4`, `media/launch-poster.png`, `media/launch.vtt`, `media/launch-teaser.webm`, `media/walkthrough.mp4`, `media/walkthrough-poster.png`, `media/walkthrough.vtt` | `media/` |
+| `media/explainer.mp4`, `media/explainer-poster.png`, `media/explainer.vtt`, `media/explainer-teaser.webm`, `media/walkthrough.mp4`, `media/walkthrough-poster.png`, `media/walkthrough.vtt` | `media/` |
 | `tokens.css`, and `fonts/*` with the two licenses if the site serves its own fonts | where the site keeps its styles and fonts |
 
 In the site's `<head>`:
@@ -191,11 +199,11 @@ In the repository's `README.md`, the lockup (switching with the reader's theme) 
 
 **Read ahead of your agent.** stretto learns, from your agent's recorded tool calls, which reads it makes next and where their arguments come from, and serves them through an MCP proxy in the same tool result, so the agent needs fewer LLM turns.
 
-![After each call, the reads the agent would make next ride in the same tool result, and it skips those turns](brand/media/launch-teaser.gif)
+![After each call, the reads the agent would make next ride in the same tool result, and it skips those turns](brand/media/explainer-teaser.gif)
 ```
 
 GitHub does not play a video committed to the repository inline; link the MP4s from the README to the docs site, where the `<video>` tag above plays them.
 
 ## Licenses
 
-The brand kit's code (tools and render scripts) is MIT, as the repository is. The voice-over is spoken by Kokoro-82M (hexgrad, Apache License 2.0) with its `af_heart` voice, run with kokoro-onnx (MIT). The fonts in `fonts/`, and the fonts embedded in `explainer/index.html`, are under the SIL Open Font License 1.1: Inter, copyright 2016 The Inter Project Authors; JetBrains Mono, copyright 2020 The JetBrains Mono Project Authors.
+The brand kit's code (tools and render scripts) is MIT, as the repository is, and so are the music and effects it synthesizes. The voice-over is spoken by Chatterbox (Resemble AI, MIT) in its built-in voice, which marks what it speaks with Resemble AI's imperceptible Perth watermark, and checked with faster-whisper (SYSTRAN, MIT) running Whisper small.en (OpenAI, MIT). The fonts in `fonts/`, and the fonts embedded in `explainer/index.html`, are under the SIL Open Font License 1.1: Inter, copyright 2016 The Inter Project Authors; JetBrains Mono, copyright 2020 The JetBrains Mono Project Authors.

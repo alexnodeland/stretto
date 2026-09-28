@@ -550,62 +550,62 @@
         <div class="results">
           <div class="hero" data-b="0">
             <span class="kicker on-accent">Live</span>
-            <span class="num">27.9%<small>fewer LLM turns</small></span>
-            <span class="scope">GLM-5.3 on 28 τ²-bench retail and airline tasks, with the reach decider, against the recorded baseline. 95% CI 19.1–35.9%. Input tokens fell 21.9% (9.9–32.9%).</span>
+            <span class="num">20–28%<small>fewer LLM turns</small></span>
+            <span class="scope">Claude Sonnet 5, Claude Haiku 4.5 and GLM-5.3 as the agent, each on the same 28 τ²-bench retail and airline tasks, with the reach decider, paired by task.</span>
           </div>
           <div class="chart" data-b="1">
             <div class="chart-head">
-              <span class="chart-title">LLM turns, live, paired by task</span>
+              <span class="chart-title">LLM turns per episode, live</span>
               <span class="legend"><span><i style="background:var(--chart-base)"></i>Without</span><span><i style="background:var(--chart-accent)"></i>With stretto</span></span>
             </div>
-            <div class="row" title="Retail, 20 tasks: 227 LLM turns without stretto, 154 with it (−32.2%, 95% CI −40.0 to −23.5)">
-              <span class="rl">Retail<span>20 tasks</span></span>
+            <div class="row" title="Claude Sonnet 5, 28 tasks, three trials: 9.92 LLM turns per episode without stretto, 7.88 with it (−20.5%, 95% CI −24.4 to −16.5)">
+              <span class="rl">Sonnet 5<span>3 trials</span></span>
               <div class="bars">
-                <div class="bar base"><i data-b="1" style="--w:.731"></i><b>227</b></div>
-                <div class="bar st"><i data-b="2" style="--w:.496"></i><b>154</b></div>
+                <div class="bar base"><i data-b="1" style="--w:.894"></i><b>9.92</b></div>
+                <div class="bar st"><i data-b="2" style="--w:.711"></i><b>7.88</b></div>
               </div>
-              <span class="delta">−32.2% (95% CI −40.0 to −23.5)</span>
+              <span class="delta">−20.5% (95% CI −24.4 to −16.5)</span>
             </div>
-            <div class="row" title="Airline, 8 tasks: 83.5 LLM turns without stretto (mean of two trials), 70 with it (−16.2%, 95% CI −37.2 to +10.6)">
-              <span class="rl">Airline<span>8 tasks</span></span>
+            <div class="row" title="Claude Haiku 4.5, 28 tasks, three trials: 8.81 LLM turns per episode without stretto, 6.83 with it (−22.4%, 95% CI −29.4 to −15.8)">
+              <span class="rl">Haiku 4.5<span>3 trials</span></span>
               <div class="bars">
-                <div class="bar base"><i data-b="1" style="--w:.269"></i><b>83.5</b></div>
-                <div class="bar st"><i data-b="2" style="--w:.225"></i><b>70</b></div>
+                <div class="bar base"><i data-b="1" style="--w:.794"></i><b>8.81</b></div>
+                <div class="bar st"><i data-b="2" style="--w:.616"></i><b>6.83</b></div>
               </div>
-              <span class="delta">−16.2% (95% CI −37.2 to +10.6)</span>
+              <span class="delta">−22.4% (95% CI −29.4 to −15.8)</span>
             </div>
-            <div class="row" title="Both, 28 tasks: 310.5 LLM turns without stretto, 224 with it (−27.9%, 95% CI −35.9 to −19.1)">
-              <span class="rl"><b>Both</b><span>28 tasks</span></span>
+            <div class="row" title="GLM-5.3, 28 tasks, one trial against the recorded baseline: 11.09 LLM turns per episode without stretto, 8.00 with it (−27.9%, 95% CI −35.9 to −19.1)">
+              <span class="rl">GLM-5.3<span>1 trial</span></span>
               <div class="bars">
-                <div class="bar base"><i data-b="1" style="--w:1"></i><b>310.5</b></div>
-                <div class="bar st"><i data-b="2" style="--w:.721"></i><b>224</b></div>
+                <div class="bar base"><i data-b="1" style="--w:1"></i><b>11.09</b></div>
+                <div class="bar st"><i data-b="2" style="--w:.721"></i><b>8.00</b></div>
               </div>
               <span class="delta">−27.9% (95% CI −35.9 to −19.1)</span>
             </div>
-            <span class="axis-note" data-b="3">Passed: 24 without, 21 with. Twenty-eight tasks cannot tell an effect on success from the agent's own variance.</span>
+            <span class="axis-note" data-b="3">Retail carries the savings; in airline, where the agents make more calls at once, they are not established. Passed, of 84 episodes: Sonnet 5 65 without and 69 with, Haiku 4.5 58 and 62; GLM-5.3, of 28, 24 and 21. The design can see a harm of about ten points, not smaller ones.</span>
             <details class="data" data-b="3">
               <summary>The numbers as a table</summary>
               <table>
-                <thead><tr><th scope="col">Domain</th><th scope="col">Tasks</th><th scope="col">Without</th><th scope="col">With stretto</th><th scope="col">Change (95% CI)</th></tr></thead>
+                <thead><tr><th scope="col">Agent</th><th scope="col">Trials</th><th scope="col">Without</th><th scope="col">With stretto</th><th scope="col">Change (95% CI)</th></tr></thead>
                 <tbody>
-                  <tr><td>Retail</td><td>20</td><td>227</td><td>154</td><td>−32.2% (−40.0, −23.5)</td></tr>
-                  <tr><td>Airline</td><td>8</td><td>83.5</td><td>70</td><td>−16.2% (−37.2, +10.6)</td></tr>
-                  <tr><td>Both</td><td>28</td><td>310.5</td><td>224</td><td>−27.9% (−35.9, −19.1)</td></tr>
+                  <tr><td>Claude Sonnet 5</td><td>3</td><td>9.92</td><td>7.88</td><td>−20.5% (−24.4, −16.5)</td></tr>
+                  <tr><td>Claude Haiku 4.5</td><td>3</td><td>8.81</td><td>6.83</td><td>−22.4% (−29.4, −15.8)</td></tr>
+                  <tr><td>GLM-5.3</td><td>1</td><td>11.09</td><td>8.00</td><td>−27.9% (−35.9, −19.1)</td></tr>
                 </tbody>
               </table>
             </details>
           </div>
           <div class="facts">
-            <div class="fact" data-b="4"><b>Live beyond τ²-bench:</b> 10.1% fewer LLM turns (5.8–14.0%) in AgentDojo's Slack and travel suites, where the replay found reads to take, with 27 of 34 passing in both arms; no effect in BFCL. GLM-5.3 and Claude Haiku 4.5, one run per arm.</div>
-            <div class="fact" data-b="4"><b>86.4% of retail's read-only ceiling</b>, 10.2 points more than the next-step speculator. Replay, nine agents it never saw.</div>
+            <div class="fact" data-b="4"><b>A prompt does not get there:</b> asking the agent to batch its reads, in Anthropic's own words, cut 3.4–7.6% of turns. With that prompt in place, stretto cut 17.2% (Haiku 4.5) and 22.9% (Sonnet 5) more.</div>
+            <div class="fact" data-b="4"><b>Live beyond τ²-bench:</b> 10.1% fewer LLM turns (5.8–14.0%) in AgentDojo's Slack and travel suites, where the replay found reads to take; no effect in BFCL. GLM-5.3 and Claude Haiku 4.5, one run per arm.</div>
             <div class="fact" data-b="5"><b>The ceiling is the domain's:</b> 3.5% of turns in WorkBench to 47.1% in AgentDojo's travel suite; 29.0% in τ²-bench. Record, 89 more agents.</div>
-            </div>
+          </div>
         </div>
       </div>
       <div class="caption">
         <h2>Results, with scope</h2>
-        <p>Live, GLM-5.3 was both the agent and the simulated user, on τ²-bench's own prompts; the flow ran in <code>stretto-proxy</code> between the agent and the tools. Airline's baseline is the mean of two trials. On τ²-bench only GLM-5.3 ran live with the reach decider; on AgentDojo and BFCL, GLM-5.3 and Claude Haiku 4.5 did. Every other agent is replayed.</p>
-        <p class="links"><a href="https://github.com/alexnodeland/stretto/blob/main/paper/stretto.md" target="_blank" rel="noopener">The paper</a><a href="https://github.com/alexnodeland/stretto/blob/main/docs/results/claims.md" target="_blank" rel="noopener">The claims ledger</a><a href="https://github.com/alexnodeland/stretto/blob/main/docs/walkthrough.md" target="_blank" rel="noopener">Try it: the walkthrough</a></p>
+        <p>Live, each agent ran in Claude Code on τ²-bench's own prompts and tools, with the flow in <code>stretto-proxy</code> between the agent and the tools. The Claude models ran three trials of every task in each arm, with Claude Haiku 4.5 as the customer; GLM-5.3 ran one, as agent and customer, against its recorded baseline. The flows were learned from τ²-bench's published runs, not from these agents. Every other result is a replay.</p>
+        <p class="links"><a href="https://github.com/alexnodeland/stretto/blob/main/docs/results/frontier-2026-09-27.md" target="_blank" rel="noopener">The live results</a><a href="https://github.com/alexnodeland/stretto/blob/main/docs/results/claims.md" target="_blank" rel="noopener">The claims ledger</a><a href="https://github.com/alexnodeland/stretto/blob/main/docs/walkthrough.md" target="_blank" rel="noopener">Try it: the walkthrough</a></p>
       </div>
     </section>
   </div>

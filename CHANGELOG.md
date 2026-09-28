@@ -80,7 +80,7 @@ The first release: [RFC-001](docs/rfc/001-habit-compiler.md)'s design, built and
 - [The file formats](docs/formats.md), [the CLI reference](docs/cli.md) (generated from the code, kept current by CI), [the design](docs/design.md) and [the roadmap](docs/roadmap.md).
 - The working paper, published at [alexnodeland.github.io/stretto](https://alexnodeland.github.io/stretto/notebook/) (now the research notebook; the site there is the documentation).
 - [The documentation site](https://alexnodeland.github.io/stretto/) (`website/`, VitePress): a guide, integrations, the reference, the research and the community pages.
-- [The brand kit](brand/README.md): the mark, color tokens, an interactive explainer, and the launch and walkthrough videos, narrated and captioned.
+- [The brand kit](brand/README.md): the mark, color tokens, an interactive explainer, and the explainer and walkthrough videos, narrated and captioned.
 - The working paper as an arXiv-ready LaTeX manuscript ([`paper/latex/`](paper/latex/README.md)), built from the Markdown.
 - `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CITATION.cff`, and issue and pull request templates.
 

@@ -28,12 +28,12 @@ const site = scanSite(srcDir, repoRoot)
  * hint in `npm run dev`. See theme/components/BrandEmbed.vue.
  */
 const brandFiles = {
-  explainer: 'explainer/index.html',
-  launchVideo: 'media/launch.mp4',
-  launchPoster: 'media/launch-poster.png',
+  explainerVideo: 'media/explainer.mp4',
+  explainerPoster: 'media/explainer-poster.png',
+  explainerCaptions: 'media/explainer.vtt',
+  explainerPage: 'explainer/index.html',
   walkthroughVideo: 'media/walkthrough.mp4',
   walkthroughPoster: 'media/walkthrough-poster.png',
-  launchCaptions: 'media/launch.vtt',
   walkthroughCaptions: 'media/walkthrough.vtt'
 } as const
 

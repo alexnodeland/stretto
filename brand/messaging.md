@@ -24,7 +24,7 @@ stretto is an open-source MCP proxy, written in Rust. It records an agent's tool
 
 stretto is an open-source MCP proxy for LLM agents, written in Rust and MIT-licensed. `stretto-proxy` wraps any MCP server and records the agent's sessions. From them, `stretto learn` writes a flow: which reads follow which calls, and where each argument comes from. Served, the flow makes the lookups the agent will likely need, and they ride in the same tool result, with no new tool and no change to the prompt.
 
-The flow only reads, so a wrong lookup, a detour, costs tokens and changes no state. The reach decider asks no model: it makes a lookup when its chance of being used before the agent's next write clears a threshold set by costs. Live, GLM-5.3 took 27.9% fewer LLM turns (95% CI 19.1–35.9%) on 28 τ²-bench retail and airline tasks, against the recorded baseline.
+The flow only reads, so a wrong lookup, a detour, costs tokens and changes no state. The reach decider asks no model: it makes a lookup when its chance of being used before the agent's next write clears a threshold set by costs. Live, on 28 τ²-bench retail and airline tasks, Claude Sonnet 5 took 20.5% fewer LLM turns (95% CI 16.5–24.4%) and Claude Haiku 4.5 22.4% fewer (15.8–29.4%), in three trials paired by task; GLM-5.3 took 27.9% fewer (19.1–35.9%) against its recorded baseline.
 
 Where no user speaks, `stretto-procedure` runs a workflow compiled once from traces, with no model.
 
@@ -34,7 +34,8 @@ Each message rests on one row of [docs/results/claims.md](../docs/results/claims
 
 | # | Message | The number, with its scope | Claims row |
 |---|---|---|---|
-| 1 | **It works live, with no model of its own.** The reach decider counts; it asks no model and needs no key. | Live: GLM-5.3 took 27.9% fewer LLM turns (95% CI 19.1–35.9%) on 28 τ²-bench retail and airline tasks, paired with the recorded baseline; 21 passed, against 24. Pass rates at this size are underpowered. | "It works live with no model of its own" |
+| 1 | **It works live, on frontier models, with no model of its own.** The reach decider counts; it asks no model and needs no key. | Live, pre-registered, three trials of 28 τ²-bench retail and airline tasks: Claude Sonnet 5 took 20.5% fewer LLM turns (95% CI 16.5–24.4%) and Claude Haiku 4.5 22.4% fewer (15.8–29.4%). GLM-5.3, one trial against its recorded baseline: 27.9% fewer (19.1–35.9%). The savings are in retail; airline's are not established. Pass rates are underpowered. | "It works on frontier models"; "It works live with no model of its own" |
+| 1a | **A prompt does not get there.** Asking the agent to batch its reads is not the same as reading what the results reveal. | Live: Anthropic's sample prompt for parallel tool calls saved 3.4% (Sonnet 5), 5.9% (Haiku 4.5) and 7.6% (GLM-5.3) of turns; with the prompt in both arms, the flow still saved 22.9% (Sonnet 5, 95% CI 19.5–26.1%) and 17.2% (Haiku 4.5, 10.2–24.0%). | "A prompt does not get what it gets" |
 | 1b | **It holds live on another benchmark's own environment.** Where the replay found reads to take, the live run found the savings. | Live: in AgentDojo's Slack and travel suites, GLM-5.3 and Claude Haiku 4.5 took 10.1% fewer LLM turns (95% CI 5.8–14.0%), with passes unchanged (27 of 34 in both arms); over all 41 AgentDojo tasks, 6.0% (2.1–9.9%), where the replay projected 7.2%. One run per arm. | "It holds live beyond τ²-bench" |
 | 2 | **It estimates the probability that matters.** Not the chance a read comes next, but the chance it is used before the agent's next write. | Replay, nine agents: expected calibration error 0.01–0.08 in every τ²-bench domain, against 0.06–0.16 for the next-step probability. | "Counting the right event calibrates the probability of use" |
 | 3 | **It takes most of what can be taken.** | Replay, nine agents it never saw: 86.4% of retail's read-only ceiling (95% CI 80.2–93.1), 10.2 points more than the next-step speculator (6.7–14.2). | "The speculator takes most of retail's ceiling" |
@@ -46,12 +47,12 @@ Supporting facts, from the paper, for longer copy:
 
 - **Reads only.** A flow calls only tools the server does not mark `readOnlyHint: false`, and `--flow-tools` narrows that further. Since reads leave the state unchanged, a speculator that only reads can change an episode only through what the agent reads, never through the tools (§2.2, Proposition 1). Its worst case is a detour.
 - **The threshold is a ratio of costs.** Live, a detour carried 2,530 input tokens over the rest of its episode and a saved turn saved 6,000, so the threshold is about 0.3 (§2.3, §3).
-- **The live run held the replay's assumption.** Of the speculator's 101 lookups, GLM-5.3 made none again before the next write. Deciding took under a millisecond per tool response, at most 4 ms (§4.4).
-- **Input tokens.** In the same live run, input tokens fell 21.9% (95% CI 9.9–32.9%) (§4.4).
+- **The live runs held the replay's assumption.** Of the speculator's 101 lookups, GLM-5.3 made none again before the next write; Claude Sonnet 5 made 4 of 289 again, and Claude Haiku 4.5 1 of 304. Deciding took under a millisecond per tool response, at most 4 ms (§4.4).
+- **Input tokens and cost.** With GLM-5.3, input tokens fell 21.9% (95% CI 9.9–32.9%) (§4.4). With the Claude models, input tokens fell 17.7% (Sonnet 5) and 20.6% (Haiku 4.5), and the agent's cost at list prices, with prompt caching, 11.8% and 8.7%: cost falls less than turns.
 
 What the evidence does not show, and copy must not imply (claims ledger, "What the evidence does not show"):
 
-- Live with the reach decider: GLM-5.3 on τ²-bench, and GLM-5.3 and Claude Haiku 4.5 on AgentDojo and BFCL, one run per arm. An earlier flow also ran live with two more models, on ten and three retail tasks. Every other agent is replayed. In BFCL the live run shows no effect, and live cost is not resolved.
+- Live with the reach decider: GLM-5.3 (one run), Claude Sonnet 5 and Claude Haiku 4.5 (three trials) on τ²-bench, and GLM-5.3 and Claude Haiku 4.5 on AgentDojo and BFCL, one run per arm. Every other agent is replayed. In τ²-bench's airline domain the savings are not established; in BFCL the live run shows no effect.
 - Pass rates are underpowered; τ²-bench's users are LLMs. Do not claim stretto keeps or raises task success.
 - Replayed savings assume the agent skips what a lookup already answered.
 

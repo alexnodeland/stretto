@@ -6,7 +6,7 @@
   "scripts": {
     "contrast": "node tools/contrast.mjs --check",
     "assets": "node tools/render_assets.mjs",
-    "launch": "node video/launch/render.mjs",
+    "explainer-video": "node video/explainer/render.mjs",
     "walkthrough": "node video/walkthrough/render.mjs"
   },
   "devDependencies": {

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>stretto: explainer video</title>
+<!--
+  The explainer video's source: one illustrated world, drawn in SVG, and a
+  virtual camera that moves across it. Every property of every frame is a pure
+  function of time, set by window.__render(t) (main.js); render.mjs steps the
+  clock frame by frame and pipes screenshots into ffmpeg.
+
+  engine.js   easing, springs, a seeded RNG, keyframe tracks, the camera's paths
+  art.js      the illustrations: agent, customer, server, the stretto lens, cards
+  world.js    the world: where each station sits, built from art.js
+  scenes.js   the helpers, and the scenes from the open to what stretto cannot touch
+  scenes2.js  the scenes from learning a flow to the end card, the teaser, their order
+  main.js     timing, the camera, the background layers and window.__render
+
+  Every number on screen is from docs/results/claims.md or
+  docs/results/frontier-2026-09-27.md.
+-->
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="stage">
+  <div id="scene">
+    <div id="gridL" class="cam">
+      <svg id="gridS" width="10" height="10" overflow="visible">
+        <defs>
+          <pattern id="pDots" width="64" height="64" patternUnits="userSpaceOnUse"><circle cx="32" cy="32" r="1.9" fill="#1e282b"/></pattern>
+          <pattern id="pLines" width="512" height="512" patternUnits="userSpaceOnUse"><path d="M 0 0.5 H 512 M 0.5 0 V 512" fill="none" stroke="#141c1f" stroke-width="2"/></pattern>
+        </defs>
+        <rect x="-24000" y="-24000" width="48000" height="48000" fill="url(#pLines)"/>
+        <rect x="-24000" y="-24000" width="48000" height="48000" fill="url(#pDots)"/>
+      </svg>
+    </div>
+    <canvas id="dustBack" width="1920" height="1080"></canvas>
+    <div id="world" class="cam">
+      <svg id="W" width="10" height="10" overflow="visible"><defs id="defs"></defs><g id="root"></g></svg>
+    </div>
+  </div>
+  <canvas id="dustFront" width="1920" height="1080"></canvas>
+  <div id="vignette"></div>
+  <svg id="ov" width="1920" height="1080" viewBox="0 0 1920 1080">
+    <defs>
+      <filter id="mblur" x="-5%" y="-5%" width="110%" height="110%" filterUnits="objectBoundingBox" color-interpolation-filters="sRGB">
+        <feGaussianBlur id="mblurG" stdDeviation="0 0"/>
+      </filter>
+    </defs>
+    <g id="ovRoot"></g>
+  </svg>
+</div>
+<!-- The wordmark's outline, copied from brand/logo/stretto-wordmark-dark.svg. -->
+<svg style="display:none" aria-hidden="true"><path id="wordmark-src" d="M526.4 25.08Q397.56 25.08 295.66 -15.34Q193.76 -55.76 131.9 -134.32Q70.04 -212.88 61.6 -326.44H310.96Q319.24 -249.36 373.42 -206.74Q427.6 -164.12 521.68 -164.12Q613.32 -164.12 665.66 -200.22Q718 -236.32 718 -292.28Q718 -340.04 679.4 -369.2Q640.8 -398.36 573.76 -412.2L393.68 -449.32Q242.36 -481.08 163.98 -557.88Q85.6 -634.68 85.6 -754.36Q85.6 -851.2 138.06 -924.3Q190.52 -997.4 286.38 -1038.16Q382.24 -1078.92 511.44 -1078.92Q639.44 -1078.92 736.66 -1035.98Q833.88 -993.04 889.52 -914.52Q945.16 -836 948.16 -727.4H710.88Q709.88 -797.72 656.62 -844.08Q603.36 -890.44 517.2 -890.44Q434.24 -890.44 385.96 -853.34Q337.68 -816.24 337.68 -762.28Q337.68 -714.88 375.02 -685.22Q412.36 -655.56 477.92 -641.16L668.08 -601.88Q825.48 -568.76 899.54 -497.98Q973.6 -427.2 973.6 -311.4Q973.6 -208.36 916.28 -132.78Q858.96 -57.2 757.92 -16.06Q656.88 25.08 526.4 25.08ZM1682.48 -1056V-853.12H1029.84V-1056ZM1214.24 -1344H1467.04V-302.8Q1467.04 -246.84 1490.02 -224.86Q1513 -202.88 1574.4 -202.88Q1598.84 -202.88 1630.74 -202.88Q1662.64 -202.88 1682.48 -202.88V0Q1656.12 0 1613.78 0Q1571.44 0 1530.32 0Q1368.4 0 1291.32 -65.26Q1214.24 -130.52 1214.24 -266.08ZM1799.68 0V-1056H2043.04V-880.64H2046.32Q2075.32 -971.64 2137.6 -1018.94Q2199.88 -1066.24 2302.48 -1066.24Q2327.64 -1066.24 2348.58 -1064.96Q2369.52 -1063.68 2384.56 -1062.4V-838.4Q2370.6 -840.32 2336.7 -843.2Q2302.8 -846.08 2265.44 -846.08Q2206 -846.08 2157.44 -818.72Q2108.88 -791.36 2080.68 -736.34Q2052.48 -681.32 2052.48 -598.16V0ZM2941.32 24Q2783.08 24 2667.28 -46.82Q2551.48 -117.64 2488.62 -242.32Q2425.76 -367 2425.76 -526.72Q2425.76 -688.08 2490.36 -812.9Q2554.96 -937.72 2668.9 -1008.86Q2782.84 -1080 2930.76 -1080Q3045.08 -1080 3138.08 -1040.18Q3231.08 -1000.36 3298.04 -926.9Q3365 -853.44 3401.02 -752.84Q3437.04 -652.24 3437.04 -530.68V-462.08H2525.84V-636.16H3310.72L3197.76 -589.48Q3197.76 -678.76 3165.56 -743.86Q3133.36 -808.96 3074.52 -844.36Q3015.68 -879.76 2934.72 -879.76Q2854.76 -879.76 2796.06 -844.36Q2737.36 -808.96 2705.16 -743.86Q2672.96 -678.76 2672.96 -589.48V-479.68Q2672.96 -389.04 2705.06 -320.16Q2737.16 -251.28 2798.54 -212.96Q2859.92 -174.64 2947.08 -174.64Q3010.56 -174.64 3059.46 -193.64Q3108.36 -212.64 3141 -246.9Q3173.64 -281.16 3187.84 -326.44H3424.08Q3404.44 -222.92 3336.76 -144.08Q3269.08 -65.24 3167.02 -20.62Q3064.96 24 2941.32 24ZM4124.6 -1056V-853.12H3471.96V-1056ZM3656.36 -1344H3909.16V-302.8Q3909.16 -246.84 3932.14 -224.86Q3955.12 -202.88 4016.52 -202.88Q4040.96 -202.88 4072.86 -202.88Q4104.76 -202.88 4124.6 -202.88V0Q4098.24 0 4055.9 0Q4013.56 0 3972.44 0Q3810.52 0 3733.44 -65.26Q3656.36 -130.52 3656.36 -266.08ZM4718.64 -1056V-853.12H4066V-1056ZM4250.4 -1344H4503.2V-302.8Q4503.2 -246.84 4526.18 -224.86Q4549.16 -202.88 4610.56 -202.88Q4635 -202.88 4666.9 -202.88Q4698.8 -202.88 4718.64 -202.88V0Q4692.28 0 4649.94 0Q4607.6 0 4566.48 0Q4404.56 0 4327.48 -65.26Q4250.4 -130.52 4250.4 -266.08ZM5291.84 24Q5136.84 24 5019.32 -45.42Q4901.8 -114.84 4836.34 -238.84Q4770.88 -362.84 4770.88 -526.72Q4770.88 -691.24 4836.34 -815.7Q4901.8 -940.16 5019.32 -1010.08Q5136.84 -1080 5291.84 -1080Q5447.84 -1080 5564.86 -1010.08Q5681.88 -940.16 5747.34 -815.7Q5812.8 -691.24 5812.8 -526.72Q5812.8 -362.84 5747.34 -238.84Q5681.88 -114.84 5564.86 -45.42Q5447.84 24 5291.84 24ZM5291.84 -186.88Q5373.12 -186.88 5432.6 -227.96Q5492.08 -269.04 5524.68 -345.58Q5557.28 -422.12 5557.28 -526.72Q5557.28 -632.96 5524.68 -709.32Q5492.08 -785.68 5432.6 -827.4Q5373.12 -869.12 5291.84 -869.12Q5211.56 -869.12 5151.58 -827.72Q5091.6 -786.32 5059 -709.64Q5026.4 -632.96 5026.4 -526.72Q5026.4 -421.48 5059 -345.26Q5091.6 -269.04 5151.26 -227.96Q5210.92 -186.88 5291.84 -186.88Z"/></svg>
+<script src="engine.js"></script>
+<script src="art.js"></script>
+<script src="world.js"></script>
+<script src="scenes.js"></script>
+<script src="scenes2.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

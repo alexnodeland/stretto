@@ -1,0 +1,173 @@
+WEBVTT
+
+1
+00:00:01.750 --> 00:00:03.070
+This is stretto.
+
+2
+00:00:03.070 --> 00:00:04.708
+It reads ahead of your agent.
+
+3
+00:00:07.108 --> 00:00:09.868
+An AI agent works in turns.
+
+4
+00:00:09.868 --> 00:00:13.728
+On every turn, a large model reads the whole conversation,
+
+5
+00:00:13.728 --> 00:00:17.848
+then picks one next step: answer the user, or call a tool.
+
+6
+00:00:17.848 --> 00:00:21.048
+Each turn costs seconds and thousands of tokens,
+
+7
+00:00:21.048 --> 00:00:23.509
+and one task can take dozens of them.
+
+8
+00:00:25.309 --> 00:00:29.929
+But watch the turns closely, and many are decided before they begin.
+
+9
+00:00:29.929 --> 00:00:32.989
+Here, the customer's record lists two orders,
+
+10
+00:00:32.989 --> 00:00:36.629
+so the agent's next two turns will read those two orders.
+
+11
+00:00:36.629 --> 00:00:40.009
+The tools made that choice, not the customer.
+
+12
+00:00:40.009 --> 00:00:42.332
+The model just spends a turn typing it out.
+
+13
+00:00:44.832 --> 00:00:50.052
+stretto sits between the agent and its tools, as an MCP proxy.
+
+14
+00:00:50.052 --> 00:00:52.712
+When a result names what the agent will read next,
+
+15
+00:00:52.712 --> 00:00:54.852
+stretto makes those reads at once,
+
+16
+00:00:54.852 --> 00:00:58.632
+and they arrive inside the result the agent already asked for.
+
+17
+00:00:58.632 --> 00:01:02.112
+The agent has them before it asks, so it skips those turns.
+
+18
+00:01:02.112 --> 00:01:05.952
+There are no new tools, and the prompt doesn't change.
+
+19
+00:01:07.952 --> 00:01:10.012
+It only ever reads.
+
+20
+00:01:10.012 --> 00:01:13.232
+It never writes, so it can't change anything.
+
+21
+00:01:13.232 --> 00:01:16.592
+When it guesses wrong, the agent gets a lookup it didn't need:
+
+22
+00:01:16.592 --> 00:01:18.858
+a few extra tokens, and nothing else.
+
+23
+00:01:20.958 --> 00:01:23.498
+Where do the guesses come from?
+
+24
+00:01:23.498 --> 00:01:25.578
+stretto records the agent's sessions,
+
+25
+00:01:25.578 --> 00:01:30.818
+and counts what it read after each call, and where each argument came from.
+
+26
+00:01:30.818 --> 00:01:34.438
+That becomes a flow: a small file of counts you can read,
+
+27
+00:01:34.438 --> 00:01:36.938
+review and diff, like code.
+
+28
+00:01:36.938 --> 00:01:40.286
+About ten sessions teach it most of what there is to learn.
+
+29
+00:01:42.486 --> 00:01:47.526
+A lookup is made when the chance that the agent uses it, before its next write,
+
+30
+00:01:47.526 --> 00:01:52.706
+clears a threshold set by two costs: a turn saved, and a lookup wasted.
+
+31
+00:01:52.706 --> 00:01:55.416
+That comes to about thirty percent.
+
+32
+00:01:55.416 --> 00:01:57.126
+No extra model is asked.
+
+33
+00:01:57.126 --> 00:01:58.887
+stretto just counts.
+
+34
+00:02:00.987 --> 00:02:04.927
+Live, on τ²-bench's retail and airline tasks,
+
+35
+00:02:04.927 --> 00:02:08.987
+stretto cut Claude Sonnet 5's LLM turns by twenty percent,
+
+36
+00:02:08.987 --> 00:02:14.781
+Claude Haiku 4.5's by twenty-two, and GLM-5.3's by twenty-eight.
+
+37
+00:02:17.381 --> 00:02:22.021
+Telling the agent to batch its calls saved only three to eight percent.
+
+38
+00:02:22.021 --> 00:02:26.305
+Even with that prompt in place, stretto cut about twenty percent more.
+
+39
+00:02:28.805 --> 00:02:31.185
+stretto is open source.
+
+40
+00:02:31.185 --> 00:02:35.545
+Install it, run stretto init to put it in front of an MCP server,
+
+41
+00:02:35.545 --> 00:02:38.232
+and it learns from your agent's own sessions.
+
+42
+00:02:40.332 --> 00:02:41.152
+stretto.
+
+43
+00:02:41.152 --> 00:02:42.508
+Read ahead of your agent.

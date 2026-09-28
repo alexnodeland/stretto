@@ -4,8 +4,8 @@ description: What stretto-proxy does after each of the agent's tool calls, how a
 
 # How it works
 
-<!-- BRAND SLOT: the animated explainer (website/public/explainer/index.html). Renders nothing until the file is there. -->
-<BrandEmbed kind="explainer" />
+<!-- BRAND SLOT: the explainer video (website/public/media/explainer.mp4). Embedded once; renders nothing until the file is there. -->
+<BrandEmbed kind="explainer" caption="stretto, explained in under three minutes." />
 
 stretto sits where MCP already puts a server: between the agent's host and the server. The host starts `stretto-proxy` as if it were the server, and the proxy starts the real one. Everything the two send each other passes through the proxy unchanged unless you ask for more: when the proxy serves a flow, it adds the results of the lookups the flow made to the result of the agent's call.
 
@@ -61,6 +61,3 @@ A new flow can start in [shadow mode](./concepts/shadow-and-promotion): it decid
 ## Where no user speaks
 
 Some work has no user in the loop: a ticket comes in, and the agent works through a procedure against the tools. There every branch follows a tool result, so a whole procedure, writes included, can be compiled once from traces and run with no model. `stretto-procedure` runs one, checks the outcome the ticket states, and hands back to a model only what that check cannot confirm. See [procedures](./concepts/procedures).
-
-<!-- BRAND SLOT: the launch video (website/public/media/launch.mp4, poster media/launch-poster.png). Renders nothing until the file is there. -->
-<BrandEmbed kind="launch" caption="stretto in two minutes." />
