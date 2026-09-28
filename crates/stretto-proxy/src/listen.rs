@@ -246,26 +246,22 @@ struct App {
 impl App {
     /// Whether a request may be served: its token, else its Host and
     /// Origin; and a protocol version it names must look like one.
-    fn check(&self, headers: &HeaderMap) -> Result<(), Response> {
+    fn check(&self, headers: &HeaderMap) -> Result<(), Refusal> {
         let text = |name: HeaderName| headers.get(name).and_then(|v| v.to_str().ok());
         match &self.options.token {
             Some(token) => {
                 let given = text(header::AUTHORIZATION).and_then(|v| v.strip_prefix("Bearer "));
                 if !given.is_some_and(|g| same(g.trim().as_bytes(), token.as_bytes())) {
-                    let mut refused = refuse(
+                    return Err(Refusal::new(
                         StatusCode::UNAUTHORIZED,
                         "send Authorization: Bearer <token>, with the token stretto-proxy was \
                          given (--listen-token-file)",
-                    );
-                    refused
-                        .headers_mut()
-                        .insert(header::WWW_AUTHENTICATE, HeaderValue::from_static("Bearer"));
-                    return Err(refused);
+                    ));
                 }
             }
             None => {
                 if !text(header::HOST).is_some_and(|h| loopback_host(h, self.port)) {
-                    return Err(refuse(
+                    return Err(Refusal::new(
                         StatusCode::FORBIDDEN,
                         "the Host header must be localhost, 127.0.0.1 or [::1] with the proxy's \
                          port: without a token, stretto-proxy answers only its own address",
@@ -274,7 +270,7 @@ impl App {
                 if headers.contains_key(header::ORIGIN)
                     && !text(header::ORIGIN).is_some_and(loopback_origin)
                 {
-                    return Err(refuse(
+                    return Err(Refusal::new(
                         StatusCode::FORBIDDEN,
                         "a page on another site may not use stretto-proxy: without a token, \
                          only pages on this machine's loopback may",
@@ -286,7 +282,7 @@ impl App {
             .get(PROTOCOL)
             .is_none_or(|v| v.to_str().is_ok_and(revision))
         {
-            return Err(refuse(
+            return Err(Refusal::new(
                 StatusCode::BAD_REQUEST,
                 "MCP-Protocol-Version must name a revision, such as 2025-11-25",
             ));
@@ -295,9 +291,9 @@ impl App {
     }
 
     /// The session a request names.
-    fn session(&self, headers: &HeaderMap) -> Result<Arc<Session>, Response> {
+    fn session(&self, headers: &HeaderMap) -> Result<Arc<Session>, Refusal> {
         let Some(id) = headers.get(SESSION).and_then(|v| v.to_str().ok()) else {
-            return Err(refuse(
+            return Err(Refusal::new(
                 StatusCode::BAD_REQUEST,
                 "no Mcp-Session-Id: start a session with initialize",
             ));
@@ -305,7 +301,7 @@ impl App {
         lock(&self.sessions)
             .get(id.trim())
             .cloned()
-            .ok_or_else(gone)
+            .ok_or_else(Refusal::gone)
     }
 
     /// Open a session for an `initialize` request, with a stream for its
@@ -316,12 +312,12 @@ impl App {
         headers: &HeaderMap,
         requests: &[Request],
         json: bool,
-    ) -> Result<(Arc<Session>, UnboundedReceiver<String>), Response> {
+    ) -> Result<(Arc<Session>, UnboundedReceiver<String>), Refusal> {
         let named = match headers.get(HOST_SESSION).map(HeaderValue::to_str) {
             None => None,
             Some(Ok(name)) if host_session(name) => Some(name.to_string()),
             Some(_) => {
-                return Err(refuse(
+                return Err(Refusal::new(
                     StatusCode::BAD_REQUEST,
                     "Stretto-Session names the host session: at most 128 letters, digits, \
                      and . _ : -",
@@ -330,7 +326,7 @@ impl App {
         };
         let mut sessions = lock(&self.sessions);
         if sessions.len() >= MAX_SESSIONS {
-            return Err(refuse(
+            return Err(Refusal::new(
                 StatusCode::SERVICE_UNAVAILABLE,
                 "stretto-proxy has as many sessions as it keeps: end one (DELETE) first",
             ));
@@ -427,17 +423,18 @@ impl App {
 /// POST: a message, or a batch, from the host.
 async fn message(State(app): State<Arc<App>>, headers: HeaderMap, body: Bytes) -> Response {
     if let Err(refused) = app.check(&headers) {
-        return refused;
+        return refused.into_response();
     }
     if !json_body(&headers) {
-        return refuse(
+        return Refusal::new(
             StatusCode::UNSUPPORTED_MEDIA_TYPE,
             "a message needs Content-Type: application/json",
-        );
+        )
+        .into_response();
     }
     let (messages, batch) = match messages(&body) {
         Ok(parsed) => parsed,
-        Err(refused) => return refused,
+        Err(refused) => return refused.into_response(),
     };
     let opening = messages.iter().any(|m| m.initialize);
     let requests: Vec<Request> = messages.iter().filter_map(|m| m.request.clone()).collect();
@@ -445,16 +442,17 @@ async fn message(State(app): State<Arc<App>>, headers: HeaderMap, body: Bytes) -
     let events = accepts(&headers, "text/event-stream");
     let expected = if opening {
         if batch || headers.contains_key(SESSION) {
-            return refuse(
+            return Refusal::new(
                 StatusCode::BAD_REQUEST,
                 "initialize comes alone, and without Mcp-Session-Id: it starts a session",
-            );
+            )
+            .into_response();
         }
         app.open(&headers, &requests, !events)
     } else {
         let session = match app.session(&headers) {
             Ok(session) => session,
-            Err(refused) => return refused,
+            Err(refused) => return refused.into_response(),
         };
         if requests.is_empty() {
             session.touch();
@@ -466,7 +464,7 @@ async fn message(State(app): State<Arc<App>>, headers: HeaderMap, body: Bytes) -
     };
     let (session, answers) = match expected {
         Ok(expected) => expected,
-        Err(refused) => return refused,
+        Err(refused) => return refused.into_response(),
     };
     session.touch();
     // Should the session end first, it answers what it expected itself.
@@ -492,17 +490,18 @@ async fn stream(State(app): State<Arc<App>>, method: Method, headers: HeaderMap)
         return StatusCode::METHOD_NOT_ALLOWED.into_response();
     }
     if let Err(refused) = app.check(&headers) {
-        return refused;
+        return refused.into_response();
     }
     if !accepts(&headers, "text/event-stream") {
-        return refuse(
+        return Refusal::new(
             StatusCode::NOT_ACCEPTABLE,
             "a GET opens an event stream: send Accept: text/event-stream",
-        );
+        )
+        .into_response();
     }
     let session = match app.session(&headers) {
         Ok(session) => session,
-        Err(refused) => return refused,
+        Err(refused) => return refused.into_response(),
     };
     session.touch();
     events_for(&session)
@@ -511,14 +510,14 @@ async fn stream(State(app): State<Arc<App>>, method: Method, headers: HeaderMap)
 /// DELETE: the host is done with the session.
 async fn end(State(app): State<Arc<App>>, headers: HeaderMap) -> Response {
     if let Err(refused) = app.check(&headers) {
-        return refused;
+        return refused.into_response();
     }
     match app.session(&headers) {
         Ok(session) => {
             app.close(&session, "its host ended it");
             StatusCode::OK.into_response()
         }
-        Err(refused) => refused,
+        Err(refused) => refused.into_response(),
     }
 }
 
@@ -527,7 +526,7 @@ fn accepted(session: &Session, lines: impl IntoIterator<Item = Vec<u8>>) -> Resp
     if session.send(lines) {
         StatusCode::ACCEPTED.into_response()
     } else {
-        gone()
+        Refusal::gone().into_response()
     }
 }
 
@@ -535,7 +534,7 @@ fn accepted(session: &Session, lines: impl IntoIterator<Item = Vec<u8>>) -> Resp
 fn events_for(session: &Session) -> Response {
     match session.listen() {
         Some(messages) => event_stream(messages),
-        None => gone(),
+        None => Refusal::gone().into_response(),
     }
 }
 
@@ -567,34 +566,65 @@ async fn one_body(mut answers: UnboundedReceiver<String>, batch: bool) -> Respon
     ([(header::CONTENT_TYPE, "application/json")], body).into_response()
 }
 
-/// An HTTP error whose body is a JSON-RPC error with no id: an invalid
-/// request for 400, a server error otherwise.
-fn refuse(status: StatusCode, message: &str) -> Response {
-    let code = if status == StatusCode::BAD_REQUEST {
-        -32600
-    } else {
-        -32000
-    };
-    refuse_with(status, code, message)
+/// A refused request: its HTTP status, and the JSON-RPC error, with no id,
+/// that its body carries.
+#[derive(Debug)]
+struct Refusal {
+    status: StatusCode,
+    code: i64,
+    message: String,
 }
 
-fn refuse_with(status: StatusCode, code: i64, message: &str) -> Response {
-    let body = json!({"jsonrpc": "2.0", "id": null,
-                      "error": {"code": code, "message": message}});
-    (
-        status,
-        [(header::CONTENT_TYPE, "application/json")],
-        body.to_string(),
-    )
-        .into_response()
+impl Refusal {
+    /// An invalid request (-32600) for 400, a server error (-32000) else.
+    fn new(status: StatusCode, message: impl Into<String>) -> Self {
+        let code = if status == StatusCode::BAD_REQUEST {
+            -32600
+        } else {
+            -32000
+        };
+        Self {
+            status,
+            code,
+            message: message.into(),
+        }
+    }
+
+    /// A body that is not JSON (-32700).
+    fn parse(message: impl Into<String>) -> Self {
+        Self {
+            status: StatusCode::BAD_REQUEST,
+            code: -32700,
+            message: message.into(),
+        }
+    }
+
+    /// 404: the session ended, or never was.
+    fn gone() -> Self {
+        Self::new(
+            StatusCode::NOT_FOUND,
+            "no such session: it ended, or never was; start another with initialize",
+        )
+    }
 }
 
-/// 404: the session ended, or never was.
-fn gone() -> Response {
-    refuse(
-        StatusCode::NOT_FOUND,
-        "no such session: it ended, or never was; start another with initialize",
-    )
+impl IntoResponse for Refusal {
+    fn into_response(self) -> Response {
+        let body = json!({"jsonrpc": "2.0", "id": null,
+                          "error": {"code": self.code, "message": self.message}});
+        let mut response = (
+            self.status,
+            [(header::CONTENT_TYPE, "application/json")],
+            body.to_string(),
+        )
+            .into_response();
+        if self.status == StatusCode::UNAUTHORIZED {
+            response
+                .headers_mut()
+                .insert(header::WWW_AUTHENTICATE, HeaderValue::from_static("Bearer"));
+        }
+        response
+    }
 }
 
 /// A request's id, as JSON text, and its progress token, if it has one.
@@ -610,19 +640,17 @@ struct Message {
 }
 
 /// A POST's messages, and whether they came as a batch.
-fn messages(body: &[u8]) -> Result<(Vec<Message>, bool), Response> {
-    // A parse error.
-    let bad = |message: String| refuse_with(StatusCode::BAD_REQUEST, -32700, &message);
-    let text = std::str::from_utf8(body).map_err(|_| bad("the body is not UTF-8".into()))?;
+fn messages(body: &[u8]) -> Result<(Vec<Message>, bool), Refusal> {
+    let text = std::str::from_utf8(body).map_err(|_| Refusal::parse("the body is not UTF-8"))?;
     let batch = text.trim_start().starts_with('[');
     let raw: Vec<Box<RawValue>> = if batch {
         serde_json::from_str(text)
     } else {
         serde_json::from_str(text).map(|one| vec![one])
     }
-    .map_err(|e| bad(format!("the body is not JSON: {e}")))?;
+    .map_err(|e| Refusal::parse(format!("the body is not JSON: {e}")))?;
     if raw.is_empty() {
-        return Err(refuse(StatusCode::BAD_REQUEST, "an empty batch"));
+        return Err(Refusal::new(StatusCode::BAD_REQUEST, "an empty batch"));
     }
     let messages = raw
         .iter()
@@ -631,9 +659,9 @@ fn messages(body: &[u8]) -> Result<(Vec<Message>, bool), Response> {
     Ok((messages, batch))
 }
 
-fn message_of(raw: &RawValue) -> Result<Message, Response> {
+fn message_of(raw: &RawValue) -> Result<Message, Refusal> {
     let not_one = || {
-        refuse(
+        Refusal::new(
             StatusCode::BAD_REQUEST,
             "each message is a JSON-RPC request, notification or response",
         )
@@ -722,19 +750,19 @@ impl Session {
         &self,
         requests: &[Request],
         json: bool,
-    ) -> Result<UnboundedReceiver<String>, Response> {
+    ) -> Result<UnboundedReceiver<String>, Refusal> {
         let mut routes = lock(&self.routes);
         if routes.ended {
-            return Err(gone());
+            return Err(Refusal::gone());
         }
         let mut ids = HashSet::new();
         if let Some((id, _)) = requests
             .iter()
             .find(|(id, _)| routes.pending.contains_key(id) || !ids.insert(id))
         {
-            return Err(refuse(
+            return Err(Refusal::new(
                 StatusCode::BAD_REQUEST,
-                &format!("request {id} is already waiting for its answer"),
+                format!("request {id} is already waiting for its answer"),
             ));
         }
         Ok(routes.expect(requests, json))

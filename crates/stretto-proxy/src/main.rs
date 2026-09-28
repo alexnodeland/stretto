@@ -103,6 +103,8 @@ struct Cli {
     #[arg(help_heading = "Flows", value_name = "N", long, default_value_t = 300)]
     flow_questions: usize,
     /// Append the flow's decisions here (default: next to the session log).
+    /// `{session}` in the path stands for the host session, else the
+    /// session's own id.
     #[arg(help_heading = "Flows", long, value_name = "FILE")]
     flow_log: Option<PathBuf>,
     /// The only tools the flow may call on its own (comma-separated, or the
@@ -189,6 +191,8 @@ struct Cli {
     )]
     confirm_questions: usize,
     /// Append the judgments here (default: next to the session log).
+    /// `{session}` in the path stands for the host session, else the
+    /// session's own id.
     #[arg(
         help_heading = "Writes",
         long,
@@ -203,6 +207,8 @@ struct Cli {
     commit: bool,
     /// Read the conversation from this file, which the host appends to as
     /// JSON lines: `{"role": "user" | "assistant", "content": text}`.
+    /// `{session}` in the path stands for the host session, else the
+    /// session's own id, for a file per session.
     #[arg(help_heading = "The conversation", long, value_name = "FILE")]
     context: Option<PathBuf>,
     /// Task id, which picks the flow's fold (default: the session).

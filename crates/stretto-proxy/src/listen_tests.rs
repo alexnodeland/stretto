@@ -39,10 +39,10 @@ fn session() -> (Arc<Session>, mpsc::Receiver<Vec<u8>>) {
 }
 
 /// The status a request was refused with.
-fn refused<T>(result: Result<T, Response>) -> StatusCode {
+fn refused<T>(result: Result<T, Refusal>) -> StatusCode {
     match result {
         Ok(_) => panic!("not refused"),
-        Err(response) => response.status(),
+        Err(refusal) => refusal.status,
     }
 }
 
@@ -98,7 +98,7 @@ fn requests_are_checked_for_their_token_host_origin_and_version() {
         ("host", "[::1]:8931"),
         ("mcp-protocol-version", "2025-11-25")
     ]));
-    let refused = |h: &HeaderMap| open.check(h).unwrap_err().status();
+    let refused = |h: &HeaderMap| open.check(h).unwrap_err().status;
     assert_eq!(refused(&HeaderMap::new()), StatusCode::FORBIDDEN);
     assert_eq!(
         refused(&headers(&[("host", "evil.example:8931")])),
@@ -134,7 +134,7 @@ fn requests_are_checked_for_their_token_host_origin_and_version() {
         headers(&[("authorization", "Bearer wrong")]),
         headers(&[("host", "127.0.0.1:8931")]),
     ] {
-        let r = closed.check(&given).unwrap_err();
+        let r = closed.check(&given).unwrap_err().into_response();
         assert_eq!(r.status(), StatusCode::UNAUTHORIZED);
         assert_eq!(r.headers()[header::WWW_AUTHENTICATE], "Bearer");
     }
@@ -207,8 +207,8 @@ async fn a_body_is_read_as_its_messages() {
         (br#"{"jsonrpc":"2.0","id":1}"#, -32600),
     ] {
         let refused = messages(bad).err().unwrap();
-        assert_eq!(refused.status(), StatusCode::BAD_REQUEST);
-        let error = body(refused).await;
+        assert_eq!(refused.status, StatusCode::BAD_REQUEST);
+        let error = body(refused.into_response()).await;
         assert_eq!(error["id"], Value::Null);
         assert_eq!(error["error"]["code"], code);
     }
@@ -293,13 +293,13 @@ fn a_request_id_waits_for_one_answer_at_a_time() {
     let (s, _core) = session();
     let _waiting = s.expect(&[request("1")], false).unwrap();
     assert_eq!(
-        s.expect(&[request("1")], false).unwrap_err().status(),
+        s.expect(&[request("1")], false).unwrap_err().status,
         StatusCode::BAD_REQUEST
     );
     assert_eq!(
         s.expect(&[request("2"), request("2")], false)
             .unwrap_err()
-            .status(),
+            .status,
         StatusCode::BAD_REQUEST
     );
 }
@@ -327,7 +327,7 @@ async fn an_ended_session_answers_what_waits_and_takes_nothing_more() {
     assert!(core.recv().is_err());
     assert!(!s.send([b"y\n".to_vec()]));
     assert_eq!(
-        s.expect(&[request("2")], false).unwrap_err().status(),
+        s.expect(&[request("2")], false).unwrap_err().status,
         StatusCode::NOT_FOUND
     );
     assert!(s.listen().is_none());
