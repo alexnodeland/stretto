@@ -1819,6 +1819,73 @@ async fn host_configuration_is_what_stretto_init_prints() {
     );
 }
 
+#[tokio::test]
+async fn a_server_whose_hosts_connect_by_url_gives_them_its_url() {
+    let c = console("server-listen", |_| {});
+    let mut body = shop_server("shop-http");
+    body["listen"] = json!({"addr": "127.0.0.1:8931", "token_file": "proxy-token"});
+    let made = c
+        .call(Method::POST, "/api/servers", Some(body.clone()))
+        .await;
+    assert_eq!(made.status, StatusCode::OK, "{}", made.text());
+    let args: Vec<String> = made.json()["proxy_args"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| a.as_str().unwrap().to_string())
+        .collect();
+    let at = args.iter().position(|a| a == "--listen").unwrap();
+    assert_eq!(
+        args[at + 1..at + 3],
+        ["127.0.0.1:8931", "--listen-token-file"]
+    );
+    assert!(args[at + 3].ends_with("proxy-token"));
+    assert_eq!(args[at + 4], "--");
+    // Hosts connect by URL, sending the token.
+    let cursor = c
+        .get("/api/servers/shop-http/config?host=cursor")
+        .await
+        .json();
+    let snippet: Value = serde_json::from_str(cursor["snippet"].as_str().unwrap()).unwrap();
+    assert_eq!(
+        snippet["mcpServers"]["shop-http"],
+        json!({"url": "http://127.0.0.1:8931/mcp",
+               "headers": {"Authorization": "Bearer ${env:STRETTO_PROXY_TOKEN}"}})
+    );
+    assert!(cursor["placement"]
+        .as_str()
+        .unwrap()
+        .contains("STRETTO_PROXY_TOKEN"));
+    assert!(cursor["next_steps"]
+        .as_str()
+        .unwrap()
+        .contains("1. Start the proxy, and keep it running"));
+    // Claude Desktop starts a proxy of its own.
+    let desktop = c
+        .get("/api/servers/shop-http/config?host=claude-desktop")
+        .await
+        .json();
+    let snippet: Value = serde_json::from_str(desktop["snippet"].as_str().unwrap()).unwrap();
+    let args = snippet["mcpServers"]["shop-http"]["args"]
+        .as_array()
+        .unwrap();
+    assert!(!args.contains(&json!("--listen")));
+    assert!(desktop["placement"]
+        .as_str()
+        .unwrap()
+        .ends_with("rather than connecting to the one at http://127.0.0.1:8931/mcp."));
+    // Beyond loopback, a token.
+    body["listen"] = json!({"addr": "0.0.0.0:8931"});
+    let refused = c
+        .call(Method::PUT, "/api/servers/shop-http", Some(body))
+        .await;
+    assert_eq!(refused.status, StatusCode::BAD_REQUEST);
+    assert!(refused.json()["error"]
+        .as_str()
+        .unwrap()
+        .contains("without a token file"));
+}
+
 /// A registry entry as `servers.json` holds it, with `extra` over a
 /// serving stdio server that has no flow.
 fn entry(name: &str, extra: Value) -> Value {
