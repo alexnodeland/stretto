@@ -209,11 +209,12 @@ pub struct FlowDecision {
     pub tool: Option<String>,
     #[cfg_attr(feature = "ts", ts(type = "unknown"))]
     pub arguments: Option<Value>,
-    /// The lookup's probability, what the threshold is compared with.
+    /// The lookup's probability under the flow's decider. The flow makes the
+    /// lookup when this, and this times `binding`, both reach the threshold.
     pub prob: Option<f64>,
     /// The decider's probability of each option.
     pub probs: BTreeMap<String, f64>,
-    /// The binding's chance that the arguments are the agent's.
+    /// The chance that the lookup's bound arguments are the agent's own.
     pub binding: Option<f64>,
     /// Why it handed back.
     pub reason: Option<String>,

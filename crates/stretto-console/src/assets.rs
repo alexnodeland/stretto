@@ -59,16 +59,51 @@ pub async fn serve(path: &str) -> Response {
     if let Some(asset) = Ui::get(file) {
         return respond(file, asset);
     }
-    // A file that is not there is not found; any other path is a route of
-    // the app.
-    let last = file.rsplit('/').next().unwrap_or_default();
-    if last.contains('.') && file != "index.html" {
+    // A file of the build that is not there is not found; any other path is
+    // a route of the app, whose keys may hold a dot (a reload of
+    // `/sessions/20260928T020401.195Z-14715` or `/flows/shop.promoted`).
+    if file != "index.html" && is_file(file) {
         return (StatusCode::NOT_FOUND, "not found").into_response();
     }
     match Ui::get("index.html") {
         Some(index) => respond("index.html", index),
         None => html(NO_UI),
     }
+}
+
+/// Whether `path` names a file of the build rather than a route of the app:
+/// anything under `assets/`, where Vite puts what it builds, or a file at the
+/// top with a file's extension (`favicon.ico`, `robots.txt`).
+fn is_file(path: &str) -> bool {
+    const EXTENSIONS: &[&str] = &[
+        "js",
+        "mjs",
+        "css",
+        "map",
+        "html",
+        "json",
+        "txt",
+        "xml",
+        "ico",
+        "png",
+        "jpg",
+        "jpeg",
+        "gif",
+        "svg",
+        "webp",
+        "avif",
+        "woff",
+        "woff2",
+        "ttf",
+        "otf",
+        "wasm",
+        "webmanifest",
+    ];
+    path.starts_with("assets/")
+        || (!path.contains('/')
+            && path
+                .rsplit_once('.')
+                .is_some_and(|(_, ext)| EXTENSIONS.contains(&ext.to_ascii_lowercase().as_str())))
 }
 
 fn respond(path: &str, asset: rust_embed::EmbeddedFile) -> Response {
@@ -99,4 +134,31 @@ fn html(page: &'static str) -> Response {
         .headers_mut()
         .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
     response
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_file;
+
+    #[test]
+    fn a_route_with_a_dot_is_a_route_and_a_file_is_a_file() {
+        for route in [
+            "sessions/20260928T020401.195Z-14715",
+            "jobs/20260928T034808.428Z-1ec2",
+            "flows/shop.promoted",
+            "flows/shop",
+            "settings",
+        ] {
+            assert!(!is_file(route), "{route}");
+        }
+        for file in [
+            "assets/index-3f9c.js",
+            "assets/app",
+            "favicon.ico",
+            "robots.txt",
+            "Theme.JS",
+        ] {
+            assert!(is_file(file), "{file}");
+        }
+    }
 }
