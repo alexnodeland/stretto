@@ -5,7 +5,8 @@
  * over SSE, and jobs that run and write their output line by line.
  *
  * Test hooks under /__mock: GET /__mock/state, POST /__mock/state with any of
- * {"auth", "read_only", "empty", "key_set", "latency", "reset"}.
+ * {"auth", "read_only", "empty", "data_dir", "key_set", "redact_salt",
+ * "latency", "reset"}. "empty" and "data_dir" build the world anew.
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type {
@@ -751,8 +752,11 @@ function mockControl(req: IncomingMessage, res: ServerResponse, body: unknown) {
   if (req.method === 'POST' && body && typeof body === 'object') {
     const b = body as Record<string, unknown>
     if (b.reset) state = initialState()
-    if (typeof b.empty === 'boolean') {
-      state.world = buildWorld(ANCHOR, { empty: b.empty })
+    if (typeof b.empty === 'boolean' || typeof b.data_dir === 'string') {
+      state.world = buildWorld(ANCHOR, {
+        empty: b.empty === true,
+        dataDir: typeof b.data_dir === 'string' ? b.data_dir : undefined,
+      })
       fillDoctor(state.world, state.options)
     }
     if (typeof b.auth === 'boolean') state.options.auth = b.auth

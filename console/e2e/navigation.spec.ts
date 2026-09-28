@@ -1,4 +1,4 @@
-import { test, expect, expectNoOverflow, sessionKey } from './fixtures'
+import { test, expect, expectNoOverflow, mockState, sessionKey } from './fixtures'
 
 test('the sidebar reaches every page', async ({ page }) => {
   await page.goto('/')
@@ -53,6 +53,10 @@ test('a wrong address says so', async ({ page }) => {
 })
 
 test('on a phone, the menu opens as a drawer and no page scrolls sideways', async ({ page }) => {
+  // A data dir as long as a CI runner's: pages that name it must wrap it.
+  await mockState(page, {
+    data_dir: '/home/runner/work/stretto/stretto/console/test-results/home/.stretto',
+  })
   await page.setViewportSize({ width: 390, height: 844 })
   const served = await sessionKey(page, 'served')
   for (const path of [

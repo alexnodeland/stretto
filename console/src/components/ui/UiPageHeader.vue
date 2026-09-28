@@ -83,6 +83,8 @@ defineProps<{ title?: string; back?: RouteLocationRaw; backLabel?: string; mono?
   margin-top: 6px;
   font-size: 14px;
   color: var(--stretto-text-muted);
+  /* A path, such as the data dir, may be longer than a phone is wide. */
+  overflow-wrap: anywhere;
 }
 
 .ph-actions {

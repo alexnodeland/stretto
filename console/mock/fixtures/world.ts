@@ -174,8 +174,11 @@ export function servedShopSession(
   return rec
 }
 
-export function buildWorld(now: number = Date.now(), options: { empty?: boolean } = {}): World {
-  const dataDir = '/home/me/.stretto'
+export function buildWorld(
+  now: number = Date.now(),
+  options: { empty?: boolean; dataDir?: string } = {},
+): World {
+  const dataDir = options.dataDir ?? '/home/me/.stretto'
   if (options.empty)
     return { now, dataDir, sessions: [], flows: [], servers: [], jobs: [], reports: {} }
 
