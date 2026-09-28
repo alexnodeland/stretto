@@ -24,6 +24,10 @@ Compile an agent's recorded behavior into flows, serve them, and measure them ag
 | [`drift`](#stretto-drift) | Watch for the agent changing under a flow. |
 | [`flow-show`](#stretto-flow-show) | Show a flow as a reviewer reads it (Markdown). |
 | [`flow-diff`](#stretto-flow-diff) | What changed from one flow to another, as a change list for a pull request (Markdown). |
+| [`stage`](#stretto-stage) | Learn a deployment's staged flow. |
+| [`flow-commit`](#stretto-flow-commit) | Commit the staged flow that `stage` learned. |
+| [`flow-rollback`](#stretto-flow-rollback) | Roll the committed flow back to an earlier version. |
+| [`flow-log`](#stretto-flow-log) | List the committed flow's versions, the latest first (Markdown). |
 | [`evaluate`](#stretto-evaluate) | Estimate what another rule would have done on a flow's logged decisions (RFC-001 §3.7). |
 | [`refine`](#stretto-refine) | Refine the arbiter's predicates (RFC-001 §3.4). |
 | [`search`](#stretto-search) | Search a flow's settings (RFC-001 §3.10). |
@@ -440,6 +444,83 @@ Usage: stretto flow-diff [OPTIONS] <OLD> <NEW>
 - `--tolerance <X>` (default `0.05`): Leave out shares, chances and weights that moved by less than this.
 - `--threshold <P>` (default `0.3`): The threshold the flow will be served with (`stretto-proxy --flow-threshold`).
 - `--out <FILE>`: Write the Markdown here (default: stdout).
+
+### `stretto stage`
+
+Learn a deployment's staged flow: the next version of the flow the proxy serves (`--flow`, the committed flow), from every session recorded so far, as `learn --habit-only` learns one, keeping the committed flow's arbiter, promotion and thresholds. Each session that is new since the last run is first scored by the committed flow and by the staged flow as it was, as each is served; the report compares the two on the last sessions, out of sample for both, and lists what committing the staged flow would change. Run it as sessions arrive. Nothing reaches the proxy until `flow-commit`.
+
+```text
+Usage: stretto stage [OPTIONS] --flow <FILE>
+```
+
+**Inputs**
+
+- `--flow <FILE>` (required): The committed flow, `NAME.flow.json`. The staged flow is `NAME.staged.flow.json` beside it, and the staged learner's state `NAME.stage.json`. It need not exist yet: then give --domain.
+- `--sessions <DIR>` (not with `--otel`, `--results`): Sessions recorded by stretto-proxy (a directory of `*.jsonl`), taken in the order they started.
+- `--otel <FILE>` (not with `--sessions`, `--results`): OpenTelemetry GenAI spans in place of --sessions: an OTLP JSON export, each trace a session (`learn --otel`).
+- `--results <FILE>` (repeatable; not with `--sessions`, `--otel`, `--rewards`): τ²-bench results in place of --sessions (repeatable): their episodes, in the order listed, with their rewards. The tools come from --tau2's checkout, or --manifest.
+- `--tau2 <DIR>`: The τ²-bench checkout whose tools `--results` call.
+- `--domain <NAME>`: The domain to name the flow for; needed only before there is a committed flow.
+- `--manifest <FILE>`: A tool manifest (JSON, as stretto-trace writes it) instead of the sessions' own `tools/list`.
+- `--rewards <FILE>` (not with `--results`): Rewards by session id (JSON object), as for `learn`. Sessions without one count as successful.
+
+**The staged flow**
+
+- `--constants`: Learn constant arguments, as `learn --constants`.
+- `--half-life <SESSIONS>`: Forget old sessions, as `learn --half-life`: one this many sessions older than the newest counts half.
+
+**The comparison**
+
+- `--window <N>` (default `50`): Compare the flows on the last this many sessions that both were scored on.
+- `--decider <DECIDER>` (one of `arbiter`, `habit`, `reach`): How both flows decide as they are scored: `arbiter`, `habit` or `reach`. Default: each as the proxy serves it by default.
+- `--threshold <P>` (default `0.3`): The threshold the flows are served with (`stretto-proxy --flow-threshold`).
+- `--per-call <N>` (default `8`): Lookups the proxy makes after one call, at most (`stretto-proxy --flow-per-call`).
+- `--oracle <ORACLE>` (one of `jev`, `replay`, `mock`; default `replay`): Who answers an arbiter's questions: `replay` (the cache only; decisions it cannot answer are left out), `jev` (needs TYPESAFE_API_KEY) or `mock`.
+- `--oracle-cache <DIR>` (default `.oracle-cache`): Replay cache for oracle answers.
+
+**Output**
+
+- `--out <FILE>`: Write the report here (Markdown; default: stdout).
+- `--json <FILE>`: Also write the comparison as JSON here.
+
+### `stretto flow-commit`
+
+Commit the staged flow that `stage` learned: make it the flow the proxy serves (`--flow`, replaced whole, so a proxy that starts reads the old flow or the new one). Every version of the committed flow is kept in `NAME.history/`, with what changed and, for a commit, the comparison `stage` last reported, for `flow-log` and `flow-rollback`. A committed flow changed by other means is kept as a version of its own first.
+
+```text
+Usage: stretto flow-commit [OPTIONS] --flow <FILE>
+```
+
+**Options**
+
+- `--flow <FILE>` (required): The committed flow, `NAME.flow.json`.
+- `--note <TEXT>`: Why, kept with the version.
+
+### `stretto flow-rollback`
+
+Roll the committed flow back to an earlier version: the one before the current version, or `--to N`. The rollback is a version of its own, so it can be rolled back too.
+
+```text
+Usage: stretto flow-rollback [OPTIONS] --flow <FILE>
+```
+
+**Options**
+
+- `--flow <FILE>` (required): The committed flow, `NAME.flow.json`.
+- `--to <N>`: The version to restore (see `flow-log`).
+- `--note <TEXT>`: Why, kept with the version.
+
+### `stretto flow-log`
+
+List the committed flow's versions, the latest first (Markdown): how and when each became the committed flow, why, what changed, and for a commit, the comparison it rested on.
+
+```text
+Usage: stretto flow-log --flow <FILE>
+```
+
+**Options**
+
+- `--flow <FILE>` (required): The committed flow, `NAME.flow.json`.
 
 ### `stretto evaluate`
 

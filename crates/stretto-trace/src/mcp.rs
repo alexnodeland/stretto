@@ -1012,6 +1012,15 @@ pub fn call_id(id: &Value) -> String {
     id_string(id)
 }
 
+/// Whether the call with id `call_id` in an episode from a log is one the
+/// proxy made on its own, a served flow's lookup: the proxy numbers its
+/// requests `stretto-1`, `stretto-2`, and so on.
+pub fn is_flow_lookup(call_id: &str) -> bool {
+    call_id
+        .strip_prefix("stretto-")
+        .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+}
+
 /// A tool call awaiting its response.
 struct Pending {
     call_id: String,
@@ -1746,6 +1755,11 @@ mod tests {
         );
         assert_eq!(call_id(&json!(7)), "7");
         assert_eq!(call_id(&json!("stretto-1")), "stretto-1");
+        // The proxy's own requests, and nothing a host would name.
+        assert!(is_flow_lookup("stretto-1") && is_flow_lookup("stretto-12"));
+        for id in ["7", "stretto-", "stretto-x", "call_stretto-1", "stretto-1a"] {
+            assert!(!is_flow_lookup(id), "{id}");
+        }
     }
 
     #[test]

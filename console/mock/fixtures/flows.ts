@@ -151,7 +151,9 @@ const SHOP_BINDINGS: BindingView[] = [
 
 function shopSites(promoted: boolean): SiteSpec[] {
   const p = (decisions: number, lookups: number): SiteRecord | null =>
-    promoted ? { decisions, lookups, used: lookups, tasks: 3, lower: 0.53, promoted: true } : null
+    promoted
+      ? { decisions, lookups, used: lookups, served: 0, tasks: 3, lower: 0.53, promoted: true }
+      : null
   return [
     {
       tool: 'find_user_id_by_email',

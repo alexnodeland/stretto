@@ -22,7 +22,11 @@
 //! A lookup counts as used when the agent makes it in a later LLM turn (the
 //! same tool, with the flow's arguments among the agent's), which spares the
 //! agent that call, and as a detour when it never does, as in the replays; a
-//! hand-back is neither. [`promote`] keeps the sites whose record meets a
+//! hand-back is neither. In a session a flow served, the proxy's own lookups
+//! are in it ([`stretto_trace::mcp::is_flow_lookup`]), and the agent had no
+//! reason to make those again: a lookup the proxy made there is served,
+//! neither used nor a detour, since whether the agent would have asked for
+//! it is not known. [`promote`] keeps the sites whose record meets a
 //! [`Bar`]: a share of used lookups, a lower bound on that share, and a
 //! number of distinct tasks. The bound and the tasks matter because
 //! agreement measured on a few tasks does not carry to new ones (Phase 0's
@@ -69,8 +73,18 @@ pub struct Tally {
     pub lookups: usize,
     /// Of those, the ones the agent made in a later LLM turn.
     pub used: usize,
+    /// Of the rest, the ones the proxy had made in the session, serving a
+    /// flow: neither used nor detours.
+    pub served: usize,
     /// The tasks (or sessions) the lookups came from.
     pub tasks: BTreeSet<String>,
+}
+
+impl Tally {
+    /// The lookups that were neither used nor served: detours.
+    pub fn detours(&self) -> usize {
+        self.lookups - self.used - self.served
+    }
 }
 
 /// What [`score`] found.
@@ -85,10 +99,16 @@ pub struct Scored {
     pub episodes: usize,
 }
 
-/// Where the agent makes the lookup `tool(arguments)` in `later`, the rest
-/// of the session: a call of the same tool whose arguments hold each of the
-/// flow's, with its result if one came.
-fn made<'a>(later: &'a [Event], tool: &str, arguments: &Value) -> Option<Option<&'a Event>> {
+/// Where the lookup `tool(arguments)` was made in `later`, the rest of the
+/// session: a call of the same tool whose arguments hold each of the flow's,
+/// with its result if one came. By the agent, or with `by_proxy`, by the
+/// proxy serving a flow.
+fn made<'a>(
+    later: &'a [Event],
+    tool: &str,
+    arguments: &Value,
+    by_proxy: bool,
+) -> Option<Option<&'a Event>> {
     let text = |v: &Value| v.as_str().map_or_else(|| v.to_string(), str::to_string);
     let call = later
         .iter()
@@ -98,6 +118,7 @@ fn made<'a>(later: &'a [Event], tool: &str, arguments: &Value) -> Option<Option<
         })
         .find(|c| {
             c.name == tool
+                && stretto_trace::mcp::is_flow_lookup(&c.id) == by_proxy
                 && arguments.as_object().is_none_or(|flow| {
                     flow.iter()
                         .all(|(k, v)| c.arguments.get(k).is_some_and(|a| text(a) == text(v)))
@@ -150,12 +171,39 @@ pub fn score(
     serving: Serving,
     chains: Option<&BTreeSet<String>>,
 ) -> Scored {
+    tally(
+        &flow.clone().with_promotion(None),
+        sessions,
+        oracle,
+        serving,
+        chains,
+    )
+}
+
+/// Score each lookup `flow` would make in `sessions` as the proxy serves
+/// it: with its promotion, if it has one, so that it hands back at a site
+/// the promotion does not allow, and ends a chain there.
+pub fn score_as_served(
+    flow: &Flow,
+    sessions: &[Recorded],
+    oracle: &dyn Oracle,
+    serving: Serving,
+) -> Scored {
+    tally(flow, sessions, oracle, serving, None)
+}
+
+fn tally(
+    flow: &Flow,
+    sessions: &[Recorded],
+    oracle: &dyn Oracle,
+    serving: Serving,
+    chains: Option<&BTreeSet<String>>,
+) -> Scored {
     let Serving {
         decider,
         threshold,
         per_call,
     } = serving;
-    let flow = flow.clone().with_promotion(None);
     let mut out = Scored {
         episodes: sessions.len(),
         ..Scored::default()
@@ -172,10 +220,14 @@ pub fn score(
         };
         let events = &episode.events;
         for (i, e) in events.iter().enumerate() {
-            // A decision point: a tool result with something after it.
+            // A decision point: a tool result with something after it. The
+            // proxy's own lookups are the chain after the agent's call.
             let (Event::ToolResult { call_id, .. }, Some(_)) = (e, events.get(i + 1)) else {
                 continue;
             };
+            if stretto_trace::mcp::is_flow_lookup(call_id) {
+                continue;
+            }
             // The call's LLM turn: only a later one's calls can be spared.
             let Some((turn, ids)) = events.iter().enumerate().find_map(|(t, e)| match e {
                 Event::Assistant { calls, .. } if calls.iter().any(|c| &c.id == call_id) => Some((
@@ -226,10 +278,15 @@ pub fn score(
                 };
                 tally.lookups += 1;
                 tally.tasks.insert(task.clone());
-                let Some(result) = made(later, &tool, &arguments) else {
+                let result = if let Some(result) = made(later, &tool, &arguments, false) {
+                    tally.used += 1;
+                    result
+                } else if let Some(result) = made(later, &tool, &arguments, true) {
+                    tally.served += 1;
+                    result
+                } else {
                     break;
                 };
-                tally.used += 1;
                 looked += 1;
                 // The proxy makes it and decides again once it returns.
                 let Some(result) = result.filter(|_| looked < per_call && chains_on) else {
@@ -299,13 +356,15 @@ pub fn promote(scored: &Scored, bar: Bar) -> Promotion {
         .sites
         .iter()
         .map(|(site, t)| {
-            let lower = wilson_lower(t.used, t.lookups, Z90);
-            let share = if t.lookups > 0 {
-                t.used as f64 / t.lookups as f64
+            // The served lookups tell nothing either way.
+            let known = t.lookups - t.served;
+            let lower = wilson_lower(t.used, known, Z90);
+            let share = if known > 0 {
+                t.used as f64 / known as f64
             } else {
                 0.0
             };
-            let promoted = t.lookups > 0
+            let promoted = known > 0
                 && share >= bar.min_used
                 && lower >= bar.min_lower
                 && t.tasks.len() >= bar.min_tasks;
@@ -315,6 +374,7 @@ pub fn promote(scored: &Scored, bar: Bar) -> Promotion {
                     decisions: t.decisions,
                     lookups: t.lookups,
                     used: t.used,
+                    served: t.served,
                     tasks: t.tasks.len(),
                     lower,
                     promoted,
@@ -341,15 +401,21 @@ pub fn markdown(promotion: &Promotion) -> String {
         md,
         "| After | Decisions | Lookups it would make | Made by the agent later | Lower bound | Tasks | Promoted |\n|---|---|---|---|---|---|---|"
     );
+    if promotion.sites.values().any(|r| r.served > 0) {
+        let _ = writeln!(
+            md,
+            "The proxy had already made some of these lookups, serving a flow: they are served, and count toward neither the share nor its bound.\n"
+        );
+    }
     for (site, r) in &promotion.sites {
-        let share = if r.lookups > 0 {
-            format!(
-                "{} ({:.0}%)",
-                r.used,
-                100.0 * r.used as f64 / r.lookups as f64
-            )
-        } else {
-            "—".to_string()
+        let known = r.lookups - r.served;
+        let share = match known {
+            0 => "—".to_string(),
+            _ => format!("{} ({:.0}%)", r.used, 100.0 * r.used as f64 / known as f64),
+        };
+        let share = match r.served {
+            0 => share,
+            n => format!("{share}; {n} served"),
         };
         let _ = writeln!(
             md,
@@ -460,7 +526,14 @@ mod tests {
             usage: None,
         };
         let one = |calls: &[(&str, Value)]| vec![turn(calls)];
-        assert!(made(&one(&[("get_order", order.clone())]), "get_order", &order).is_some());
+        let agent = |later: &[Event], tool: &str, arguments: &Value| {
+            made(later, tool, arguments, false).is_some()
+        };
+        assert!(agent(
+            &one(&[("get_order", order.clone())]),
+            "get_order",
+            &order
+        ));
         // After a reply, among parallel calls, and with more arguments than
         // the flow bound.
         let later = [
@@ -470,15 +543,124 @@ mod tests {
                 ("get_order", json!({"order_id": "#W1", "verbose": true})),
             ]),
         ];
-        assert!(made(&later, "get_order", &order).is_some());
+        assert!(agent(&later, "get_order", &order));
         // Another order, another tool, or no call at all is a detour.
         let other = one(&[("get_order", json!({"order_id": "#W2"}))]);
-        assert!(made(&other, "get_order", &order).is_none());
-        assert!(made(&one(&[("get_user", order.clone())]), "get_order", &order).is_none());
-        assert!(made(&[reply], "get_order", &order).is_none());
+        assert!(!agent(&other, "get_order", &order));
+        assert!(!agent(
+            &one(&[("get_user", order.clone())]),
+            "get_order",
+            &order
+        ));
+        assert!(!agent(&[reply], "get_order", &order));
         // Numbers and the strings that spell them are the same.
         let numbered = one(&[("get_order", json!({"n": 5}))]);
-        assert!(made(&numbered, "get_order", &json!({"n": "5"})).is_some());
+        assert!(agent(&numbered, "get_order", &json!({"n": "5"})));
+        // The proxy's own lookup is not the agent's call.
+        let served = vec![Event::Assistant {
+            text: None,
+            calls: vec![ToolCall {
+                id: "stretto-1".to_string(),
+                name: "get_order".to_string(),
+                arguments: order.clone(),
+            }],
+            usage: None,
+        }];
+        assert!(!agent(&served, "get_order", &order));
+        assert!(made(&served, "get_order", &order, true).is_some());
+        assert!(made(
+            &one(&[("get_order", order.clone())]),
+            "get_order",
+            &order,
+            true
+        )
+        .is_none());
+    }
+
+    /// In a session a flow served, the proxy's lookups are in it: a lookup
+    /// the flow would make again there is served, neither used nor a
+    /// detour, and the flow goes on from its result.
+    #[test]
+    fn a_lookup_the_proxy_had_made_is_served() {
+        let flow = crate::flow::tests::toy_flow();
+        let result = |id: &str, name: &str, content: Value| Event::ToolResult {
+            call_id: id.to_string(),
+            name: name.to_string(),
+            error: false,
+            content: content.to_string(),
+        };
+        let call = |id: &str, name: &str, arguments: Value| Event::Assistant {
+            text: None,
+            calls: vec![ToolCall {
+                id: id.to_string(),
+                name: name.to_string(),
+                arguments,
+            }],
+            usage: None,
+        };
+        let session = |events: Vec<Event>| {
+            Recorded::from(Episode {
+                id: "s".to_string(),
+                task_id: "t".to_string(),
+                trial: 0,
+                domain: "retail".to_string(),
+                agent_model: "agent".to_string(),
+                reward: 1.0,
+                events,
+            })
+        };
+        let user = json!({"user_id": "ann_1", "orders": ["#W1", "#W2"]});
+        let found = [
+            Event::User {
+                text: "help with my orders".to_string(),
+            },
+            call("1", "get_user_details", json!({"user_id": "ann_1"})),
+            result("1", "get_user_details", user),
+        ];
+        let order = |n: &str| json!({"order_id": n});
+        let serving = Serving {
+            decider: Decider::Habit,
+            threshold: 0.3,
+            per_call: crate::flow::PER_CALL,
+        };
+        let tally = |events: Vec<Event>| {
+            let oracle = stretto_oracle::MockOracle {
+                confidence: 0.9,
+                noul: 0.5,
+            };
+            let scored = score(&flow, &[session(events)], &oracle, serving, None);
+            scored.sites.values().fold((0, 0, 0, 0), |(l, u, s, d), t| {
+                (l + t.lookups, u + t.used, s + t.served, d + t.detours())
+            })
+        };
+        // The agent's own sessions: it read both orders (the flow would
+        // have read the second after the first, then again after the
+        // agent's), or neither.
+        let read = [
+            call("2", "get_order_details", order("#W1")),
+            result("2", "get_order_details", order("#W1")),
+            call("3", "get_order_details", order("#W2")),
+            result("3", "get_order_details", order("#W2")),
+        ];
+        assert_eq!(tally([&found[..], &read].concat()), (3, 3, 0, 0));
+        let said = Event::Assistant {
+            text: Some("Anything else?".to_string()),
+            calls: Vec::new(),
+            usage: None,
+        };
+        assert_eq!(
+            tally([&found[..], std::slice::from_ref(&said)].concat()),
+            (1, 0, 0, 1)
+        );
+        // Served: the proxy read the first order, the agent the second. The
+        // proxy decides after the agent's calls, its own lookups a chain.
+        let served = [
+            call("stretto-1", "get_order_details", order("#W1")),
+            result("stretto-1", "get_order_details", order("#W1")),
+            call("3", "get_order_details", order("#W2")),
+            result("3", "get_order_details", order("#W2")),
+        ];
+        assert_eq!(tally([&found[..], &served].concat()), (2, 1, 1, 0));
     }
 
     #[test]
@@ -496,7 +678,13 @@ mod tests {
             decisions: lookups + 1,
             lookups,
             used,
+            served: 0,
             tasks: (0..tasks).map(|t| t.to_string()).collect(),
+        };
+        // Half its lookups served, the rest mostly used: promoted on those.
+        let served = Tally {
+            served: 30,
+            ..tally(60, 27, 12)
         };
         let scored = Scored {
             sites: BTreeMap::from([
@@ -505,6 +693,7 @@ mod tests {
                 ("few".to_string(), tally(3, 3, 3)),
                 ("wrong".to_string(), tally(40, 12, 12)),
                 ("idle".to_string(), tally(0, 0, 0)),
+                ("served".to_string(), served),
             ]),
             unanswered: 0,
             episodes: 12,
@@ -522,9 +711,15 @@ mod tests {
             .filter(|(_, r)| r.promoted)
             .map(|(s, _)| s)
             .collect();
-        assert_eq!(promoted, ["broad"]);
+        assert_eq!(promoted, ["broad", "served"]);
         assert!(p.allows("broad") && !p.allows("narrow") && !p.allows("never scored"));
         let md = markdown(&p);
         assert!(md.contains("| `broad` | 41 | 40 | 36 (90%) |"), "{md}");
+        assert!(
+            md.contains("| `served` | 61 | 60 | 27 (90%); 30 served |"),
+            "{md}"
+        );
+        assert!(md.contains("count toward neither"), "{md}");
+        assert!(!markdown(&promote(&Scored::default(), bar)).contains("served"));
     }
 }

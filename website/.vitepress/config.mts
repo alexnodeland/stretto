@@ -83,6 +83,7 @@ const guide: DefaultTheme.SidebarItem[] = [
       { text: 'Deciders: reach, habit, arbiter', link: '/guide/concepts/deciders' },
       { text: 'Bindings', link: '/guide/concepts/bindings' },
       { text: 'Shadow mode and promotion', link: '/guide/concepts/shadow-and-promotion' },
+      { text: 'Staged flows', link: '/guide/concepts/staged-flows' },
       { text: 'Audit and review', link: '/guide/concepts/audit-and-review' },
       { text: 'Procedures', link: '/guide/concepts/procedures' },
       { text: 'Privacy and redaction', link: '/guide/concepts/privacy' }

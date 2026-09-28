@@ -5,6 +5,8 @@ Two kinds of stretto file are meant to be kept, reviewed and shared:
 - **a flow** (`*.flow.json`), written by `stretto compile` and `stretto learn` and served by `stretto serve`, `stretto flow-serve` and `stretto-proxy --flow`;
 - **an arbiter** (`data/arbiters/*.json`), written by `stretto export-arbiter` and read by `stretto learn --arbiter-from`.
 
+A deployment's staged flow and its committed flow's history are described [below](#a-deployments-staged-flow-and-history).
+
 Both are JSON. This page names every field, says what sets it, and says what a reviewer should check. The proxy's session logs are documented in [its README](../crates/stretto-proxy/README.md#log-format). The Rust types are `Flow`, `Arbiter` and `Fitted` in `crates/stretto-report/src/flow.rs` and `arbitrate.rs`; a test (`crates/stretto-report/tests/formats.rs`) fails when a serialized field is missing from this page.
 
 Flows are written on one line. `jq . some.flow.json` prints one for reading. Maps whose keys are not strings are written as lists of `[key, value]` pairs sorted by key, so two flows compiled from the same data differ only in `compiled_unix_ms`.
@@ -178,7 +180,7 @@ Check: any program other than the standard run is code the proxy runs. `stretto 
 Written by `stretto promote` ([RFC-001 §3.7](rfc/001-habit-compiler.md)), and absent until then. A promoted flow acts only after the calls whose record met the bar. After the rest it hands back, with the reason `the site is not promoted`.
 
 - `bar`: `threshold`, the one the flow was scored at, as it will be served; `min_used`, the least share of its lookups at a site that the agent made in a later LLM turn; `min_lower`, the least lower bound on that share (Wilson, 90% two-sided); and `min_tasks`, the fewest distinct tasks the lookups came from. Each recorded session counts as its own task.
-- `sites`: for each site scored, by name (the tool, and ` (error)` after a failed call): `decisions`, the times the flow decided there; `lookups`, the lookups it would have made; `used`, the ones the agent made in a later LLM turn (the rest are detours); `tasks`; `lower`; and `promoted`. A site never scored is not promoted.
+- `sites`: for each site scored, by name (the tool, and ` (error)` after a failed call): `decisions`, the times the flow decided there; `lookups`, the lookups it would have made; `used`, the ones the agent made in a later LLM turn; `served`, the ones the proxy had already made in the session, serving a flow, which count as neither (the rest are detours; 0 in promotions from before they were counted apart); `tasks`; `lower`, on the share of the lookups that were not served; and `promoted`. A site never scored is not promoted.
 
 Check: a site newly promoted lets the flow act where it handed back, and `stretto flow-diff` lists it as needing review.
 
@@ -240,6 +242,33 @@ A flow's arbiter on its own, to serve with a habit learned elsewhere ([data/arbi
 | `model` | The System-One model it asks |
 
 `learn --arbiter-from` gives the learned flow the arbiter's `predicates`, `weighed` and `model`, five copies of `fitted`, its `arbiter_cases`, and its sources. The file holds no answer or conversation text, only counts, weights and the questions.
+
+## A deployment's staged flow and history
+
+`stretto stage` and `stretto flow-commit` keep three things beside a committed flow `NAME.flow.json` ([staged flows](https://stretto.alexnodeland.com/guide/concepts/staged-flows)):
+
+- `NAME.staged.flow.json`, a flow like any other.
+- `NAME.stage.json`, the staged learner's state (`stretto_stage: 1`), on one line:
+
+  | Field | What it holds |
+  |---|---|
+  | `stretto_stage` | The format version, 1 |
+  | `domain` | The domain of both flows |
+  | `sessions` | The ids of the sessions the staged flow learned from, in the order it took them in |
+  | `ledger` | The last 1,000 sessions as each flow did on them when they arrived: `session`, and `committed` and `staged`, each absent when that flow was not there. A flow's side has `sites` (per site: `decisions`, `lookups`, `used`, `served`) and `unanswered` |
+  | `last` | The last report: `sessions`, `new`, `compared`, the flows' counts per site (`sites`) and in all (`total`), `unanswered`, `changes` and `needs_review` as `flow-diff` gives them, `carried`, and `learned_unix_ms`, when the staged flow was learned |
+
+- `NAME.history/`, every version the committed flow has had: `N.flow.json`, and `N.json`, pretty-printed. The record's fields:
+
+  | Field | What it holds |
+  |---|---|
+  | `version` | From 1 |
+  | `kind` | `found` (the committed flow as it was before its first commit, or after it changed by other means), `commit` or `rollback` |
+  | `unix_ms` | When it became the committed flow |
+  | `restored` | For a rollback, the version it restored |
+  | `note` | Why, in the committer's words |
+  | `changes` | What changed from the version before, as `flow-diff` lists it |
+  | `evidence` | For a commit, the staged learner's last report, when it was the staged flow's |
 
 ## Versions
 

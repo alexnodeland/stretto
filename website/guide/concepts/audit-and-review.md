@@ -80,7 +80,7 @@ A site with low agreement is not a site the flow gets wrong, but a site to look 
 
 The audit scores next-step predictions, the habit's by default for a flow with no arbiter. To score the lookups a flow would make, used or not before the agent's next write, which is what `reach` decides on, record in [shadow mode](./shadow-and-promotion) and read `stretto promote`'s report.
 
-**When to learn again:** a site whose agreement falls on new sessions, a request type the flow has not seen, or a server whose tools changed. `stretto drift` watches for the first of these as sessions arrive.
+**When to learn again:** a site whose agreement falls on new sessions, a request type the flow has not seen, or a server whose tools changed. `stretto drift` watches for the first of these as sessions arrive, and [`stretto stage`](./staged-flows) learns the next version as they do, scored against the flow being served, for `flow-commit` to serve.
 
 ## Watch for drift
 

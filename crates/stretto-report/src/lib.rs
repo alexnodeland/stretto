@@ -26,7 +26,8 @@
 //! A [`procedure`] is a whole workflow compiled once from traces, writes
 //! included, for where no user speaks, run with no model. [`init`] writes an
 //! MCP host's configuration for the proxy, and [`doctor`] checks an
-//! installation.
+//! installation. [`stage`] learns a deployment's next flow as sessions
+//! arrive, and keeps the committed one's versions.
 
 pub mod arbitrate;
 pub mod audit;
@@ -48,6 +49,7 @@ pub mod render;
 pub mod review;
 pub mod search;
 pub mod shadow;
+pub mod stage;
 
 /// The integration tests' fixtures, which the unit tests share.
 #[cfg(test)]

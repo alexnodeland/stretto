@@ -48,7 +48,7 @@ flowchart LR
 
 1. **Record.** Run your MCP server behind `stretto-proxy`. It forwards every message and records each session. An agent framework that exports OpenTelemetry GenAI spans can learn from those instead ([OpenTelemetry spans](https://stretto.alexnodeland.com/integrations/opentelemetry)).
 2. **Learn.** `stretto learn` counts which reads follow which calls, and where each argument came from: an earlier result, or a constant. It writes a flow.
-3. **Review.** `stretto flow-show` lists the tools the flow may call, the lookups it may make and how their arguments are bound. Run the flow in shadow first, where it decides and logs but looks nothing up. `stretto promote` then keeps the sites where its lookups were the agent's own.
+3. **Review.** `stretto flow-show` lists the tools the flow may call, the lookups it may make and how their arguments are bound. Run the flow in shadow first, where it decides and logs but looks nothing up. `stretto promote` then keeps the sites where its lookups were the agent's own. As sessions arrive, `stretto stage` learns the next version beside the served flow and scores the two, and `stretto flow-commit` serves it, keeping every version for `flow-rollback` ([staged flows](https://stretto.alexnodeland.com/guide/concepts/staged-flows)).
 4. **Serve.** After each of the agent's calls, the flow makes the lookups whose chance of use clears the threshold. Their results ride in the same tool result, so the agent already has what it would have asked for next.
 
 Where no user speaks, `stretto-procedure` runs a whole workflow compiled once from traces, writes included. It hands back whatever its own check of the outcome cannot confirm.
@@ -83,7 +83,7 @@ stretto init --host claude-code --flow orders.flow.json --shadow -- npx -y @your
 - [The guide](https://stretto.alexnodeland.com/guide/) walks through each step.
 - [The walkthrough](docs/walkthrough.md) runs the loop on the official MCP filesystem server.
 
-**When to relearn a flow.** A flow fits the agent, prompt, harness and tools it was learned from. `stretto drift --flow orders.flow.json --sessions ~/.stretto/logs/orders` scores the sessions a flow served, in the order they ran. It exits with 1 when the agent changed in the last few sessions, and names the sites that moved. Relearn then, with `learn --half-life` so that the sessions since the change count most. On the server's side, the proxy stops making a lookup on its own once the server no longer lists the tool, marks it as a write, or changes its input, and the flow log says why.
+**When to relearn a flow.** A flow fits the agent, prompt, harness and tools it was learned from. `stretto drift --flow orders.flow.json --sessions ~/.stretto/logs/orders` scores the sessions a flow served, in the order they ran. It exits with 1 when the agent changed in the last few sessions, and names the sites that moved. Relearn then, with `learn --half-life` or `stage --half-life` so that the sessions since the change count most. On the server's side, the proxy stops making a lookup on its own once the server no longer lists the tool, marks it as a write, or changes its input, and the flow log says why.
 
 ## The console
 
@@ -147,7 +147,7 @@ stretto is pre-release.
 | Crate | What it holds |
 |---|---|
 | `stretto-proxy` | `stretto-proxy`, the MCP proxy: it records sessions and serves flows, guards and the confirmation judge ([README](crates/stretto-proxy/README.md)). Also `stretto-procedure`, the procedure runtime, and `stretto-mcp-demo`, the demo server |
-| `stretto-report` | `stretto`, the CLI: `init`, `doctor`, `learn`, `flow-show`, `flow-diff`, `promote`, `audit`, `redact`, and the research commands |
+| `stretto-report` | `stretto`, the CLI: `init`, `doctor`, `learn`, `stage`, `flow-show`, `flow-diff`, `flow-commit`, `promote`, `audit`, `redact`, and the research commands |
 | `stretto-console` | `stretto-console`, the console: an HTTP API over `~/.stretto`, and the web app in `console/`, built into the binary ([README](crates/stretto-console/README.md)) |
 | `stretto-model` | The habit (a hierarchical Dirichlet back-off model), argument provenance and bindings, policy checks |
 | `stretto-trace` | The episode schema, and ingest of τ²-bench results, the proxy's session logs and OpenTelemetry GenAI spans |
