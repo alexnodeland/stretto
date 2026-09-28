@@ -82,7 +82,7 @@ npm run preview   # serve the build
 - Headings get GitHub's anchors, so `formats.md#program` works on GitHub and here alike.
 - Math in `$…$` and `$$…$$` renders with MathJax, and a ```` ```mermaid ```` block renders as a diagram.
 
-The GitHub Pages workflow builds and deploys the site on every push to `main` that touches it or the files it includes.
+The GitHub Pages workflow builds and deploys the site on every push to `main` that touches it or the files it includes. A build is for the site's custom domain, `https://stretto.alexnodeland.com/`. `SITE_URL` sets another address, and the workflow passes the one Pages gives the site, so that the base, the canonical links and the sitemap follow it.
 
 ## License
 

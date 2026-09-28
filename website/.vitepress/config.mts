@@ -8,16 +8,28 @@ import { lastCommitMs, repoLinks, scanSite } from './repo-links'
 const srcDir = fileURLToPath(new URL('..', import.meta.url))
 const repoRoot = path.resolve(srcDir, '..')
 
-const base = '/stretto/'
+// Where the site is served, ending in a slash. The Pages workflow passes the address
+// Pages gives the site: the custom domain, or https://alexnodeland.github.io/stretto/
+// without one. The site's base is that address's path.
+const siteUrl = siteAddress(process.env.SITE_URL || 'https://stretto.alexnodeland.com/')
+const base = new URL(siteUrl).pathname
 // `vitepress build` sets NODE_ENV before it reads this file; `vitepress dev` does not.
 const isBuild = process.env.NODE_ENV === 'production'
-const siteUrl = 'https://alexnodeland.github.io/stretto/'
 const repoUrl = 'https://github.com/alexnodeland/stretto'
 const branch = 'main'
 
 const title = 'stretto'
 const description =
   'stretto learns, from an LLM agent’s recorded tool calls, which reads it makes next and where their arguments come from, and serves those reads through an MCP proxy, so the agent needs fewer LLM turns.'
+
+/** An address as the site's links use it: over https, and ending in a slash. */
+function siteAddress(address: string): string {
+  const url = new URL(address)
+  // Pages gives a custom domain as http:// until its certificate is issued.
+  url.protocol = 'https:'
+  if (!url.pathname.endsWith('/')) url.pathname += '/'
+  return url.href
+}
 
 // Which repository files the site renders, and on which page (see repo-links.ts).
 const site = scanSite(srcDir, repoRoot)
@@ -220,10 +232,10 @@ export default defineConfigWithTheme<ThemeConfig>({
         repoUrl,
         branch,
         pages: site.pages,
-        // The research notebook was the whole site before; it now lives at /notebook/,
-        // copied in as a static page (scripts/copy-notebook.mjs).
-        moved: { 'https://alexnodeland.github.io/stretto': '/notebook/' },
-        staticPaths: ['/notebook/'],
+        siteUrl,
+        // Copied in as static pages: the research notebook (scripts/copy-notebook.mjs)
+        // and the interactive explainer (scripts/copy-brand.mjs).
+        staticPaths: ['/notebook/', '/explainer/'],
         devServer: !isBuild
       })
 

@@ -1,11 +1,15 @@
 name: Pages
 
 # Builds the documentation site (website/, VitePress) and publishes it to
-# GitHub Pages at https://alexnodeland.github.io/stretto/. The research
-# notebook, site/index.html, is copied into the build by the site's build
-# script and served at /stretto/notebook/, and so are the brand kit's
-# explainer and videos (brand/). The repository's Pages source must
-# be set to "GitHub Actions" (Settings → Pages).
+# GitHub Pages, at the address set in Settings → Pages: the custom domain,
+# https://stretto.alexnodeland.com/, or https://alexnodeland.github.io/stretto/
+# without one. The build takes that address from configure-pages, for the
+# site's base, its canonical links and its sitemap, so after changing the
+# custom domain, run this workflow once (Actions → Pages → Run workflow).
+# The research notebook, site/index.html, is copied into the build by the
+# site's build script and served at notebook/, and so are the brand kit's
+# explainer and videos (brand/). The repository's Pages source must be set
+# to "GitHub Actions" (Settings → Pages).
 on:
   push:
     branches: [main]
@@ -46,7 +50,8 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: website/package-lock.json
-      - uses: actions/configure-pages@v5
+      - id: pages
+        uses: actions/configure-pages@v5
       - name: Install
         working-directory: website
         run: npm ci
@@ -54,6 +59,9 @@ jobs:
       - name: Build
         working-directory: website
         run: npm run build
+        env:
+          # Where Pages serves the site, such as https://stretto.alexnodeland.com.
+          SITE_URL: ${{ steps.pages.outputs.base_url }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: website/.vitepress/dist

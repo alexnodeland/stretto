@@ -1,8 +1,7 @@
 // Copies the brand kit's videos with their posters and captions, and the
 // interactive explainer with its narration (brand/), into public/, so that the
-// site serves them at /stretto/media/ and /stretto/explainer/ in development
-// and in the build. The
-// copies are ignored by git: brand/ stays the only source.
+// site serves them at media/ and explainer/, under its base, in development and
+// in the build. The copies are ignored by git: brand/ stays the only source.
 // The logo, the icons and the social card are small, and are committed in public/.
 import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
 import path from 'node:path'

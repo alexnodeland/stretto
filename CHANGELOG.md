@@ -21,6 +21,10 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 - `stretto doctor --data DIR` checks a data directory other than `~/.stretto`; the console's doctor job checks the one it serves.
 - `stretto_report::review::view` returns a flow's review as data, which `flow-show` renders from; `review::diff`'s result lists its changes by heading and serializes.
 
+### Documentation
+
+- The documentation site builds for the address GitHub Pages gives it (`SITE_URL`, from the Pages workflow), so its base, canonical links and sitemap follow a custom domain. A link from the repository's Markdown to the site itself stays on the site: the roadmap's and the changelog's links to the documentation site opened the research notebook before.
+
 ### Development
 
 - A `Makefile` with the everyday commands (`make help`). `make ci` runs what CI's check job runs; `make coverage`, `make msrv`, `make bless`, `make quickstart`, `make walkthrough`, `make site`, `make docker` and `make docker-console` run the rest.
