@@ -13,6 +13,17 @@ website/.vitepress/cache/
 website/public/notebook/
 website/public/explainer/
 website/public/media/
+# The console's UI (console/): what npm, Vite, Vitest and Playwright write
+console/node_modules/
+console/dist/
+console/coverage/
+console/test-results/
+console/playwright-report/
+console/blob-report/
+console/.vite/
+console/*.tsbuildinfo
+console/*.timestamp-*.mjs
+console/npm-debug.log*
 # make coverage
 lcov.info
 # Claude Code: the team's setup in .claude/ is committed; per-user settings,

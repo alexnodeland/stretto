@@ -20,14 +20,17 @@ BIN := $(or $(CARGO_TARGET_DIR),target)/debug
 # The tag `make docker` gives the image.
 IMAGE ?= stretto:dev
 
+# The UI's npm commands, in console/.
+NPM := npm --prefix console
+
 .PHONY: help fmt check lint test types doc ci msrv coverage bless quickstart walkthrough \
-	site docker install-dev-tools all
+	site ui ui-check e2e console docker install-dev-tools all
 
 help: ## Show this help
 	@echo 'Usage: make [target]'
 	@echo ''
 	@echo 'Targets:'
-	@awk 'BEGIN { FS = ":.*## " } /^[a-zA-Z_-]+:.*## / { printf "  %-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@awk 'BEGIN { FS = ":.*## " } /^[a-zA-Z0-9_-]+:.*## / { printf "  %-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
 fmt: ## Format the Rust code
 	cargo fmt --all
@@ -81,6 +84,27 @@ site: website/node_modules/.package-lock.json ## Build the documentation site (w
 # halfway runs again.
 website/node_modules/.package-lock.json: website/package-lock.json
 	cd website && npm ci --no-audit --no-fund
+
+ui: console/node_modules/.package-lock.json ## Build the console's UI into console/dist, which stretto-console embeds
+	$(NPM) run build
+
+ui-check: console/node_modules/.package-lock.json ## The UI's checks, as CI's ui job runs them: formatting, lint, types, unit tests, build
+	$(NPM) run format:check
+	$(NPM) run lint
+	$(NPM) run typecheck
+	$(NPM) test
+	$(NPM) run build
+
+e2e: console/node_modules/.package-lock.json ## The UI's end-to-end tests in Chromium, on the mock API and on the console over the test fixtures
+	cargo build -p stretto-console -p stretto-report -p stretto-proxy
+	$(NPM) run e2e
+	$(NPM) run e2e:real
+
+console: ui ## Build the UI, then run the console on ~/.stretto (ARGS="--read-only --open")
+	cargo run -p stretto-console -- $(ARGS)
+
+console/node_modules/.package-lock.json: console/package-lock.json
+	$(NPM) ci --no-audit --no-fund
 
 docker: ## Build the container image from the Dockerfile (IMAGE=stretto:dev)
 	docker build -t $(IMAGE) .

@@ -1,0 +1,74 @@
+/*
+ * The brand's tokens (brand/tokens.css: petrol on ink and paper), imported as
+ * they are, and the console's own layer on top: layout sizes, elevation,
+ * hover washes, and the two status colors the brand leaves to its hosts.
+ * Errors and warnings always come with an icon and words; the colors below
+ * are text-safe (4.5:1 or more) on every surface in both themes.
+ */
+@import '@brand/tokens.css';
+
+:root {
+  --c-sidebar-w: 236px;
+  --c-sidebar-w-collapsed: 68px;
+  --c-topbar-h: 60px;
+  --c-content-max: 1320px;
+  --c-gutter: 32px;
+  --c-radius-card: 12px;
+  --c-radius-control: 8px;
+  --c-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  --c-hover: rgb(20 28 30 / 0.045);
+  --c-active: rgb(20 28 30 / 0.075);
+  --c-skeleton: #e6ecee;
+  --c-backdrop: rgb(20 28 30 / 0.36);
+  --c-shadow-sm: 0 1px 2px rgb(20 28 30 / 0.05);
+  --c-shadow-md: 0 1px 2px rgb(20 28 30 / 0.04), 0 8px 24px rgb(20 28 30 / 0.08);
+  --c-shadow-lg: 0 2px 6px rgb(20 28 30 / 0.06), 0 24px 64px rgb(20 28 30 / 0.2);
+
+  --c-danger: #b42318;
+  --c-danger-soft: #fdeceb;
+  --c-danger-border: #f1c5c0;
+  --c-warn: #8a5300;
+  --c-warn-soft: #fcf2dd;
+  --c-warn-border: #ecd6a6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --c-hover: rgb(236 239 240 / 0.05);
+    --c-active: rgb(236 239 240 / 0.085);
+    --c-skeleton: #1d2427;
+    --c-backdrop: rgb(0 0 0 / 0.56);
+    --c-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --c-shadow-md: 0 1px 2px rgb(0 0 0 / 0.35), 0 8px 24px rgb(0 0 0 / 0.32);
+    --c-shadow-lg: 0 2px 8px rgb(0 0 0 / 0.45), 0 24px 64px rgb(0 0 0 / 0.55);
+    --c-danger: #ff8f85;
+    --c-danger-soft: #2c1614;
+    --c-danger-border: #5a2a25;
+    --c-warn: #f0b45a;
+    --c-warn-soft: #2a2111;
+    --c-warn-border: #56431f;
+  }
+}
+
+:root[data-theme='dark'] {
+  --c-hover: rgb(236 239 240 / 0.05);
+  --c-active: rgb(236 239 240 / 0.085);
+  --c-skeleton: #1d2427;
+  --c-backdrop: rgb(0 0 0 / 0.56);
+  --c-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --c-shadow-md: 0 1px 2px rgb(0 0 0 / 0.35), 0 8px 24px rgb(0 0 0 / 0.32);
+  --c-shadow-lg: 0 2px 8px rgb(0 0 0 / 0.45), 0 24px 64px rgb(0 0 0 / 0.55);
+  --c-danger: #ff8f85;
+  --c-danger-soft: #2c1614;
+  --c-danger-border: #5a2a25;
+  --c-warn: #f0b45a;
+  --c-warn-soft: #2a2111;
+  --c-warn-border: #56431f;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --c-gutter: 16px;
+  }
+}

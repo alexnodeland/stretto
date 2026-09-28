@@ -5,7 +5,7 @@ description: Run exactly what stretto's CI runs (formatting, clippy, tests and d
 
 # Check before pushing
 
-CI is `.github/workflows/ci.yml` (jobs `check`, `msrv`, `walkthrough` and `platforms`) and `.github/workflows/coverage.yml`, on every pull request and push to main. `container.yml` runs when the image's inputs change; `pages.yml` builds the site only after a merge. Run what applies to the change, in this order, and fix the first failure before going on.
+CI is `.github/workflows/ci.yml` (jobs `check`, `ui`, `msrv`, `walkthrough` and `platforms`) and `.github/workflows/coverage.yml`, on every pull request and push to main. `container.yml` runs when the image's inputs change; `pages.yml` builds the site only after a merge. Run what applies to the change, in this order, and fix the first failure before going on.
 
 ## 1. Always: the check job
 
@@ -35,7 +35,16 @@ python3 scripts/bench/tables.py --work scripts/bench/fixture --json /tmp/rows.js
 
 `make quickstart` and `make walkthrough` run the first and the fifth. CI also asserts one cell of the fixture's table; the command is in ci.yml. Skip shellcheck if it is not installed, and say so.
 
-## 3. When it applies
+## 3. When `console/` or the console's API changed: the ui job
+
+```bash
+make ui-check    # formatting, lint, types, unit tests and the build
+make e2e         # Playwright in Chromium: the mock API, then the console on tests/fixtures/home
+```
+
+A change to a type the API serves needs `make types` first, and the TypeScript it writes committed. In a cloud session the session hook installs `console/node_modules`; Playwright's Chromium is at `PLAYWRIGHT_BROWSERS_PATH` when the machine provides one, and `npx --prefix console playwright install chromium` fetches it otherwise.
+
+## 4. When it applies
 
 - **Dependencies, `Cargo.lock` or a newer std API:** `make msrv` checks the workspace on Rust 1.88 with the lockfile (it installs that toolchain, about 550 MB).
 - **Tests removed, or much new code:** `make coverage` fails under `COVERAGE_MIN` in the Makefile. The instrumented build needs about 4 GB of disk.

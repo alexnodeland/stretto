@@ -27,6 +27,9 @@ The [`Makefile`](Makefile)'s Rust targets run the commands CI runs ([`.github/wo
 | `make bless` | Regenerates `docs/cli.md` and the examples in `docs/review.md` |
 | `make quickstart`, `make walkthrough` | The quickstart and the walkthrough end to end on a debug build, as CI's walkthrough job runs them |
 | `make site` | Builds the documentation site, which fails on a dead link |
+| `make ui`, `make ui-check` | Builds the console's UI; runs its formatting check, lint, type check, unit tests and build, as CI's ui job |
+| `make e2e` | The UI's end-to-end tests in Chromium, on the mock API and on the console over the test fixtures |
+| `make console` | Builds the UI and runs the console on `~/.stretto` (`ARGS="--read-only --open"`) |
 | `make docker` | Builds the container image |
 
 `docs/cli.md` is generated from the CLI's own help, and each binary's tests fail when its section is stale. After changing a command or an option, regenerate it with `make bless` (`STRETTO_BLESS=1 cargo test`) and commit the result. A test also checks that `docs/formats.md` names every field a flow or an arbiter file holds.

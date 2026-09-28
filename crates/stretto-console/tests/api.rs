@@ -446,12 +446,28 @@ async fn unknown_paths_and_methods_and_the_ui() {
         let route = c.send(plain(Method::GET, "/flows/shop")).await;
         assert!(route.text().contains("The API is up"));
     }
-    assert_eq!(
-        c.send(plain(Method::GET, "/assets/missing.js"))
-            .await
-            .status,
-        StatusCode::NOT_FOUND
-    );
+    // A route whose key holds a dot is the app's too: a reload of a
+    // session, a job, or a flow such as shop.promoted.
+    for route in [
+        "/sessions/20260928T020401.195Z-14715",
+        "/jobs/20260928T034808.428Z-1ec2",
+        "/flows/shop.promoted",
+    ] {
+        let page = c.send(plain(Method::GET, route)).await;
+        assert_eq!(page.status, StatusCode::OK, "{route}");
+        assert!(
+            page.header(header::CONTENT_TYPE).starts_with("text/html"),
+            "{route}"
+        );
+    }
+    // A file of the build that is not there is not found.
+    for file in ["/assets/missing.js", "/missing.ico", "/missing.css"] {
+        assert_eq!(
+            c.send(plain(Method::GET, file)).await.status,
+            StatusCode::NOT_FOUND,
+            "{file}"
+        );
+    }
     assert_eq!(
         c.send(plain(Method::GET, "/../servers.json")).await.status,
         StatusCode::NOT_FOUND
@@ -1347,7 +1363,10 @@ async fn jobs_run_one_at_a_time_and_report_their_artifacts() {
     assert!(d["started_unix_ms"].as_u64() >= p["finished_unix_ms"].as_u64());
     // doctor exits 1 when something needs fixing, as stretto-proxy not on PATH.
     assert!(d["exit_code"] == 0 || d["exit_code"] == 1, "{d:#}");
-    assert!(d["output"].as_str().unwrap().contains("stretto"));
+    // It checks the directory the console serves (--data), not ~/.stretto:
+    // the fixtures' flow is there.
+    let out = d["output"].as_str().unwrap();
+    assert!(out.contains("shop.flow.json"), "{out}");
 
     let kinds: Vec<&str> = a["artifacts"]
         .as_array()

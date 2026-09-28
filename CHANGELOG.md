@@ -7,8 +7,17 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 ### The console
 
 - `stretto-console`, a new crate and binary: the server of stretto's management plane, a local web app over the data directory (`~/.stretto`, `--data` or `$STRETTO_HOME`). Its JSON API lists and shows the recorded sessions call by call, with each of the flow's lookups and the decision that made it; the flows, as `stretto flow-show` reviews them and as `stretto flow-diff` compares them; a registry of the MCP servers stretto fronts (`servers.json`), with the host configuration `stretto init` prints for each and a live test of the connection; and jobs that run the `stretto` CLI (`learn`, `promote`, `audit`, `redact`, `doctor`). It requires a token (a cookie, or a bearer), a header on every change, and a loopback Host under `--no-auth`; `--read-only` changes nothing ([its README](crates/stretto-console/README.md)). The UI is `console/`; its API types are generated from the Rust.
+- The console's UI (`console/`, Vue 3), which `stretto-console` embeds:
+  - an overview of what stretto recorded and learned, by domain, with its health checks;
+  - the servers, with their form, the configuration for each host and the connection test;
+  - each session as a timeline: the conversation, the agent's calls, and the lookups the flow read ahead after each call, with their probabilities against the threshold;
+  - each flow's graph at a threshold of your choosing, its sites, bindings and tools, its review, and a comparison with another flow;
+  - the jobs, run from the page, with their output as it comes.
+
+  It has light and dark themes, works from a phone's width up, and has a command palette (Ctrl-K or ⌘K). It follows the data directory as it changes. `make console` builds it and runs the console.
 - The console ships with the rest. The release archives, `install.sh`, `install.ps1` and the Homebrew formula install `stretto-console`, with its UI built in; the installers still install a release from before it. A second image, `ghcr.io/alexnodeland/stretto-console` (the Dockerfile's `console` target), runs it on port 8080 with a health check, and [`compose.yaml`](compose.yaml) runs it over your `~/.stretto`. [docs/console.md](docs/console.md) is its guide.
 - `stretto init --upstream URL [--upstream-header NAME=VAR]` configures the proxy in front of a Streamable HTTP server.
+- `stretto doctor --data DIR` checks a data directory other than `~/.stretto`; the console's doctor job checks the one it serves.
 - `stretto_report::review::view` returns a flow's review as data, which `flow-show` renders from; `review::diff`'s result lists its changes by heading and serializes.
 
 ### Development
@@ -17,6 +26,7 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 - CI also runs the doctests, builds the API docs with rustdoc warnings as errors, and checks the workspace on Rust 1.88, the `rust-version`, with the committed lockfile. A coverage workflow measures line coverage with cargo-llvm-cov and fails under 78%; its LCOV report is an artifact, and goes to Codecov when a `CODECOV_TOKEN` secret is set.
 - A Claude Code setup: `CLAUDE.md`, which imports `AGENTS.md`, and `.claude/`, with permission rules, a hook that runs rustfmt on each edited Rust file, a session-start hook for Claude Code on the web, four skills (`check`, `results`, `release`, `steward`) and two subagents (`reviewer`, `claims-checker`).
 - A dev container (`.devcontainer/`) and VS Code settings (`.vscode/`).
+- CI's `ui` job checks the console's UI: Prettier, ESLint, vue-tsc, Vitest and the build (`make ui-check`). It also runs Playwright in Chromium on a mock API and on the console serving its test fixtures (`make e2e`), and fails on any error in the browser's console. `make types` regenerates the API's TypeScript, and CI's check job fails when it has drifted.
 
 ## 0.1.0 (2026-09-27)
 
