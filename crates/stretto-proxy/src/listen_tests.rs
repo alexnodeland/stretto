@@ -191,6 +191,8 @@ async fn a_body_is_read_as_its_messages() {
         b"{\"jsonrpc\": \"2.0\",   \"method\": \"initialize\", \"id\": \"a\"}\n"
     );
     assert!(sent[0].initialize);
+    let (told, _) = messages(br#"{"jsonrpc":"2.0","method":"initialize"}"#).unwrap();
+    assert!(!told[0].initialize && told[0].request.is_none());
     let (all, batch) = messages(
         br#" [{"jsonrpc":"2.0","method":"notifications/initialized"},
               {"jsonrpc":"2.0","id":1,"result":{}},
@@ -497,4 +499,21 @@ fn a_server_that_cannot_start_ends_its_session_with_the_reason() {
         .unwrap()
         .starts_with("the session ended: starting /nonexistent/stretto-test-server"));
     app.finish();
+}
+
+#[test]
+fn a_port_in_use_is_refused_and_a_poisoned_lock_still_opens() {
+    let taken = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = taken.local_addr().unwrap();
+    let e = listen(addr, &Config::new(["cat"]), None, &Listen::default()).unwrap_err();
+    assert_eq!(e.to_string(), format!("listening on {addr}"));
+
+    // A thread that panicked holding a lock leaves the rest usable.
+    let mutex = Mutex::new(1);
+    let _ = std::panic::catch_unwind(|| {
+        let _held = mutex.lock().unwrap();
+        panic!("a session's thread fails");
+    });
+    assert!(mutex.is_poisoned());
+    assert_eq!(*lock(&mutex), 1);
 }

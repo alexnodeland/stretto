@@ -689,10 +689,13 @@ fn message_of(raw: &RawValue) -> Result<Message, Refusal> {
         .map(|b| if b == b'\n' || b == b'\r' { b' ' } else { b })
         .collect();
     line.push(b'\n');
+    // Only a request opens a session: an `initialize` notification has no
+    // answer to close its stream.
+    let initialize = method == Some("initialize") && request.is_some();
     Ok(Message {
         line,
         request,
-        initialize: method == Some("initialize"),
+        initialize,
     })
 }
 
@@ -921,12 +924,15 @@ impl Routes {
                 );
                 return;
             };
-            if let Some(stream) = self.streams.get_mut(&n) {
-                let _ = stream.tx.send(text);
-                stream.owed -= 1;
-                if stream.owed == 0 {
-                    self.streams.remove(&n);
-                }
+            // A stream is forgotten with its requests, so this one is open.
+            let stream = self
+                .streams
+                .get_mut(&n)
+                .expect("a waiting request's stream");
+            let _ = stream.tx.send(text);
+            stream.owed -= 1;
+            if stream.owed == 0 {
+                self.streams.remove(&n);
             }
             return;
         }

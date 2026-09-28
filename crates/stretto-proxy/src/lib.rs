@@ -25,7 +25,7 @@
 //! With [`Config::upstream`], the server is a Streamable HTTP endpoint
 //! instead of a child process ([`http`]); everything else is the same.
 //!
-//! [`listen`] serves hosts over MCP's Streamable HTTP transport instead of
+//! [`listen()`] serves hosts over MCP's Streamable HTTP transport instead of
 //! stdio: each MCP session gets a server, a recording and an [`Active`] run
 //! of its own, as one stdio proxy does ([`listen`](mod@listen)).
 
@@ -236,27 +236,31 @@ where
     if let Some(active) = active {
         // The flow's decisions go next to the session log, unless the
         // caller says otherwise.
-        let flow_log = active.flow.as_ref().and_then(|f| {
-            f.log
-                .as_deref()
-                .map(|p| session_path(p, &session))
-                .or_else(|| {
+        // `{session}` in either path names the session's own file.
+        let named = |path: PathBuf| session_path(&path, &session);
+        let flow_log = active
+            .flow
+            .as_ref()
+            .and_then(|f| {
+                f.log.clone().or_else(|| {
                     recorder
                         .as_ref()
                         .map(|r| r.path().with_extension("flow.jsonl"))
                 })
-        });
+            })
+            .map(named);
         // So do the confirmation judge's.
-        let confirm_log = active.confirm.as_ref().and_then(|c| {
-            c.log
-                .as_deref()
-                .map(|p| session_path(p, &session))
-                .or_else(|| {
+        let confirm_log = active
+            .confirm
+            .as_ref()
+            .and_then(|c| {
+                c.log.clone().or_else(|| {
                     recorder
                         .as_ref()
                         .map(|r| r.path().with_extension("confirm.jsonl"))
                 })
-        });
+            })
+            .map(named);
         let (tx, rx) = mpsc::channel();
         let from_host = tx.clone();
         thread::Builder::new()
