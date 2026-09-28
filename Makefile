@@ -55,7 +55,10 @@ msrv: ## Check the workspace on Cargo.toml's rust-version, with the lockfile
 	rustup toolchain install $(MSRV) --profile minimal
 	cargo +$(MSRV) check --workspace --all-targets --locked
 
+# `clean --workspace` first: --no-report keeps the profiles and test binaries
+# of earlier runs (CI's cache restores them), and the report would count them.
 coverage: ## Line coverage with cargo-llvm-cov: writes lcov.info, fails under COVERAGE_MIN
+	cargo llvm-cov clean --workspace
 	cargo llvm-cov --workspace --all-targets --no-report
 	cargo llvm-cov report --lcov --output-path lcov.info
 	cargo llvm-cov report --fail-under-lines $(COVERAGE_MIN)
