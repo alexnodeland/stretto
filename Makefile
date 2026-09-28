@@ -19,12 +19,13 @@ BIN := $(or $(CARGO_TARGET_DIR),target)/debug
 
 # The tag `make docker` gives the image.
 IMAGE ?= stretto:dev
+CONSOLE_IMAGE ?= stretto-console:dev
 
 # The UI's npm commands, in console/.
 NPM := npm --prefix console
 
 .PHONY: help fmt check lint test types doc ci msrv coverage bless quickstart walkthrough \
-	site ui ui-check e2e console docker install-dev-tools all
+	site ui ui-check e2e console docker docker-console install-dev-tools all
 
 help: ## Show this help
 	@echo 'Usage: make [target]'
@@ -106,8 +107,11 @@ console: ui ## Build the UI, then run the console on ~/.stretto (ARGS="--read-on
 console/node_modules/.package-lock.json: console/package-lock.json
 	$(NPM) ci --no-audit --no-fund
 
-docker: ## Build the container image from the Dockerfile (IMAGE=stretto:dev)
+docker: ## Build the CLI's container image from the Dockerfile (IMAGE=stretto:dev)
 	docker build -t $(IMAGE) .
+
+docker-console: ## Build the console's container image, the Dockerfile's console target (CONSOLE_IMAGE=stretto-console:dev)
+	docker build --target console -t $(CONSOLE_IMAGE) .
 
 install-dev-tools: ## Install rustfmt, clippy, llvm-tools and cargo-llvm-cov
 	rustup component add rustfmt clippy llvm-tools-preview

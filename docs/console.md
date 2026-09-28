@@ -66,7 +66,7 @@ docker run -d --name stretto-console -p 127.0.0.1:8080:8080 \
 docker logs stretto-console
 ```
 
-It runs as your user, so that the files the console writes (`servers.json`, the jobs, the trash) are yours; on macOS and Windows, Docker Desktop maps ownership and `--user` can be left out. The port is published on 127.0.0.1 only. The image's health check runs `stretto-console healthcheck`. `STRETTO_CONSOLE_TOKEN` fixes the token, so the URL stays the same across restarts, and `TYPESAFE_API_KEY`, when set, reaches the jobs that fit an arbiter; compose passes both through from your environment. Build the image from a checkout with `docker build --target console -t stretto-console .`.
+It runs as your user, so that the files the console writes (`servers.json`, the jobs, the trash) are yours; on macOS and Windows, Docker Desktop maps ownership and `--user` can be left out. The port is published on 127.0.0.1 only. The image's health check runs `stretto-console healthcheck`. `STRETTO_CONSOLE_TOKEN` fixes the token, so the URL stays the same across restarts, and `TYPESAFE_API_KEY`, when set, reaches the jobs that fit an arbiter; compose passes both through from your environment. Build the image from a checkout with `make docker-console`, or `docker build --target console -t stretto-console .`.
 
 ## Sign in
 
