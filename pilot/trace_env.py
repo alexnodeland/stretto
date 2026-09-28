@@ -132,9 +132,11 @@ class TraceEpisode:
             "unrecorded": self.unrecorded,
         }))
 
-    def record(self, name: str, arguments: dict, result: str, error: bool) -> None:
+    def record(self, name: str, arguments: dict, result: str, error: bool, cid: str | None = None) -> None:
+        """Write the call and its result, with `cid` (the flow's lookups are
+        `stretto-N`, as stretto-proxy numbers its own), or a fresh id."""
         self.ids += 1
-        cid = f"call_{self.ids}"
+        cid = cid or f"call_{self.ids}"
         self.append(
             {"role": "assistant", "content": None,
              "tool_calls": [{"id": cid, "name": name, "arguments": arguments, "requestor": "assistant"}]},
@@ -224,6 +226,6 @@ class TraceEpisode:
                 self.unrecorded += 1
                 found = self.stand_in(tool)
             result, failed = found
-            self.record(tool, args, result, failed)
+            self.record(tool, args, result, failed, f"stretto-{self.flow_lookups}")
             done.append((tool, args, result, failed))
         return done

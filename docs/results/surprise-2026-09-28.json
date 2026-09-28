@@ -1,0 +1,9299 @@
+[
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": null,
+  "quantile": null,
+  "threshold": null,
+  "episodes": 160,
+  "tripped": 0,
+  "turns": 1384,
+  "saved": 315,
+  "used": 587,
+  "detours": 41,
+  "sessions": []
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 1,
+  "quantile": 0.99,
+  "threshold": 9.31316183804587,
+  "episodes": 160,
+  "tripped": 3,
+  "turns": 1384,
+  "saved": 315,
+  "used": 587,
+  "detours": 41,
+  "sessions": [
+   {
+    "episode": "task-51-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 1,
+  "quantile": 0.95,
+  "threshold": 9.075680324570097,
+  "episodes": 160,
+  "tripped": 3,
+  "turns": 1384,
+  "saved": 315,
+  "used": 587,
+  "detours": 41,
+  "sessions": [
+   {
+    "episode": "task-51-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 1,
+  "quantile": 0.9,
+  "threshold": 4.060099287699063,
+  "episodes": 160,
+  "tripped": 14,
+  "turns": 1384,
+  "saved": 314,
+  "used": 584,
+  "detours": 41,
+  "sessions": [
+   {
+    "episode": "task-39-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-39-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-65-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-65-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-39-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-68-3",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 1,
+  "quantile": 0.8,
+  "threshold": 2.1094746191026084,
+  "episodes": 160,
+  "tripped": 18,
+  "turns": 1384,
+  "saved": 306,
+  "used": 556,
+  "detours": 38,
+  "sessions": [
+   {
+    "episode": "task-39-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-55-1",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-55-0",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-65-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-65-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-39-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-55-2",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-77-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-68-3",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-55-3",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 7,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 1,
+  "quantile": 0.5,
+  "threshold": 1.333475941840365,
+  "episodes": 160,
+  "tripped": 93,
+  "turns": 1384,
+  "saved": 306,
+  "used": 556,
+  "detours": 33,
+  "sessions": [
+   {
+    "episode": "task-79-1",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-86-0",
+    "saved": 2,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-64-1",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-74-0",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-55-1",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-49-1",
+    "saved": 2,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 2,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-49-0",
+    "saved": 2,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-27-0",
+    "saved": 3,
+    "used": 3,
+    "detours": 2,
+    "without": {
+     "saved": 3,
+     "used": 3,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-90-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 2,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-5-1",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-27-1",
+    "saved": 3,
+    "used": 3,
+    "detours": 2,
+    "without": {
+     "saved": 3,
+     "used": 3,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-71-1",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-86-1",
+    "saved": 2,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-36-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-70-0",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-55-0",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-56-1",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-5-0",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-38-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-9-1",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-100-0",
+    "saved": 2,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-102-0",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-111-1",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-71-0",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-97-1",
+    "saved": 2,
+    "used": 3,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-65-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-79-0",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-90-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 2,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-56-2",
+    "saved": 1,
+    "used": 3,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-102-1",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-64-0",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-9-0",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-65-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-39-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-97-0",
+    "saved": 2,
+    "used": 3,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-5-2",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-100-1",
+    "saved": 4,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-64-2",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-86-2",
+    "saved": 2,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-0",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-38-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-0",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-71-2",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-97-2",
+    "saved": 2,
+    "used": 3,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-55-2",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-36-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-2",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-111-2",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-38-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-102-2",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-42-1",
+    "saved": 2,
+    "used": 3,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-9-3",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-70-2",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-77-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-5-3",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-100-2",
+    "saved": 2,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-90-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 2,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-111-0",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-27-3",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-42-3",
+    "saved": 2,
+    "used": 3,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-79-2",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-1",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-68-3",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-9-2",
+    "saved": 1,
+    "used": 3,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-27-2",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-70-1",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-70-3",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-86-3",
+    "saved": 2,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-79-3",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-56-3",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-2",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-64-3",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-49-2",
+    "saved": 2,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-90-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 2,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-55-3",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-97-3",
+    "saved": 2,
+    "used": 3,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-3",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-111-3",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 2,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-36-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-102-3",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-100-3",
+    "saved": 2,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-36-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 2,
+  "quantile": 0.99,
+  "threshold": 5.773851965602908,
+  "episodes": 160,
+  "tripped": 3,
+  "turns": 1384,
+  "saved": 315,
+  "used": 587,
+  "detours": 41,
+  "sessions": [
+   {
+    "episode": "task-51-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 2,
+  "quantile": 0.95,
+  "threshold": 4.988665455439344,
+  "episodes": 160,
+  "tripped": 3,
+  "turns": 1384,
+  "saved": 315,
+  "used": 587,
+  "detours": 41,
+  "sessions": [
+   {
+    "episode": "task-51-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 2,
+  "quantile": 0.9,
+  "threshold": 2.0942425066830785,
+  "episodes": 160,
+  "tripped": 12,
+  "turns": 1384,
+  "saved": 315,
+  "used": 587,
+  "detours": 41,
+  "sessions": [
+   {
+    "episode": "task-39-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-39-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-65-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-65-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-39-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 2,
+  "quantile": 0.8,
+  "threshold": 1.452200366726468,
+  "episodes": 160,
+  "tripped": 15,
+  "turns": 1384,
+  "saved": 315,
+  "used": 587,
+  "detours": 39,
+  "sessions": [
+   {
+    "episode": "task-39-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-39-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-100-0",
+    "saved": 2,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-65-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-65-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-39-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-71-2",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-100-3",
+    "saved": 2,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 6,
+     "detours": 1
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 2,
+  "quantile": 0.5,
+  "threshold": 0.827003735776656,
+  "episodes": 160,
+  "tripped": 61,
+  "turns": 1384,
+  "saved": 315,
+  "used": 587,
+  "detours": 36,
+  "sessions": [
+   {
+    "episode": "task-39-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-49-1",
+    "saved": 2,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 2,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-49-0",
+    "saved": 2,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-27-0",
+    "saved": 3,
+    "used": 3,
+    "detours": 2,
+    "without": {
+     "saved": 3,
+     "used": 3,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-5-1",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-71-1",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-36-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-70-0",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-5-0",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-38-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-9-1",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-100-0",
+    "saved": 2,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-102-0",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-111-1",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-71-0",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-65-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-102-1",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-9-0",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-65-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-39-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-5-2",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-100-1",
+    "saved": 4,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-45-0",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-38-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-0",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-71-2",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-36-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-2",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-111-2",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-38-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-102-2",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-9-3",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-70-2",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-5-3",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-100-2",
+    "saved": 2,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-111-0",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-27-3",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-1",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-9-2",
+    "saved": 1,
+    "used": 3,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-27-2",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-70-1",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-70-3",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-2",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-49-2",
+    "saved": 2,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-101-3",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-111-3",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 2,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-36-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-71-3",
+    "saved": 2,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-102-3",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-100-3",
+    "saved": 2,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-36-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 3,
+  "quantile": 0.99,
+  "threshold": 6.259489936061226,
+  "episodes": 160,
+  "tripped": 0,
+  "turns": 1384,
+  "saved": 315,
+  "used": 587,
+  "detours": 41,
+  "sessions": []
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 3,
+  "quantile": 0.95,
+  "threshold": 3.674550141801619,
+  "episodes": 160,
+  "tripped": 3,
+  "turns": 1384,
+  "saved": 315,
+  "used": 587,
+  "detours": 41,
+  "sessions": [
+   {
+    "episode": "task-51-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 3,
+  "quantile": 0.9,
+  "threshold": 1.5727771583735357,
+  "episodes": 160,
+  "tripped": 6,
+  "turns": 1384,
+  "saved": 315,
+  "used": 587,
+  "detours": 41,
+  "sessions": [
+   {
+    "episode": "task-51-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-65-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-65-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-39-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 3,
+  "quantile": 0.8,
+  "threshold": 0.9886500262226314,
+  "episodes": 160,
+  "tripped": 18,
+  "turns": 1384,
+  "saved": 315,
+  "used": 587,
+  "detours": 41,
+  "sessions": [
+   {
+    "episode": "task-36-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-5-0",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-38-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-102-0",
+    "saved": 2,
+    "used": 4,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-65-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-102-1",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-9-0",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-65-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-100-1",
+    "saved": 4,
+    "used": 6,
+    "detours": 1,
+    "without": {
+     "saved": 4,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-38-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-36-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-38-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-39-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-36-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-36-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 3,
+  "quantile": 0.5,
+  "threshold": 0.6085071310247702,
+  "episodes": 160,
+  "tripped": 20,
+  "turns": 1384,
+  "saved": 315,
+  "used": 587,
+  "detours": 41,
+  "sessions": [
+   {
+    "episode": "task-36-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-5-0",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-38-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-102-0",
+    "saved": 2,
+    "used": 4,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-65-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-102-1",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-9-0",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-65-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-100-1",
+    "saved": 4,
+    "used": 6,
+    "detours": 1,
+    "without": {
+     "saved": 4,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-38-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-36-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-38-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-102-2",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-39-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-36-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-102-3",
+    "saved": 2,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-36-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 5,
+  "quantile": 0.99,
+  "threshold": 3.834349092150159,
+  "episodes": 160,
+  "tripped": 0,
+  "turns": 1384,
+  "saved": 315,
+  "used": 587,
+  "detours": 41,
+  "sessions": []
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 5,
+  "quantile": 0.95,
+  "threshold": 3.834349092150159,
+  "episodes": 160,
+  "tripped": 0,
+  "turns": 1384,
+  "saved": 315,
+  "used": 587,
+  "detours": 41,
+  "sessions": []
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 5,
+  "quantile": 0.9,
+  "threshold": 1.4350328524502474,
+  "episodes": 160,
+  "tripped": 0,
+  "turns": 1384,
+  "saved": 315,
+  "used": 587,
+  "detours": 41,
+  "sessions": []
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 5,
+  "quantile": 0.8,
+  "threshold": 0.7720570198346742,
+  "episodes": 160,
+  "tripped": 7,
+  "turns": 1384,
+  "saved": 315,
+  "used": 587,
+  "detours": 41,
+  "sessions": [
+   {
+    "episode": "task-36-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-38-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-100-1",
+    "saved": 4,
+    "used": 6,
+    "detours": 1,
+    "without": {
+     "saved": 4,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-38-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-36-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-36-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-36-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "retail",
+  "window": 5,
+  "quantile": 0.5,
+  "threshold": 0.6156354075279376,
+  "episodes": 160,
+  "tripped": 8,
+  "turns": 1384,
+  "saved": 315,
+  "used": 587,
+  "detours": 41,
+  "sessions": [
+   {
+    "episode": "task-36-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-38-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-100-1",
+    "saved": 4,
+    "used": 6,
+    "detours": 1,
+    "without": {
+     "saved": 4,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-38-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-36-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-38-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-36-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-36-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": null,
+  "quantile": null,
+  "threshold": null,
+  "episodes": 80,
+  "tripped": 0,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": []
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 1,
+  "quantile": 0.99,
+  "threshold": 7.790945617452143,
+  "episodes": 80,
+  "tripped": 4,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": [
+   {
+    "episode": "task-25-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-3",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 1,
+  "quantile": 0.95,
+  "threshold": 6.869922419784275,
+  "episodes": 80,
+  "tripped": 4,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": [
+   {
+    "episode": "task-25-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-3",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 1,
+  "quantile": 0.9,
+  "threshold": 5.131995384469715,
+  "episodes": 80,
+  "tripped": 8,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": [
+   {
+    "episode": "task-45-0",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-2",
+    "saved": 0,
+    "used": 0,
+    "detours": 1,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-25-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-22-0",
+    "saved": 1,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-3",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-3",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 1,
+  "quantile": 0.8,
+  "threshold": 3.485444738467038,
+  "episodes": 80,
+  "tripped": 10,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": [
+   {
+    "episode": "task-45-0",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-2",
+    "saved": 0,
+    "used": 0,
+    "detours": 1,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-25-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-22-0",
+    "saved": 1,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-29-0",
+    "saved": 0,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-3",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-3",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-29-2",
+    "saved": 0,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 1,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 1,
+  "quantile": 0.5,
+  "threshold": 2.354574517987978,
+  "episodes": 80,
+  "tripped": 39,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 1,
+  "sessions": [
+   {
+    "episode": "task-18-1",
+    "saved": 1,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-2",
+    "saved": 1,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-45-0",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-22-1",
+    "saved": 1,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-8-1",
+    "saved": 1,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-37-1",
+    "saved": 1,
+    "used": 3,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-8-0",
+    "saved": 1,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-2",
+    "saved": 1,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-30-0",
+    "saved": 1,
+    "used": 3,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-2",
+    "saved": 0,
+    "used": 0,
+    "detours": 1,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-44-1",
+    "saved": 1,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-25-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-37-0",
+    "saved": 1,
+    "used": 3,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-0",
+    "saved": 1,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-32-0",
+    "saved": 1,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-22-0",
+    "saved": 1,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-35-1",
+    "saved": 1,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-16-1",
+    "saved": 1,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-22-2",
+    "saved": 1,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-32-1",
+    "saved": 1,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-16-3",
+    "saved": 1,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-8-3",
+    "saved": 1,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-35-0",
+    "saved": 1,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-29-0",
+    "saved": 0,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-3",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-8-2",
+    "saved": 1,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-3",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-3",
+    "saved": 1,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-35-3",
+    "saved": 1,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-29-2",
+    "saved": 0,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-16-0",
+    "saved": 1,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-30-3",
+    "saved": 1,
+    "used": 3,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-37-3",
+    "saved": 1,
+    "used": 3,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-6-0",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-16-2",
+    "saved": 1,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-2-2",
+    "saved": 0,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-35-2",
+    "saved": 1,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 4,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 2,
+  "quantile": 0.99,
+  "threshold": 5.075649873166052,
+  "episodes": 80,
+  "tripped": 0,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": []
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 2,
+  "quantile": 0.95,
+  "threshold": 4.0678399247552495,
+  "episodes": 80,
+  "tripped": 0,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": []
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 2,
+  "quantile": 0.9,
+  "threshold": 3.3234021259677475,
+  "episodes": 80,
+  "tripped": 3,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": [
+   {
+    "episode": "task-45-0",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-2",
+    "saved": 0,
+    "used": 0,
+    "detours": 1,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-45-3",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 2,
+  "quantile": 0.8,
+  "threshold": 2.7232356038167658,
+  "episodes": 80,
+  "tripped": 4,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": [
+   {
+    "episode": "task-45-0",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-2",
+    "saved": 0,
+    "used": 0,
+    "detours": 1,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-44-1",
+    "saved": 1,
+    "used": 5,
+    "detours": 1,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-45-3",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 2,
+  "quantile": 0.5,
+  "threshold": 1.6581591557654463,
+  "episodes": 80,
+  "tripped": 17,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": [
+   {
+    "episode": "task-44-2",
+    "saved": 1,
+    "used": 5,
+    "detours": 1,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-45-0",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-2",
+    "saved": 0,
+    "used": 0,
+    "detours": 1,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-44-1",
+    "saved": 1,
+    "used": 5,
+    "detours": 1,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-44-0",
+    "saved": 1,
+    "used": 5,
+    "detours": 1,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-32-0",
+    "saved": 1,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-35-1",
+    "saved": 1,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-32-1",
+    "saved": 1,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-35-0",
+    "saved": 1,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-29-0",
+    "saved": 0,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-3",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-3",
+    "saved": 1,
+    "used": 5,
+    "detours": 1,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-35-3",
+    "saved": 1,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-29-2",
+    "saved": 0,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-2-1",
+    "saved": 1,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-2-2",
+    "saved": 0,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-35-2",
+    "saved": 1,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 4,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 3,
+  "quantile": 0.99,
+  "threshold": 3.4986779927968197,
+  "episodes": 80,
+  "tripped": 0,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": []
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 3,
+  "quantile": 0.95,
+  "threshold": 3.4439709434795307,
+  "episodes": 80,
+  "tripped": 0,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": []
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 3,
+  "quantile": 0.9,
+  "threshold": 2.7594016553634386,
+  "episodes": 80,
+  "tripped": 2,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": [
+   {
+    "episode": "task-45-0",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-3",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 3,
+  "quantile": 0.8,
+  "threshold": 2.502583430987758,
+  "episodes": 80,
+  "tripped": 2,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": [
+   {
+    "episode": "task-45-0",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-3",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 3,
+  "quantile": 0.5,
+  "threshold": 1.5219291853601902,
+  "episodes": 80,
+  "tripped": 10,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": [
+   {
+    "episode": "task-44-2",
+    "saved": 1,
+    "used": 5,
+    "detours": 1,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-45-0",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-1",
+    "saved": 1,
+    "used": 5,
+    "detours": 1,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-44-0",
+    "saved": 1,
+    "used": 5,
+    "detours": 1,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-32-0",
+    "saved": 1,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-29-0",
+    "saved": 0,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-45-3",
+    "saved": 0,
+    "used": 0,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 0,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-3",
+    "saved": 1,
+    "used": 5,
+    "detours": 1,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-2-1",
+    "saved": 1,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-2-2",
+    "saved": 0,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 2,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 5,
+  "quantile": 0.99,
+  "threshold": 2.5464860129825473,
+  "episodes": 80,
+  "tripped": 0,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": []
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 5,
+  "quantile": 0.95,
+  "threshold": 2.5464860129825473,
+  "episodes": 80,
+  "tripped": 0,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": []
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 5,
+  "quantile": 0.9,
+  "threshold": 2.5464860129825473,
+  "episodes": 80,
+  "tripped": 0,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": []
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 5,
+  "quantile": 0.8,
+  "threshold": 1.654033089507917,
+  "episodes": 80,
+  "tripped": 5,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": [
+   {
+    "episode": "task-44-2",
+    "saved": 1,
+    "used": 5,
+    "detours": 1,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-44-1",
+    "saved": 1,
+    "used": 5,
+    "detours": 1,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-44-0",
+    "saved": 1,
+    "used": 5,
+    "detours": 1,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-44-3",
+    "saved": 1,
+    "used": 5,
+    "detours": 1,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-2-2",
+    "saved": 0,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 2,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "GLM-5",
+  "domain": "airline",
+  "window": 5,
+  "quantile": 0.5,
+  "threshold": 1.3256475831285521,
+  "episodes": 80,
+  "tripped": 5,
+  "turns": 630,
+  "saved": 55,
+  "used": 200,
+  "detours": 5,
+  "sessions": [
+   {
+    "episode": "task-44-2",
+    "saved": 1,
+    "used": 5,
+    "detours": 1,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-44-1",
+    "saved": 1,
+    "used": 5,
+    "detours": 1,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-44-0",
+    "saved": 1,
+    "used": 5,
+    "detours": 1,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-44-3",
+    "saved": 1,
+    "used": 5,
+    "detours": 1,
+    "without": {
+     "saved": 1,
+     "used": 5,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-2-2",
+    "saved": 0,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 0,
+     "used": 2,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": null,
+  "quantile": null,
+  "threshold": null,
+  "episodes": 160,
+  "tripped": 0,
+  "turns": 2163,
+  "saved": 628,
+  "used": 628,
+  "detours": 104,
+  "sessions": []
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 1,
+  "quantile": 0.99,
+  "threshold": 8.852791450509665,
+  "episodes": 160,
+  "tripped": 0,
+  "turns": 2163,
+  "saved": 628,
+  "used": 628,
+  "detours": 104,
+  "sessions": []
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 1,
+  "quantile": 0.95,
+  "threshold": 4.225053898563441,
+  "episodes": 160,
+  "tripped": 4,
+  "turns": 2163,
+  "saved": 628,
+  "used": 628,
+  "detours": 104,
+  "sessions": [
+   {
+    "episode": "task-77-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-77-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-77-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-77-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 1,
+  "quantile": 0.9,
+  "threshold": 3.93583846697873,
+  "episodes": 160,
+  "tripped": 4,
+  "turns": 2163,
+  "saved": 628,
+  "used": 628,
+  "detours": 104,
+  "sessions": [
+   {
+    "episode": "task-77-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-77-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-77-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-77-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 1,
+  "quantile": 0.8,
+  "threshold": 3.2362185849447522,
+  "episodes": 160,
+  "tripped": 12,
+  "turns": 2163,
+  "saved": 627,
+  "used": 627,
+  "detours": 104,
+  "sessions": [
+   {
+    "episode": "task-39-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-62-0",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-77-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-62-1",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-77-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-65-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-65-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-3",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 1,
+  "quantile": 0.5,
+  "threshold": 2.0665484854693243,
+  "episodes": 160,
+  "tripped": 21,
+  "turns": 2163,
+  "saved": 627,
+  "used": 627,
+  "detours": 104,
+  "sessions": [
+   {
+    "episode": "task-39-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-42-0",
+    "saved": 3,
+    "used": 3,
+    "detours": 0,
+    "without": {
+     "saved": 3,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-62-0",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-77-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-62-1",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-77-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-1",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-55-2",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-65-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-77-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-2",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-102-2",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-65-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-71-3",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-77-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-3",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-111-3",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 2,
+  "quantile": 0.99,
+  "threshold": 5.290242119936977,
+  "episodes": 160,
+  "tripped": 0,
+  "turns": 2163,
+  "saved": 628,
+  "used": 628,
+  "detours": 104,
+  "sessions": []
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 2,
+  "quantile": 0.95,
+  "threshold": 3.1059454160489977,
+  "episodes": 160,
+  "tripped": 0,
+  "turns": 2163,
+  "saved": 628,
+  "used": 628,
+  "detours": 104,
+  "sessions": []
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 2,
+  "quantile": 0.9,
+  "threshold": 2.361202671687578,
+  "episodes": 160,
+  "tripped": 4,
+  "turns": 2163,
+  "saved": 628,
+  "used": 628,
+  "detours": 104,
+  "sessions": [
+   {
+    "episode": "task-62-0",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-62-1",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-65-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-65-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 2,
+  "quantile": 0.8,
+  "threshold": 1.9202185253635442,
+  "episodes": 160,
+  "tripped": 13,
+  "turns": 2163,
+  "saved": 627,
+  "used": 627,
+  "detours": 104,
+  "sessions": [
+   {
+    "episode": "task-39-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-62-0",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-62-1",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-1",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-55-2",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-65-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-101-2",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-65-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-71-3",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-3",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-111-3",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 2,
+  "quantile": 0.5,
+  "threshold": 1.4163750018257266,
+  "episodes": 160,
+  "tripped": 18,
+  "turns": 2163,
+  "saved": 627,
+  "used": 627,
+  "detours": 104,
+  "sessions": [
+   {
+    "episode": "task-39-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-42-0",
+    "saved": 3,
+    "used": 3,
+    "detours": 0,
+    "without": {
+     "saved": 3,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-62-0",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-51-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-62-1",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-1",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-55-2",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-65-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-62-2",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-2",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-102-2",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-51-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-65-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-71-3",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-3",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-111-3",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 3,
+  "quantile": 0.99,
+  "threshold": 4.0092893970211305,
+  "episodes": 160,
+  "tripped": 0,
+  "turns": 2163,
+  "saved": 628,
+  "used": 628,
+  "detours": 104,
+  "sessions": []
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 3,
+  "quantile": 0.95,
+  "threshold": 2.2684489236422856,
+  "episodes": 160,
+  "tripped": 0,
+  "turns": 2163,
+  "saved": 628,
+  "used": 628,
+  "detours": 104,
+  "sessions": []
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 3,
+  "quantile": 0.9,
+  "threshold": 1.824600939783843,
+  "episodes": 160,
+  "tripped": 3,
+  "turns": 2163,
+  "saved": 628,
+  "used": 628,
+  "detours": 104,
+  "sessions": [
+   {
+    "episode": "task-62-0",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-62-1",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-71-3",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 3,
+  "quantile": 0.8,
+  "threshold": 1.570985792471599,
+  "episodes": 160,
+  "tripped": 7,
+  "turns": 2163,
+  "saved": 628,
+  "used": 628,
+  "detours": 104,
+  "sessions": [
+   {
+    "episode": "task-62-0",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-62-1",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-55-2",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-65-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-65-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-71-3",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-111-3",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 3,
+  "quantile": 0.5,
+  "threshold": 1.1488041953645614,
+  "episodes": 160,
+  "tripped": 22,
+  "turns": 2163,
+  "saved": 627,
+  "used": 627,
+  "detours": 104,
+  "sessions": [
+   {
+    "episode": "task-36-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-38-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-42-0",
+    "saved": 3,
+    "used": 3,
+    "detours": 0,
+    "without": {
+     "saved": 3,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-62-0",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-62-1",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-1",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-100-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-36-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-38-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-55-2",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-65-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-62-2",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-2",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-39-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-38-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-36-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-65-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-71-3",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-3",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-111-3",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 5,
+  "quantile": 0.99,
+  "threshold": 2.6673643624577172,
+  "episodes": 160,
+  "tripped": 0,
+  "turns": 2163,
+  "saved": 628,
+  "used": 628,
+  "detours": 104,
+  "sessions": []
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 5,
+  "quantile": 0.95,
+  "threshold": 1.7102907540496997,
+  "episodes": 160,
+  "tripped": 0,
+  "turns": 2163,
+  "saved": 628,
+  "used": 628,
+  "detours": 104,
+  "sessions": []
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 5,
+  "quantile": 0.9,
+  "threshold": 1.3658450064788565,
+  "episodes": 160,
+  "tripped": 2,
+  "turns": 2163,
+  "saved": 628,
+  "used": 628,
+  "detours": 104,
+  "sessions": [
+   {
+    "episode": "task-62-1",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-55-2",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 5,
+  "quantile": 0.8,
+  "threshold": 1.1894990173600046,
+  "episodes": 160,
+  "tripped": 4,
+  "turns": 2163,
+  "saved": 628,
+  "used": 628,
+  "detours": 104,
+  "sessions": [
+   {
+    "episode": "task-62-0",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-62-1",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-55-2",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-3",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "retail",
+  "window": 5,
+  "quantile": 0.5,
+  "threshold": 0.8585199451524208,
+  "episodes": 160,
+  "tripped": 18,
+  "turns": 2163,
+  "saved": 628,
+  "used": 628,
+  "detours": 104,
+  "sessions": [
+   {
+    "episode": "task-36-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-38-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-62-0",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-0",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-62-1",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-1",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-100-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-36-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-38-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-55-2",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-62-2",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-2",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-102-2",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-38-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-36-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-101-3",
+    "saved": 5,
+    "used": 5,
+    "detours": 0,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-100-3",
+    "saved": 6,
+    "used": 6,
+    "detours": 1,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-111-3",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": null,
+  "quantile": null,
+  "threshold": null,
+  "episodes": 80,
+  "tripped": 0,
+  "turns": 1081,
+  "saved": 186,
+  "used": 186,
+  "detours": 57,
+  "sessions": []
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 1,
+  "quantile": 0.99,
+  "threshold": 5.480286588827154,
+  "episodes": 80,
+  "tripped": 0,
+  "turns": 1081,
+  "saved": 186,
+  "used": 186,
+  "detours": 57,
+  "sessions": []
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 1,
+  "quantile": 0.95,
+  "threshold": 4.572254179947338,
+  "episodes": 80,
+  "tripped": 1,
+  "turns": 1081,
+  "saved": 186,
+  "used": 186,
+  "detours": 57,
+  "sessions": [
+   {
+    "episode": "task-30-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 1,
+  "quantile": 0.9,
+  "threshold": 3.809793774826101,
+  "episodes": 80,
+  "tripped": 3,
+  "turns": 1081,
+  "saved": 186,
+  "used": 186,
+  "detours": 56,
+  "sessions": [
+   {
+    "episode": "task-30-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 1,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-26-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 1,
+  "quantile": 0.8,
+  "threshold": 3.5914946708287356,
+  "episodes": 80,
+  "tripped": 3,
+  "turns": 1081,
+  "saved": 186,
+  "used": 186,
+  "detours": 56,
+  "sessions": [
+   {
+    "episode": "task-30-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 1,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-26-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 1,
+  "quantile": 0.5,
+  "threshold": 1.7099402535210266,
+  "episodes": 80,
+  "tripped": 40,
+  "turns": 1081,
+  "saved": 183,
+  "used": 183,
+  "detours": 51,
+  "sessions": [
+   {
+    "episode": "task-6-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 3,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-8-0",
+    "saved": 5,
+    "used": 5,
+    "detours": 2,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-16-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-22-0",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-0",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-30-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-35-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 3,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 3
+    }
+   },
+   {
+    "episode": "task-48-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-44-0",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-8-1",
+    "saved": 5,
+    "used": 5,
+    "detours": 2,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-13-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-16-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-22-1",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-35-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 3,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 3
+    }
+   },
+   {
+    "episode": "task-48-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 1,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-8-2",
+    "saved": 5,
+    "used": 5,
+    "detours": 2,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-13-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-16-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 2,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-29-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-35-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 3,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 3
+    }
+   },
+   {
+    "episode": "task-48-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-44-2",
+    "saved": 5,
+    "used": 5,
+    "detours": 2,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-8-3",
+    "saved": 5,
+    "used": 5,
+    "detours": 2,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-16-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-3",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-3",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-26-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-31-3",
+    "saved": 3,
+    "used": 3,
+    "detours": 0,
+    "without": {
+     "saved": 3,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-35-3",
+    "saved": 1,
+    "used": 1,
+    "detours": 3,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 3
+    }
+   },
+   {
+    "episode": "task-24-3",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-37-3",
+    "saved": 3,
+    "used": 3,
+    "detours": 1,
+    "without": {
+     "saved": 3,
+     "used": 3,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-44-3",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 2,
+  "quantile": 0.99,
+  "threshold": 2.9484853447265857,
+  "episodes": 80,
+  "tripped": 0,
+  "turns": 1081,
+  "saved": 186,
+  "used": 186,
+  "detours": 57,
+  "sessions": []
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 2,
+  "quantile": 0.95,
+  "threshold": 2.788642769500191,
+  "episodes": 80,
+  "tripped": 0,
+  "turns": 1081,
+  "saved": 186,
+  "used": 186,
+  "detours": 57,
+  "sessions": []
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 2,
+  "quantile": 0.9,
+  "threshold": 2.7260114731208525,
+  "episodes": 80,
+  "tripped": 0,
+  "turns": 1081,
+  "saved": 186,
+  "used": 186,
+  "detours": 57,
+  "sessions": []
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 2,
+  "quantile": 0.8,
+  "threshold": 2.4230860441059585,
+  "episodes": 80,
+  "tripped": 1,
+  "turns": 1081,
+  "saved": 186,
+  "used": 186,
+  "detours": 57,
+  "sessions": [
+   {
+    "episode": "task-26-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 2,
+  "quantile": 0.5,
+  "threshold": 1.1189218442833657,
+  "episodes": 80,
+  "tripped": 39,
+  "turns": 1081,
+  "saved": 185,
+  "used": 185,
+  "detours": 52,
+  "sessions": [
+   {
+    "episode": "task-2-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-16-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-22-0",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-0",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-35-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 3,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 3
+    }
+   },
+   {
+    "episode": "task-37-0",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-48-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-44-0",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-2-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-13-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-16-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-22-1",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-37-1",
+    "saved": 3,
+    "used": 3,
+    "detours": 1,
+    "without": {
+     "saved": 3,
+     "used": 3,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-35-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 3,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 3
+    }
+   },
+   {
+    "episode": "task-48-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 1,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-2-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-13-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-16-2",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-25-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 2,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-29-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-35-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 3,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 3
+    }
+   },
+   {
+    "episode": "task-37-2",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-48-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-44-2",
+    "saved": 5,
+    "used": 5,
+    "detours": 2,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-2-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-16-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-3",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-26-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 1,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-31-3",
+    "saved": 3,
+    "used": 3,
+    "detours": 0,
+    "without": {
+     "saved": 3,
+     "used": 3,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-35-3",
+    "saved": 1,
+    "used": 1,
+    "detours": 3,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 3
+    }
+   },
+   {
+    "episode": "task-24-3",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-37-3",
+    "saved": 3,
+    "used": 3,
+    "detours": 1,
+    "without": {
+     "saved": 3,
+     "used": 3,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-44-3",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 3,
+  "quantile": 0.99,
+  "threshold": 2.269620799281293,
+  "episodes": 80,
+  "tripped": 1,
+  "turns": 1081,
+  "saved": 186,
+  "used": 186,
+  "detours": 57,
+  "sessions": [
+   {
+    "episode": "task-44-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 1,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 1
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 3,
+  "quantile": 0.95,
+  "threshold": 2.034477424600068,
+  "episodes": 80,
+  "tripped": 10,
+  "turns": 1081,
+  "saved": 186,
+  "used": 186,
+  "detours": 57,
+  "sessions": [
+   {
+    "episode": "task-18-0",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-0",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 1,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-24-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 2,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-44-2",
+    "saved": 5,
+    "used": 5,
+    "detours": 2,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-24-3",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-3",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 3,
+  "quantile": 0.9,
+  "threshold": 1.9513924053408658,
+  "episodes": 80,
+  "tripped": 12,
+  "turns": 1081,
+  "saved": 185,
+  "used": 185,
+  "detours": 56,
+  "sessions": [
+   {
+    "episode": "task-18-0",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-0",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-13-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 1,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-13-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-24-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 2,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-44-2",
+    "saved": 5,
+    "used": 5,
+    "detours": 2,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-24-3",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-3",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 3,
+  "quantile": 0.8,
+  "threshold": 1.8606368007265452,
+  "episodes": 80,
+  "tripped": 15,
+  "turns": 1081,
+  "saved": 185,
+  "used": 185,
+  "detours": 56,
+  "sessions": [
+   {
+    "episode": "task-22-0",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-0",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-0",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-13-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-22-1",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 1,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-13-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-24-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 2,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-44-2",
+    "saved": 5,
+    "used": 5,
+    "detours": 2,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-24-3",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-37-3",
+    "saved": 3,
+    "used": 3,
+    "detours": 1,
+    "without": {
+     "saved": 3,
+     "used": 3,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-44-3",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 3,
+  "quantile": 0.5,
+  "threshold": 1.279188459916244,
+  "episodes": 80,
+  "tripped": 20,
+  "turns": 1081,
+  "saved": 185,
+  "used": 185,
+  "detours": 56,
+  "sessions": [
+   {
+    "episode": "task-2-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-22-0",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-0",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-37-0",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-0",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-2-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-13-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-22-1",
+    "saved": 4,
+    "used": 4,
+    "detours": 0,
+    "without": {
+     "saved": 4,
+     "used": 4,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 1,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-13-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-24-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 2,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-44-2",
+    "saved": 5,
+    "used": 5,
+    "detours": 2,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-2-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-3",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-3",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-37-3",
+    "saved": 3,
+    "used": 3,
+    "detours": 1,
+    "without": {
+     "saved": 3,
+     "used": 3,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-44-3",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 5,
+  "quantile": 0.99,
+  "threshold": 1.7194823504396166,
+  "episodes": 80,
+  "tripped": 10,
+  "turns": 1081,
+  "saved": 186,
+  "used": 186,
+  "detours": 57,
+  "sessions": [
+   {
+    "episode": "task-18-0",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-0",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 1,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-24-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 2,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-44-2",
+    "saved": 5,
+    "used": 5,
+    "detours": 2,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-24-3",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-3",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 5,
+  "quantile": 0.95,
+  "threshold": 1.6294185062158704,
+  "episodes": 80,
+  "tripped": 10,
+  "turns": 1081,
+  "saved": 186,
+  "used": 186,
+  "detours": 57,
+  "sessions": [
+   {
+    "episode": "task-18-0",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-0",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 1,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-24-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 2,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-44-2",
+    "saved": 5,
+    "used": 5,
+    "detours": 2,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-24-3",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-3",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 5,
+  "quantile": 0.9,
+  "threshold": 1.5791037665876888,
+  "episodes": 80,
+  "tripped": 10,
+  "turns": 1081,
+  "saved": 186,
+  "used": 186,
+  "detours": 57,
+  "sessions": [
+   {
+    "episode": "task-18-0",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-0",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 1,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-24-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 2,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-44-2",
+    "saved": 5,
+    "used": 5,
+    "detours": 2,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-24-3",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-3",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 5,
+  "quantile": 0.8,
+  "threshold": 1.5600827633542316,
+  "episodes": 80,
+  "tripped": 10,
+  "turns": 1081,
+  "saved": 186,
+  "used": 186,
+  "detours": 57,
+  "sessions": [
+   {
+    "episode": "task-18-0",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-0",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 1,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-24-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 2,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-44-2",
+    "saved": 5,
+    "used": 5,
+    "detours": 2,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-24-3",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-3",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   }
+  ]
+ },
+ {
+  "agent": "Claude 3.7 Sonnet",
+  "domain": "airline",
+  "window": 5,
+  "quantile": 0.5,
+  "threshold": 1.1160286602281735,
+  "episodes": 80,
+  "tripped": 16,
+  "turns": 1081,
+  "saved": 186,
+  "used": 186,
+  "detours": 57,
+  "sessions": [
+   {
+    "episode": "task-2-0",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-0",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-0",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-0",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-2-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-13-1",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-1",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-1",
+    "saved": 6,
+    "used": 6,
+    "detours": 1,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-13-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 1,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 1
+    }
+   },
+   {
+    "episode": "task-24-2",
+    "saved": 1,
+    "used": 1,
+    "detours": 2,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-44-2",
+    "saved": 5,
+    "used": 5,
+    "detours": 2,
+    "without": {
+     "saved": 5,
+     "used": 5,
+     "detours": 2
+    }
+   },
+   {
+    "episode": "task-2-3",
+    "saved": 2,
+    "used": 2,
+    "detours": 0,
+    "without": {
+     "saved": 2,
+     "used": 2,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-18-3",
+    "saved": 6,
+    "used": 6,
+    "detours": 0,
+    "without": {
+     "saved": 6,
+     "used": 6,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-24-3",
+    "saved": 1,
+    "used": 1,
+    "detours": 0,
+    "without": {
+     "saved": 1,
+     "used": 1,
+     "detours": 0
+    }
+   },
+   {
+    "episode": "task-44-3",
+    "saved": 7,
+    "used": 7,
+    "detours": 0,
+    "without": {
+     "saved": 7,
+     "used": 7,
+     "detours": 0
+    }
+   }
+  ]
+ }
+]

@@ -302,7 +302,7 @@ fn compile_writes_one_domains_flow_and_flow_serve_serves_it() {
     let port = free_port();
     let (dir, args) = (
         t.0.clone(),
-        format!("flow-serve {data} --listen 127.0.0.1:{port}"),
+        format!("flow-serve {data} --surprise 3 --listen 127.0.0.1:{port}"),
     );
     std::thread::spawn(move || stretto(&dir, &args, "", |_| {}));
     let call = query(
@@ -560,6 +560,26 @@ fn stage_learns_as_learn_does_and_commits_with_rollback() {
 /// the committed flow has that it does not learn: its arbiter, promotion
 /// and thresholds.
 #[test]
+fn stage_learns_the_committed_flows_surprise_gate_again() {
+    let t = Scratch::new("stage-surprise");
+    t.shop(30);
+    t.run(&format!(
+        "{LEARN_SHOP} --habit-only --surprise 0.9 --surprise-window 2 --out $T/shop.flow.json"
+    ))
+    .ok();
+    let committed = stretto_report::flow::Flow::load(&t.at("shop.flow.json")).unwrap();
+    let gate = *committed.surprise().unwrap();
+    t.run("stage --flow $T/shop.flow.json --sessions $T/s --manifest $T/manifest.json --json $T/stage.json")
+        .ok();
+    // Learned again from the same sessions at its quantile: the same gate,
+    // and nothing carried.
+    let staged = stretto_report::flow::Flow::load(&t.at("shop.staged.flow.json")).unwrap();
+    assert_eq!(staged.surprise(), Some(&gate));
+    let report: Value = serde_json::from_str(&t.get("stage.json")).unwrap();
+    assert_eq!(report["carried"], json!([]), "{report}");
+}
+
+#[test]
 fn stage_takes_what_learn_takes_and_keeps_the_committed_flows_arbiter() {
     let t = Scratch::new("stage-inputs");
     t.shop(30);
@@ -568,6 +588,7 @@ fn stage_takes_what_learn_takes_and_keeps_the_committed_flows_arbiter() {
     t.run(&format!("{promote} --out $T/shop.flow.json")).ok();
     let mut committed: Value = serde_json::from_str(&t.get("shop.flow.json")).unwrap();
     committed["thresholds"] = json!({"find_account": 0.4});
+    committed["surprise"] = json!({"window": 3, "threshold": 1.5});
     committed["stretto_flow"] = json!(2);
     t.put("shop.flow.json", &committed.to_string());
     let stage = "stage --flow $T/shop.flow.json --sessions $T/s --manifest $T/manifest.json";
@@ -583,14 +604,15 @@ fn stage_takes_what_learn_takes_and_keeps_the_committed_flows_arbiter() {
     let md = t.get("stage.md");
     assert!(
         md.contains("its arbiter, its promotion (it acts at")
-            && md.contains("its thresholds at 1 sites"),
+            && md.contains("its thresholds at 1 sites, its surprise gate, set by hand"),
         "{md}"
     );
     let report: Value = serde_json::from_str(&t.get("stage.json")).unwrap();
-    assert_eq!(report["carried"].as_array().unwrap().len(), 3);
+    assert_eq!(report["carried"].as_array().unwrap().len(), 4);
     let staged = stretto_report::flow::Flow::load(&t.at("shop.staged.flow.json")).unwrap();
     assert!(staged.has_arbiter() && staged.promotion().is_some());
     assert_eq!(staged.thresholds().len(), 1);
+    assert_eq!(staged.surprise().map(|g| g.threshold), Some(1.5));
     t.fails(
         &format!("{stage} --domain airline"),
         "the committed flow is for shop, not airline",
@@ -839,6 +861,51 @@ fn serve_serves_a_flow_file_with_a_decider_the_flow_has() {
         logged.lines().next().unwrap().contains("get_account"),
         "{logged}"
     );
+}
+
+#[test]
+fn learn_sets_a_surprise_gate_and_serve_overrides_it() {
+    let t = Scratch::new("surprise");
+    t.shop(30);
+    let learn = format!("{LEARN_SHOP} --habit-only --surprise 0.9");
+    t.fails(
+        &format!("{learn} --surprise-window 40 --out $T/f.json"),
+        "no held-out training session had 40 of the agent's steps",
+    );
+    t.run(&format!(
+        "{learn} --surprise-window 1 --out $T/gated.flow.json"
+    ))
+    .ok();
+    let gated = stretto_report::flow::Flow::load(&t.at("gated.flow.json")).unwrap();
+    let gate = gated.surprise().unwrap();
+    assert_eq!((gate.window, gate.quantile), (1, Some(0.9)));
+    // The agent's step after finding the account, which the flow found a
+    // little surprising: above a threshold that low, the flow hands back;
+    // without the gate, it looks up.
+    let call = |id: &str, tool: &str, arguments: Value| {
+        json!({"role": "assistant", "tool_calls": [{"id": id, "name": tool,
+            "arguments": arguments, "requestor": "assistant"}]})
+    };
+    let messages = json!([
+        {"role": "user", "content": "I'm c7@example.com."},
+        call("a", "find_account", json!({"email": "c7@example.com"})),
+        {"role": "tool", "id": "a", "content": "acct_7", "error": false},
+        call("b", "get_account", json!({"account_id": "acct_7"})),
+        {"role": "tool", "id": "b", "error": false,
+            "content": json!({"account_id": "acct_7", "orders": ["o7a", "o7b"]}).to_string()}
+    ]);
+    let line = format!("{}\n", json!({"task_id": "9", "messages": messages}));
+    for (over, action) in [("0.000001", "hand_back"), ("off", "lookup")] {
+        let port = free_port();
+        let args = format!(
+            "serve --flow $T/gated.flow.json --oracle mock --decider reach --surprise {over} \
+             --listen 127.0.0.1:{port}"
+        );
+        let dir = t.0.clone();
+        std::thread::spawn(move || stretto(&dir, &args, "", |_| {}));
+        let answer = ask_flow(port, &line);
+        assert_eq!(answer["action"], action, "{over}: {answer}");
+    }
 }
 
 #[test]
@@ -1486,6 +1553,10 @@ fn numbers_out_of_range_are_refused() {
         "drift --flow f --hazard 1.5",
         "drift --flow f --threshold 0",
         "drift --flow f --window 2",
+        "learn --sessions s --domain d --out f --surprise 1.5",
+        "learn --sessions s --domain d --out f --surprise 0.9 --surprise-window 0",
+        "serve --flow f --surprise 0",
+        "serve --flow f --surprise never",
     ] {
         assert_eq!(
             parse_error(args),
@@ -1496,6 +1567,10 @@ fn numbers_out_of_range_are_refused() {
     assert_eq!(
         parse_error("drift --flow f --hazard 0.5 --threshold 1"),
         None
+    );
+    assert_eq!(
+        parse_error("learn --sessions s --domain d --out f --surprise-window 3"),
+        Some(ErrorKind::MissingRequiredArgument)
     );
 }
 

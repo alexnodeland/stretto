@@ -97,8 +97,8 @@ pub fn decisions_with(
             ..episode.clone()
         };
         // Only the arbiter's probabilities are wanted, so no threshold is met
-        // and no arguments are bound.
-        let Ok(next) = flow.next_with(&prefix, oracle, f64::INFINITY, decider) else {
+        // and no arguments are bound, whatever a surprise gate would say.
+        let Ok(next) = flow.next_ungated(&prefix, oracle, f64::INFINITY, decider) else {
             unanswered += 1;
             continue;
         };

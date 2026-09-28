@@ -133,6 +133,8 @@ def start_flow(args, episode: Path) -> tuple[subprocess.Popen, str]:
     ]
     if getattr(args, "explore", None) is not None:
         serving += ["--explore", str(args.explore), "--explore-seed", str(getattr(args, "explore_seed", 0))]
+    if getattr(args, "flow_surprise", None) is not None:
+        serving += ["--surprise", args.flow_surprise]
     if getattr(args, "flow", None):
         command = [str(STRETTO), "serve", "--flow", str(args.flow)] + serving
     else:
@@ -230,6 +232,10 @@ def main() -> None:
         help="who answers live flow questions (mock: plumbing checks only)",
     )
     parser.add_argument("--flow-threshold", type=float, default=0.3)
+    parser.add_argument(
+        "--flow-surprise", metavar="off|NATS",
+        help="serve the flow with this surprise threshold, or without its gate (`stretto serve --surprise`)",
+    )
     parser.add_argument("--flow", type=Path, help="a compiled flow (`stretto compile`), else compiled here")
     parser.add_argument(
         "--record-context", action="store_true",

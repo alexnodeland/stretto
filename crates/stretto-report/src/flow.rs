@@ -25,6 +25,7 @@
 use crate::arbitrate::Fitted;
 use crate::phase0::{case_of, habit_prior, task_group};
 use crate::shadow::{self, Asked, Decision, Kind, Predicate, Sites, RESPOND};
+use crate::surprise::SurpriseGate;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -52,10 +53,10 @@ const MIN_MENTION: usize = 4;
 /// thresholds.
 pub const FLOW_VERSION: u32 = 1;
 
-/// The format of a flow with per-site thresholds (`thresholds`) or with
-/// bindings scored apart where the customer named another value
-/// (`bindings.named_other`), which a build that reads only [`FLOW_VERSION`]
-/// must refuse rather than ignore. This build reads both.
+/// The format of a flow with per-site thresholds (`thresholds`), a surprise
+/// gate (`surprise`) or bindings scored apart where the customer named
+/// another value (`bindings.named_other`), which a build that reads only
+/// [`FLOW_VERSION`] must refuse rather than ignore. This build reads both.
 pub const FLOW_THRESHOLDS_VERSION: u32 = 2;
 
 /// The arbiter file format this build reads and writes.
@@ -207,6 +208,10 @@ pub struct Flow {
     /// format version.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) reach: Option<BackoffModel>,
+    /// When the flow hands back for the rest of a session that surprises it
+    /// ([`crate::surprise`], `learn --surprise`). Absent, it never does.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) surprise: Option<SurpriseGate>,
 }
 
 /// Where a flow may act (RFC-001 §3.7), from `stretto promote`: each site
@@ -522,6 +527,23 @@ pub struct Next {
     pub policy: Option<PolicyView>,
 }
 
+impl Next {
+    /// Handing back for `reason`, with nothing else known yet.
+    fn handing_back(reason: String) -> Self {
+        Self {
+            proposal: Proposal::HandBack { reason },
+            site: None,
+            probs: BTreeMap::new(),
+            prob: None,
+            binding: None,
+            oracle: BTreeMap::new(),
+            predicates: BTreeMap::new(),
+            key: None,
+            policy: None,
+        }
+    }
+}
+
 impl Flow {
     /// The domain the flow was compiled for.
     pub fn domain(&self) -> &str {
@@ -607,11 +629,24 @@ impl Flow {
         self
     }
 
+    /// Its surprise gate, if it has one ([`crate::surprise`]).
+    pub fn surprise(&self) -> Option<&SurpriseGate> {
+        self.surprise.as_ref()
+    }
+
+    /// The flow with `gate`, or with none.
+    pub fn with_surprise(mut self, gate: Option<SurpriseGate>) -> Self {
+        self.surprise = gate;
+        self.stretto_flow = self.format_version();
+        self
+    }
+
     /// The format version the flow's fields need: [`FLOW_THRESHOLDS_VERSION`]
-    /// with per-site thresholds or bindings scored where the customer named
-    /// another value, else [`FLOW_VERSION`].
+    /// with per-site thresholds, a surprise gate or bindings scored where the
+    /// customer named another value, else [`FLOW_VERSION`].
     pub(crate) fn format_version(&self) -> u32 {
         if self.thresholds.is_empty()
+            && self.surprise.is_none()
             && !self.bindings.scores_named_other()
             && !self.bindings.scores_described_read()
             && !self.bindings.orders_sources_by_site()
@@ -768,6 +803,12 @@ impl Flow {
         if flow.stretto_flow == FLOW_VERSION && !flow.thresholds.is_empty() {
             anyhow::bail!("a flow with per-site thresholds is format {FLOW_THRESHOLDS_VERSION}");
         }
+        if flow.stretto_flow == FLOW_VERSION && flow.surprise.is_some() {
+            anyhow::bail!("a flow with a surprise gate is format {FLOW_THRESHOLDS_VERSION}");
+        }
+        if flow.surprise.is_some_and(|g| g.window == 0) {
+            anyhow::bail!("a surprise gate averages over one step or more");
+        }
         if flow.stretto_flow == FLOW_VERSION
             && (flow.bindings.scores_named_other()
                 || flow.bindings.scores_described_read()
@@ -824,7 +865,8 @@ impl Flow {
     /// decision's [`PolicyView`] when it is given. `pending` are calls the
     /// agent has made whose results the episode does not show yet, such as
     /// the rest of a turn still awaiting the server
-    /// ([`Episode::after_call`]): a lookup never repeats one.
+    /// ([`Episode::after_call`]): a lookup never repeats one. A flow with a
+    /// surprise gate hands back for the rest of a session that tripped it.
     pub fn next_explored(
         &self,
         episode: &Episode,
@@ -834,19 +876,71 @@ impl Flow {
         decider: Decider,
         explore: Option<Explore>,
     ) -> Result<Next> {
-        let mut next = Next {
-            proposal: Proposal::HandBack {
-                reason: String::new(),
-            },
-            site: None,
-            probs: BTreeMap::new(),
-            prob: None,
-            binding: None,
-            oracle: BTreeMap::new(),
-            predicates: BTreeMap::new(),
-            key: None,
-            policy: None,
-        };
+        if let Some(gate) = &self.surprise {
+            if let Some((site, _)) = self.habit_at(episode) {
+                if let Some(mean) = crate::surprise::tripped(self, episode, gate) {
+                    let mut next = Next::handing_back(format!(
+                        "the session surprised the flow: {} of the agent's steps in a row averaged {mean:.2} nats, above {:.2}",
+                        gate.window, gate.threshold
+                    ));
+                    next.site = Some(site);
+                    return Ok(next);
+                }
+            }
+        }
+        self.decide(episode, pending, oracle, threshold, decider, explore)
+    }
+
+    /// [`Flow::next_with`], with no surprise gate: the flow's probabilities
+    /// however the session has gone, as the audit scores them.
+    pub(crate) fn next_ungated(
+        &self,
+        episode: &Episode,
+        oracle: &dyn Oracle,
+        threshold: f64,
+        decider: Decider,
+    ) -> Result<Next> {
+        self.decide(episode, &[], oracle, threshold, decider, None)
+    }
+
+    /// The habit's probability of each option at the decision `episode`
+    /// ends at, and the site, whatever the flow's promotion and thresholds
+    /// say: what a surprise gate scores the agent's step by. None where the
+    /// flow does not decide: the last step is no tool call, or no lookup
+    /// followed it in training.
+    pub(crate) fn habit_at(&self, episode: &Episode) -> Option<(String, BTreeMap<String, f64>)> {
+        let live = shadow::live_request(
+            episode,
+            "",
+            &self.manifest,
+            &self.sites,
+            &self.predicates,
+            &self.model,
+        )?;
+        let site = Sites::name(&live.prev, live.failed);
+        let request = live.request?;
+        let st = steps(episode);
+        let features = self.map.features(&step_outputs(episode));
+        let encoded =
+            EncodedEpisode::encode_with_features(&st, Some(&features), &self.vocab, false)
+                .with_group(self.group);
+        let predicted = self.habit.predict_at(&encoded, st.len());
+        let options = shadow::next_options(&request);
+        let prior = habit_prior(&options, &predicted, &self.vocab)?;
+        Some((site, options.into_iter().zip(prior).collect()))
+    }
+
+    /// [`Flow::next_explored`], without the surprise gate.
+    fn decide(
+        &self,
+        episode: &Episode,
+        pending: &[ToolCall],
+        oracle: &dyn Oracle,
+        threshold: f64,
+        decider: Decider,
+        explore: Option<Explore>,
+    ) -> Result<Next> {
+        let mut next = Next::handing_back(String::new());
         let hand_back = |mut next: Next, reason: String| {
             next.proposal = Proposal::HandBack { reason };
             Ok(next)
@@ -3105,6 +3199,7 @@ pub(crate) mod tests {
             thresholds: BTreeMap::new(),
             contracts: BTreeMap::new(),
             reach: None,
+            surprise: None,
         }
     }
 

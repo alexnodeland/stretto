@@ -11,6 +11,7 @@ use stretto_report::confirm::Second;
 use stretto_report::flow::{Decider, Flow};
 use stretto_report::guards::Guards;
 use stretto_report::shadow::{OracleKind, ShadowConfig};
+use stretto_report::surprise::Override;
 
 /// Forward a stdio MCP server's traffic, record it for stretto, and
 /// optionally run a flow, policy guards and a commit tool on it.
@@ -78,6 +79,17 @@ struct Cli {
     /// reach's counts, `habit`.
     #[arg(help_heading = "Flows", long, value_enum)]
     flow_decider: Option<DeciderArg>,
+    /// Hand back for the rest of a session once the agent's steps in a row
+    /// surprise the flow by more than this many nats on average, over the
+    /// flow's surprise gate's steps (5, if it has none); `off` serves the
+    /// flow without the gate it stores (`stretto learn --surprise`).
+    #[arg(
+        help_heading = "Flows",
+        long,
+        value_name = "off|NATS",
+        requires = "flow"
+    )]
+    flow_surprise: Option<Override>,
     /// Lookups appended to one result, at most.
     #[arg(help_heading = "Flows", value_name = "N", long, default_value_t = stretto_report::flow::PER_CALL)]
     flow_per_call: usize,
@@ -358,7 +370,9 @@ fn active(cli: &Cli, jev: &dyn Fn() -> Result<JevClient>) -> Result<Active> {
     let flow = match &cli.flow {
         Some(path) => {
             let path = expand_home(path.clone());
-            let flow = Flow::load(&path).with_context(|| format!("loading {}", path.display()))?;
+            let flow = Flow::load(&path)
+                .with_context(|| format!("loading {}", path.display()))?
+                .with_surprise_override(cli.flow_surprise);
             let decider = match cli.flow_decider {
                 Some(DeciderArg::Arbiter) => Decider::Arbiter,
                 Some(DeciderArg::Habit) => Decider::Habit,
@@ -393,6 +407,9 @@ fn active(cli: &Cli, jev: &dyn Fn() -> Result<JevClient>) -> Result<Active> {
                 decider.name(),
                 if cli.flow_shadow { ", in shadow" } else { "" }
             );
+            if let Some(gate) = flow.surprise() {
+                eprintln!("stretto-proxy: the flow {}", gate.describe());
+            }
             Some(FlowConfig {
                 flow,
                 oracle: sc.build_with(jev)?,
