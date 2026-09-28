@@ -89,3 +89,36 @@ test('the API refuses to cancel a job that has ended', async ({ page }) => {
   expect(response.status()).toBe(409)
   expect((await response.json()).error).toContain('has ended')
 })
+
+test('run again on a learn job opens the form with its parameters, to replace the flow', async ({
+  page,
+}) => {
+  await page.goto('/jobs/j-0002')
+  await page.getByRole('button', { name: 'Run again…' }).click()
+  await expect(page).toHaveURL(/\/jobs\/new\?.*from=j-0002/)
+  await expect(page.getByTestId('job-from')).toContainText('Learn shop from logs/shop')
+  await expect(page.getByTestId('learn-domain')).toHaveValue('shop')
+  await expect(page.getByPlaceholder('logs/shop')).toHaveValue('logs/shop')
+  // The flow the first run wrote is there: the same request is refused...
+  await page.getByTestId('job-start').click()
+  await expect(page.getByRole('alert')).toContainText('shop.flow.json exists')
+  // ...until it may replace it.
+  await page.getByRole('switch', { name: /Replace an existing flow/ }).click()
+  await page.getByTestId('job-start').click()
+  await expect(page).toHaveURL(/\/jobs\/j-\d+$/)
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Succeeded', {
+    timeout: 10_000,
+  })
+})
+
+test('run again on a promote job keeps its thresholds and its path', async ({ page }) => {
+  await page.goto('/jobs/j-0003')
+  await page.getByRole('button', { name: 'Run again…' }).click()
+  await expect(page.getByTestId('job-from')).toContainText('Promote shop on shadow/shop')
+  await expect(page.getByLabel('Write the promoted flow to')).toHaveValue('shop-promoted.flow.json')
+  await expect(page.getByLabel('Least share used')).toHaveValue('0.7')
+  await expect(page.getByRole('switch', { name: /Replace an existing flow/ })).toHaveAttribute(
+    'aria-checked',
+    'false',
+  )
+})

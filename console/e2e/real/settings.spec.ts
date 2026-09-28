@@ -15,6 +15,10 @@ test('the palette jumps to a page, a server or a flow', async ({ page }) => {
   await page.goto('/')
   await page.keyboard.press('Control+k')
   await page.getByTestId('palette-input').fill('shop.promoted')
+  // The palette asks for the flows when it opens: Enter picks the first entry
+  // once they are in.
+  const results = page.getByRole('listbox', { name: 'Results' })
+  await expect(results.getByRole('option').first()).toContainText('shop.promoted')
   await page.keyboard.press('Enter')
   await expect(page).toHaveURL(/\/flows\/shop\.promoted$/)
 })

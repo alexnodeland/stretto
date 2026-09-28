@@ -6,6 +6,7 @@ import {
   BadgeCheck,
   Eraser,
   FileSearch,
+  History,
   Play,
   Plus,
   Sparkles,
@@ -19,13 +20,14 @@ import UiButton from '@/components/ui/UiButton.vue'
 import UiSwitch from '@/components/ui/UiSwitch.vue'
 import UiCode from '@/components/ui/UiCode.vue'
 import { api, ApiError } from '@/api/client'
-import type { DeciderName, JobKind, JobRequest } from '@/api/types'
+import type { DeciderName, Job, JobKind, JobRequest } from '@/api/types'
 import { useResource } from '@/composables/useResource'
 import { useTitle } from '@/composables/useTitle'
 import { meta, readOnly } from '@/stores/auth'
 import { domainNames } from '@/stores/domain'
 import { commandText } from '@/lib/format'
 import { checkServerName } from '@/lib/validate'
+import { isRecord } from '@/lib/json'
 
 useTitle(() => 'New job')
 const route = useRoute()
@@ -91,10 +93,82 @@ const promote = reactive({
   min_lower: 0.5,
   min_tasks: 3,
   out: '',
+  overwrite: false,
 })
 const audit = reactive({ flow: q('flow'), sessions: '', decider: '' as '' | DeciderName })
 const redact = reactive({ sessions: '', out: '', keep_shared: 3, hash_fields: [] as string[] })
 const hashDraft = ref('')
+
+/**
+ * "Run again" on a job that writes where you say opens this form with that
+ * job's parameters (`?from=<id>`), so that its path can change, or the file
+ * be replaced.
+ */
+const from = ref<Job | null>(null)
+if (q('from')) {
+  api
+    .job(q('from'), { quiet: true })
+    .then((j) => {
+      from.value = j
+      fill(j.params)
+    })
+    .catch(() => {
+      // The form stays as it is.
+    })
+}
+function fill(p: unknown) {
+  if (!isRecord(p)) return
+  const str = (v: unknown) => (typeof v === 'string' ? v : '')
+  const num = (v: unknown, d: number) => (typeof v === 'number' ? v : d)
+  switch (p.kind) {
+    case 'learn':
+      kind.value = 'learn'
+      Object.assign(learn, {
+        domain: str(p.domain),
+        sessions: str(p.sessions),
+        out: str(p.out),
+        overwrite: p.overwrite === true,
+        habit_only: p.habit_only !== false,
+        constants: p.constants === true,
+      })
+      break
+    case 'promote':
+      kind.value = 'promote'
+      Object.assign(promote, {
+        flow: str(p.flow),
+        sessions: str(p.sessions),
+        oracle_cache: str(p.oracle_cache),
+        threshold: num(p.threshold, promote.threshold),
+        min_used: num(p.min_used, promote.min_used),
+        min_lower: num(p.min_lower, promote.min_lower),
+        min_tasks: num(p.min_tasks, promote.min_tasks),
+        out: str(p.out),
+        overwrite: p.overwrite === true,
+      })
+      break
+    case 'audit':
+      kind.value = 'audit'
+      Object.assign(audit, {
+        flow: str(p.flow),
+        sessions: str(p.sessions),
+        decider: str(p.decider) as '' | DeciderName,
+      })
+      break
+    case 'redact':
+      kind.value = 'redact'
+      Object.assign(redact, {
+        sessions: str(p.sessions),
+        out: str(p.out),
+        keep_shared: num(p.keep_shared, redact.keep_shared),
+        hash_fields: Array.isArray(p.hash_fields)
+          ? p.hash_fields.filter((f): f is string => typeof f === 'string')
+          : [],
+      })
+      break
+    case 'doctor':
+      kind.value = 'doctor'
+  }
+}
 
 const flowOf = (key: string) => goodFlows.value.find((f) => f.key === key)
 const learnSessions = computed(() => learn.sessions || (learn.domain ? `logs/${learn.domain}` : ''))
@@ -165,6 +239,7 @@ const body = computed<JobRequest>(() => {
         min_lower: promote.min_lower,
         min_tasks: promote.min_tasks,
         out: promote.out.trim() || null,
+        overwrite: promote.overwrite,
       }
     case 'audit':
       return {
@@ -307,6 +382,14 @@ async function submit() {
     </div>
 
     <form class="jf card" novalidate @submit.prevent="submit">
+      <p v-if="from" class="notice accent" data-testid="job-from">
+        <History :size="16" :stroke-width="2" aria-hidden="true" />
+        <span
+          >The parameters of
+          <RouterLink :to="{ name: 'job', params: { id: from.id } }">{{ from.title }}</RouterLink
+          >. Change what it writes, or let it replace the file.</span
+        >
+      </p>
       <p v-if="serverError" class="notice danger" role="alert">
         <TriangleAlert :size="16" :stroke-width="2" aria-hidden="true" />
         <span>{{ serverError }}</span>
@@ -536,6 +619,11 @@ async function submit() {
               />
             </UiField>
           </div>
+          <UiSwitch
+            v-model="promote.overwrite"
+            label="Replace an existing flow"
+            hint="Without it, the job refuses to write over a flow."
+          />
         </template>
         <UiField v-else v-slot="{ id }" label="Decider" optional>
           <select :id="id" v-model="audit.decider" class="select">

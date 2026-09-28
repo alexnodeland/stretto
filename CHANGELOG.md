@@ -12,7 +12,7 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
   - the servers, with their form, the configuration for each host and the connection test;
   - each session as a timeline: the conversation, the agent's calls, and the lookups the flow read ahead after each call, with their probabilities against the threshold;
   - each flow's graph at a threshold of your choosing, its sites, bindings and tools, its review, and a comparison with another flow;
-  - the jobs, run from the page, with their output as it comes.
+  - the jobs, run from the page or again from an earlier job's parameters, with their output as it comes.
 
   It has light and dark themes, works from a phone's width up, and has a command palette (Ctrl-K or ⌘K). It follows the data directory as it changes. `make console` builds it and runs the console.
 - The console ships with the rest. The release archives, `install.sh`, `install.ps1` and the Homebrew formula install `stretto-console`, with its UI built in; the installers still install a release from before it. A second image, `ghcr.io/alexnodeland/stretto-console` (the Dockerfile's `console` target), runs it on port 8080 with a health check, and [`compose.yaml`](compose.yaml) runs it over your `~/.stretto`. [docs/console.md](docs/console.md) is its guide.
