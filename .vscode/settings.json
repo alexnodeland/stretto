@@ -1,0 +1,29 @@
+{
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.formatOnSave": true
+  },
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.check.allTargets": true,
+  "rust-analyzer.checkOnSave": true,
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "[markdown]": {
+    "files.trimTrailingWhitespace": false
+  },
+  "files.watcherExclude": {
+    "**/target/**": true,
+    "website/node_modules/**": true,
+    "website/.vitepress/cache/**": true,
+    "website/.vitepress/dist/**": true
+  },
+  "search.exclude": {
+    "**/target": true,
+    "website/node_modules": true,
+    "website/.vitepress/cache": true,
+    "website/.vitepress/dist": true,
+    "website/public/notebook": true,
+    "website/public/explainer": true,
+    "website/public/media": true
+  }
+}
