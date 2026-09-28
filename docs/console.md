@@ -77,7 +77,7 @@ It runs as your user, so that the files the console writes (`servers.json`, the 
 | `--token TOKEN` | The token the API requires. Default `$STRETTO_CONSOLE_TOKEN`, else a new one, printed with the URL |
 | `--no-auth` | No token, on a loopback address only ([sign in](#sign-in)) |
 | `--read-only` | Refuse every change |
-| `--open` | Open the console in the browser |
+| `--open` | Open the console in the browser (`$BROWSER` when it is set) |
 | `--stretto PATH` | The `stretto` CLI its jobs run. Default: the one beside `stretto-console`, else the one on `PATH` |
 
 `stretto-console healthcheck` asks the console on this machine for `/api/health`, and exits with 0 when it answers. It is the container's health check. [Environment variables](../website/reference/environment.md#the-console) has the variables it reads.

@@ -98,12 +98,27 @@ fn it_serves_answers_its_healthcheck_and_stops_on_sigterm() {
         .unwrap();
     assert!(health.success());
 
+    // A page open on the event stream does not keep it from stopping.
+    let events = client
+        .get(format!("http://127.0.0.1:{port}/api/events"))
+        .bearer_auth(&token)
+        .send()
+        .unwrap();
+    assert!(events.status().is_success());
     Command::new("kill")
         .args(["-TERM", &console.id().to_string()])
         .status()
         .unwrap();
-    let status = console.wait().unwrap();
+    let stopped = (0..200).find_map(|_| {
+        std::thread::sleep(Duration::from_millis(50));
+        console.try_wait().unwrap()
+    });
+    let Some(status) = stopped else {
+        console.kill().unwrap();
+        panic!("the console did not stop within 10 s");
+    };
     assert!(status.success(), "{status}");
+    drop(events);
     let rest: Vec<String> = lines.map_while(Result::ok).collect();
     assert_eq!(
         rest.last().map(String::as_str),

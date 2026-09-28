@@ -2110,11 +2110,14 @@ fn fake_stretto(dir: &std::path::Path, script: &str) -> Binary {
 async fn a_job_is_cancelled_queued_or_running() {
     let bin = std::env::temp_dir().join(format!("stretto-console-cancel-{}", std::process::id()));
     std::fs::create_dir_all(&bin).unwrap();
-    // What it starts outlives it: it holds the pipes open, prints once
-    // `sleep`, which keeps the FIFO open, has been killed, and then ends.
+    // It prints a line, and another later, so the job's progress is
+    // announced. What it starts outlives it: that holds the pipes open,
+    // prints once `sleep`, which keeps the FIFO open, has been killed, and
+    // then ends.
     let stretto = fake_stretto(
         &bin,
-        "echo started\nmkfifo gate\n(read x < gate; echo after) &\nexec 3>gate\nexec sleep 30\n",
+        "echo started\nsleep 0.3\necho ready\nmkfifo gate\n(read x < gate; echo after) &\n\
+         exec 3>gate\nexec sleep 30\n",
     );
     let c = console("cancel", |config| config.binaries.stretto = Some(stretto));
     let doctor = || c.call(Method::POST, "/api/jobs", Some(json!({"kind": "doctor"})));
@@ -2127,7 +2130,7 @@ async fn a_job_is_cancelled_queued_or_running() {
     // The first runs (and sleeps); the second waits behind it.
     for _ in 0..100 {
         let job = c.get(&format!("/api/jobs/{first}")).await.json();
-        if job["status"] == "running" && job["output"].as_str().unwrap().contains("started") {
+        if job["status"] == "running" && job["output"].as_str().unwrap().contains("ready") {
             break;
         }
         tokio::time::sleep(Duration::from_millis(50)).await;
