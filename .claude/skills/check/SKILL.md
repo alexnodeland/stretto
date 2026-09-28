@@ -39,7 +39,7 @@ python3 scripts/bench/tables.py --work scripts/bench/fixture --json /tmp/rows.js
 
 ```bash
 make ui-check    # formatting, lint, types, unit tests and the build
-make e2e         # Playwright in Chromium: the mock API, then the console on tests/fixtures/home
+make e2e         # Playwright in Chromium: the mock API, with axe-core's accessibility rules on every page, then the console on tests/fixtures/home
 ```
 
 A change to a type the API serves needs `make types` first, and the TypeScript it writes committed. In a cloud session the session hook installs `console/node_modules`; Playwright's Chromium is at `PLAYWRIGHT_BROWSERS_PATH` when the machine provides one, and `npx --prefix console playwright install chromium` fetches it otherwise.

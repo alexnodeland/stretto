@@ -10,12 +10,12 @@ description: Drive a stretto pull request to green and ready to merge, covering 
 | Workflow, job | Runs on | What it checks | Reproduce |
 |---|---|---|---|
 | ci.yml `check` | every PR and push to main | `cargo fmt --check`, clippy with `-D warnings`, `cargo test --all-targets`, `cargo test --doc`, the API's TypeScript is current, rustdoc with `-D warnings` | `make ci` |
-| ci.yml `ui` | every PR and push to main | the console's UI: Prettier, ESLint, vue-tsc, Vitest, the build, and Playwright on the mock API and on the console over the fixtures | `make ui-check`, `make e2e` |
+| ci.yml `ui` | every PR and push to main | the console's UI: Prettier, ESLint, vue-tsc, Vitest, the build, and Playwright on the mock API (with axe-core's WCAG 2.1 A and AA rules on every page) and on the console over the fixtures | `make ui-check`, `make e2e` |
 | ci.yml `msrv` | every PR and push to main | `cargo +1.88.0 check --workspace --all-targets --locked`, and that Cargo.toml's `rust-version` is still 1.88 | `make msrv` |
 | ci.yml `walkthrough` | every PR and push to main | the quickstart, `packaging/test-install.sh`, shellcheck, `scripts/walkthrough.py`, `scripts/http_check.py`, the scripts' doctests and the benchmark tables' fixture | the `check` skill, step 2 |
 | ci.yml `platforms` | every PR and push to main | a `--locked` build on macOS 14 and Windows, and each binary's `--version` | not locally: read the log |
 | coverage.yml | every PR and push to main | `make coverage`: line coverage at or above `COVERAGE_MIN`. The LCOV report is the run's artifact | `make coverage` |
-| container.yml `build` | PRs and pushes to main that change the Dockerfile, `.dockerignore`, `crates/`, the manifests or the quickstart | the image builds, and each binary, `stretto doctor` and the quickstart run in it | `make docker` |
+| container.yml `build` | PRs and pushes to main that change the Dockerfile, `.dockerignore`, `crates/`, `console/`, the brand files the UI imports, the manifests, the quickstart or `compose.yaml` | both images build. In the CLI's, each binary, `stretto doctor` and the quickstart run. The console's starts healthy as the runner's user, refuses a request without its token, serves the built UI, and runs a `doctor` job | `make docker`, `make docker-console` |
 | pages.yml | pushes to main only | the site builds with no dead link | `make site`, before merging |
 
 ## The loop
