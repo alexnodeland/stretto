@@ -252,13 +252,13 @@ fn domain_of(log: &Path) -> Option<String> {
     header.get("domain")?.as_str().map(String::from)
 }
 
-/// The flows and sessions under `dir`, `~/.stretto`, with paths shown from
-/// `home` as `~`.
-pub fn check_files(report: &mut Report, dir: &Path, home: &Path) {
+/// The flows and sessions under `dir`, the data directory, with paths
+/// under `home` shown from `~`.
+pub fn check_files(report: &mut Report, dir: &Path, home: Option<&Path>) {
     let found = scan(dir);
-    let short = |p: &Path| match p.strip_prefix(home) {
-        Ok(rest) => format!("~/{}", rest.display()),
-        Err(_) => p.display().to_string(),
+    let short = |p: &Path| match home.and_then(|h| p.strip_prefix(h).ok()) {
+        Some(rest) => format!("~/{}", rest.display()),
+        None => p.display().to_string(),
     };
     if found.flows.is_empty() {
         report.note(format!(
@@ -430,7 +430,7 @@ mod tests {
         assert_eq!(without, Found::default());
         // A file that is not a flow is listed as one this stretto cannot read.
         let mut report = Report::default();
-        check_files(&mut report, &root, &root);
+        check_files(&mut report, &root, Some(&root));
         let text = report.render();
         assert!(
             text.contains("~/notes.flow.json: this stretto cannot read it"),
