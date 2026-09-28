@@ -1,0 +1,830 @@
+/* The console's base: a small reset, type, focus, and the shared pieces pages are built from. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--stretto-bg);
+  color: var(--stretto-text);
+  font-family: var(--stretto-font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  font-feature-settings: 'cv11', 'ss01';
+  font-optical-sizing: auto;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+figure,
+blockquote,
+dl,
+dd,
+pre {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+a {
+  color: var(--stretto-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--stretto-accent-hover);
+}
+
+code,
+kbd,
+samp,
+pre,
+.mono {
+  font-family: var(--stretto-font-mono);
+  font-feature-settings: normal;
+  font-variant-ligatures: none;
+}
+
+code,
+.mono {
+  font-size: 0.92em;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--stretto-accent-graphic) 28%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--stretto-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------------------------------------------------------------- text */
+
+.muted {
+  color: var(--stretto-text-muted);
+}
+
+.subtle {
+  color: var(--stretto-text-subtle);
+}
+
+.num,
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.break {
+  overflow-wrap: anywhere;
+}
+
+.tool {
+  font-family: var(--stretto-font-mono);
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--stretto-text);
+}
+
+.caption {
+  font-size: 12.5px;
+  color: var(--stretto-text-subtle);
+}
+
+.label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--stretto-text-muted);
+}
+
+/* ---------------------------------------------------------------- layout */
+
+.page {
+  width: 100%;
+  max-width: var(--c-content-max);
+  margin: 0 auto;
+  padding: 28px var(--c-gutter) 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.row.wrap {
+  flex-wrap: wrap;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.grid {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.grid > * {
+  min-width: 0;
+}
+
+.grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 1100px) {
+  .grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .grid-4,
+  .grid-3,
+  .grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------------------------------------------------------------- cards */
+
+.card {
+  background: var(--stretto-surface);
+  border: 1px solid var(--stretto-border);
+  border-radius: var(--c-radius-card);
+  box-shadow: var(--c-shadow-sm);
+  min-width: 0;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--stretto-border);
+  min-height: 52px;
+}
+
+.card-head h2,
+.card-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.card-head .caption {
+  margin-top: 1px;
+}
+
+.card-body {
+  padding: 18px 20px;
+}
+
+.card-body.flush {
+  padding: 0;
+}
+
+.card-foot {
+  padding: 12px 20px;
+  border-top: 1px solid var(--stretto-border);
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .card-head {
+    padding: 12px 16px;
+  }
+
+  .card-body {
+    padding: 16px;
+  }
+
+  .card-foot {
+    padding: 12px 16px;
+  }
+}
+
+/* ---------------------------------------------------------------- tables */
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13.5px;
+}
+
+.table th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 12.5px;
+  color: var(--stretto-text-subtle);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--stretto-border);
+  white-space: nowrap;
+  background: var(--stretto-surface);
+}
+
+.table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--stretto-border);
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: 0;
+}
+
+.table th:first-child,
+.table td:first-child {
+  padding-left: 20px;
+}
+
+.table th:last-child,
+.table td:last-child {
+  padding-right: 20px;
+}
+
+.table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.table tbody tr.clickable {
+  cursor: pointer;
+}
+
+.table tbody tr.clickable:hover td,
+.table tbody tr:focus-within td {
+  background: var(--c-hover);
+}
+
+.table-compact td {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+/*
+ * On a phone, a table with .table-stack becomes a list: each row a block, each cell on a
+ * line of its own after its column's name (data-label), and cells marked
+ * .inline side by side. The table keeps its markup for screen readers.
+ */
+@media (max-width: 640px) {
+  .table.table-stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .table.table-stack,
+  .table.table-stack tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .table.table-stack tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 14px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--stretto-border);
+  }
+
+  .table.table-stack tbody:last-child tr:last-child {
+    border-bottom: 0;
+  }
+
+  .table.table-stack td,
+  .table.table-stack tbody th {
+    display: block;
+    flex: 1 1 100%;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    text-align: left;
+    white-space: normal;
+    background: none;
+  }
+
+  .table.table-stack td.inline {
+    flex: 0 1 auto;
+  }
+
+  .table.table-stack td.stack-hide {
+    display: none;
+  }
+
+  .table.table-stack td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 3px;
+    font-family: var(--stretto-font-sans);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: normal;
+    color: var(--stretto-text-subtle);
+  }
+
+  .table.table-stack td.inline[data-label]::before {
+    display: inline;
+    margin: 0 6px 0 0;
+  }
+}
+
+/* ---------------------------------------------------------------- key–value lists */
+
+.kv {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 10px 20px;
+  font-size: 13.5px;
+}
+
+.kv dt {
+  color: var(--stretto-text-subtle);
+}
+
+.kv dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 520px) {
+  .kv {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .kv dd {
+    margin-bottom: 10px;
+  }
+}
+
+/* ---------------------------------------------------------------- chips */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--stretto-surface-2);
+  border: 1px solid var(--stretto-border);
+  font-family: var(--stretto-font-mono);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--stretto-text);
+  overflow-wrap: anywhere;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ---------------------------------------------------------------- forms */
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 11px;
+  border: 1px solid var(--stretto-border-strong);
+  border-radius: var(--c-radius-control);
+  background: var(--stretto-surface);
+  color: var(--stretto-text);
+  font-size: 14px;
+  line-height: 20px;
+  transition:
+    border-color 0.12s var(--c-ease),
+    box-shadow 0.12s var(--c-ease);
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--stretto-text-subtle);
+  opacity: 1;
+}
+
+.input:hover,
+.select:hover,
+.textarea:hover {
+  border-color: var(--stretto-text-subtle);
+}
+
+.input:focus-visible,
+.select:focus-visible,
+.textarea:focus-visible,
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--stretto-focus);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--stretto-focus) 22%, transparent);
+}
+
+.input.mono,
+.textarea.mono {
+  font-size: 13px;
+}
+
+.input[aria-invalid='true'],
+.textarea[aria-invalid='true'] {
+  border-color: var(--c-danger);
+}
+
+.input:disabled,
+.select:disabled,
+.textarea:disabled {
+  background: var(--stretto-surface-2);
+  color: var(--stretto-text-subtle);
+  cursor: not-allowed;
+}
+
+.select {
+  appearance: none;
+  padding-right: 32px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) 52%,
+    calc(100% - 11px) 52%;
+  background-size:
+    5px 5px,
+    5px 5px;
+  background-repeat: no-repeat;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.check {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.check input {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--stretto-accent-fill);
+  flex: none;
+}
+
+/* ---------------------------------------------------------------- notices */
+
+.notice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 14px;
+  border-radius: var(--c-radius-control);
+  font-size: 13.5px;
+  border: 1px solid var(--stretto-border);
+  background: var(--stretto-surface-2);
+  color: var(--stretto-text);
+}
+
+.notice > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.notice.accent {
+  background: var(--stretto-accent-soft);
+  border-color: color-mix(in oklab, var(--stretto-accent-graphic) 30%, transparent);
+}
+
+.notice.accent > svg {
+  color: var(--stretto-accent);
+}
+
+.notice.warn {
+  background: var(--c-warn-soft);
+  border-color: var(--c-warn-border);
+}
+
+.notice.warn > svg {
+  color: var(--c-warn);
+}
+
+.notice.danger {
+  background: var(--c-danger-soft);
+  border-color: var(--c-danger-border);
+}
+
+.notice.danger > svg {
+  color: var(--c-danger);
+}
+
+.text-danger {
+  color: var(--c-danger);
+}
+
+.text-warn {
+  color: var(--c-warn);
+}
+
+.text-accent {
+  color: var(--stretto-accent);
+}
+
+/* ---------------------------------------------------------------- code */
+
+.code {
+  margin: 0;
+  padding: 14px 16px;
+  background: var(--stretto-surface-2);
+  border: 1px solid var(--stretto-border);
+  border-radius: var(--c-radius-control);
+  font-size: 12.5px;
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre;
+  tab-size: 2;
+}
+
+.code.wrap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---------------------------------------------------------------- markdown (a flow's review, an audit) */
+
+.md {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--stretto-text);
+  max-width: 920px;
+}
+
+.md > * + * {
+  margin-top: 12px;
+}
+
+.md h1 {
+  font-size: 20px;
+  letter-spacing: -0.015em;
+}
+
+.md h2 {
+  font-size: 16px;
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid var(--stretto-border);
+}
+
+.md h3 {
+  font-size: 14.5px;
+  margin-top: 20px;
+}
+
+.md p,
+.md li {
+  color: var(--stretto-text);
+}
+
+.md ul,
+.md ol {
+  padding-left: 22px;
+}
+
+.md li + li {
+  margin-top: 4px;
+}
+
+.md code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--stretto-surface-2);
+  border: 1px solid var(--stretto-border);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+.md pre {
+  padding: 14px 16px;
+  background: var(--stretto-surface-2);
+  border: 1px solid var(--stretto-border);
+  border-radius: var(--c-radius-control);
+  overflow-x: auto;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.md pre code {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.md .md-table {
+  overflow-x: auto;
+  border: 1px solid var(--stretto-border);
+  border-radius: var(--c-radius-control);
+}
+
+.md table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.md th,
+.md td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--stretto-border);
+  vertical-align: top;
+}
+
+.md th {
+  font-weight: 500;
+  color: var(--stretto-text-subtle);
+  background: var(--stretto-surface-2);
+  white-space: nowrap;
+}
+
+.md tr:last-child td {
+  border-bottom: 0;
+}
+
+/* A name in a table keeps its line: the table scrolls in its frame instead. */
+.md td code {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.md strong {
+  font-weight: 600;
+}
+
+.md hr {
+  border: 0;
+  border-top: 1px solid var(--stretto-border);
+}
+
+/* ---------------------------------------------------------------- skeletons */
+
+.skeleton {
+  display: block;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--c-skeleton) 0%,
+    color-mix(in oklab, var(--c-skeleton) 55%, var(--stretto-surface)) 50%,
+    var(--c-skeleton) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+/* A refresh keeps the frame: the old render, dimmed, until the new one lands. */
+.refreshing {
+  opacity: 0.62;
+  transition: opacity 0.2s var(--c-ease);
+}

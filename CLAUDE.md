@@ -12,17 +12,22 @@ AGENTS.md, imported above, is the project context every coding agent shares: wha
 |---|---|
 | `make fmt` | `cargo fmt --all` |
 | `make check` | `cargo fmt --all -- --check` |
-| `make lint` | `cargo clippy --all-targets -- -D warnings` |
+| `make lint` | `cargo clippy --all-targets -- -D warnings`, and again on the console's `ts` feature |
 | `make test` | `cargo test --all-targets`, then `cargo test --doc` |
+| `make types` | Rewrites the API's TypeScript for the UI (`console/src/api/generated/`), and fails if it was out of date |
 | `make doc` | `cargo doc --no-deps`, with rustdoc warnings as errors |
-| `make ci` | check, lint, test and doc: CI's check job. Run it before every push |
+| `make ci` | check, lint, test, types and doc: CI's check job. Run it before every push |
 | `make msrv` | `cargo check` on Rust 1.88, Cargo.toml's `rust-version`, with the lockfile |
 | `make coverage` | cargo-llvm-cov: writes `lcov.info`, fails under `COVERAGE_MIN` in the Makefile |
 | `make bless` | `STRETTO_BLESS=1 cargo test`: regenerates `docs/cli.md` and `docs/review.md`'s examples |
 | `make quickstart`, `make walkthrough` | the quickstart and the walkthrough, as CI's walkthrough job runs them, on a debug build |
 | `make site` | the documentation site, which fails on a dead link |
+| `make ui-check`, `make e2e` | the console's UI (`console/`): formatting, lint, types, unit tests and build; then the end-to-end tests, as CI's ui job runs them |
+| `make console` | builds the UI and runs the console on `~/.stretto` (`ARGS="--read-only"`) |
 
 One test: `cargo test -p stretto-report --test formats`, or `cargo test -p stretto-model <name>`.
+
+In several git worktrees at once, give each its own target directory (the default, `target/` in the worktree). Cargo names the workspace's artifacts the same whatever the checkout, and judges them fresh by the files they were last built from, so one `CARGO_TARGET_DIR` shared between worktrees can run another worktree's code. If you must share one, run `cargo clean -p stretto-console -p stretto-report -p stretto-proxy -p stretto-trace -p stretto-model -p stretto-oracle` before building in the other worktree.
 
 A hook runs rustfmt on every `.rs` file you edit or write (`.claude/hooks/format-rust.sh`), so you need not format by hand. `make check` still checks it.
 
@@ -36,6 +41,7 @@ The docs are tested against the code, so a change to the CLI or a file format fa
 
 - **The quickstart:** `make quickstart`. It records six sessions on `stretto-mcp-demo`'s shop, then learns, reviews and serves a flow, with no key and no network.
 - **The walkthrough:** `make walkthrough` runs `docs/walkthrough.md` on the official MCP filesystem server, which `npx` fetches, so it needs Node and the network.
+- **The console:** `make console`, or with the UI's dev server and hot reload: `cargo run -p stretto-console -- --no-auth` in one terminal and `npm --prefix console run dev` in another (it proxies `/api` to 127.0.0.1:7878). `npm --prefix console run dev:mock` needs no server: it answers from `console/mock/`.
 - **The CLI:** `cargo run -p stretto-report -- <command>` runs `stretto`; `cargo run -p stretto-proxy --bin stretto-proxy -- <args>` runs the proxy. `stretto doctor` checks an install.
 
 ## Results, claims and numbers
@@ -59,10 +65,10 @@ Calm and exact, as `brand/messaging.md` sets out: say what a thing does and how 
 ## Pull requests
 
 1. Branch from `main`, one purpose per branch: `git switch -c <topic> origin/main`.
-2. Run `make ci`. Add `make quickstart` and `make walkthrough` when the proxy or the CLI changed, and `make site` when `website/`, `docs/` or `paper/` changed: the Pages build runs only after merging.
+2. Run `make ci`. Add `make quickstart` and `make walkthrough` when the proxy or the CLI changed, `make ui-check` and `make e2e` when `console/` or the console's API changed, and `make site` when `website/`, `docs/` or `paper/` changed: the Pages build runs only after merging.
 3. Update what the change touches: `docs/cli.md` (`make bless`), `docs/formats.md`, the guide in `website/`, and `CHANGELOG.md` under *Unreleased*.
 4. Open the PR with `.github/pull_request_template.md`: what changes and why, how it was checked, and the checklist.
-5. CI must be green before merging: ci.yml (check, MSRV, walkthrough, the macOS and Windows builds) and Coverage, and container.yml when the image's inputs change. The `steward` skill has what each job checks and how to fix it.
+5. CI must be green before merging: ci.yml (check, ui, MSRV, walkthrough, the macOS and Windows builds) and Coverage, and container.yml when the image's inputs change. The `steward` skill has what each job checks and how to fix it.
 
 ## Skills and agents in this repository
 

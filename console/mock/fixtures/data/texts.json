@@ -1,0 +1,185 @@
+{
+  "shop_review": "# Flow: shop\n\nWritten by stretto 0.1.0 from claude-sonnet-5. The habit learned from 6 successful sessions or episodes. It has no arbiter and asks no one: it decides by how often each lookup came before the agent's next write (`reach`).\n\n## Tools\n\n- **Read, the only tools it may call:** `find_user_id_by_email`, `get_order_details`, `get_user_details`\n- **Write, never called:** `cancel_pending_order`\n\n## Run\n\nWhat the flow does after each call, as a fugue program (`program`): `Decide` is a decision between handing back (0) and the lookups offered after the call just made, and `Outcome` whether a lookup succeeds. The proxy decides with the decider it serves the flow with (`--flow-decider`: the arbiter, the habit alone, or `reach`) and takes each outcome from the server. This is the standard run: decide, look up, and decide again, until the flow hands back or has made `max_lookups` lookups (`--flow-per-call`).\n\n~~~text\nlet prev = call;\nlet failed = call_failed;\nfor i in 0..max_lookups {\n    let d <- sample(addr!(\"decide\", i), Decide(prev, failed));\n    if d == 0 {\n        break;\n    }\n    let ok <- sample(addr!(\"outcome\", i), Outcome(d));\n    prev = d;\n    failed = !ok;\n}\npure(prev)\n~~~\n\n## Sites\n\nAfter each call: the lookups the flow may make next, what the agent did next in training, and what the flow does there with `reach` at a threshold of 0.3, which is the likeliest lookup's share of the times the agent made it before its next write, times the chance its bound arguments are the agent's. The share pools over the calls before and the code features, so a live decision near the threshold can go either way.\n\n| After | Lookups it may make next (times seen) | What the agent did next in training | With `reach` |\n|---|---|---|---|\n| `find_user_id_by_email` | `get_user_details` (6) | get_user_details 100% (of 6) | looks up `get_user_details` 1.00 × 0.88 = 0.88 |\n| `get_order_details` | `get_order_details` (6) | get_order_details 50%, respond 50% (of 12) | looks up `get_order_details` 0.50 × 0.93 = 0.46 |\n| `get_user_details` | `get_order_details` (6) | get_order_details 100% (of 6) | looks up `get_order_details` 1.00 × 0.93 = 0.93 |\n\n## Bindings\n\nWhere each lookup's required arguments come from, and how often binding them that way gave the agent's own arguments in training, when the customer had not mentioned the values and when they had. With nothing tried, the chance is 1/2.\n\n| Lookup | Argument | Bound from (values found there, of the values it took) | Chance it is the agent's (right/tried): not mentioned, mentioned |\n|---|---|---|---|\n| `find_user_id_by_email` | `email` | nothing: the flow never makes this lookup | — |\n| `get_order_details` | `order_id` | `get_user_details` at `$.orders[*]` (12 of 12) | 0.93 (12/12), 0.50 (0/0) |\n| `get_user_details` | `user_id` | `find_user_id_by_email` at `$` (6 of 6) | 0.88 (6/6), 0.50 (0/0) |\n\n## Pinned inputs\n\nEach lookup's arguments as the server listed them when the sessions were recorded. `stretto-proxy` makes no lookup of a tool whose server lists other arguments now.\n\n- `find_user_id_by_email`: `email:string!`\n- `get_order_details`: `order_id:string!`\n- `get_user_details`: `user_id:string!`\n",
+  "shop_promoted_review": "# Flow: shop\n\nWritten by stretto 0.1.0 from claude-sonnet-5. The habit learned from 6 successful sessions or episodes. It has no arbiter and asks no one: it decides by how often each lookup came before the agent's next write (`reach`).\n\n## Tools\n\n- **Read, the only tools it may call:** `find_user_id_by_email`, `get_order_details`, `get_user_details`\n- **Write, never called:** `cancel_pending_order`\n\n## Run\n\nWhat the flow does after each call, as a fugue program (`program`): `Decide` is a decision between handing back (0) and the lookups offered after the call just made, and `Outcome` whether a lookup succeeds. The proxy decides with the decider it serves the flow with (`--flow-decider`: the arbiter, the habit alone, or `reach`) and takes each outcome from the server. This is the standard run: decide, look up, and decide again, until the flow hands back or has made `max_lookups` lookups (`--flow-per-call`).\n\n~~~text\nlet prev = call;\nlet failed = call_failed;\nfor i in 0..max_lookups {\n    let d <- sample(addr!(\"decide\", i), Decide(prev, failed));\n    if d == 0 {\n        break;\n    }\n    let ok <- sample(addr!(\"outcome\", i), Outcome(d));\n    prev = d;\n    failed = !ok;\n}\npure(prev)\n~~~\n\n## Sites\n\nAfter each call: the lookups the flow may make next, what the agent did next in training, and what the flow does there with `reach` at a threshold of 0.3, which is the likeliest lookup's share of the times the agent made it before its next write, times the chance its bound arguments are the agent's. The share pools over the calls before and the code features, so a live decision near the threshold can go either way.\n\n| After | Lookups it may make next (times seen) | What the agent did next in training | With `reach` |\n|---|---|---|---|\n| `find_user_id_by_email` | `get_user_details` (6) | get_user_details 100% (of 6) | looks up `get_user_details` 1.00 × 0.88 = 0.88 |\n| `get_order_details` | `get_order_details` (6) | get_order_details 50%, respond 50% (of 12) | looks up `get_order_details` 0.50 × 0.93 = 0.46 |\n| `get_user_details` | `get_order_details` (6) | get_order_details 100% (of 6) | looks up `get_order_details` 1.00 × 0.93 = 0.93 |\n\n## Promotion\n\nThe flow acts only after the promoted calls, and hands back after the rest (`stretto promote`).\n\nA site is promoted when, at a threshold of 0.3, at least 70% of the flow's lookups there were ones the agent made later in the session, the 90% interval's lower bound on that share is at least 0.50, and the lookups came from at least 3 tasks.\n\n| After | Decisions | Lookups it would make | Made by the agent later | Lower bound | Tasks | Promoted |\n|---|---|---|---|---|---|---|\n| `cancel_pending_order` | 2 | 0 | — | 0.00 | 0 | no |\n| `find_user_id_by_email` | 3 | 3 | 3 (100%) | 0.53 | 3 | yes |\n| `get_order_details` | 6 | 3 | 3 (100%) | 0.53 | 3 | yes |\n| `get_user_details` | 3 | 3 | 3 (100%) | 0.53 | 3 | yes |\n\n## Bindings\n\nWhere each lookup's required arguments come from, and how often binding them that way gave the agent's own arguments in training, when the customer had not mentioned the values and when they had. With nothing tried, the chance is 1/2.\n\n| Lookup | Argument | Bound from (values found there, of the values it took) | Chance it is the agent's (right/tried): not mentioned, mentioned |\n|---|---|---|---|\n| `find_user_id_by_email` | `email` | nothing: the flow never makes this lookup | — |\n| `get_order_details` | `order_id` | `get_user_details` at `$.orders[*]` (12 of 12) | 0.93 (12/12), 0.50 (0/0) |\n| `get_user_details` | `user_id` | `find_user_id_by_email` at `$` (6 of 6) | 0.88 (6/6), 0.50 (0/0) |\n\n## Pinned inputs\n\nEach lookup's arguments as the server listed them when the sessions were recorded. `stretto-proxy` makes no lookup of a tool whose server lists other arguments now.\n\n- `find_user_id_by_email`: `email:string!`\n- `get_order_details`: `order_id:string!`\n- `get_user_details`: `user_id:string!`\n",
+  "retail_review": "# Flow: retail\n\nWritten by stretto 0.0.1 from glm-5.3. The habit learned from 3 successful sessions or episodes. Its arbiter was fitted on 15 held-out decisions and asks `jev-latest`.\n\n## Tools\n\n- **Read, the only tools it may call:** `find_user_id_by_email`, `find_user_id_by_name_zip`, `get_item_details`, `get_order_details`, `get_product_details`, `get_user_details`, `list_all_product_types`\n- **Write, never called:** `cancel_pending_order`, `exchange_delivered_order_items`, `modify_pending_order_address`, `modify_pending_order_items`, `modify_pending_order_payment`, `modify_user_address`, `return_delivered_order_items`\n- **Neither, never called:** `calculate`, `transfer_to_human_agents`\n\n## Run\n\nWhat the flow does after each call, as a fugue program (`program`): `Decide` is a decision between handing back (0) and the lookups offered after the call just made, and `Outcome` whether a lookup succeeds. The proxy decides with the decider it serves the flow with (`--flow-decider`: the arbiter, the habit alone, or `reach`) and takes each outcome from the server. This is the standard run: decide, look up, and decide again, until the flow hands back or has made `max_lookups` lookups (`--flow-per-call`).\n\n~~~text\nlet prev = call;\nlet failed = call_failed;\nfor i in 0..max_lookups {\n    let d <- sample(addr!(\"decide\", i), Decide(prev, failed));\n    if d == 0 {\n        break;\n    }\n    let ok <- sample(addr!(\"outcome\", i), Outcome(d));\n    prev = d;\n    failed = !ok;\n}\npure(prev)\n~~~\n\n## Sites\n\nAfter each call: the lookups the flow may make next, what the agent did next in training, and what the flow does there with the habit alone at a threshold of 0.3, which is the likeliest lookup's share times the chance its bound arguments are the agent's. The share pools over the calls before and the code features, so a live decision near the threshold can go either way.\n\n| After | Lookups it may make next (times seen) | What the agent did next in training | With the habit alone |\n|---|---|---|---|\n| `find_user_id_by_email` | `get_user_details` (1) | get_user_details 100% (of 1) | looks up `get_user_details` 1.00 × 0.75 = 0.75 |\n| `find_user_id_by_name_zip` | `get_user_details` (2) | get_user_details 100% (of 2) | looks up `get_user_details` 1.00 × 0.75 = 0.75 |\n| `get_order_details` | `get_order_details` (7), `get_product_details` (1) | get_order_details 78%, get_product_details 11%, respond 11% (of 9) | looks up `get_order_details` 0.78 × 0.92 = 0.71 |\n| `get_product_details` | `get_product_details` (1) | respond 75%, get_product_details 25% (of 4) | hands back: `get_product_details` 0.25 × 0.50 = 0.12 |\n| `get_user_details` | `get_order_details` (3) | get_order_details 100% (of 3) | looks up `get_order_details` 1.00 × 0.92 = 0.92 |\n\n## Bindings\n\nWhere each lookup's required arguments come from, and how often binding them that way gave the agent's own arguments in training, when the customer had not mentioned the values and when they had. With nothing tried, the chance is 1/2.\n\n| Lookup | Argument | Bound from (values found there, of the values it took) | Chance it is the agent's (right/tried): not mentioned, mentioned |\n|---|---|---|---|\n| `find_user_id_by_email` | `email` | nothing: the flow never makes this lookup | — |\n| `find_user_id_by_name_zip` | `first_name` | nothing: the flow never makes this lookup | — |\n| `find_user_id_by_name_zip` | `last_name` | nothing: the flow never makes this lookup | — |\n| `find_user_id_by_name_zip` | `zip` | nothing: the flow never makes this lookup | — |\n| `get_order_details` | `order_id` | `get_user_details` at `$.orders[*]` (10 of 10) | 0.92 (10/10), 0.50 (0/0) |\n| `get_product_details` | `product_id` | `get_order_details` at `$.items[*].product_id` (4 of 4) | 0.50 (0/0), 0.50 (2/4) |\n| `get_user_details` | `user_id` | `find_user_id_by_name_zip` at `$` (2 of 3) | 0.75 (2/2), 0.50 (0/0) |\n\n## Arbiter\n\nOne fit, which judges every session.\n\n| Weight on | Value |\n|---|---|\n| ln the habit's probability | 1.152 |\n| ln the one-question probability | 0.187 |\n| ln the split question's probability | -0.499 |\n| handing back | -0.253 |\n| predicate `list_pending` | 0.515 |\n| predicate `needs_options` | -0.196 |\n| predicate `must_ask` | 0.628 |\n| the model's record at the site, on its pick | 0.447 |\n\nThe System-One model's record, at the held-out decisions of 4 sites: its pick was the agent's step at 60%, and the agent's step was among its options at 100%.\n\nThe predicates it asks with each next-step question, with the conversation so far:\n\n- `list_pending` (weighed): Is the agent working through a list of records one lookup at a time (orders, items, products, reservations, flights or dates), with some it has not looked up yet?\n- `needs_options` (weighed): Does the customer's request need options the agent has not looked up yet, such as another version of an item, other products, or flights on a date or route not yet searched?\n- `must_ask` (weighed): Does the agent need something only the customer can give before any further lookup would help, such as identification, a choice between options, or a confirmation?\n",
+  "retail_tools": [
+    {
+      "name": "calculate",
+      "kind": "generic",
+      "summary": "Calculate the result of a mathematical expression.",
+      "args": {
+        "expression": "The mathematical expression to calculate, such as '2 + 2'. The expression can contain numbers, operators (+, -, *, /), parentheses, and spaces."
+      },
+      "contract": null
+    },
+    {
+      "name": "cancel_pending_order",
+      "kind": "write",
+      "summary": "Cancel a pending order. If the order is already processed or delivered, it cannot be cancelled. The agent needs to explain the cancellation detail and ask for explicit user confirmation (yes/no) to proceed. If the user confirms, the order status will be changed to 'cancelled' and the payment will be refunded. The refund will be added to the user's gift card balance immediately if the payment was made using a gift card, otherwise the refund would take 5-7 business days to process. The function returns the order details after the cancellation.",
+      "args": {
+        "order_id": "The order id, such as '#W0000000'. Be careful there is a '#' symbol at the beginning of the order id.",
+        "reason": "The reason for cancellation, which should be either 'no longer needed' or 'ordered by mistake'."
+      },
+      "contract": null
+    },
+    {
+      "name": "exchange_delivered_order_items",
+      "kind": "write",
+      "summary": "Exchange items in a delivered order to new items of the same product type. For a delivered order, return or exchange can be only done once by the agent. The agent needs to explain the exchange detail and ask for explicit user confirmation (yes/no) to proceed.",
+      "args": {
+        "item_ids": "The item ids to be exchanged, each such as '1008292230'. There could be duplicate items in the list.",
+        "new_item_ids": "The item ids to be exchanged for, each such as '1008292230'. There could be duplicate items in the list. Each new item id should match the item id in the same position and be of the same product.",
+        "order_id": "The order id, such as '#W0000000'. Be careful there is a '#' symbol at the beginning of the order id.",
+        "payment_method_id": "The payment method id to pay or receive refund for the item price difference, such as 'gift_card_0000000' or 'credit_card_0000000'. These can be looked up from the user or order details."
+      },
+      "contract": null
+    },
+    {
+      "name": "find_user_id_by_email",
+      "kind": "read",
+      "summary": "Find user id by email. If the user is not found, the function will return an error message.",
+      "args": {
+        "email": "The email of the user, such as 'something@example.com'."
+      },
+      "contract": null
+    },
+    {
+      "name": "find_user_id_by_name_zip",
+      "kind": "read",
+      "summary": "Find user id by first name, last name, and zip code. If the user is not found, the function will return an error message. By default, find user id by email, and only call this function if the user is not found by email or cannot remember email.",
+      "args": {
+        "first_name": "The first name of the customer, such as 'John'.",
+        "last_name": "The last name of the customer, such as 'Doe'.",
+        "zip": "The zip code of the customer, such as '12345'."
+      },
+      "contract": null
+    },
+    {
+      "name": "get_item_details",
+      "kind": "read",
+      "summary": "Get the inventory details of an item.",
+      "args": {
+        "item_id": "The item id, such as '6086499569'. Be careful the item id is different from the product id."
+      },
+      "contract": null
+    },
+    {
+      "name": "get_order_details",
+      "kind": "read",
+      "summary": "Get the status and details of an order.",
+      "args": {
+        "order_id": "The order id, such as '#W0000000'. Be careful there is a '#' symbol at the beginning of the order id."
+      },
+      "contract": null
+    },
+    {
+      "name": "get_product_details",
+      "kind": "read",
+      "summary": "Get the inventory details of a product.",
+      "args": {
+        "product_id": "The product id, such as '6086499569'. Be careful the product id is different from the item id."
+      },
+      "contract": null
+    },
+    {
+      "name": "get_user_details",
+      "kind": "read",
+      "summary": "Get the details of a user, including their orders.",
+      "args": {
+        "user_id": "The user id, such as 'sara_doe_496'."
+      },
+      "contract": null
+    },
+    {
+      "name": "list_all_product_types",
+      "kind": "read",
+      "summary": "List the name and product id of all product types. Each product type has a variety of different items with unique item ids and options. There are only 50 product types in the store.",
+      "args": {},
+      "contract": null
+    },
+    {
+      "name": "modify_pending_order_address",
+      "kind": "write",
+      "summary": "Modify the shipping address of a pending order. The agent needs to explain the modification detail and ask for explicit user confirmation (yes/no) to proceed.",
+      "args": {
+        "address1": "The first line of the address, such as '123 Main St'.",
+        "address2": "The second line of the address, such as 'Apt 1' or ''.",
+        "city": "The city, such as 'San Francisco'.",
+        "country": "The country, such as 'USA'.",
+        "order_id": "The order id, such as '#W0000000'. Be careful there is a '#' symbol at the beginning of the order id.",
+        "state": "The state, such as 'CA'.",
+        "zip": "The zip code, such as '12345'."
+      },
+      "contract": null
+    },
+    {
+      "name": "modify_pending_order_items",
+      "kind": "write",
+      "summary": "Modify items in a pending order to new items of the same product type. For a pending order, this function can only be called once. The agent needs to explain the exchange detail and ask for explicit user confirmation (yes/no) to proceed.",
+      "args": {
+        "item_ids": "The item ids to be modified, each such as '1008292230'. There could be duplicate items in the list.",
+        "new_item_ids": "The item ids to be modified for, each such as '1008292230'. There could be duplicate items in the list. Each new item id should match the item id in the same position and be of the same product.",
+        "order_id": "The order id, such as '#W0000000'. Be careful there is a '#' symbol at the beginning of the order id.",
+        "payment_method_id": "The payment method id to pay or receive refund for the item price difference, such as 'gift_card_0000000' or 'credit_card_0000000'. These can be looked up from the user or order details."
+      },
+      "contract": null
+    },
+    {
+      "name": "modify_pending_order_payment",
+      "kind": "write",
+      "summary": "Modify the payment method of a pending order. The agent needs to explain the modification detail and ask for explicit user confirmation (yes/no) to proceed.",
+      "args": {
+        "order_id": "The order id, such as '#W0000000'. Be careful there is a '#' symbol at the beginning of the order id.",
+        "payment_method_id": "The payment method id to pay or receive refund for the item price difference, such as 'gift_card_0000000' or 'credit_card_0000000'. These can be looked up from the user or order details."
+      },
+      "contract": null
+    },
+    {
+      "name": "modify_user_address",
+      "kind": "write",
+      "summary": "Modify the default address of a user. The agent needs to explain the modification detail and ask for explicit user confirmation (yes/no) to proceed.",
+      "args": {
+        "address1": "The first line of the address, such as '123 Main St'.",
+        "address2": "The second line of the address, such as 'Apt 1' or ''.",
+        "city": "The city, such as 'San Francisco'.",
+        "country": "The country, such as 'USA'.",
+        "state": "The state, such as 'CA'.",
+        "user_id": "The user id, such as 'sara_doe_496'.",
+        "zip": "The zip code, such as '12345'."
+      },
+      "contract": null
+    },
+    {
+      "name": "return_delivered_order_items",
+      "kind": "write",
+      "summary": "Return some items of a delivered order. The order status will be changed to 'return requested'. The agent needs to explain the return detail and ask for explicit user confirmation (yes/no) to proceed. The user will receive follow-up email for how and where to return the item.",
+      "args": {
+        "item_ids": "The item ids to be returned, each such as '1008292230'. There could be duplicate items in the list.",
+        "order_id": "The order id, such as '#W0000000'. Be careful there is a '#' symbol at the beginning of the order id.",
+        "payment_method_id": "The payment method id to pay or receive refund for the item price difference, such as 'gift_card_0000000' or 'credit_card_0000000'. These can be looked up from the user or order details."
+      },
+      "contract": null
+    },
+    {
+      "name": "transfer_to_human_agents",
+      "kind": "generic",
+      "summary": "Transfer the user to a human agent, with a summary of the user's issue. Only transfer if -  the user explicitly asks for a human agent -  given the policy and the available tools, you cannot solve the user's issue.",
+      "args": {
+        "summary": "A summary of the user's issue."
+      },
+      "contract": null
+    }
+  ],
+  "retail_provenance": {
+    "stretto": "0.0.1",
+    "sources": ["glm-5.3"],
+    "habit_episodes": 3,
+    "arbiter_cases": 15,
+    "compiled_unix_ms": 1790271577025
+  },
+  "retail_size": 16884,
+  "diff_shop_promoted": "# Flow diff: shop\n\nNothing needs review: the flow runs the same program, and calls no tool, makes no lookup, binds no argument and asks no model or question it did not before.\n\n## Promotion\n\n- none: it may act after every call → 3 of 4 sites scored (at least 70% used, a lower bound of 0.50, 3 tasks, at 0.3)\n",
+  "diff_shop_retail": "# Flow diff: retail\n\n**Needs review:**\n\n- `find_user_id_by_name_zip` is now marked read-only, so the flow may call it\n- `get_item_details` is now marked read-only, so the flow may call it\n- `get_product_details` is now marked read-only, so the flow may call it\n- `list_all_product_types` is now marked read-only, so the flow may call it\n- a new lookup: `get_user_details` after `find_user_id_by_name_zip`\n- a new lookup: `get_product_details` after `get_order_details`\n- a new lookup: `get_product_details` after `get_product_details`\n- a new binding: `get_product_details`'s `product_id` from `get_order_details` at `$.items[*].product_id`\n- a new binding: `get_user_details`'s `user_id` from `find_user_id_by_name_zip` at `$`\n- the flow now asks `jev-latest` at each decision, with the predicates `list_pending`, `needs_options`, `must_ask`\n\n## Tools\n\n- `calculate`: absent → neither\n- `exchange_delivered_order_items`: absent → write\n- `find_user_id_by_name_zip`: absent → read\n- `get_item_details`: absent → read\n- `get_product_details`: absent → read\n- `list_all_product_types`: absent → read\n- `modify_pending_order_address`: absent → write\n- `modify_pending_order_items`: absent → write\n- `modify_pending_order_payment`: absent → write\n- `modify_user_address`: absent → write\n- `return_delivered_order_items`: absent → write\n- `transfer_to_human_agents`: absent → neither\n\n## Sites\n\n- after `find_user_id_by_name_zip`: may now look up `get_user_details`\n- after `get_order_details`: may now look up `get_product_details`\n- after `get_product_details`: may now look up `get_product_details`\n\n## With the habit alone, at 0.3\n\n- after `find_user_id_by_name_zip`, a new site: looks up `get_user_details` 1.00 × 0.75 = 0.75\n\n## What the agent did next in training\n\n- after `get_order_details`: get_order_details 50% → 78%\n- after `get_order_details`: get_product_details 0% → 11%\n- after `get_order_details`: respond 50% → 11%\n\n## Bindings\n\n- `get_product_details` binds `product_id` from `get_order_details` at `$.items[*].product_id`\n- `get_user_details` binds `user_id` from `find_user_id_by_name_zip` at `$`\n- `get_user_details` no longer binds `user_id` from `find_user_id_by_email` at `$`\n- `get_user_details`'s chance (not mentioned): 0.88 → 0.75\n\n## Arbiter\n\n- now has an arbiter, fitted on 15 held-out decisions, which asks `jev-latest`, with the predicates `list_pending`, `needs_options`, `must_ask`\n\n## Provenance\n\n- sources: claude-sonnet-5 → glm-5.3\n- the habit learned from 6 → 3 successful sessions or episodes\n- held-out decisions behind the arbiter: 0 → 15\nstretto: 10 change(s) need review\n",
+  "promote_output": "stretto: scored 3 episodes (0 decisions left out, unanswered); 3 of 4 sites promoted\nA site is promoted when, at a threshold of 0.3, at least 70% of the flow's lookups there were ones the agent made later in the session, the 90% interval's lower bound on that share is at least 0.50, and the lookups came from at least 3 tasks.\n\n| After | Decisions | Lookups it would make | Made by the agent later | Lower bound | Tasks | Promoted |\n|---|---|---|---|---|---|---|\n| `cancel_pending_order` | 2 | 0 | — | 0.00 | 0 | no |\n| `find_user_id_by_email` | 3 | 3 | 3 (100%) | 0.53 | 3 | yes |\n| `get_order_details` | 6 | 3 | 3 (100%) | 0.53 | 3 | yes |\n| `get_user_details` | 3 | 3 | 3 (100%) | 0.53 | 3 | yes |\n",
+  "audit_output": "stretto: audited 32 decisions in 8 episodes in 0.0 s\n# Flow audit: shop\n\nThe flow decides with the habit alone. 8 episodes, 32 decisions scored (0 left out: no answer from the oracle).\n\n- **Agreement:** the flow's likeliest option was the agent's step at 100.0% of decisions (99.7% expected if it picked at random from its own probabilities).\n- **Surprise:** 0.003 nats per decision (the agent's path has log-probability -0.1 under the flow, scored by fugue's `ScoreGivenTrace`).\n- **Calibration:** expected calibration error 0.003.\n\n## Sites\n\n| Site | Decisions | Agreement | Nats per decision |\n|---|---|---|---|\n| `get_order_details` | 16 | 100.0% | 0.005 |\n| `find_user_id_by_email` | 8 | 100.0% | 0.001 |\n| `get_user_details` | 8 | 100.0% | 0.001 |\n\n## Calibration\n\n| Top probability | Decisions | Mean | Agreement |\n|---|---|---|---|\n| 0.9–1.0 | 32 | 0.997 | 100.0% |\n\n## Episodes the flow fit least\n\n| Episode | Task | Decisions | Nats per decision |\n|---|---|---|---|\n| 20260928T015653.249Z-9844 | 20260928T015653.249Z-9844 | 4 | 0.003 |\n| 20260928T015653.283Z-9873 | 20260928T015653.283Z-9873 | 4 | 0.003 |\n| 20260928T015653.313Z-9898 | 20260928T015653.313Z-9898 | 4 | 0.003 |\n| 20260928T015653.345Z-9927 | 20260928T015653.345Z-9927 | 4 | 0.003 |\n| 20260928T015653.373Z-9952 | 20260928T015653.373Z-9952 | 4 | 0.003 |\n| 20260928T015653.408Z-9981 | 20260928T015653.408Z-9981 | 4 | 0.003 |\n| 20260928T015653.808Z-10049 | 20260928T015653.808Z-10049 | 4 | 0.003 |\n| 20260928T015653.873Z-10102 | 20260928T015653.873Z-10102 | 4 | 0.003 |\n"
+}

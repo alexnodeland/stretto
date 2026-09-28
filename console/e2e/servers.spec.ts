@@ -1,0 +1,81 @@
+import { test, expect } from './fixtures'
+
+test('adding a server checks the form, then gives each host’s configuration', async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.goto('/servers')
+  await page.getByRole('link', { name: 'Add a server' }).first().click()
+  await expect(page.getByRole('heading', { name: 'Add a server', level: 1 })).toBeVisible()
+  await page.getByTestId('server-save').click()
+  await expect(page.getByText('Give the server a name.')).toBeVisible()
+  await expect(page.getByText('Give the command that starts the server.')).toBeVisible()
+
+  await page.getByTestId('server-name').fill('Demo Shop')
+  await page.getByTestId('server-save').click()
+  await expect(page.getByText('Use lowercase letters, digits, - and _.')).toBeVisible()
+  await page.getByTestId('server-name').fill('demo')
+  await page.getByTestId('server-command').fill('stretto-mcp-demo --world retail')
+  await expect(page.locator('.words .chip')).toHaveText(['stretto-mcp-demo', '--world', 'retail'])
+  await expect(
+    page.getByText(
+      'stretto-proxy --record ~/.stretto/logs/demo --domain demo -- stretto-mcp-demo --world retail',
+    ),
+  ).toBeVisible()
+  await page.getByTestId('server-save').click()
+
+  await expect(page).toHaveURL(/\/servers\/demo$/)
+  await expect(page.getByText('Server demo added')).toBeVisible()
+  const snippet = page.getByTestId('host-snippet')
+  await expect(snippet).toContainText(
+    'claude mcp add demo -- stretto-proxy --record ~/.stretto/logs/demo',
+  )
+  await page.getByRole('tab', { name: 'Cursor' }).click()
+  await expect(snippet).toContainText('"mcpServers"')
+  await page.getByRole('tab', { name: 'VS Code' }).click()
+  await expect(snippet).toContainText('"type": "stdio"')
+  await snippet.getByRole('button', { name: 'Copy' }).click()
+  await expect(page.getByText('Configuration copied')).toBeVisible()
+  const copied = await page.evaluate(() => navigator.clipboard.readText())
+  expect(copied).toContain('"servers"')
+})
+
+test('testing the connection lists the tools and their kinds', async ({ page }) => {
+  await page.goto('/servers/shop')
+  await page.getByTestId('probe').click()
+  await expect(page.getByTestId('probe-ok')).toContainText('stretto-mcp-demo 0.1.0')
+  await expect(page.getByRole('cell', { name: 'cancel_pending_order' })).toBeVisible()
+  await expect(page.locator('.probe-tools tbody tr')).toHaveCount(4)
+  await expect(page.locator('.probe-tools').getByText('write')).toBeVisible()
+})
+
+test('a server that cannot be reached says why', async ({ page }) => {
+  await page.goto('/servers/orders-api')
+  await expect(page.getByText('flow not found: ~/.stretto/orders.flow.json')).toBeVisible()
+  await page.getByTestId('probe').click()
+  await expect(page.getByTestId('probe-failed')).toContainText('ORDERS_AUTH, which is not set')
+})
+
+test('a discovered upstream can be added with its URL filled in', async ({ page }) => {
+  await page.goto('/servers')
+  await page.getByTestId('discovered-tickets').getByRole('link', { name: 'Add' }).click()
+  await expect(page.getByTestId('server-name')).toHaveValue('tickets')
+  await expect(page.getByTestId('server-url')).toHaveValue('https://desk.example.com/mcp')
+})
+
+test('editing keeps the name, and the server refuses a duplicate', async ({ page }) => {
+  await page.goto('/servers/notes/edit')
+  await expect(page.getByTestId('server-name')).toBeDisabled()
+  await page.getByRole('radio', { name: /Shadow/ }).check({ force: true })
+  await page.getByTestId('server-save').click()
+  await expect(page.getByText('Shadow mode runs a flow: choose one.')).toBeVisible()
+  await page.getByRole('radio', { name: /Record/ }).check({ force: true })
+  await page.getByTestId('server-save').click()
+  await expect(page.getByText('Server notes saved')).toBeVisible()
+
+  await page.goto('/servers/new?domain=shop')
+  await page.getByTestId('server-command').fill('stretto-mcp-demo')
+  await page.getByTestId('server-save').click()
+  await expect(page.getByText('A server named shop exists.')).toBeVisible()
+})

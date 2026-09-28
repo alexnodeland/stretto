@@ -22,7 +22,8 @@ site: string, action: DecisionAction,
  */
 tool: string | null, arguments: unknown, 
 /**
- * The lookup's probability, what the threshold is compared with.
+ * The lookup's probability under the flow's decider. The flow makes the
+ * lookup when this, and this times `binding`, both reach the threshold.
  */
 prob: number | null, 
 /**
@@ -30,7 +31,7 @@ prob: number | null,
  */
 probs: { [key in string]: number }, 
 /**
- * The binding's chance that the arguments are the agent's.
+ * The chance that the lookup's bound arguments are the agent's own.
  */
 binding: number | null, 
 /**

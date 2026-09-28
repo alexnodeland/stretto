@@ -1,0 +1,24 @@
+/* The brand's fonts, from brand/fonts (subsets with every OpenType feature). */
+@font-face {
+  font-family: 'Inter';
+  src: url('@brand/fonts/Inter-Variable.subset.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('@brand/fonts/JetBrainsMono-Regular.subset.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('@brand/fonts/JetBrainsMono-Bold.subset.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
