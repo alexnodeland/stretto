@@ -1,11 +1,13 @@
 use anyhow::{bail, Context, Result};
 use clap::{Parser, ValueEnum};
 use std::ffi::OsString;
-use std::path::PathBuf;
+use std::net::SocketAddr;
+use std::path::{Path, PathBuf};
+use std::time::Duration;
 use stretto_oracle::jev::JevClient;
 use stretto_proxy::{
-    expand_home, prune, run, run_active, Active, Config, ConfirmConfig, FlowConfig, Upstream,
-    FAILURE_EXIT_CODE,
+    expand_home, listen, run, run_active, Active, Config, ConfirmConfig, FlowConfig, Listen,
+    Upstream, FAILURE_EXIT_CODE,
 };
 use stretto_report::confirm::Second;
 use stretto_report::flow::{Decider, Flow};
@@ -19,7 +21,8 @@ use stretto_report::surprise::Override;
 /// Put this in an MCP host's configuration in place of the server's command,
 /// with the real command after `--`. stdout carries only the protocol; the
 /// proxy's own messages go to stderr. The exit status is the server's, or 125
-/// if the proxy itself fails.
+/// if the proxy itself fails. With --listen, hosts connect to it over
+/// Streamable HTTP instead.
 ///
 /// Without --flow, --guards, --commit, --context or --confirm-judge, every line
 /// is forwarded byte for byte and nothing is parsed.
@@ -100,6 +103,8 @@ struct Cli {
     #[arg(help_heading = "Flows", value_name = "N", long, default_value_t = 300)]
     flow_questions: usize,
     /// Append the flow's decisions here (default: next to the session log).
+    /// `{session}` in the path stands for the host session, else the
+    /// session's own id.
     #[arg(help_heading = "Flows", long, value_name = "FILE")]
     flow_log: Option<PathBuf>,
     /// The only tools the flow may call on its own (comma-separated, or the
@@ -186,6 +191,8 @@ struct Cli {
     )]
     confirm_questions: usize,
     /// Append the judgments here (default: next to the session log).
+    /// `{session}` in the path stands for the host session, else the
+    /// session's own id.
     #[arg(
         help_heading = "Writes",
         long,
@@ -200,6 +207,8 @@ struct Cli {
     commit: bool,
     /// Read the conversation from this file, which the host appends to as
     /// JSON lines: `{"role": "user" | "assistant", "content": text}`.
+    /// `{session}` in the path stands for the host session, else the
+    /// session's own id, for a file per session.
     #[arg(help_heading = "The conversation", long, value_name = "FILE")]
     context: Option<PathBuf>,
     /// Task id, which picks the flow's fold (default: the session).
@@ -207,7 +216,7 @@ struct Cli {
     task_id: Option<String>,
     /// A Streamable HTTP server to proxy for, such as
     /// `https://example.com/mcp`, in place of a server command. The host
-    /// still runs the proxy as a stdio server.
+    /// still runs the proxy as a stdio server, unless --listen.
     #[arg(help_heading = "The server", long, value_name = "URL")]
     upstream: Option<String>,
     /// With --upstream: send header NAME with the value of environment
@@ -220,6 +229,35 @@ struct Cli {
         requires = "upstream"
     )]
     upstream_headers: Vec<String>,
+    /// Serve hosts over MCP's Streamable HTTP transport at this address,
+    /// such as `127.0.0.1:8931`, in place of stdio. The endpoint is `/mcp`,
+    /// and its URL goes to stdout. Each MCP session gets a server of its own,
+    /// with its own recording, flow, guards and judge, as each stdio proxy
+    /// has; the `Stretto-Session` header on `initialize` names its host
+    /// session, as STRETTO_SESSION does. Only a loopback address without
+    /// --listen-token-file.
+    #[arg(help_heading = "Hosts over HTTP", long, value_name = "ADDR")]
+    listen: Option<SocketAddr>,
+    /// With --listen: every request must carry `Authorization: Bearer
+    /// <token>`, with the token in this file (at least 16 printable
+    /// characters, no spaces).
+    #[arg(
+        help_heading = "Hosts over HTTP",
+        long,
+        value_name = "FILE",
+        requires = "listen"
+    )]
+    listen_token_file: Option<PathBuf>,
+    /// With --listen: end a session after this many minutes with no request
+    /// and no open stream. Its host then starts another.
+    #[arg(
+        help_heading = "Hosts over HTTP",
+        long,
+        value_name = "MINUTES",
+        default_value_t = 240,
+        value_parser = clap::value_parser!(u64).range(1..)
+    )]
+    listen_idle: u64,
     /// The MCP server to run, and its arguments.
     #[arg(
         last = true,
@@ -269,12 +307,15 @@ fn main() {
         jev: &JevClient::from_env,
         var: &|name| std::env::var(name).ok(),
     };
-    let result = setup(&Cli::parse(), &env).and_then(|(config, active)| {
-        if active.is_active() {
-            run_active(&config, &active)
-        } else {
-            run(&config)
+    let cli = Cli::parse();
+    let result = setup(&cli, &env).and_then(|(config, active)| match listening(&cli)? {
+        Some((addr, options)) => {
+            // Every session shares it, for as long as the process runs.
+            let active = active.is_active().then(|| &*Box::leak(Box::new(active)));
+            listen(addr, &config, active, &options)
         }
+        None if active.is_active() => run_active(&config, &active),
+        None => run(&config),
     });
     match result {
         Ok(code) => std::process::exit(code),
@@ -326,20 +367,49 @@ fn host_process() -> Option<String> {
 /// Delete what is older than `days` in the log directory and the answer
 /// cache, before the session starts.
 fn retain(cli: &Cli, days: u64) {
+    stretto_proxy::retain(&retained(cli), days);
+}
+
+/// The directories `--retain-days` prunes.
+fn retained(cli: &Cli) -> Vec<PathBuf> {
     let dirs = [
         cli.record.clone().map(expand_home),
         Some(expand_home(cli.oracle_cache.clone())),
     ];
-    for dir in dirs.into_iter().flatten() {
-        match prune(&dir, days) {
-            Ok(0) => {}
-            Ok(n) => eprintln!(
-                "stretto-proxy: deleted {n} files older than {days} days from {}",
-                dir.display()
-            ),
-            Err(e) => eprintln!("stretto-proxy: pruning {}: {e:#}", dir.display()),
-        }
+    dirs.into_iter().flatten().collect()
+}
+
+/// With --listen: where to serve hosts, and how. Each session prunes as
+/// `--retain-days` says, since the proxy outlives them.
+fn listening(cli: &Cli) -> Result<Option<(SocketAddr, Listen)>> {
+    let Some(addr) = cli.listen else {
+        return Ok(None);
+    };
+    let token = match &cli.listen_token_file {
+        Some(file) => Some(token(&expand_home(file.clone()))?),
+        None => None,
+    };
+    let options = Listen {
+        token,
+        idle: Duration::from_secs(cli.listen_idle.saturating_mul(60)),
+        retain: cli.retain_days.map(|days| (retained(cli), days)),
+        ..Listen::default()
+    };
+    Ok(Some((addr, options)))
+}
+
+/// The token in `file`: at least 16 printable ASCII characters, no spaces.
+fn token(file: &Path) -> Result<String> {
+    let text = std::fs::read_to_string(file)
+        .with_context(|| format!("reading the token from {}", file.display()))?;
+    let token = text.trim();
+    if token.len() < 16 || !token.bytes().all(|b| b.is_ascii_graphic()) {
+        bail!(
+            "the token in {} must be at least 16 printable ASCII characters, with no spaces",
+            file.display()
+        );
     }
+    Ok(token.to_string())
 }
 
 /// The Streamable HTTP server to proxy for, with its headers' values read

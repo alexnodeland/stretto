@@ -1405,8 +1405,11 @@ name = "stretto-proxy"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "axum",
  "clap",
  "fugue-ppl",
+ "futures-util",
+ "rand 0.8.8",
  "reqwest",
  "serde",
  "serde_json",
@@ -1414,6 +1417,7 @@ dependencies = [
  "stretto-oracle",
  "stretto-report",
  "stretto-trace",
+ "tokio",
 ]
 
 [[package]]

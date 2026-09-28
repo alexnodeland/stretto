@@ -1,6 +1,6 @@
 [package]
 name = "stretto-proxy"
-description = "A stdio MCP proxy that records sessions as stretto episodes, and can serve flows, guards and a commit tool."
+description = "An MCP proxy, over stdio or Streamable HTTP, that records sessions as stretto episodes, and can serve flows, guards and a commit tool."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -29,12 +29,18 @@ path = "src/bin/stretto-procedure/main.rs"
 
 [dependencies]
 anyhow.workspace = true
+# Serving hosts over Streamable HTTP (`--listen`), as stretto-console serves its UI.
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
 clap.workspace = true
 fugue.workspace = true
+futures-util = { version = "0.3", default-features = false }
+rand.workspace = true
 stretto-model.workspace = true
 serde.workspace = true
-serde_json.workspace = true
+# `raw_value`: a host's message is forwarded as it was sent, not re-serialized.
+serde_json = { workspace = true, features = ["raw_value"] }
 stretto-oracle.workspace = true
 stretto-report.workspace = true
 stretto-trace.workspace = true
 reqwest.workspace = true
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "signal", "sync", "time"] }

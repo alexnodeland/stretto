@@ -8,7 +8,7 @@ Everything stretto learns comes from sessions: what an agent did with a server's
 
 ## The proxy
 
-`stretto-proxy` takes the place of an MCP server in the host's configuration. The host starts it as a stdio server; it starts the real server as a child process, from the command after `--`, or connects to one over Streamable HTTP ([`--upstream`](/integrations/streamable-http)). It forwards every line in both directions byte for byte, except what you ask it to act on, such as a result a flow adds its lookups to.
+`stretto-proxy` takes the place of an MCP server in the host's configuration. The host starts it as a stdio server, or connects to it by URL ([`--listen`](/reference/proxy#hosts-over-http)); it starts the real server as a child process, from the command after `--`, or connects to one over Streamable HTTP ([`--upstream`](/integrations/streamable-http)). It forwards every line in both directions byte for byte, except what you ask it to act on, such as a result a flow adds its lookups to.
 
 ```sh
 stretto-proxy --record ~/.stretto/logs/orders --domain orders \

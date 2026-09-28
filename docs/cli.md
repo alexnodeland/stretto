@@ -801,7 +801,7 @@ Usage: stretto completions <SHELL>
 
 ## `stretto-proxy`
 
-Forward a stdio MCP server's traffic, record it for stretto, and optionally run a flow, policy guards and a commit tool on it. Put this in an MCP host's configuration in place of the server's command, with the real command after `--`. stdout carries only the protocol; the proxy's own messages go to stderr. The exit status is the server's, or 125 if the proxy itself fails. Without --flow, --guards, --commit, --context or --confirm-judge, every line is forwarded byte for byte and nothing is parsed.
+Forward a stdio MCP server's traffic, record it for stretto, and optionally run a flow, policy guards and a commit tool on it. Put this in an MCP host's configuration in place of the server's command, with the real command after `--`. stdout carries only the protocol; the proxy's own messages go to stderr. The exit status is the server's, or 125 if the proxy itself fails. With --listen, hosts connect to it over Streamable HTTP instead. Without --flow, --guards, --commit, --context or --confirm-judge, every line is forwarded byte for byte and nothing is parsed.
 
 ```text
 Usage: stretto-proxy [OPTIONS] [-- <SERVER_COMMAND>...]
@@ -824,7 +824,7 @@ Usage: stretto-proxy [OPTIONS] [-- <SERVER_COMMAND>...]
 - `--flow-per-call <N>` (default `8`): Lookups appended to one result, at most.
 - `--flow-per-session <N>` (default `40`): Lookups per session, at most.
 - `--flow-questions <N>` (default `300`): Questions to the System-One model per session, at most.
-- `--flow-log <FILE>`: Append the flow's decisions here (default: next to the session log).
+- `--flow-log <FILE>`: Append the flow's decisions here (default: next to the session log). `{session}` in the path stands for the host session, else the session's own id.
 - `--flow-tools <TOOLS>` (repeatable): The only tools the flow may call on its own (comma-separated, or the option repeated). A server's `readOnlyHint` says a call changes nothing, not that it is free, unlogged or fine to make unasked: a read can be metered, rate-limited, or recorded as an access. Without this, the flow may call every tool it reads as a lookup.
 - `--flow-shadow`: Shadow mode: the flow decides after each call and logs what it would look up (`"shadow": true`), but makes no lookups, so the agent gets the server's results unchanged. `stretto promote --sessions` then makes the same decisions again from the answers cached in --oracle-cache, and scores them against what the agent did.
 - `--flow-explore <EPSILON>`: Explore: with this probability, take a lookup other than the rule's choice, drawn by the decider's probabilities among those that bind. Each decision in the flow log then carries its `policy`: every option and the chance that the flow took what it took, for `stretto evaluate`. 0 explores nothing but still logs it.
@@ -844,17 +844,23 @@ Usage: stretto-proxy [OPTIONS] [-- <SERVER_COMMAND>...]
 - `--confirm-second-shadow`: Ask the second question but only log its answer (shadow mode): a write then fails on the first answer alone.
 - `--confirm-threshold <P>` (default `0.5`): A write fails when an answer's probability of a yes is below this.
 - `--confirm-questions <N>` (default `100`): The judge's questions per session, at most.
-- `--confirm-log <FILE>`: Append the judgments here (default: next to the session log).
+- `--confirm-log <FILE>`: Append the judgments here (default: next to the session log). `{session}` in the path stands for the host session, else the session's own id.
 - `--commit`: Add `stretto_commit`, which makes several calls in one, in order, each checked by the guards, and a sentence on when to use it to the server's instructions.
 
 **The conversation**
 
-- `--context <FILE>`: Read the conversation from this file, which the host appends to as JSON lines: `{"role": "user" | "assistant", "content": text}`.
+- `--context <FILE>`: Read the conversation from this file, which the host appends to as JSON lines: `{"role": "user" | "assistant", "content": text}`. `{session}` in the path stands for the host session, else the session's own id, for a file per session.
 
 **The server**
 
-- `--upstream <URL>`: A Streamable HTTP server to proxy for, such as `https://example.com/mcp`, in place of a server command. The host still runs the proxy as a stdio server.
+- `--upstream <URL>`: A Streamable HTTP server to proxy for, such as `https://example.com/mcp`, in place of a server command. The host still runs the proxy as a stdio server, unless --listen.
 - `--upstream-header <NAME=VAR>` (repeatable): With --upstream: send header NAME with the value of environment variable VAR, such as `Authorization=GITHUB_AUTH` for a variable that holds `Bearer …`. Values are never logged.
+
+**Hosts over HTTP**
+
+- `--listen <ADDR>`: Serve hosts over MCP's Streamable HTTP transport at this address, such as `127.0.0.1:8931`, in place of stdio. The endpoint is `/mcp`, and its URL goes to stdout. Each MCP session gets a server of its own, with its own recording, flow, guards and judge, as each stdio proxy has; the `Stretto-Session` header on `initialize` names its host session, as STRETTO_SESSION does. Only a loopback address without --listen-token-file.
+- `--listen-token-file <FILE>`: With --listen: every request must carry `Authorization: Bearer <token>`, with the token in this file (at least 16 printable characters, no spaces).
+- `--listen-idle <MINUTES>` (default `240`): With --listen: end a session after this many minutes with no request and no open stream. Its host then starts another.
 
 **Arguments**
 
