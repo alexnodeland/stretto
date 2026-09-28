@@ -32,6 +32,7 @@ brand/             the brand kit, the explainer and the videos
 make help   # the everyday commands
 make fmt    # cargo fmt --all
 make ci     # the formatting check, clippy, the tests and doctests, and the API docs
+make console   # build the console's UI and run the console on ~/.stretto
 ```
 
 `make test` runs the unit tests, and Phase 0 on a miniature fixture checkout. CI runs what `make ci` runs, checks that the workspace builds with Rust 1.88, the oldest it supports (`make msrv`), and measures line coverage, failing under a threshold (`make coverage`). Then it runs:
@@ -40,7 +41,12 @@ make ci     # the formatting check, clippy, the tests and doctests, and the API 
 - `install.sh` against a local release of stand-in binaries (`sh packaging/test-install.sh`), and shellcheck on the shell scripts;
 - [the walkthrough](/guide/walkthrough), end to end on the official MCP filesystem server (`python3 scripts/walkthrough.py --bin target/debug`);
 - the proxy in front of the reference Streamable HTTP server (`python3 scripts/http_check.py --bin target/debug`);
-- the doctests of `scripts/telecom_workflow.py` and `scripts/ceiling.py`, and the benchmarks round's scripts on a fixture.
+- the doctests of `scripts/telecom_workflow.py` and `scripts/ceiling.py`, and the benchmarks round's scripts on a fixture;
+- the console's UI (`make ui-check`, then `make e2e`):
+  - Prettier, ESLint, vue-tsc, Vitest and the build;
+  - Playwright in Chromium on a mock API, with axe-core's WCAG 2.1 A and AA rules on every page in both themes;
+  - Playwright again on the real console over its test fixtures;
+- when a pull request changes what goes into them, the two container images (`make docker`, `make docker-console`): each binary and the quickstart run in the CLI's, and the console's starts and is used over HTTP.
 
 On macOS and Windows, CI builds the five programs, runs each one's `--version`, and runs the console's tests.
 

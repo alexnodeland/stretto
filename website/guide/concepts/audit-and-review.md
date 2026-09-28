@@ -21,6 +21,8 @@ stretto flow-show ~/.stretto/orders.flow.json
 
 [Reviewing flows](/reference/review) has a real flow rendered in full, and what to check in each section.
 
+[The console](../console)'s page for a flow shows the same review, and compares the flow with another as `flow-diff` does. Its *Audit* button starts `stretto audit` as a job, and the job's page renders the report.
+
 ## Compare two flows
 
 Learn again as sessions arrive, and compare the new flow with the one being served:
@@ -84,3 +86,4 @@ The audit scores next-step predictions, the habit's by default for a flow with n
 
 - [Reviewing flows](/reference/review), in full
 - [`stretto audit`](/reference/cli#stretto-audit), [`flow-show`](/reference/cli#stretto-flow-show) and [`flow-diff`](/reference/cli#stretto-flow-diff)
+- [The console](../console): the review, the comparison and audits, in a browser

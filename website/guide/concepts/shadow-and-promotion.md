@@ -18,6 +18,8 @@ stretto-proxy --record ~/.stretto/shadow/orders --domain orders \
 
 With `--flow-shadow`, the flow decides after each of the agent's calls and logs what it would look up, marked `"shadow": true` in the flow log, but makes no lookups. The agent gets the server's results unchanged. Serve it this way for as many sessions as it takes to see each kind of request a few times.
 
+In [the console](../console), a shadow session shows what the flow would have looked up after each call, and a flow's page starts `promote` as a job.
+
 ## 2. Promote it
 
 `stretto promote` makes the same decisions again on the shadow sessions and scores each lookup the flow would have made: *used* if the agent made that call later in the session, a *detour* if it never did.
@@ -64,3 +66,4 @@ stretto-proxy --record ~/.stretto/logs/orders --domain orders \
 - [Audit and review](./audit-and-review)
 - [`stretto promote`](/reference/cli#stretto-promote) and [`--flow-shadow`](/reference/cli#stretto-proxy)
 - [`promoted` in the file format](/reference/formats#promoted)
+- [The console](../console): shadow sessions, and promotion from the page

@@ -14,8 +14,9 @@ A deployment records what its tools read and return, and what its users say. Thi
 | Flow logs (`<session>.flow.jsonl`) | Each decision, with the arguments of the lookups made, such as ids. No results or messages. |
 | A flow (`*.flow.json`) | Tool and argument names, JSON paths, counts, the tools' documentation. Its code features (`map.ids`) hold values copied from training results. |
 | The answer cache (`--oracle-cache`) | Answers of the System-One model, never the questions' state. |
+| The console's files (`servers.json`, `console/jobs/`, `console/trash/`) | The registry of servers: their commands or URLs, and the *names* of the variables and headers they need, never the values. Each job's command line, output and reports. Deleted sessions and flows, kept until you empty the trash. |
 
-Keep logs where the data may live, and never commit them.
+Keep logs where the data may live, and never commit them. [The console](../console) shows all of it to anyone with its token, so it listens on 127.0.0.1 unless you say otherwise ([signing in](../console#sign-in)).
 
 ## What leaves the machine
 

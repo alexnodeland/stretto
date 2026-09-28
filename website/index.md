@@ -74,6 +74,15 @@ Delta owner: Priya.
 
 The agent made 1 call where it had made 3. [The walkthrough](/guide/walkthrough) runs this loop end to end on the official MCP filesystem server, with no key.
 
+## See it in the console
+
+<p class="home-lead">The console is a web app on your machine, over the files stretto writes. It shows each session as a timeline, with the reads stretto made after each call and why, and each flow as a graph you can try at another threshold. It also has your servers with their host configuration, and the CLI's jobs, run from the page.</p>
+
+![A served session in the console: the customer's request, the agent's first call, and the three lookups stretto read ahead after it, each with its probability against the threshold](../brand/media/console/session-light.png#gh-light-mode-only)
+![A served session in the console: the customer's request, the agent's first call, and the three lookups stretto read ahead after it, each with its probability against the threshold](../brand/media/console/session-dark.png#gh-dark-mode-only)
+
+[The console's guide](/guide/console) shows how to run it, from a checkout or in a container.
+
 ## The evidence
 
 <p class="home-lead">Every number comes with the kind of evidence behind it, and the script that recomputes it.</p>

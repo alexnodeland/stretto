@@ -58,6 +58,8 @@ With `--record`, the proxy logs sessions whether or not it serves a flow. So the
 
 A new flow can start in [shadow mode](./concepts/shadow-and-promotion): it decides and logs what it would look up, but makes nothing, and `stretto promote` then keeps it to the sites where its lookups were the agent's own.
 
+[The console](./console) shows the loop as it runs: each session's calls with the lookups the flow made after them, each flow's graph, and the jobs that learn, audit and promote.
+
 ## Where no user speaks
 
 Some work has no user in the loop: a ticket comes in, and the agent works through a procedure against the tools. There every branch follows a tool result, so a whole procedure, writes included, can be compiled once from traces and run with no model. `stretto-procedure` runs one, checks the outcome the ticket states, and hands back to a model only what that check cannot confirm. See [procedures](./concepts/procedures).

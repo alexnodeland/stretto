@@ -1,5 +1,5 @@
 ---
-description: The environment variables stretto reads - the optional TypeSafe key and its settings, the redaction salt, and the variables for upstream headers.
+description: The environment variables stretto reads - the optional TypeSafe key and its settings, the redaction salt, the variables for upstream headers, and the console's settings.
 ---
 
 # Environment variables
@@ -44,7 +44,29 @@ The salt `stretto redact` hashes values with. `--salt-env` names another variabl
 
 ### `HOME`
 
-Where a leading `~` points in the proxy's path options and in `stretto init --flow`, and where `stretto doctor` looks for `~/.stretto`. `USERPROFILE` stands in when `HOME` is not set.
+Where a leading `~` points in the proxy's path options, in `stretto init --flow` and in the console's job paths, and where `stretto doctor` and the console look for `~/.stretto` (the console's unless `STRETTO_HOME` is set). `USERPROFILE` stands in when `HOME` is not set.
+
+## The console
+
+`stretto-console` reads these when the option in parentheses is not given ([the console](/guide/console)). Its jobs run the `stretto` CLI with the console's own environment, so a job that fits an arbiter needs `TYPESAFE_API_KEY` where the console runs, and `redact` needs `STRETTO_REDACT_SALT`.
+
+### `STRETTO_HOME`
+
+The data directory the console serves (`--data`). Default `~/.stretto`.
+
+### `STRETTO_CONSOLE_LISTEN`
+
+The address it listens on (`--listen`). Default `127.0.0.1:7878`; the container image sets `0.0.0.0:8080`, and is published on 127.0.0.1 only.
+
+### `STRETTO_CONSOLE_TOKEN`
+
+The token the API requires (`--token`). A token given this way is never printed, and keeps the console's URL the same across restarts. Default: a new token at each start, printed in the URL to open.
+
+### `STRETTO_UID`, `STRETTO_GID`
+
+For [`compose.yaml`](https://github.com/alexnodeland/stretto/blob/main/compose.yaml) only: the user and group the console's container runs as, so that the files it writes in your `~/.stretto` are yours.
+
+## For development
 
 ### `STRETTO_BLESS`
 
