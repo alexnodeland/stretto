@@ -83,9 +83,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo build --locked -p stretto-report -p stretto-proxy
+      - run: cargo build --locked -p stretto-report -p stretto-proxy -p stretto-console
       - shell: bash
         run: |
-          for bin in stretto stretto-proxy stretto-procedure stretto-mcp-demo; do
+          for bin in stretto stretto-proxy stretto-procedure stretto-mcp-demo stretto-console; do
             "target/debug/$bin" --version
           done
+      # The console's own tests, on a platform the check job does not run.
+      - run: cargo test --locked -p stretto-console
