@@ -57,7 +57,7 @@ jobs:
       - run: sh examples/quickstart/run.sh --bin target/debug
       # install.sh against a local release of stand-in binaries, and the shell scripts linted.
       - run: sh packaging/test-install.sh
-      - run: shellcheck install.sh examples/quickstart/run.sh packaging/test-install.sh packaging/homebrew/fill.sh
+      - run: shellcheck install.sh examples/quickstart/run.sh packaging/test-install.sh packaging/homebrew/fill.sh crates/stretto-console/tests/fixtures/regenerate.sh
       - run: python3 scripts/walkthrough.py --bin target/debug
       - run: python3 scripts/http_check.py --bin target/debug
       # The compiled workflow's binding rules (scripts/telecom_workflow.py), which need no τ²-bench.
