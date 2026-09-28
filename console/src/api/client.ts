@@ -198,6 +198,9 @@ export const api = {
   job: (id: string, o?: RequestOptions) =>
     request<Job>('GET', `/api/jobs/${seg(id)}`, undefined, o),
   createJob: (job: JobRequest, o?: RequestOptions) => request<Job>('POST', '/api/jobs', job, o),
+  /** Cancel a queued or running job: 409 once it has ended. */
+  cancelJob: (id: string, o?: RequestOptions) =>
+    request<Job>('POST', `/api/jobs/${seg(id)}/cancel`, undefined, o),
   /** A report or flow a job wrote, by its index in `artifacts`. */
   jobArtifactUrl: (id: string, index: number) => `/api/jobs/${seg(id)}/artifacts/${index}`,
   jobArtifact: (id: string, index: number, o?: RequestOptions) =>

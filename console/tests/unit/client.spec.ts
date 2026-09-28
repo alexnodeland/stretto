@@ -63,12 +63,15 @@ describe('the API client', () => {
       threshold: null,
     })
     await api.probeServer('shop')
-    expect(calls.map((c) => c.init.method)).toEqual(['POST', 'DELETE', 'PUT', 'POST'])
+    await api.cancelJob('20260928T044952.337Z-4458')
+    expect(calls.map((c) => c.init.method)).toEqual(['POST', 'DELETE', 'PUT', 'POST', 'POST'])
     for (let i = 0; i < calls.length; i++) expect(headers(i)[WRITE_HEADER]).toBe('1')
     expect(headers(0)['Content-Type']).toBe('application/json')
     expect(JSON.parse(String(calls[0]!.init.body))).toEqual({ kind: 'doctor' })
     expect(calls[1]!.url).toBe('/api/sessions/20260928T014620.569Z-654')
     expect(calls[3]!.url).toBe('/api/servers/shop/probe')
+    expect(calls[4]!.url).toBe('/api/jobs/20260928T044952.337Z-4458/cancel')
+    expect(calls[4]!.init.body).toBeUndefined()
   })
 
   it('builds queries without empty values and encodes path segments', async () => {

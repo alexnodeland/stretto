@@ -52,6 +52,7 @@ JSON under `/api`, `snake_case` fields. Times are milliseconds since the Unix ep
 | `POST /api/servers/:name/probe` | a live test: `initialize` and `tools/list` now, the tools with their kinds, and what they say against the server's flow |
 | `GET /api/jobs`, `GET /api/jobs/:id` | jobs, newest first, with the last 64 KiB of output; one job with all of it |
 | `POST /api/jobs` | queue `learn`, `promote`, `audit`, `redact` or `doctor` (202) |
+| `POST /api/jobs/:id/cancel` | cancel a job: a queued one at once, so it never runs; a running one's `stretto` is killed, and the job ends `cancelled` (409 once it has ended) |
 | `GET /api/jobs/:id/artifacts/:index` | a report or flow a job wrote, to show |
 | `GET /api/settings` | the data directory's size by kind, the binaries, the key, the retention note |
 | `GET /api/events` | Server-Sent Events: `changed` (`{what, keys}`, from a poll of the data directory every second), `job` (a job whose status or output moved on), and `: ping` every 15 s |
@@ -61,7 +62,7 @@ A session or flow is named by its **key**: its file's stem (`20260928T020401.117
 
 **Types.** With the `ts` feature, every type the API answers with, and each request body, derives `ts_rs::TS`, and `make types` (`cargo test -p stretto-console --features ts --lib api::typescript`) writes them as TypeScript to `console/src/api/generated/` (one file per type, and `index.ts`). The test fails when the files it found there differed, so CI fails until the change to a type is committed with its TypeScript. `src/api/typescript.rs` lists the types. The feature is off by default, so a build, and coverage, leave the derives out.
 
-**Jobs** run the `stretto` CLI as subprocesses, one at a time in the order they were queued, in the data directory, with the console's environment: the keys and the salt the console was started with reach the CLI, and the console itself only checks whether they are set. A request's paths are relative to the data directory, or start with `~/`; `learn` and `promote` never write over a file unless asked (`overwrite`). `learn` writes `<domain>.flow.json` by default, and fits no arbiter unless `habit_only` is false and a key is set; `promote` writes `<flow name>.promoted.flow.json` beside the flow; `audit` writes its report as JSON and Markdown; `redact` needs `STRETTO_REDACT_SALT`. `doctor` checks the data directory the console serves (`stretto doctor --data`).
+**Jobs** run the `stretto` CLI as subprocesses, one at a time in the order they were queued (a cancelled one is skipped, and a running one's CLI killed), in the data directory, with the console's environment: the keys and the salt the console was started with reach the CLI, and the console itself only checks whether they are set. A request's paths are relative to the data directory, or start with `~/`; `learn` and `promote` never write over a file unless asked (`overwrite`). `learn` writes `<domain>.flow.json` by default, and fits no arbiter unless `habit_only` is false and a key is set; `promote` writes `<flow name>.promoted.flow.json` beside the flow; `audit` writes its report as JSON and Markdown; `redact` needs `STRETTO_REDACT_SALT`. `doctor` checks the data directory the console serves (`stretto doctor --data`).
 
 ## Security
 

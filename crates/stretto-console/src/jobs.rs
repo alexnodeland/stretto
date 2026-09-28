@@ -9,6 +9,8 @@
 //! environment, so it finds the keys and the salt the console was given
 //! (the console only checks whether they are set). A job still queued or
 //! running when the console stopped is marked failed when it starts again.
+//! A queued job can be cancelled, and never runs; a running one's CLI is
+//! killed ([`Jobs::cancel`]).
 
 use crate::api::jobs::{Artifact, ArtifactKind, Job, JobStatus, Plan};
 use crate::data::{self, paths};
@@ -19,12 +21,14 @@ use std::process::Stdio;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWriteExt, BufReader};
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::{broadcast, mpsc, oneshot};
 
 /// The output lists and events carry: its last 64 KiB.
 pub const TAIL: usize = 64 * 1024;
 /// Progress events for one job come at most this often.
 const PROGRESS_EVERY: Duration = Duration::from_millis(250);
+/// How long a cancelled job's last output is read for.
+const CANCEL_DRAIN: Duration = Duration::from_secs(2);
 
 /// The jobs, and the queue of those to run.
 #[derive(Clone)]
@@ -43,6 +47,9 @@ struct Inner {
     now: Option<u64>,
     /// Every job, oldest first.
     jobs: Mutex<Vec<Job>>,
+    /// The running job's id, and what cancels it. Taken after `jobs` when
+    /// both are held.
+    running: Mutex<Option<(String, oneshot::Sender<()>)>>,
     queue: mpsc::UnboundedSender<(String, Vec<String>)>,
     events: broadcast::Sender<Event>,
 }
@@ -72,11 +79,13 @@ impl Jobs {
             read_only: config.read_only,
             now: config.now_unix_ms,
             jobs: Mutex::new(jobs),
+            running: Mutex::new(None),
             queue,
             events,
         });
         let runner = inner.clone();
         tokio::spawn(async move {
+            // A job cancelled while queued is skipped.
             while let Some((id, args)) = next.recv().await {
                 runner.run(&id, args).await;
             }
@@ -99,6 +108,46 @@ impl Jobs {
         jobs.iter()
             .find(|j| j.id == id)
             .map(|j| self.inner.with_output(j, None))
+    }
+
+    /// Cancel job `id` at `now`: a queued one is cancelled at once; a
+    /// running one's CLI is killed, and the runner marks it cancelled when
+    /// the CLI has ended. The job as it is now.
+    pub fn cancel(&self, id: &str, now: u64) -> Result<Job, CancelError> {
+        let job = {
+            let mut jobs = self.inner.lock();
+            let job = jobs
+                .iter_mut()
+                .find(|j| j.id == id)
+                .ok_or(CancelError::NotFound)?;
+            match job.status {
+                JobStatus::Queued => {
+                    job.status = JobStatus::Cancelled;
+                    job.finished_unix_ms = Some(now);
+                }
+                JobStatus::Running => {
+                    let mut running = self.inner.running.lock().unwrap_or_else(|e| e.into_inner());
+                    if let Some((_, stop)) = running.take_if(|(r, _)| r == id) {
+                        let _ = stop.send(());
+                    }
+                    return Ok(self.inner.with_output(job, Some(TAIL)));
+                }
+                status => return Err(CancelError::Ended(status)),
+            }
+            job.clone()
+        };
+        let note = "stretto-console: cancelled before it started\n";
+        if !self.inner.read_only {
+            let _ = std::fs::create_dir_all(&self.inner.dir);
+            let _ = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(self.inner.log(id))
+                .and_then(|mut f| std::io::Write::write_all(&mut f, note.as_bytes()));
+        }
+        self.inner.save(&job);
+        self.inner.announce(&job);
+        Ok(self.inner.with_output(&job, Some(TAIL)))
     }
 
     /// Queue `plan` as job `id`, created `now`.
@@ -185,15 +234,37 @@ impl Inner {
     async fn run(&self, id: &str, args: Vec<String>) {
         let fixed = self.now;
         let now = move || fixed.unwrap_or_else(crate::now_unix_ms);
-        self.update(id, |j| {
-            j.status = JobStatus::Running;
-            j.started_unix_ms = Some(now());
-        });
+        // Start it only if it is still queued, and make it cancellable in
+        // the same step, so a cancel cannot fall between the two.
+        let (stop, stopped) = oneshot::channel();
+        let started = {
+            let mut jobs = self.lock();
+            match jobs.iter_mut().find(|j| j.id == id) {
+                Some(job) if job.status == JobStatus::Queued => {
+                    job.status = JobStatus::Running;
+                    job.started_unix_ms = Some(now());
+                    *self.running.lock().unwrap_or_else(|e| e.into_inner()) =
+                        Some((id.to_string(), stop));
+                    Some(job.clone())
+                }
+                _ => None,
+            }
+        };
+        let Some(job) = started else {
+            return;
+        };
+        self.save(&job);
+        self.announce(&job);
         let log_path = self.log(id);
-        let outcome = self.execute(id, &args, &log_path).await;
+        let outcome = self.execute(id, &args, &log_path, stopped).await;
+        self.running
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take();
         let (status, code) = match outcome {
-            Ok(code) if code == 0 => (JobStatus::Succeeded, Some(code)),
-            Ok(code) => (JobStatus::Failed, Some(code)),
+            Ok(Ended::Exited(0)) => (JobStatus::Succeeded, Some(0)),
+            Ok(Ended::Exited(code)) => (JobStatus::Failed, Some(code)),
+            Ok(Ended::Cancelled(code)) => (JobStatus::Cancelled, Some(code)),
             Err(e) => {
                 append(&log_path, &format!("stretto-console: {e}\n")).await;
                 (JobStatus::Failed, None)
@@ -221,8 +292,15 @@ impl Inner {
         });
     }
 
-    /// Run the CLI with `args`, its output into `log`: its exit code.
-    async fn execute(&self, id: &str, args: &[String], log: &Path) -> Result<i32, String> {
+    /// Run the CLI with `args`, its output into `log`, until it ends or
+    /// `stop` fires: how it ended.
+    async fn execute(
+        &self,
+        id: &str,
+        args: &[String],
+        log: &Path,
+        mut stop: oneshot::Receiver<()>,
+    ) -> Result<Ended, String> {
         let stretto = self.stretto.as_ref().ok_or(
             "the stretto CLI was not found beside the console or on PATH; pass --stretto PATH",
         )?;
@@ -271,24 +349,71 @@ impl Inner {
         }
         drop(lines);
         let mut last = Instant::now();
-        while let Some(line) = received.recv().await {
-            let _ = file.write_all(format!("{line}\n").as_bytes()).await;
-            if last.elapsed() >= PROGRESS_EVERY {
-                let _ = file.flush().await;
-                last = Instant::now();
-                let job = self.lock().iter().find(|j| j.id == id).cloned();
-                if let Some(job) = job {
-                    self.announce(&job);
+        // Whether `stop` can still fire, and whether it did.
+        let (mut listening, mut cancelled) = (true, false);
+        loop {
+            tokio::select! {
+                line = received.recv() => {
+                    let Some(line) = line else { break };
+                    let _ = file.write_all(format!("{line}\n").as_bytes()).await;
+                    if last.elapsed() >= PROGRESS_EVERY {
+                        let _ = file.flush().await;
+                        last = Instant::now();
+                        let job = self.lock().iter().find(|j| j.id == id).cloned();
+                        if let Some(job) = job {
+                            self.announce(&job);
+                        }
+                    }
+                }
+                asked = &mut stop, if listening => {
+                    listening = false;
+                    if asked.is_ok() {
+                        cancelled = true;
+                        let _ = child.start_kill();
+                        break;
+                    }
                 }
             }
+        }
+        if cancelled {
+            // What it printed before it was killed, for a moment only: a
+            // process it started may hold the pipes open after it.
+            let rest = async {
+                while let Some(line) = received.recv().await {
+                    let _ = file.write_all(format!("{line}\n").as_bytes()).await;
+                }
+            };
+            let _ = tokio::time::timeout(CANCEL_DRAIN, rest).await;
+            let _ = file.write_all(b"stretto-console: cancelled\n").await;
         }
         let _ = file.flush().await;
         let status = child
             .wait()
             .await
             .map_err(|e| format!("waiting for stretto: {e}"))?;
-        Ok(exit_code(status))
+        let code = exit_code(status);
+        Ok(if cancelled {
+            Ended::Cancelled(code)
+        } else {
+            Ended::Exited(code)
+        })
     }
+}
+
+/// Why [`Jobs::cancel`] refused.
+#[derive(Debug, PartialEq, Eq)]
+pub enum CancelError {
+    /// No job has the id.
+    NotFound,
+    /// The job has ended, as it says.
+    Ended(JobStatus),
+}
+
+/// How a job's CLI ended: on its own, or killed by a cancel; its exit code
+/// either way.
+enum Ended {
+    Exited(i32),
+    Cancelled(i32),
 }
 
 /// The exit code, or `128 + n` if signal `n` ended it, as a shell reports.

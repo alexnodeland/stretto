@@ -16,6 +16,7 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
   It has light and dark themes, works from a phone's width up, and has a command palette (Ctrl-K or ⌘K). It follows the data directory as it changes. `make console` builds it and runs the console.
 - The console ships with the rest. The release archives, `install.sh`, `install.ps1` and the Homebrew formula install `stretto-console`, with its UI built in; the installers still install a release from before it. A second image, `ghcr.io/alexnodeland/stretto-console` (the Dockerfile's `console` target), runs it on port 8080 with a health check, and [`compose.yaml`](compose.yaml) runs it over your `~/.stretto`. [docs/console.md](docs/console.md) is its guide.
+- The console's jobs can be cancelled, from the job's page or with `POST /api/jobs/:id/cancel`: a queued job never runs, and a running one's `stretto` is killed. A job that ends so is `cancelled`.
 - `stretto init --upstream URL [--upstream-header NAME=VAR]` configures the proxy in front of a Streamable HTTP server.
 - `stretto doctor --data DIR` checks a data directory other than `~/.stretto`; the console's doctor job checks the one it serves.
 - `stretto_report::review::view` returns a flow's review as data, which `flow-show` renders from; `review::diff`'s result lists its changes by heading and serializes.

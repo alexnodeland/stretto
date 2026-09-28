@@ -1,23 +1,26 @@
 <script setup lang="ts">
 /** A job's status, with an icon and its word. */
-import { computed } from 'vue'
-import { CircleCheck, CircleX, Clock, LoaderCircle } from '@lucide/vue'
+import { computed, type Component } from 'vue'
+import { Ban, CircleCheck, CircleX, Clock, LoaderCircle } from '@lucide/vue'
 import type { JobStatus } from '@/api/types'
 import UiBadge from './ui/UiBadge.vue'
 
 const props = defineProps<{ status: JobStatus }>()
-const view = computed(() => {
-  switch (props.status) {
-    case 'running':
-      return { tone: 'accent' as const, icon: LoaderCircle, label: 'Running', spin: true }
-    case 'succeeded':
-      return { tone: 'accent' as const, icon: CircleCheck, label: 'Succeeded', spin: false }
-    case 'failed':
-      return { tone: 'danger' as const, icon: CircleX, label: 'Failed', spin: false }
-    default:
-      return { tone: 'neutral' as const, icon: Clock, label: 'Queued', spin: false }
-  }
-})
+
+interface View {
+  tone: 'accent' | 'danger' | 'neutral'
+  icon: Component
+  label: string
+  spin: boolean
+}
+const views: Record<JobStatus, View> = {
+  queued: { tone: 'neutral', icon: Clock, label: 'Queued', spin: false },
+  running: { tone: 'accent', icon: LoaderCircle, label: 'Running', spin: true },
+  succeeded: { tone: 'accent', icon: CircleCheck, label: 'Succeeded', spin: false },
+  failed: { tone: 'danger', icon: CircleX, label: 'Failed', spin: false },
+  cancelled: { tone: 'neutral', icon: Ban, label: 'Cancelled', spin: false },
+}
+const view = computed(() => views[props.status])
 </script>
 
 <template>
