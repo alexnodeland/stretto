@@ -41,7 +41,7 @@ The agent made 1 call where it had made 3.
 
 ## What you get
 
-stretto is a Rust workspace. It installs four programs:
+stretto is a Rust workspace of five programs:
 
 | Program | What it does |
 |---|---|
@@ -49,8 +49,9 @@ stretto is a Rust workspace. It installs four programs:
 | `stretto-proxy` | Wraps any MCP server, run as a command or reached over Streamable HTTP, and runs as a stdio server for the host. It records sessions and serves flows. |
 | `stretto-procedure` | Runs a compiled procedure against an MCP server with no model, for work where no user speaks. See [procedures](./concepts/procedures). |
 | `stretto-mcp-demo` | A tiny MCP server for trying the proxy. |
+| `stretto-console` | A web app on your machine, over the files the others write. It has the servers stretto fronts, with each host's configuration and a connection test, and every session as a timeline of the agent's calls and the flow's lookups. It shows each flow's graph and review, and runs the CLI's jobs from the page. See [the console](./console). |
 
-Every command and option is in the [CLI reference](/reference/cli).
+Every command and option is in the [CLI reference](/reference/cli). The quick start installs the first four; [the console](./console#start-it) is built from a checkout, or run in a container.
 
 ## Where it helps
 

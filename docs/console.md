@@ -68,6 +68,20 @@ docker logs stretto-console
 
 It runs as your user, so that the files the console writes (`servers.json`, the jobs, the trash) are yours; on macOS and Windows, Docker Desktop maps ownership and `--user` can be left out. The port is published on 127.0.0.1 only. The image's health check runs `stretto-console healthcheck`. `STRETTO_CONSOLE_TOKEN` fixes the token, so the URL stays the same across restarts, and `TYPESAFE_API_KEY`, when set, reaches the jobs that fit an arbiter; compose passes both through from your environment. Build the image from a checkout with `make docker-console`, or `docker build --target console -t stretto-console .`.
 
+### Options
+
+| Option | What it does |
+|---|---|
+| `--data DIR` | The data directory to serve. Default `$STRETTO_HOME`, else `~/.stretto` |
+| `--listen ADDR` | Where to listen. Default `$STRETTO_CONSOLE_LISTEN`, else `127.0.0.1:7878` |
+| `--token TOKEN` | The token the API requires. Default `$STRETTO_CONSOLE_TOKEN`, else a new one, printed with the URL |
+| `--no-auth` | No token, on a loopback address only ([sign in](#sign-in)) |
+| `--read-only` | Refuse every change |
+| `--open` | Open the console in the browser |
+| `--stretto PATH` | The `stretto` CLI its jobs run. Default: the one beside `stretto-console`, else the one on `PATH` |
+
+`stretto-console healthcheck` asks the console on this machine for `/api/health`, and exits with 0 when it answers. It is the container's health check. [Environment variables](../website/reference/environment.md#the-console) has the variables it reads.
+
 ## Sign in
 
 Every request to the API needs the console's token, and every change also needs a header that a page on another site cannot send.

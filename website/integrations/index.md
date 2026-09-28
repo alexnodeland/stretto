@@ -35,6 +35,10 @@ It prints (its arguments wrapped here):
 
 `init` writes no `env` block. If the server needs environment variables, add them to its entry as before: the server inherits the proxy's environment. Every option is in [the CLI reference](/reference/cli#stretto-init).
 
+::: tip In the console
+[The console](/guide/console)'s page for a server shows the same configuration for each host, from a registry of your servers. It also tests the connection, listing the server's tools as they are now.
+:::
+
 ## Per host
 
 | Host | `--host` | What `init` prints | Page |
@@ -157,3 +161,4 @@ MCP does not carry the conversation, and none of the hosts above hand it to a se
 - [`stretto init`](/reference/cli#stretto-init) and [`stretto-proxy`'s options](/reference/cli#stretto-proxy)
 - [`stretto-proxy` reference](/reference/proxy)
 - [Quick start](/guide/quick-start)
+- [The console](/guide/console): each server's host configuration and connection test

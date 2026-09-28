@@ -74,8 +74,11 @@ A flow only knows what the sessions showed: which lookup followed which call, an
 
 `stretto-mcp-demo` is a tiny server for trying the proxy: `lookup` (read-only) and `update` (a write) answer with their arguments. `stretto-mcp-demo --world retail` serves a tiny shop with four of τ²-bench retail's tool names and canned data instead. [The quick start's demo](../quick-start#2-see-the-whole-loop-with-no-key) records six sessions on that shop and learns a flow from them, and [the proxy's reference](/reference/proxy#try-it) records one from the shell.
 
+[The console](../console) lists every recorded session, by domain and mode, and shows one as a timeline: the conversation, each call with its arguments and result, and the lookups the flow made after it.
+
 ## Related
 
 - [`stretto-proxy` reference](/reference/proxy) and its [options](/reference/cli#stretto-proxy)
 - [Integrations](/integrations/): the configuration for each host
 - [Flows](./flows): what `stretto learn` makes of the sessions
+- [The console](../console): every session, as a timeline

@@ -183,6 +183,13 @@ Nothing needs review: the flow runs the same program, and calls no tool, makes n
 
 `flow-diff` exited with 0. The new sessions sharpened the habit and the binding, and the flow can do nothing it could not before, so it can replace the one being served. Had they taught it a new lookup or a new source for an argument, it would have listed them under **Needs review** and exited with 1. Keep flows in version control and run `flow-diff` on every change, as [reviewing flows](review.md) shows.
 
+## See it in the console
+
+[The console](console.md) shows the same loop in a browser. Start `stretto-console` on the same `~/.stretto`, and open the URL it prints:
+- it finds the notes server in its sessions, ready to add to its registry with its host configuration;
+- it shows each session's calls with the lookups the flow made after them;
+- it draws the flow's graph.
+
 ## Privacy and limits
 
 - **Logs** hold every tool call and result verbatim, here every file read. Keep them where the data may live, and never commit them. A flow holds no transcript: counts, tool and argument names, JSON paths and the tools' documentation. Code features (`map.ids`) can hold values from training outputs ([the formats page](formats.md#reviewing-a-flow)). [#24](https://github.com/alexnodeland/stretto/issues/24) tracks privacy for recorded sessions.

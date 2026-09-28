@@ -21,6 +21,8 @@ stretto learn --sessions ~/.stretto/logs/orders --domain orders \
 
 Every option is in [the CLI reference](/reference/cli#stretto-learn). `stretto compile` writes a flow from τ²-bench's published results instead, for research.
 
+[The console](../console) runs `learn` as a job, and its page for a flow draws the flow's graph of calls and lookups. Its threshold slider shows which lookups would act at another threshold.
+
 ## What is in it
 
 | Part | What it holds |
@@ -84,3 +86,4 @@ pure(prev)
 - [Lookups and detours](./lookups): what serving a flow does
 - [Bindings](./bindings): where arguments come from
 - [File formats](/reference/formats): every field
+- [The console](../console): a flow's graph at any threshold

@@ -101,6 +101,7 @@ const reference: DefaultTheme.SidebarItem[] = [
     items: [
       { text: 'Command line', link: '/reference/cli' },
       { text: 'stretto-proxy', link: '/reference/proxy' },
+      { text: 'stretto-console', link: '/reference/console' },
       { text: 'File formats', link: '/reference/formats' },
       { text: 'Environment variables', link: '/reference/environment' }
     ]

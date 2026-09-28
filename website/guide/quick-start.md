@@ -157,6 +157,10 @@ Serve the promoted flow the same way. See [shadow mode and promotion](./concepts
 
 ## 7. See what it did, and learn again
 
+- **The console.** [`stretto-console`](./console) shows all of this in a browser:
+  - each session as a timeline, with the lookups the flow made after each call and why;
+  - the flow's graph at any threshold;
+  - jobs that learn, audit and promote, from the page.
 - **The flow log.** Every decision is logged beside its session's log, in `~/.stretto/logs/notes/<session>.flow.jsonl`: the lookup made and its probability, or why the flow handed back.
 - **Learn again** when the agent, its prompts or the server change, and review what changed. `flow-diff` exits with 1 when the new flow can do something the old one could not:
 
@@ -180,5 +184,6 @@ python3 scripts/walkthrough.py --bin ~/.cargo/bin
 ## Next steps
 
 - Read [how it works](./how-it-works), then the [core concepts](./concepts/sessions).
+- Watch your sessions and flows in [the console](./console).
 - Set up your host from [its integration page](/integrations/).
 - Review each change to a flow with [`stretto flow-diff`](./concepts/audit-and-review#compare-two-flows), as you would code.

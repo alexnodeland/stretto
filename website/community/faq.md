@@ -28,6 +28,10 @@ Deciding took under a millisecond per tool response in the live run (at most 4 m
 
 Any host that runs MCP servers over stdio, and any MCP server: one run as a command, or one reached over Streamable HTTP with `--upstream`. For Claude Code, Claude Desktop, Cursor and VS Code, `stretto init` prints the configuration ([integrations](/integrations/)). One proxy wraps one server; an agent with several servers needs one proxy for each.
 
+## Is there a UI?
+
+Yes: [the console](/guide/console), `stretto-console`, a web app on your machine over the files stretto writes. It shows each session as a timeline with the lookups the flow made, each flow's graph and review, and your servers with their host configuration and a connection test. It runs the CLI's jobs from the page. It runs from a checkout, or in a container.
+
 ## Which models does it work with?
 
 The mechanism is independent of the model: it works through tool results, which every agent reads. The evidence: the `reach` decider ran live with GLM-5.3; an earlier flow also ran live with Claude Haiku 4.5 and Claude Sonnet 5; and replays cover nine frontier agents on τ²-bench and 89 more on six other benchmarks ([the claims](/research/claims)). How much a flow saves depends on the agent too: an agent that batches its reads into parallel calls leaves fewer turns to save.
