@@ -93,5 +93,6 @@ jobs:
           for bin in stretto stretto-proxy stretto-procedure stretto-mcp-demo stretto-console; do
             "target/debug/$bin" --version
           done
-      # The console's own tests, on a platform the check job does not run.
-      - run: cargo test --locked -p stretto-console
+      # The console's own tests, on a platform the check job does not run:
+      # every test binary, so one run shows every failure.
+      - run: cargo test --locked --no-fail-fast -p stretto-console

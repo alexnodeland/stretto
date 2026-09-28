@@ -7,7 +7,7 @@
 //! links followed, inside the directory it started from. The scan ([`keep`])
 //! follows a link only where it stays inside the data directory.
 
-use std::path::{Component, Path, PathBuf};
+use std::path::{Component, Path, PathBuf, Prefix};
 
 /// Whether the scan of `root` (whose canonical form is `canonical`) takes
 /// `path`: not the console's own directory, and not a symbolic link that
@@ -68,16 +68,16 @@ pub fn resolve(data_dir: &Path, home: Option<&Path>, input: &str) -> Result<Path
         return Err(format!(
             "{input}: only ~/ (this user's home directory) is expanded"
         ));
-    } else if Path::new(input).is_absolute() {
-        let normal = normalize(Path::new(input))
-            .ok_or_else(|| format!("{input}: .. climbs out of the root"))?;
-        let rest = normal
-            .strip_prefix(data_dir)
+    } else if let Some(full) = full_path(data_dir, input)? {
+        let normal =
+            normalize(&full).ok_or_else(|| format!("{input}: .. climbs out of the root"))?;
+        let rest = plain(&normal)
+            .strip_prefix(plain(data_dir))
             .map_err(|_| {
                 format!(
                     "{input} is outside the data directory ({}): name a path inside it, or \
                      one that starts with ~/",
-                    data_dir.display()
+                    plain(data_dir).display()
                 )
             })?
             .to_path_buf();
@@ -86,6 +86,55 @@ pub fn resolve(data_dir: &Path, home: Option<&Path>, input: &str) -> Result<Path
         (data_dir, input)
     };
     inside(base, Path::new(rest), input)
+}
+
+/// `input` as a full path, if it names one: an absolute path, or on Windows
+/// one with a root and no drive (`\x`), which is on the data directory's
+/// drive. A drive with no root after it (`C:x`) names no one place, and is
+/// refused.
+fn full_path(data_dir: &Path, input: &str) -> Result<Option<PathBuf>, String> {
+    let path = Path::new(input);
+    if path.is_absolute() {
+        return Ok(Some(path.to_path_buf()));
+    }
+    if path.has_root() {
+        let mut full = PathBuf::new();
+        if let Some(Component::Prefix(drive)) = plain(data_dir).components().next() {
+            full.push(drive.as_os_str());
+        }
+        full.push(path);
+        return Ok(Some(full));
+    }
+    if matches!(path.components().next(), Some(Component::Prefix(_))) {
+        return Err(format!(
+            "{input}: a drive with no \\ after it is not a full path"
+        ));
+    }
+    Ok(None)
+}
+
+/// `path` with a Windows drive or share written as a person writes it: the
+/// canonical form there is verbatim (`\\?\C:\x`), and a typed path is not
+/// (`C:\x`, or `c:\x`), so they compare only in this form. Other paths, and
+/// every path elsewhere, are as they are.
+fn plain(path: &Path) -> PathBuf {
+    let mut parts = path.components();
+    let Some(Component::Prefix(prefix)) = parts.next() else {
+        return path.to_path_buf();
+    };
+    let mut out = match prefix.kind() {
+        Prefix::VerbatimDisk(d) | Prefix::Disk(d) => {
+            PathBuf::from(format!("{}:", char::from(d.to_ascii_uppercase())))
+        }
+        Prefix::VerbatimUNC(server, share) => PathBuf::from(format!(
+            r"\\{}\{}",
+            server.to_string_lossy(),
+            share.to_string_lossy()
+        )),
+        _ => return path.to_path_buf(),
+    };
+    out.extend(parts);
+    out
 }
 
 /// `base` joined with `rest`, which must stay inside `base`, links followed.
@@ -193,6 +242,27 @@ mod tests {
         let outside = r("/etc/passwd").unwrap_err();
         assert!(outside.contains("outside the data directory"), "{outside}");
         assert!(resolve(&data, None, "~/x").is_err());
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_windows_path_is_compared_as_typed() {
+        let root = temp("windows");
+        let data = root.join("data");
+        std::fs::create_dir_all(data.join("logs")).unwrap();
+        let r = |p: &str| resolve(&data, None, p);
+        // `data` is canonical, so verbatim (\\?\C:\...); a person types C:\...
+        let typed = plain(&data.join("logs")).display().to_string();
+        assert!(!typed.starts_with(r"\\?\"), "{typed}");
+        assert_eq!(r(&typed).unwrap(), data.join("logs"));
+        // The drive letter in either case.
+        let lower = format!("{}{}", typed[..1].to_lowercase(), &typed[1..]);
+        assert_eq!(r(&lower).unwrap(), data.join("logs"));
+        assert!(r(r"\Windows\System32")
+            .unwrap_err()
+            .contains("outside the data directory"));
+        assert!(r("C:logs").unwrap_err().contains("not a full path"));
         std::fs::remove_dir_all(&root).unwrap();
     }
 
