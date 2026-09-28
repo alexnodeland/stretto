@@ -22,7 +22,9 @@ Against a real console server, start `stretto-console` (it listens on `127.0.0.1
 npm run dev             # proxies /api to http://127.0.0.1:7878
 ```
 
-Open the link the server printed, or <http://127.0.0.1:5173> and paste the token on the sign-in screen: the server sets its cookie from `?token=`, and the dev server passes such requests on to it. `STRETTO_CONSOLE_URL` points `npm run dev` at another address.
+Open the link the server printed, or <http://127.0.0.1:5173> and paste the token on the sign-in screen: the server sets its cookie from `?token=`, and the dev server passes such requests on to it, with the Host rewritten to the server's own, as a server started with `--no-auth` requires. `STRETTO_CONSOLE_URL` points `npm run dev` at another address.
+
+A built UI is served by `stretto-console` itself: `npm run build` writes `dist/`, which a release build of the server embeds and a debug build reads from disk.
 
 ## The mock
 
@@ -62,9 +64,20 @@ The tests change the same settings at run time with `POST /__mock/state` (`{"res
 | `npm run format`    | Prettier; `npm run format:check` only checks                                                                 |
 | `npm test`          | Vitest with happy-dom: the API client, the formatters, the timeline and flow logic, and the key components   |
 | `npm run e2e`       | Playwright against `dev:mock`                                                                                |
+| `npm run e2e:real`  | Build the UI, then Playwright against the real `stretto-console` on its test fixtures (below)                |
 | `npm run shots`     | Playwright: every page in light and dark at 1440 and 390 px, into `SHOTS_DIR` (default `test-results/shots`) |
 
 Playwright is pinned to 1.56.1. It uses the Chromium in `PLAYWRIGHT_BROWSERS_PATH` when that is set; elsewhere, `npx playwright install chromium` fetches it.
+
+## Against the real server
+
+`npm run e2e:real` needs the binaries, built from the repository's root:
+
+```sh
+cargo build -p stretto-console -p stretto-report -p stretto-proxy
+```
+
+`e2e/real/serve.sh` starts `stretto-console --no-auth` on a copy of `crates/stretto-console/tests/fixtures/home` (the quickstart's shop, served and in shadow, its flow and its promotion, and two servers), with `stretto-mcp-demo` on its `PATH` for the connection test and the real `stretto` for the jobs. `vite preview` serves the built UI under the server's Content-Security-Policy and passes `/api` on to it. The tests cover every page, run the doctor, audit and learn jobs, and fail on any error in the browser's console. Two load the UI from the binary itself: its `/`, and a session's and a flow's address, as a reload does. `STRETTO_BIN` names another directory for the binaries.
 
 ## Layout
 
@@ -72,10 +85,10 @@ Playwright is pinned to 1.56.1. It uses the Chromium in `PLAYWRIGHT_BROWSERS_PAT
 console/
   index.html            the page; public/theme-init.js applies a chosen theme before the first paint
   src/
-    api/types.ts        the API's types, field for field as the spec names them
+    api/generated/      the API's types, which `make types` generates from the server's DTOs with ts-rs
+    api/types.ts        re-exports them, with the few types only the UI has
     api/client.ts       fetch with the cookie, X-Stretto-Console on writes, a 401 to sign-in, errors to toasts
     api/events.ts       GET /api/events: one EventSource, subscriptions by topic
-    api/generated/      (to come) the same types, which `make types` generates from the server's DTOs
     stores/             auth and meta, theme, domain filter, toasts, running jobs
     composables/        useResource (load, refresh on events, keep the frame), hotkeys, copy, title
     lib/                formatting, the timeline and a flow's preview and graph, shell words, validation, Markdown
@@ -85,12 +98,12 @@ console/
     pages/              Overview, Servers, Sessions, Flows, Jobs, Settings, and each one's detail
   mock/                 the mock API: plugin.ts, api.ts, derive.ts, and fixtures/ (the world, the recorder, texts)
   tests/unit/           Vitest
-  e2e/                  Playwright, and shots.spec.ts for the screenshots
+  e2e/                  Playwright against the mock, shots.spec.ts for the screenshots, and real/ against the server
 ```
 
 ## Notes
 
-- **Types.** `src/api/types.ts` mirrors the spec until the server's DTOs are generated into `src/api/generated/` with ts-rs (`make types`, from the repository's root). Switching is a change of import path.
+- **Types.** The server's DTOs are generated into `src/api/generated/` with ts-rs (`make types`, from the repository's root) and never edited by hand; `src/api/types.ts` re-exports them. A change to the server's types is a type error in the UI, the mock or the tests until they follow.
 - **Content Security Policy.** The server sends `default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self'`. So the build has no inline script (the theme's early script is a file), fonts are never inlined as `data:` URIs, and everything, fonts included, is served from the console itself.
 - **Color.** Petrol marks what stretto does: the reads it made, a lookup that acts at a threshold, the primary action. The rest is ink and paper. Shadow, where the flow decides but looks nothing up, is a dashed petrol outline. The brand has no status colors, so errors and warnings always come with an icon and words; the console's own two (`--c-danger`, `--c-warn` in `src/styles/tokens.css`) are text-safe on every surface in both themes.
 - **Charts.** The activity chart plots the agent's calls (the brand's baseline slate) with the reads stretto made on top (petrol), on one axis; sessions per day are in its tooltip and its table view, not on a second scale. Hover or focus a day to read it; the table has every value.
