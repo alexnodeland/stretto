@@ -201,7 +201,7 @@ Usage: stretto compile [OPTIONS] --tau2 <DIR> --out <FILE>
 
 ### `stretto learn`
 
-Learn a live flow from sessions recorded by `stretto-proxy` (JSONL logs in a directory) and write its IR, as `compile` does from τ²-bench results. The tools come from the sessions' `tools/list` responses (their `readOnlyHint` annotations), or from `--manifest`. The logs one host session left with several servers are one session, each tool named after its server (`server::tool`). With `--results`, the sessions are τ²-bench episodes on a checkout's training tasks instead, as if a deployment had recorded them.
+Learn a live flow from sessions recorded by `stretto-proxy` (JSONL logs in a directory) and write its IR, as `compile` does from τ²-bench results. The tools come from the sessions' `tools/list` responses (their `readOnlyHint` annotations), or from `--manifest`. The logs one host session left with several servers are one session, each tool named after its server (`server::tool`). With `--results`, the sessions are τ²-bench episodes on a checkout's training tasks instead, as if a deployment had recorded them; with `--otel`, the traces of an agent framework's OpenTelemetry spans.
 
 ```text
 Usage: stretto learn [OPTIONS] --domain <NAME> --out <FILE>
@@ -209,8 +209,9 @@ Usage: stretto learn [OPTIONS] --domain <NAME> --out <FILE>
 
 **Inputs**
 
-- `--sessions <DIR>` (not with `--results`): Directory of session logs (`*.jsonl`); needed unless `--results` is given.
-- `--results <FILE>` (repeatable; not with `--sessions`, `--manifest`, `--rewards`): τ²-bench results to learn from in place of `--sessions` (repeatable): their episodes on the training tasks of the `--tau2` checkout's split, with their rewards. The tools come from the checkout.
+- `--sessions <DIR>` (not with `--otel`, `--results`): Directory of session logs (`*.jsonl`); needed unless `--results` or `--otel` is given.
+- `--otel <FILE>` (not with `--sessions`, `--results`): OpenTelemetry GenAI spans to learn from in place of `--sessions`: an OTLP JSON export, as the Collector's file exporter writes it, each trace one session. Spans do not say which tools only read, so `--manifest` gives the kinds. Without the tools' arguments and results, which the conventions capture only on request, the flow learns which lookups follow which calls but binds no arguments.
+- `--results <FILE>` (repeatable; not with `--sessions`, `--otel`, `--manifest`, `--rewards`): τ²-bench results to learn from in place of `--sessions` (repeatable): their episodes on the training tasks of the `--tau2` checkout's split, with their rewards. The tools come from the checkout.
 - `--tau2 <DIR>`: The τ²-bench checkout that `--results` belong to.
 - `--train-fraction <SHARE>` (default `1`; not with `--train-tasks`): With `--results`, learn from this share of the training tasks: the sample `compile --train-fraction` takes.
 - `--train-tasks <IDS>` (repeatable; not with `--train-fraction`): With `--results`, learn from these training tasks only (comma-separated), in place of `--train-fraction`.
@@ -355,7 +356,8 @@ Usage: stretto audit [OPTIONS] --flow <FILE>
 **Inputs**
 
 - `--flow <FILE>` (required): The flow IR to audit.
-- `--sessions <DIR>`: Sessions recorded by stretto-proxy (a directory of `*.jsonl`).
+- `--sessions <DIR>` (not with `--otel`): Sessions recorded by stretto-proxy (a directory of `*.jsonl`).
+- `--otel <FILE>` (not with `--sessions`): OpenTelemetry GenAI spans in place of --sessions: an OTLP JSON export, each trace a session (`learn --otel`).
 - `--results <FILE>` (repeatable): τ²-bench results files (repeatable); files for other domains are skipped.
 - `--tau2 <DIR>`: With --results: keep only the test split of this τ²-bench checkout, the tasks a flow compiled from it never trained on.
 
@@ -381,7 +383,8 @@ Usage: stretto drift [OPTIONS] --flow <FILE>
 **Inputs**
 
 - `--flow <FILE>` (required): The flow IR the sessions were served with.
-- `--sessions <DIR>`: Sessions recorded by stretto-proxy (a directory of `*.jsonl`), taken in the order they started.
+- `--sessions <DIR>` (not with `--otel`): Sessions recorded by stretto-proxy (a directory of `*.jsonl`), taken in the order they started.
+- `--otel <FILE>` (not with `--sessions`): OpenTelemetry GenAI spans in place of --sessions: an OTLP JSON export, each trace a session (taken in the order they started).
 - `--results <FILE>` (repeatable): τ²-bench results files, their episodes taken in the order listed and before any --sessions, as a flow compiled from benchmark runs serves a deployment later; files for other domains are skipped.
 - `--tau2 <DIR>`: With --results: keep only the test split of this τ²-bench checkout, the tasks a flow compiled from it never trained on.
 
@@ -531,7 +534,8 @@ Usage: stretto promote [OPTIONS] --flow <FILE> --out <FILE>
 **Inputs**
 
 - `--flow <FILE>` (required): The flow to promote.
-- `--sessions <DIR>`: Sessions recorded by stretto-proxy (a directory of `*.jsonl`); each counts as its own task.
+- `--sessions <DIR>` (not with `--otel`): Sessions recorded by stretto-proxy (a directory of `*.jsonl`); each counts as its own task.
+- `--otel <FILE>` (not with `--sessions`): OpenTelemetry GenAI spans in place of --sessions: an OTLP JSON export, each trace a session (each its own task).
 - `--results <FILE>` (repeatable): τ²-bench results files (repeatable); files for other domains are skipped.
 - `--tau2 <DIR>`: With --results: keep only the test split of this τ²-bench checkout, the tasks a flow compiled from it never trained on.
 - `--task-ids <IDS>` (repeatable): With --results: keep only these tasks.

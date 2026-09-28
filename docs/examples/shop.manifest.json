@@ -1,0 +1,9 @@
+{
+  "domain": "shop",
+  "tools": {
+    "find_user_id_by_email": "read",
+    "get_user_details": "read",
+    "get_order_details": "read",
+    "cancel_pending_order": "write"
+  }
+}

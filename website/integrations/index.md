@@ -48,6 +48,7 @@ It prints (its arguments wrapped here):
 | Cursor | `cursor` | JSON for `~/.cursor/mcp.json` or `.cursor/mcp.json` | [Cursor and VS Code](./cursor-vscode) |
 | VS Code | `vscode` | JSON for `.vscode/mcp.json`, or the user `mcp.json` | [Cursor and VS Code](./cursor-vscode) |
 | A server reached over HTTP | none | write the entry by hand, with `--upstream URL` in place of the command | [Streamable HTTP servers](./streamable-http) |
+| A framework that exports OpenTelemetry spans | none | nothing to configure for learning: `stretto learn --otel` reads the export | [OpenTelemetry spans](./opentelemetry) |
 
 In any other host, write the entry by hand. Before:
 
