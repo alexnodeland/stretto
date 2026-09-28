@@ -86,11 +86,9 @@ pub fn all(state: &State) -> Vec<(FlowFile, Arc<Loaded>)> {
         .map(|f| (f.clone(), cache.flow(f)))
         .collect();
     cache.retain(&catalog);
-    out.sort_by(|(a, x), (b, y)| {
-        y.modified_unix_ms
-            .cmp(&x.modified_unix_ms)
-            .then_with(|| a.rel.cmp(&b.rel))
-    });
+    // One comparison, so that no closure runs only when two flows share a
+    // modified millisecond.
+    out.sort_by(|(a, x), (b, y)| (y.modified_unix_ms, &a.rel).cmp(&(x.modified_unix_ms, &b.rel)));
     out
 }
 
