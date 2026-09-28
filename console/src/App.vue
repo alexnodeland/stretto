@@ -98,19 +98,15 @@ onChanged('servers', () => void loadDomains())
 onChanged('jobs', () => void loadJobs())
 onJob((job) => {
   const before = noteJob(job)
-  if (
-    (before === 'running' || before === 'queued') &&
-    (job.status === 'succeeded' || job.status === 'failed')
-  ) {
+  if (before !== 'running' && before !== 'queued') return
+  if (job.status === 'succeeded') toast({ kind: 'success', title: `${job.title}: done` })
+  else if (job.status === 'failed')
     toast({
-      kind: job.status === 'failed' ? 'error' : 'success',
-      title: job.status === 'failed' ? `${job.title}: failed` : `${job.title}: done`,
-      message:
-        job.status === 'failed'
-          ? `Exit code ${job.exit_code ?? 'unknown'}. The job page has its output.`
-          : undefined,
+      kind: 'error',
+      title: `${job.title}: failed`,
+      message: `Exit code ${job.exit_code ?? 'unknown'}. The job page has its output.`,
     })
-  }
+  else if (job.status === 'cancelled') toast({ kind: 'info', title: `${job.title}: cancelled` })
 })
 
 watch(authState, (state) => {

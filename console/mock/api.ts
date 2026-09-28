@@ -6,7 +6,9 @@
  *
  * Test hooks under /__mock: GET /__mock/state, POST /__mock/state with any of
  * {"auth", "read_only", "empty", "data_dir", "key_set", "redact_salt",
- * "latency", "reset"}. "empty" and "data_dir" build the world anew.
+ * "latency", "job_step_ms", "reset"}. "empty" and "data_dir" build the world
+ * anew; "job_step_ms" is how long a new job waits in the queue, and between
+ * the lines it prints.
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type {
@@ -50,6 +52,8 @@ interface State {
   options: MockOptions
   latency: number
   trash: string[]
+  /** Set by a test: how long a new job queues, and between its lines. */
+  jobStepMs?: number
 }
 
 function initialState(): State {
@@ -264,6 +268,11 @@ function checkPath(path: unknown, what: string): string {
 // ---------------------------------------------------------------- jobs
 
 let jobCounter = 7
+/** The timers that move each unfinished job on, so that it can be cancelled. */
+const jobTimers = new Map<
+  string,
+  { start?: ReturnType<typeof setTimeout>; tick?: ReturnType<typeof setInterval> }
+>()
 
 function jobTitle(job: JobRequest): string {
   switch (job.kind) {
@@ -432,8 +441,11 @@ function startJob(input: unknown): Job {
     artifacts: [...artifacts],
   }
   world.jobs.unshift(job)
-  const step = Number(process.env.MOCK_JOB_STEP_MS ?? 280)
-  setTimeout(() => {
+  const step = state.jobStepMs ?? Number(process.env.MOCK_JOB_STEP_MS ?? 280)
+  const timers: { start?: ReturnType<typeof setTimeout>; tick?: ReturnType<typeof setInterval> } =
+    {}
+  jobTimers.set(id, timers)
+  timers.start = setTimeout(() => {
     job.status = 'running'
     job.started_unix_ms = Date.now()
     job.output = `$ stretto ${commandLine(req)}\n`
@@ -447,6 +459,7 @@ function startJob(input: unknown): Job {
         return
       }
       clearInterval(tick)
+      jobTimers.delete(id)
       job.status = fail ? 'failed' : 'succeeded'
       job.exit_code = fail ? 1 : 0
       job.finished_unix_ms = Date.now()
@@ -460,8 +473,41 @@ function startJob(input: unknown): Job {
       send('job', job)
       changed('jobs', [id])
     }, step)
+    timers.tick = tick
   }, step)
   return job
+}
+
+/**
+ * `POST /api/jobs/:id/cancel`, as the console does it: a queued job is
+ * cancelled at once; a running one's `stretto` is killed, and it ends a
+ * moment later, with the exit code of a SIGKILL.
+ */
+function cancelJob(id: string): Job {
+  const job = state.world.jobs.find((j) => j.id === id)
+  if (!job) throw new HttpError(404, `no job ${JSON.stringify(id)}`)
+  if (job.status !== 'queued' && job.status !== 'running')
+    throw new HttpError(409, `job ${id} has ended (${job.status}): there is nothing to cancel`)
+  const timers = jobTimers.get(id)
+  clearTimeout(timers?.start)
+  clearInterval(timers?.tick)
+  jobTimers.delete(id)
+  const end = (note: string, code: number | null) => {
+    job.output += note
+    job.status = 'cancelled'
+    job.exit_code = code
+    job.finished_unix_ms = Date.now()
+    job.artifacts = []
+    send('job', job)
+    changed('jobs', [id])
+  }
+  if (job.status === 'queued') {
+    end('stretto-console: cancelled before it started\n', null)
+    return job
+  }
+  const now = { ...job }
+  setTimeout(() => end('stretto-console: cancelled\n', 137), 300)
+  return now
 }
 
 function commandLine(req: JobRequest): string {
@@ -699,6 +745,7 @@ const routes: [string, RegExp, Handler][] = [
       return job
     },
   ],
+  ['POST', /^\/api\/jobs\/([^/]+)\/cancel$/, ({ params }) => cancelJob(params[0]!)],
   [
     'GET',
     /^\/api\/jobs\/([^/]+)\/artifacts\/(\d+)$/,
@@ -764,6 +811,7 @@ function mockControl(req: IncomingMessage, res: ServerResponse, body: unknown) {
     if (typeof b.key_set === 'boolean') state.options.keySet = b.key_set
     if (typeof b.redact_salt === 'boolean') state.options.redactSalt = b.redact_salt
     if (typeof b.latency === 'number') state.latency = b.latency
+    if (typeof b.job_step_ms === 'number') state.jobStepMs = b.job_step_ms
     for (const what of ['sessions', 'flows', 'servers', 'jobs'] as const) changed(what)
   }
   json(res, 200, {

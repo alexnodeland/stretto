@@ -57,6 +57,7 @@ describe('badges', () => {
     expect(mount(JobStatus, { props: { status: 'failed' } }).text()).toBe('Failed')
     expect(mount(JobStatus, { props: { status: 'running' } }).text()).toBe('Running')
     expect(mount(JobStatus, { props: { status: 'queued' } }).text()).toBe('Queued')
+    expect(mount(JobStatus, { props: { status: 'cancelled' } }).text()).toBe('Cancelled')
   })
 })
 

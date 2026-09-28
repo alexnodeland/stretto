@@ -2,7 +2,7 @@
 /** One job: its output as it runs, what it wrote, and the parameters it ran with. */
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowDownToLine, FileText, FolderOpen, RotateCcw, Workflow } from '@lucide/vue'
+import { ArrowDownToLine, Ban, FileText, FolderOpen, RotateCcw, Workflow } from '@lucide/vue'
 import UiPageHeader from '@/components/ui/UiPageHeader.vue'
 import UiButton from '@/components/ui/UiButton.vue'
 import UiCard from '@/components/ui/UiCard.vue'
@@ -36,7 +36,10 @@ const live = ref<Job | null>(null)
 watch(resource.data, (j) => {
   if (
     j &&
-    (!live.value || j.output.length >= live.value.output.length || j.status !== live.value.status)
+    (!live.value ||
+      j.id !== live.value.id ||
+      j.output.length >= live.value.output.length ||
+      j.status !== live.value.status)
   )
     live.value = j
 })
@@ -44,7 +47,11 @@ const stop = onJob((j) => {
   if (j.id === id.value) live.value = j
 })
 onScopeDispose(stop)
-const job = computed(() => live.value ?? resource.data.value)
+/** This page's job: never the one it showed before its address changed. */
+const job = computed(() => {
+  const j = live.value ?? resource.data.value
+  return j?.id === id.value ? j : null
+})
 useTitle(() => job.value?.title ?? 'Job')
 
 // While a job runs, ask again now and then, in case the live stream is down.
@@ -126,6 +133,27 @@ async function runAgain() {
   }
 }
 
+/** Asked to stop: a running job ends a moment later, when its `stretto` has been killed. */
+const stopping = ref(false)
+watch(id, () => (stopping.value = false))
+watch(running, (r) => {
+  if (!r) stopping.value = false
+})
+async function cancel() {
+  stopping.value = true
+  try {
+    live.value = await api.cancelJob(id.value, { quiet: true })
+  } catch (e) {
+    stopping.value = false
+    toast({
+      kind: 'error',
+      title: 'The job was not cancelled',
+      message: e instanceof ApiError ? e.message : String(e),
+    })
+    void resource.refresh()
+  }
+}
+
 const icons = { flow: Workflow, report: FileText, dir: FolderOpen }
 </script>
 
@@ -147,9 +175,20 @@ const icons = { flow: Workflow, report: FileText, dir: FolderOpen }
       </p>
       <template #actions>
         <UiButton
+          v-if="running"
+          :icon="Ban"
+          :loading="stopping"
+          :disabled="readOnly"
+          :reason="readOnly ? 'The console is read-only' : undefined"
+          @click="cancel"
+        >
+          {{ stopping ? 'Cancelling' : 'Cancel' }}
+        </UiButton>
+        <UiButton
+          v-else
           :icon="RotateCcw"
           :loading="again"
-          :disabled="readOnly || !job || running"
+          :disabled="readOnly || !job"
           :reason="readOnly ? 'The console is read-only' : undefined"
           @click="runAgain"
         >
