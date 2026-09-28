@@ -97,8 +97,14 @@ fn a_session_of_several_is_numbered_and_names_its_files() {
     let third = header(&config, Some(3)).session;
     assert!(!alone.ends_with("-3") && third.ends_with(&format!("-{}-3", std::process::id())));
     let path = |p: &str| session_path(std::path::Path::new(p), "task-7");
-    assert_eq!(path("/tmp/{session}.jsonl"), PathBuf::from("/tmp/task-7.jsonl"));
-    assert_eq!(path("/tmp/context.jsonl"), PathBuf::from("/tmp/context.jsonl"));
+    assert_eq!(
+        path("/tmp/{session}.jsonl"),
+        PathBuf::from("/tmp/task-7.jsonl")
+    );
+    assert_eq!(
+        path("/tmp/context.jsonl"),
+        PathBuf::from("/tmp/context.jsonl")
+    );
 }
 
 #[cfg(unix)]

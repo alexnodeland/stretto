@@ -372,3 +372,58 @@ fn setup_sweeps_then_says_what_to_serve() {
     assert!(setup(&args, &env).is_err());
     fs::remove_dir_all(&dir).unwrap();
 }
+
+#[test]
+fn listening_reads_its_token_idle_time_and_retention() {
+    let dir = scratch("listen");
+    let token = dir.join("token");
+    let args = |extra: &[&str]| {
+        let mut all = vec!["--listen", "127.0.0.1:8931"];
+        all.extend(extra);
+        all.extend(["--", "cat"]);
+        cli(&all)
+    };
+    let (addr, options) = listening(&args(&[])).unwrap().unwrap();
+    assert_eq!(addr.to_string(), "127.0.0.1:8931");
+    assert!(options.token.is_none() && options.retain.is_none());
+    assert_eq!(options.idle, Duration::from_secs(4 * 3600));
+
+    fs::write(&token, "  0123456789abcdef-token\n").unwrap();
+    let with = args(&[
+        "--listen-token-file",
+        token.to_str().unwrap(),
+        "--listen-idle",
+        "5",
+        "--retain-days",
+        "3",
+        "--record",
+        "/srv/logs",
+    ]);
+    let (_, options) = listening(&with).unwrap().unwrap();
+    assert_eq!(options.token.as_deref(), Some("0123456789abcdef-token"));
+    assert_eq!(options.idle, Duration::from_secs(300));
+    assert_eq!(options.retain, Some((retained(&with), 3)));
+    assert_eq!(retained(&with)[0], PathBuf::from("/srv/logs"));
+
+    // A token too short, or with spaces, or none at all, is refused.
+    let refused = |text: Option<&str>| {
+        match text {
+            Some(text) => fs::write(&token, text).unwrap(),
+            None => fs::remove_file(&token).unwrap(),
+        }
+        let args = args(&["--listen-token-file", token.to_str().unwrap()]);
+        format!("{:#}", listening(&args).unwrap_err())
+    };
+    assert!(refused(Some("short")).contains("at least 16 printable ASCII characters"));
+    assert!(refused(Some("a token with spaces in it")).contains("with no spaces"));
+    assert!(refused(None).starts_with("reading the token from"));
+
+    // Not listening: stdio.
+    assert!(listening(&cli(&["--", "cat"])).unwrap().is_none());
+    let parse = |args: &[&str]| {
+        Cli::try_parse_from(std::iter::once("stretto-proxy").chain(args.iter().copied()))
+    };
+    assert!(parse(&["--listen-token-file", "t", "--", "cat"]).is_err());
+    assert!(parse(&["--listen", "127.0.0.1:1", "--listen-idle", "0", "--", "cat"]).is_err());
+    fs::remove_dir_all(&dir).unwrap();
+}

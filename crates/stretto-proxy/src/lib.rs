@@ -237,19 +237,25 @@ where
         // The flow's decisions go next to the session log, unless the
         // caller says otherwise.
         let flow_log = active.flow.as_ref().and_then(|f| {
-            f.log.as_deref().map(|p| session_path(p, &session)).or_else(|| {
-                recorder
-                    .as_ref()
-                    .map(|r| r.path().with_extension("flow.jsonl"))
-            })
+            f.log
+                .as_deref()
+                .map(|p| session_path(p, &session))
+                .or_else(|| {
+                    recorder
+                        .as_ref()
+                        .map(|r| r.path().with_extension("flow.jsonl"))
+                })
         });
         // So do the confirmation judge's.
         let confirm_log = active.confirm.as_ref().and_then(|c| {
-            c.log.as_deref().map(|p| session_path(p, &session)).or_else(|| {
-                recorder
-                    .as_ref()
-                    .map(|r| r.path().with_extension("confirm.jsonl"))
-            })
+            c.log
+                .as_deref()
+                .map(|p| session_path(p, &session))
+                .or_else(|| {
+                    recorder
+                        .as_ref()
+                        .map(|r| r.path().with_extension("confirm.jsonl"))
+                })
         });
         let (tx, rx) = mpsc::channel();
         let from_host = tx.clone();
@@ -416,7 +422,10 @@ fn header(config: &Config, seq: Option<u64>) -> LogHeader {
     LogHeader {
         stretto_mcp_log: LOG_VERSION,
         session: match seq {
-            Some(n) => format!("{}-{n}", record::session_id(started_unix_ms, std::process::id())),
+            Some(n) => format!(
+                "{}-{n}",
+                record::session_id(started_unix_ms, std::process::id())
+            ),
             None => record::session_id(started_unix_ms, std::process::id()),
         },
         started_unix_ms,

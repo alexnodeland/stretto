@@ -305,9 +305,7 @@ fn main() {
     let result = setup(&cli, &env).and_then(|(config, active)| match listening(&cli)? {
         Some((addr, options)) => {
             // Every session shares it, for as long as the process runs.
-            let active = active
-                .is_active()
-                .then(|| &*Box::leak(Box::new(active)));
+            let active = active.is_active().then(|| &*Box::leak(Box::new(active)));
             listen(addr, &config, active, &options)
         }
         None if active.is_active() => run_active(&config, &active),

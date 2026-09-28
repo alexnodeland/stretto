@@ -308,8 +308,15 @@ impl App {
             .ok_or_else(gone)
     }
 
-    /// Open a session for an `initialize` request.
-    fn open(self: &Arc<Self>, headers: &HeaderMap) -> Result<Arc<Session>, Response> {
+    /// Open a session for an `initialize` request, with a stream for its
+    /// answer (`json`: as one body) before the session's proxy starts, so a
+    /// server that cannot start answers it too.
+    fn open(
+        self: &Arc<Self>,
+        headers: &HeaderMap,
+        requests: &[Request],
+        json: bool,
+    ) -> Result<(Arc<Session>, UnboundedReceiver<String>), Response> {
         let named = match headers.get(HOST_SESSION).map(HeaderValue::to_str) {
             None => None,
             Some(Ok(name)) if host_session(name) => Some(name.to_string()),
@@ -331,6 +338,7 @@ impl App {
         let n = self.opened.fetch_add(1, Ordering::Relaxed) + 1;
         let (to_core, from_host) = mpsc::channel();
         let session = Arc::new(Session::new(new_id(), n, to_core));
+        let answers = lock(&session.routes).expect(requests, json);
         sessions.insert(session.id.clone(), session.clone());
         drop(sessions);
         if let Some((dirs, days)) = &self.options.retain {
@@ -363,7 +371,7 @@ impl App {
         let mut threads = lock(&self.threads);
         threads.retain(|t| !t.is_finished());
         threads.push(thread);
-        Ok(session)
+        Ok((session, answers))
     }
 
     /// End `session`, if it has not ended.
@@ -391,10 +399,7 @@ impl App {
         for session in idle {
             self.close(
                 &session,
-                &format!(
-                    "no request and no open stream for {:?}",
-                    self.options.idle
-                ),
+                &format!("no request and no open stream for {:?}", self.options.idle),
             );
         }
     }
@@ -435,36 +440,35 @@ async fn message(State(app): State<Arc<App>>, headers: HeaderMap, body: Bytes) -
         Err(refused) => return refused,
     };
     let opening = messages.iter().any(|m| m.initialize);
-    let session = if opening {
+    let requests: Vec<Request> = messages.iter().filter_map(|m| m.request.clone()).collect();
+    let lines = messages.into_iter().map(|m| m.line);
+    let events = accepts(&headers, "text/event-stream");
+    let expected = if opening {
         if batch || headers.contains_key(SESSION) {
             return refuse(
                 StatusCode::BAD_REQUEST,
                 "initialize comes alone, and without Mcp-Session-Id: it starts a session",
             );
         }
-        app.open(&headers)
+        app.open(&headers, &requests, !events)
     } else {
-        app.session(&headers)
+        let session = match app.session(&headers) {
+            Ok(session) => session,
+            Err(refused) => return refused,
+        };
+        if requests.is_empty() {
+            session.touch();
+            return accepted(&session, lines);
+        }
+        session
+            .expect(&requests, !events)
+            .map(|answers| (session, answers))
     };
-    let session = match session {
-        Ok(session) => session,
+    let (session, answers) = match expected {
+        Ok(expected) => expected,
         Err(refused) => return refused,
     };
     session.touch();
-    let requests: Vec<Request> = messages.iter().filter_map(|m| m.request.clone()).collect();
-    let lines = messages.into_iter().map(|m| m.line);
-    if requests.is_empty() {
-        return if session.send(lines) {
-            StatusCode::ACCEPTED.into_response()
-        } else {
-            gone()
-        };
-    }
-    let events = accepts(&headers, "text/event-stream");
-    let answers = match session.expect(&requests, !events) {
-        Ok(answers) => answers,
-        Err(refused) => return refused,
-    };
     // Should the session end first, it answers what it expected itself.
     let _ = session.send(lines);
     let mut response = if events {
@@ -501,10 +505,7 @@ async fn stream(State(app): State<Arc<App>>, method: Method, headers: HeaderMap)
         Err(refused) => return refused,
     };
     session.touch();
-    match session.listen() {
-        Some(messages) => event_stream(messages),
-        None => gone(),
-    }
+    events_for(&session)
 }
 
 /// DELETE: the host is done with the session.
@@ -521,11 +522,31 @@ async fn end(State(app): State<Arc<App>>, headers: HeaderMap) -> Response {
     }
 }
 
+/// 202 for messages that want no answer, once passed on to the session.
+fn accepted(session: &Session, lines: impl IntoIterator<Item = Vec<u8>>) -> Response {
+    if session.send(lines) {
+        StatusCode::ACCEPTED.into_response()
+    } else {
+        gone()
+    }
+}
+
+/// The session's stream for the server's own messages.
+fn events_for(session: &Session) -> Response {
+    match session.listen() {
+        Some(messages) => event_stream(messages),
+        None => gone(),
+    }
+}
+
 /// An event stream of `messages`, one event each, which ends when they do.
 fn event_stream(messages: UnboundedReceiver<String>) -> Response {
     let events = futures_util::stream::unfold(messages, |mut messages| async move {
         let message = messages.recv().await?;
-        Some((Ok::<_, Infallible>(Event::default().data(message)), messages))
+        Some((
+            Ok::<_, Infallible>(Event::default().data(message)),
+            messages,
+        ))
     });
     Sse::new(events)
         .keep_alive(KeepAlive::new().interval(KEEP_ALIVE))
@@ -716,17 +737,7 @@ impl Session {
                 &format!("request {id} is already waiting for its answer"),
             ));
         }
-        let (tx, rx) = unbounded_channel();
-        let n = routes.open(Stream {
-            tx,
-            owed: requests.len(),
-            progress: requests.iter().filter_map(|(_, p)| p.clone()).collect(),
-            json,
-        });
-        for (id, _) in requests {
-            routes.pending.insert(id.clone(), n);
-        }
-        Ok(rx)
+        Ok(routes.expect(requests, json))
     }
 
     /// Open the stream for the server's own messages, in place of the one
@@ -828,6 +839,21 @@ struct Stream {
 }
 
 impl Routes {
+    /// A stream for the answers to `requests`.
+    fn expect(&mut self, requests: &[Request], json: bool) -> UnboundedReceiver<String> {
+        let (tx, rx) = unbounded_channel();
+        let n = self.open(Stream {
+            tx,
+            owed: requests.len(),
+            progress: requests.iter().filter_map(|(_, p)| p.clone()).collect(),
+            json,
+        });
+        for (id, _) in requests {
+            self.pending.insert(id.clone(), n);
+        }
+        rx
+    }
+
     /// Open `stream`, giving it the queued messages it can take.
     fn open(&mut self, stream: Stream) -> u64 {
         let n = self.next;
@@ -857,7 +883,9 @@ impl Routes {
         let answer = message.get("method").is_none()
             && (message.get("result").is_some() || message.get("error").is_some());
         if answer {
-            let id = message.get("id").map_or("null".to_string(), Value::to_string);
+            let id = message
+                .get("id")
+                .map_or("null".to_string(), Value::to_string);
             let Some(n) = self.pending.remove(&id) else {
                 eprintln!(
                     "stretto-proxy: session {session}: an answer to request {id}, which no \
@@ -892,7 +920,13 @@ impl Routes {
                 })
                 .map(|(n, _)| *n)
                 .or(self.get)
-                .or_else(|| self.streams.iter().rev().find(|(_, s)| open(s)).map(|(n, _)| *n));
+                .or_else(|| {
+                    self.streams
+                        .iter()
+                        .rev()
+                        .find(|(_, s)| open(s))
+                        .map(|(n, _)| *n)
+                });
             let Some(n) = target else {
                 if self.queue.len() == MAX_QUEUED {
                     self.queue.pop_front();
