@@ -7,7 +7,9 @@ describe('markdown from the server', () => {
       '# Flow: shop\n\n| After | Lookups |\n|---|---|\n| `find_user_id_by_email` | `get_user_details` (6) |\n',
     )
     expect(html).toContain('<h1>Flow: shop</h1>')
-    expect(html).toContain('<div class="md-table"><table>')
+    expect(html).toContain(
+      '<div class="md-table" tabindex="0" role="region" aria-label="Table"><table>',
+    )
     expect(html).toContain('<code>find_user_id_by_email</code>')
   })
 
