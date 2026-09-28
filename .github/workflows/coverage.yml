@@ -1,0 +1,55 @@
+name: Coverage
+
+# Line coverage of the workspace's tests, measured with cargo-llvm-cov by
+# `make coverage`, which fails under the Makefile's COVERAGE_MIN. The LCOV
+# report is the run's artifact `lcov`. With a CODECOV_TOKEN repository
+# secret it also goes to Codecov; without one, that step is skipped.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-llvm-cov
+        run: command -v cargo-llvm-cov || cargo install cargo-llvm-cov --locked
+      - run: make coverage
+      # Also when the threshold fails: lcov.info is written before it is checked.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lcov
+          path: lcov.info
+          if-no-files-found: warn
+      - name: Is there a Codecov token?
+        id: codecov
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          if [ -n "$CODECOV_TOKEN" ]; then
+            echo "upload=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No CODECOV_TOKEN secret: the report stays an artifact."
+          fi
+      - name: Upload to Codecov
+        if: steps.codecov.outputs.upload == 'true'
+        uses: codecov/codecov-action@v4
+        with:
+          files: lcov.info
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

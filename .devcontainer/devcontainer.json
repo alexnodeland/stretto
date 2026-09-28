@@ -1,0 +1,37 @@
+{
+  "name": "stretto",
+  "build": { "dockerfile": "Dockerfile" },
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" },
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "vadimcn.vscode-lldb",
+        "editorconfig.editorconfig",
+        "ms-python.python",
+        "vue.volar",
+        "timonwong.shellcheck",
+        "github.vscode-github-actions",
+        "anthropic.claude-code"
+      ]
+    }
+  },
+  "containerEnv": {
+    "CARGO_TERM_COLOR": "always",
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+  },
+  "mounts": [
+    "source=stretto-claude-${devcontainerId},target=/home/vscode/.claude,type=volume"
+  ],
+  "forwardPorts": [7878, 5173],
+  "portsAttributes": {
+    "7878": { "label": "stretto console", "onAutoForward": "notify" },
+    "5173": { "label": "docs site (npm run dev in website/)", "onAutoForward": "notify" }
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "remoteUser": "vscode"
+}

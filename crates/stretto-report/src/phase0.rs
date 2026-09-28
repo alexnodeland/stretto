@@ -591,7 +591,7 @@ fn warn_unanswered(shadow: Option<&ShadowReport>) {
 /// τ²-bench results: for example sessions recorded by `stretto-proxy` (see
 /// [`stretto_trace::mcp`]). The pipeline is [`compile_flow`]'s, with each
 /// episode its own task and a split by task standing in for τ²-bench's (see
-/// [`learn_split`]): 70% train the habit, the sites and the bindings (the
+/// `learn_split`): 70% train the habit, the sites and the bindings (the
 /// successful ones, reward 1), and `oracle` is asked at every decision of
 /// the other 30%, where the arbiter is fitted. An episode's task id is kept
 /// when it has one, so episodes of one task share a side of the split. The
@@ -2078,7 +2078,7 @@ pub fn training_tasks(train: &[String], only: &[String], fraction: f64) -> Resul
 }
 
 /// The first `fraction` of `tasks` (at least one) in a fixed pseudo-random
-/// order (see [`rank`]), kept in their original order. The order does not
+/// order (see `rank`), kept in their original order. The order does not
 /// depend on `fraction`, so a smaller sample is part of every larger one,
 /// and it is salted so the sample does not follow the arbiter's folds.
 pub fn sample_tasks(tasks: &[String], fraction: f64) -> Vec<String> {

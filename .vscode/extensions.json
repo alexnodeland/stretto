@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    "rust-lang.rust-analyzer",
+    "tamasfe.even-better-toml",
+    "vadimcn.vscode-lldb",
+    "editorconfig.editorconfig",
+    "ms-python.python",
+    "vue.volar",
+    "timonwong.shellcheck",
+    "github.vscode-github-actions",
+    "ms-vscode-remote.remote-containers",
+    "anthropic.claude-code"
+  ]
+}
