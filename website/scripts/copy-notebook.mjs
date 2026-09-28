@@ -1,5 +1,5 @@
 // Copies the research notebook (site/index.html) into public/notebook/, so that
-// the site serves it at /stretto/notebook/ in development and in the build.
+// the site serves it at notebook/, under its base, in development and in the build.
 // The copy is ignored by git: site/index.html stays the only source.
 import { copyFileSync, mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'

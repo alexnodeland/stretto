@@ -41,8 +41,11 @@ export interface RepoLinksOptions {
   branch: string
   /** Repository files the site renders, by repository path, and the route of their page. */
   pages: Map<string, string>
-  /** Absolute URLs that now live on this site (without a trailing slash), and their site path. */
-  moved?: Record<string, string>
+  /**
+   * The site's own address, ending in a slash, such as `https://stretto.alexnodeland.com/`.
+   * A link to it, or to a page under it, stays on the site.
+   */
+  siteUrl?: string
   /**
    * Site paths served as static files, not VitePress pages, such as `/notebook/`. A link
    * to one gets the base and `target="_self"`, so that the router does not take it.
@@ -183,7 +186,7 @@ function locate(src: string, files: string[]): Range[] {
 }
 
 export function repoLinks(md: MarkdownRenderer, options: RepoLinksOptions) {
-  const { repoRoot, srcDir, base, repoUrl, branch, pages, moved = {}, staticPaths = [], strict = true, devServer = false } = options
+  const { repoRoot, srcDir, base, repoUrl, branch, pages, siteUrl, staticPaths = [], strict = true, devServer = false } = options
   const shown = (file: string) => posix(path.relative(repoRoot, file))
 
   md.core.ruler.push('stretto_repo_links', (state) => {
@@ -213,9 +216,9 @@ export function repoLinks(md: MarkdownRenderer, options: RepoLinksOptions) {
 
     const rewriteLink = (href: string, source: string): { href: string; target?: string } | undefined => {
       if (ABSOLUTE_URL_RE.test(href)) {
-        const to = moved[href.replace(/\/+$/, '')]
-        if (!to) return undefined
-        return staticPaths.includes(to)
+        if (!siteUrl || !(href + '/').startsWith(siteUrl)) return undefined
+        const to = '/' + href.slice(siteUrl.length)
+        return staticPaths.includes(to.replace(/[?#].*$/, ''))
           ? { href: (base + to).replace(/\/+/g, '/'), target: '_self' }
           : { href: to }
       }
