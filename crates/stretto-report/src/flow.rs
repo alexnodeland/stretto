@@ -49,6 +49,16 @@ const MIN_CONSTANT_CALLS: usize = 5;
 /// customer said.
 const MIN_MENTION: usize = 4;
 
+/// The fewest records a list in a result needs to be read as a table of
+/// aliases ([`Bindings::aliases`]).
+const MIN_ALIAS_ROWS: usize = 3;
+
+/// How many of a record's values from a result's table the customer must
+/// have said for it to be the record they described: an origin and a
+/// destination, not a city alone, which many of a customer's reservations
+/// share.
+const DESCRIBED_BY_NAMES: usize = 2;
+
 /// The flow file format this build writes, unless a flow has per-site
 /// thresholds.
 pub const FLOW_VERSION: u32 = 1;
@@ -653,6 +663,7 @@ impl Flow {
             && !self.bindings.binds_lists()
             && !self.bindings.counts_bare()
             && !self.bindings.binds_constants()
+            && !self.bindings.reads_aliases()
         {
             FLOW_VERSION
         } else {
@@ -815,12 +826,13 @@ impl Flow {
                 || flow.bindings.orders_sources_by_site()
                 || flow.bindings.binds_lists()
                 || flow.bindings.counts_bare()
-                || flow.bindings.binds_constants())
+                || flow.bindings.binds_constants()
+                || flow.bindings.reads_aliases())
         {
             anyhow::bail!(
                 "a flow with bindings scored where another value was named or the described \
-                 record read, with sources ordered by site, with lists bound, with bare calls counted, or with \
-                 constants, is format {FLOW_THRESHOLDS_VERSION}"
+                 record read, with sources ordered by site, with lists bound, with bare calls counted, with \
+                 constants, or with aliases, is format {FLOW_THRESHOLDS_VERSION}"
             );
         }
         crate::program::FlowProgram::new(&flow)?;
@@ -1419,6 +1431,17 @@ pub struct Bindings {
         with = "stretto_model::pairs"
     )]
     pub(crate) constants: BTreeMap<(String, String), Value>,
+    /// Values that a table in a result pairs, each lower-cased with the
+    /// others of its row: a list of at least [`MIN_ALIAS_ROWS`] records of
+    /// the same two string fields, such as the airports a lookup lists with
+    /// their cities (`{"iata": "JFK", "city": "New York"}`). A record the
+    /// flow read is the one the customer described (for `described_read`)
+    /// also when they said [`DESCRIBED_BY_NAMES`] of its values in such a
+    /// table, each itself or by an alias, as words: "from New York to
+    /// Seattle" describes the reservation from `JFK` to `SEA`. Empty in
+    /// flows learned before aliases were, or from results with no table.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    aliases: BTreeMap<String, BTreeSet<String>>,
 }
 
 /// How many values of a lookup's argument the agent took from one source at
@@ -1669,7 +1692,11 @@ impl Bindings {
                         content,
                         error: false,
                         ..
-                    } => outputs.push((name.as_str(), parse(content))),
+                    } => {
+                        let out = parse(content);
+                        tables(&out, &mut b.aliases);
+                        outputs.push((name.as_str(), out));
+                    }
                     Event::Assistant { calls, .. } => {
                         // A flow makes a batch of reads one after another, so
                         // each read of a batch is at the site of the read before
@@ -1888,6 +1915,12 @@ impl Bindings {
     /// (`described_read`), as flows learned by this build do.
     pub(crate) fn scores_described_read(&self) -> bool {
         !self.described_read.is_empty()
+    }
+
+    /// Whether the customer's words are read by the aliases a result's table
+    /// gave (`aliases`), as flows learned by this build from such results are.
+    pub(crate) fn reads_aliases(&self) -> bool {
+        !self.aliases.is_empty()
     }
 
     /// Whether the binding orders an argument's sources by site
@@ -2207,6 +2240,13 @@ impl Bindings {
         // A value the customer gave: written in the conversation, or passed
         // by the agent before any result held it.
         let gave = |v: &String| keyish(v) && (given.contains(v) || mentions(&customer, v));
+        // A value of a result's table the customer said as words, itself or
+        // by one of its aliases.
+        let said = |v: &String| {
+            self.aliases
+                .get(v)
+                .is_some_and(|names| says(&customer, v) || names.iter().any(|n| says(&customer, n)))
+        };
         let mut used: BTreeSet<(&str, String)> = BTreeSet::new();
         let mut called = false;
         for c in made.iter().filter(|c| c.name == tool) {
@@ -2335,15 +2375,24 @@ impl Bindings {
                     // what one returned holds a value the customer gave that
                     // another's does not: the record they described, not a
                     // value every record of the list carries (an address).
+                    // Or it holds [`DESCRIBED_BY_NAMES`] values of tables
+                    // they said, which another's does not hold all of, or it
+                    // is the only one read: an origin and a destination.
                     if !mentioned {
                         let read: Vec<BTreeSet<String>> = lists[list]
                             .iter()
                             .filter(|u| **u != v && used.contains(&(arg.as_str(), (*u).clone())))
                             .filter_map(|u| returned(arg, u))
                             .collect();
+                        let apart = |ks: &[&String]| {
+                            read.iter()
+                                .any(|other| ks.iter().any(|k| !other.contains(*k)))
+                        };
                         described |= read.iter().any(|r| {
-                            r.iter()
-                                .any(|k| gave(k) && read.iter().any(|other| !other.contains(k)))
+                            let names: Vec<&String> = r.iter().filter(|k| said(k)).collect();
+                            r.iter().any(|k| gave(k) && apart(&[k]))
+                                || (names.len() >= DESCRIBED_BY_NAMES
+                                    && (read.len() == 1 || apart(&names)))
                         });
                     }
                     bound.insert(arg.clone(), Value::String(v));
@@ -2389,6 +2438,65 @@ impl Bindings {
 /// [`MIN_MENTION`] characters, with a digit (an id, a phone number).
 fn keyish(v: &str) -> bool {
     v.chars().count() >= MIN_MENTION && v.chars().any(|c| c.is_ascii_digit())
+}
+
+/// Whether `customer` (lower-cased) has `phrase` as words: with no letter
+/// or digit on either side, so that `sea` is not read in "research".
+fn says(customer: &str, phrase: &str) -> bool {
+    let apart = |c: Option<char>| !c.is_some_and(char::is_alphanumeric);
+    !phrase.is_empty()
+        && customer.match_indices(phrase).any(|(i, _)| {
+            apart(customer[..i].chars().next_back())
+                && apart(customer[i + phrase.len()..].chars().next())
+        })
+}
+
+/// The tables under `v` ([`Bindings::aliases`]): each gives each of a
+/// row's values the other as an alias.
+fn tables(v: &Value, into: &mut BTreeMap<String, BTreeSet<String>>) {
+    match v {
+        Value::Array(rows) => match table(rows) {
+            Some(pairs) => {
+                for (a, b) in pairs {
+                    into.entry(a.clone()).or_default().insert(b.clone());
+                    into.entry(b).or_default().insert(a);
+                }
+            }
+            None => rows.iter().for_each(|x| tables(x, into)),
+        },
+        Value::Object(m) => m.values().for_each(|x| tables(x, into)),
+        _ => {}
+    }
+}
+
+/// `rows` as a table: at least [`MIN_ALIAS_ROWS`] records of the same two
+/// fields, both strings, as each row's two values, lower-cased and trimmed
+/// (a row whose two are the same, or one empty, pairs nothing).
+fn table(rows: &[Value]) -> Option<Vec<(String, String)>> {
+    if rows.len() < MIN_ALIAS_ROWS {
+        return None;
+    }
+    let mut keys: Option<(&String, &String)> = None;
+    let mut pairs = Vec::new();
+    for row in rows {
+        let Value::Object(m) = row else {
+            return None;
+        };
+        let mut fields = m.iter();
+        let (Some((ka, Value::String(a))), Some((kb, Value::String(b))), None) =
+            (fields.next(), fields.next(), fields.next())
+        else {
+            return None;
+        };
+        if *keys.get_or_insert((ka, kb)) != (ka, kb) {
+            return None;
+        }
+        let (a, b) = (a.trim().to_lowercase(), b.trim().to_lowercase());
+        if !a.is_empty() && !b.is_empty() && a != b {
+            pairs.push((a, b));
+        }
+    }
+    Some(pairs)
 }
 
 /// Every string and number under `v`, lower-cased and trimmed.
