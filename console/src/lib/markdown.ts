@@ -14,7 +14,9 @@ md.renderer.rules.link_open = (tokens, idx, options, _env, self) => {
   token.attrSet('rel', 'noopener noreferrer')
   return self.renderToken(tokens, idx, options)
 }
-md.renderer.rules.table_open = () => '<div class="md-table"><table>\n'
+// A wide table scrolls sideways in its box, which the keyboard can reach too.
+md.renderer.rules.table_open = () =>
+  '<div class="md-table" tabindex="0" role="region" aria-label="Table"><table>\n'
 md.renderer.rules.table_close = () => '</table></div>\n'
 
 export function renderMarkdown(text: string): string {

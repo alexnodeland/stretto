@@ -63,7 +63,7 @@ The tests change the same settings at run time with `POST /__mock/state` (`{"res
 | `npm run lint`      | ESLint (typescript-eslint, eslint-plugin-vue)                                                                |
 | `npm run format`    | Prettier; `npm run format:check` only checks                                                                 |
 | `npm test`          | Vitest with happy-dom: the API client, the formatters, the timeline and flow logic, and the key components   |
-| `npm run e2e`       | Playwright against `dev:mock`                                                                                |
+| `npm run e2e`       | Playwright against `dev:mock`, with axe-core's WCAG 2.1 A and AA rules on every page (`e2e/a11y.spec.ts`)    |
 | `npm run e2e:real`  | Build the UI, then Playwright against the real `stretto-console` on its test fixtures (below)                |
 | `npm run shots`     | Playwright: every page in light and dark at 1440 and 390 px, into `SHOTS_DIR` (default `test-results/shots`) |
 
