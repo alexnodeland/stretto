@@ -1,0 +1,1252 @@
+[
+ {
+  "part": "in order",
+  "domain": "retail",
+  "agent": "GLM-5",
+  "order": 0,
+  "episodes": 160,
+  "batches": 8,
+  "never": {
+   "lookups": 1089,
+   "used": 1025,
+   "served": 0,
+   "detours": 64
+  },
+  "every batch": {
+   "lookups": 1386,
+   "used": 1245,
+   "served": 0,
+   "detours": 141
+  },
+  "when it dominates": {
+   "lookups": 1089,
+   "used": 1025,
+   "served": 0,
+   "detours": 64
+  },
+  "when it nets more": {
+   "lookups": 1329,
+   "used": 1210,
+   "served": 0,
+   "detours": 119
+  },
+  "commits": {
+   "dominates": [],
+   "nets": [
+    2,
+    8
+   ]
+  }
+ },
+ {
+  "part": "in order",
+  "domain": "retail",
+  "agent": "GLM-5",
+  "order": 1,
+  "episodes": 160,
+  "batches": 8,
+  "never": {
+   "lookups": 1089,
+   "used": 1025,
+   "served": 0,
+   "detours": 64
+  },
+  "every batch": {
+   "lookups": 1389,
+   "used": 1244,
+   "served": 0,
+   "detours": 145
+  },
+  "when it dominates": {
+   "lookups": 1183,
+   "used": 1100,
+   "served": 0,
+   "detours": 83
+  },
+  "when it nets more": {
+   "lookups": 1336,
+   "used": 1206,
+   "served": 0,
+   "detours": 130
+  },
+  "commits": {
+   "dominates": [
+    6
+   ],
+   "nets": [
+    2,
+    5
+   ]
+  }
+ },
+ {
+  "part": "in order",
+  "domain": "retail",
+  "agent": "GLM-5",
+  "order": 2,
+  "episodes": 160,
+  "batches": 8,
+  "never": {
+   "lookups": 1089,
+   "used": 1025,
+   "served": 0,
+   "detours": 64
+  },
+  "every batch": {
+   "lookups": 1378,
+   "used": 1243,
+   "served": 0,
+   "detours": 135
+  },
+  "when it dominates": {
+   "lookups": 1089,
+   "used": 1025,
+   "served": 0,
+   "detours": 64
+  },
+  "when it nets more": {
+   "lookups": 1350,
+   "used": 1218,
+   "served": 0,
+   "detours": 132
+  },
+  "commits": {
+   "dominates": [],
+   "nets": [
+    2,
+    7
+   ]
+  }
+ },
+ {
+  "part": "in order",
+  "domain": "retail",
+  "agent": "GLM-5",
+  "order": 3,
+  "episodes": 160,
+  "batches": 8,
+  "never": {
+   "lookups": 1089,
+   "used": 1025,
+   "served": 0,
+   "detours": 64
+  },
+  "every batch": {
+   "lookups": 1363,
+   "used": 1225,
+   "served": 0,
+   "detours": 138
+  },
+  "when it dominates": {
+   "lookups": 1089,
+   "used": 1025,
+   "served": 0,
+   "detours": 64
+  },
+  "when it nets more": {
+   "lookups": 1313,
+   "used": 1198,
+   "served": 0,
+   "detours": 115
+  },
+  "commits": {
+   "dominates": [],
+   "nets": [
+    3,
+    7
+   ]
+  }
+ },
+ {
+  "part": "in order",
+  "domain": "retail",
+  "agent": "GLM-5",
+  "order": 4,
+  "episodes": 160,
+  "batches": 8,
+  "never": {
+   "lookups": 1089,
+   "used": 1025,
+   "served": 0,
+   "detours": 64
+  },
+  "every batch": {
+   "lookups": 1390,
+   "used": 1246,
+   "served": 0,
+   "detours": 144
+  },
+  "when it dominates": {
+   "lookups": 1089,
+   "used": 1025,
+   "served": 0,
+   "detours": 64
+  },
+  "when it nets more": {
+   "lookups": 1343,
+   "used": 1207,
+   "served": 0,
+   "detours": 136
+  },
+  "commits": {
+   "dominates": [],
+   "nets": [
+    2,
+    5
+   ]
+  }
+ },
+ {
+  "part": "in order",
+  "domain": "retail",
+  "agent": "GLM-5",
+  "order": 5,
+  "episodes": 160,
+  "batches": 8,
+  "never": {
+   "lookups": 1089,
+   "used": 1025,
+   "served": 0,
+   "detours": 64
+  },
+  "every batch": {
+   "lookups": 1388,
+   "used": 1249,
+   "served": 0,
+   "detours": 139
+  },
+  "when it dominates": {
+   "lookups": 1089,
+   "used": 1025,
+   "served": 0,
+   "detours": 64
+  },
+  "when it nets more": {
+   "lookups": 1355,
+   "used": 1224,
+   "served": 0,
+   "detours": 131
+  },
+  "commits": {
+   "dominates": [],
+   "nets": [
+    2,
+    4
+   ]
+  }
+ },
+ {
+  "part": "in order",
+  "domain": "retail",
+  "agent": "GLM-5",
+  "order": 6,
+  "episodes": 160,
+  "batches": 8,
+  "never": {
+   "lookups": 1089,
+   "used": 1025,
+   "served": 0,
+   "detours": 64
+  },
+  "every batch": {
+   "lookups": 1357,
+   "used": 1216,
+   "served": 0,
+   "detours": 141
+  },
+  "when it dominates": {
+   "lookups": 1089,
+   "used": 1025,
+   "served": 0,
+   "detours": 64
+  },
+  "when it nets more": {
+   "lookups": 1305,
+   "used": 1169,
+   "served": 0,
+   "detours": 136
+  },
+  "commits": {
+   "dominates": [],
+   "nets": [
+    3,
+    5
+   ]
+  }
+ },
+ {
+  "part": "in order",
+  "domain": "retail",
+  "agent": "GLM-5",
+  "order": 7,
+  "episodes": 160,
+  "batches": 8,
+  "never": {
+   "lookups": 1089,
+   "used": 1025,
+   "served": 0,
+   "detours": 64
+  },
+  "every batch": {
+   "lookups": 1376,
+   "used": 1234,
+   "served": 0,
+   "detours": 142
+  },
+  "when it dominates": {
+   "lookups": 1089,
+   "used": 1025,
+   "served": 0,
+   "detours": 64
+  },
+  "when it nets more": {
+   "lookups": 1334,
+   "used": 1204,
+   "served": 0,
+   "detours": 130
+  },
+  "commits": {
+   "dominates": [],
+   "nets": [
+    2,
+    5
+   ]
+  }
+ },
+ {
+  "part": "in order",
+  "domain": "retail",
+  "agent": "GLM-5",
+  "order": 8,
+  "episodes": 160,
+  "batches": 8,
+  "never": {
+   "lookups": 1089,
+   "used": 1025,
+   "served": 0,
+   "detours": 64
+  },
+  "every batch": {
+   "lookups": 1398,
+   "used": 1255,
+   "served": 0,
+   "detours": 143
+  },
+  "when it dominates": {
+   "lookups": 1089,
+   "used": 1025,
+   "served": 0,
+   "detours": 64
+  },
+  "when it nets more": {
+   "lookups": 1343,
+   "used": 1221,
+   "served": 0,
+   "detours": 122
+  },
+  "commits": {
+   "dominates": [],
+   "nets": [
+    2,
+    7
+   ]
+  }
+ },
+ {
+  "part": "in order",
+  "domain": "retail",
+  "agent": "GLM-5",
+  "order": 9,
+  "episodes": 160,
+  "batches": 8,
+  "never": {
+   "lookups": 1089,
+   "used": 1025,
+   "served": 0,
+   "detours": 64
+  },
+  "every batch": {
+   "lookups": 1396,
+   "used": 1246,
+   "served": 0,
+   "detours": 150
+  },
+  "when it dominates": {
+   "lookups": 1089,
+   "used": 1025,
+   "served": 0,
+   "detours": 64
+  },
+  "when it nets more": {
+   "lookups": 1362,
+   "used": 1223,
+   "served": 0,
+   "detours": 139
+  },
+  "commits": {
+   "dominates": [],
+   "nets": [
+    2,
+    6
+   ]
+  }
+ },
+ {
+  "part": "in order",
+  "domain": "airline",
+  "agent": "GLM-5",
+  "order": 0,
+  "episodes": 80,
+  "batches": 4,
+  "never": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "every batch": {
+   "lookups": 233,
+   "used": 220,
+   "served": 0,
+   "detours": 13
+  },
+  "when it dominates": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "when it nets more": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "commits": {
+   "dominates": [],
+   "nets": []
+  }
+ },
+ {
+  "part": "in order",
+  "domain": "airline",
+  "agent": "GLM-5",
+  "order": 1,
+  "episodes": 80,
+  "batches": 4,
+  "never": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "every batch": {
+   "lookups": 230,
+   "used": 218,
+   "served": 0,
+   "detours": 12
+  },
+  "when it dominates": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "when it nets more": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "commits": {
+   "dominates": [],
+   "nets": []
+  }
+ },
+ {
+  "part": "in order",
+  "domain": "airline",
+  "agent": "GLM-5",
+  "order": 2,
+  "episodes": 80,
+  "batches": 4,
+  "never": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "every batch": {
+   "lookups": 234,
+   "used": 222,
+   "served": 0,
+   "detours": 12
+  },
+  "when it dominates": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "when it nets more": {
+   "lookups": 229,
+   "used": 219,
+   "served": 0,
+   "detours": 10
+  },
+  "commits": {
+   "dominates": [],
+   "nets": [
+    3
+   ]
+  }
+ },
+ {
+  "part": "in order",
+  "domain": "airline",
+  "agent": "GLM-5",
+  "order": 3,
+  "episodes": 80,
+  "batches": 4,
+  "never": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "every batch": {
+   "lookups": 234,
+   "used": 222,
+   "served": 0,
+   "detours": 12
+  },
+  "when it dominates": {
+   "lookups": 233,
+   "used": 221,
+   "served": 0,
+   "detours": 12
+  },
+  "when it nets more": {
+   "lookups": 233,
+   "used": 221,
+   "served": 0,
+   "detours": 12
+  },
+  "commits": {
+   "dominates": [
+    2
+   ],
+   "nets": [
+    2
+   ]
+  }
+ },
+ {
+  "part": "in order",
+  "domain": "airline",
+  "agent": "GLM-5",
+  "order": 4,
+  "episodes": 80,
+  "batches": 4,
+  "never": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "every batch": {
+   "lookups": 231,
+   "used": 222,
+   "served": 0,
+   "detours": 9
+  },
+  "when it dominates": {
+   "lookups": 229,
+   "used": 220,
+   "served": 0,
+   "detours": 9
+  },
+  "when it nets more": {
+   "lookups": 229,
+   "used": 220,
+   "served": 0,
+   "detours": 9
+  },
+  "commits": {
+   "dominates": [
+    3
+   ],
+   "nets": [
+    3
+   ]
+  }
+ },
+ {
+  "part": "in order",
+  "domain": "airline",
+  "agent": "GLM-5",
+  "order": 5,
+  "episodes": 80,
+  "batches": 4,
+  "never": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "every batch": {
+   "lookups": 234,
+   "used": 222,
+   "served": 0,
+   "detours": 12
+  },
+  "when it dominates": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "when it nets more": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "commits": {
+   "dominates": [],
+   "nets": []
+  }
+ },
+ {
+  "part": "in order",
+  "domain": "airline",
+  "agent": "GLM-5",
+  "order": 6,
+  "episodes": 80,
+  "batches": 4,
+  "never": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "every batch": {
+   "lookups": 230,
+   "used": 219,
+   "served": 0,
+   "detours": 11
+  },
+  "when it dominates": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "when it nets more": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "commits": {
+   "dominates": [],
+   "nets": []
+  }
+ },
+ {
+  "part": "in order",
+  "domain": "airline",
+  "agent": "GLM-5",
+  "order": 7,
+  "episodes": 80,
+  "batches": 4,
+  "never": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "every batch": {
+   "lookups": 231,
+   "used": 220,
+   "served": 0,
+   "detours": 11
+  },
+  "when it dominates": {
+   "lookups": 230,
+   "used": 219,
+   "served": 0,
+   "detours": 11
+  },
+  "when it nets more": {
+   "lookups": 230,
+   "used": 219,
+   "served": 0,
+   "detours": 11
+  },
+  "commits": {
+   "dominates": [
+    3
+   ],
+   "nets": [
+    3
+   ]
+  }
+ },
+ {
+  "part": "in order",
+  "domain": "airline",
+  "agent": "GLM-5",
+  "order": 8,
+  "episodes": 80,
+  "batches": 4,
+  "never": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "every batch": {
+   "lookups": 231,
+   "used": 220,
+   "served": 0,
+   "detours": 11
+  },
+  "when it dominates": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "when it nets more": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "commits": {
+   "dominates": [],
+   "nets": []
+  }
+ },
+ {
+  "part": "in order",
+  "domain": "airline",
+  "agent": "GLM-5",
+  "order": 9,
+  "episodes": 80,
+  "batches": 4,
+  "never": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "every batch": {
+   "lookups": 234,
+   "used": 222,
+   "served": 0,
+   "detours": 12
+  },
+  "when it dominates": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "when it nets more": {
+   "lookups": 228,
+   "used": 219,
+   "served": 0,
+   "detours": 9
+  },
+  "commits": {
+   "dominates": [
+    4
+   ],
+   "nets": [
+    4
+   ]
+  }
+ },
+ {
+  "part": "splice",
+  "domain": "retail",
+  "agent": "Claude 3.7 Sonnet, then GPT-4.1-mini",
+  "order": 0,
+  "alarm_after": 11,
+  "false_alarms": 0,
+  "before": {
+   "never": {
+    "lookups": 1875,
+    "used": 1671,
+    "served": 0,
+    "detours": 204
+   },
+   "every batch": {
+    "lookups": 1832,
+    "used": 1629,
+    "served": 0,
+    "detours": 203
+   },
+   "every batch, forgetting": {
+    "lookups": 1831,
+    "used": 1633,
+    "served": 0,
+    "detours": 198
+   }
+  },
+  "after": {
+   "never": {
+    "lookups": 1410,
+    "used": 1172,
+    "served": 0,
+    "detours": 238
+   },
+   "every batch": {
+    "lookups": 1465,
+    "used": 1179,
+    "served": 0,
+    "detours": 286
+   },
+   "every batch, forgetting": {
+    "lookups": 1461,
+    "used": 1185,
+    "served": 0,
+    "detours": 276
+   }
+  }
+ },
+ {
+  "part": "splice",
+  "domain": "retail",
+  "agent": "Claude 3.7 Sonnet, then GPT-4.1-mini",
+  "order": 1,
+  "alarm_after": 7,
+  "false_alarms": 0,
+  "before": {
+   "never": {
+    "lookups": 1875,
+    "used": 1671,
+    "served": 0,
+    "detours": 204
+   },
+   "every batch": {
+    "lookups": 1862,
+    "used": 1646,
+    "served": 0,
+    "detours": 216
+   },
+   "every batch, forgetting": {
+    "lookups": 1845,
+    "used": 1632,
+    "served": 0,
+    "detours": 213
+   }
+  },
+  "after": {
+   "never": {
+    "lookups": 1410,
+    "used": 1172,
+    "served": 0,
+    "detours": 238
+   },
+   "every batch": {
+    "lookups": 1470,
+    "used": 1182,
+    "served": 0,
+    "detours": 288
+   },
+   "every batch, forgetting": {
+    "lookups": 1435,
+    "used": 1166,
+    "served": 0,
+    "detours": 269
+   }
+  }
+ },
+ {
+  "part": "splice",
+  "domain": "retail",
+  "agent": "Claude 3.7 Sonnet, then GPT-4.1-mini",
+  "order": 2,
+  "alarm_after": 8,
+  "false_alarms": 0,
+  "before": {
+   "never": {
+    "lookups": 1875,
+    "used": 1671,
+    "served": 0,
+    "detours": 204
+   },
+   "every batch": {
+    "lookups": 1842,
+    "used": 1632,
+    "served": 0,
+    "detours": 210
+   },
+   "every batch, forgetting": {
+    "lookups": 1846,
+    "used": 1633,
+    "served": 0,
+    "detours": 213
+   }
+  },
+  "after": {
+   "never": {
+    "lookups": 1410,
+    "used": 1172,
+    "served": 0,
+    "detours": 238
+   },
+   "every batch": {
+    "lookups": 1484,
+    "used": 1194,
+    "served": 0,
+    "detours": 290
+   },
+   "every batch, forgetting": {
+    "lookups": 1483,
+    "used": 1202,
+    "served": 0,
+    "detours": 281
+   }
+  }
+ },
+ {
+  "part": "splice",
+  "domain": "retail",
+  "agent": "Claude 3.7 Sonnet, then GPT-4.1-mini",
+  "order": 3,
+  "alarm_after": 7,
+  "false_alarms": 0,
+  "before": {
+   "never": {
+    "lookups": 1875,
+    "used": 1671,
+    "served": 0,
+    "detours": 204
+   },
+   "every batch": {
+    "lookups": 1836,
+    "used": 1629,
+    "served": 0,
+    "detours": 207
+   },
+   "every batch, forgetting": {
+    "lookups": 1840,
+    "used": 1628,
+    "served": 0,
+    "detours": 212
+   }
+  },
+  "after": {
+   "never": {
+    "lookups": 1410,
+    "used": 1172,
+    "served": 0,
+    "detours": 238
+   },
+   "every batch": {
+    "lookups": 1428,
+    "used": 1189,
+    "served": 0,
+    "detours": 239
+   },
+   "every batch, forgetting": {
+    "lookups": 1432,
+    "used": 1197,
+    "served": 0,
+    "detours": 235
+   }
+  }
+ },
+ {
+  "part": "splice",
+  "domain": "retail",
+  "agent": "Claude 3.7 Sonnet, then GPT-4.1-mini",
+  "order": 4,
+  "alarm_after": 8,
+  "false_alarms": 0,
+  "before": {
+   "never": {
+    "lookups": 1875,
+    "used": 1671,
+    "served": 0,
+    "detours": 204
+   },
+   "every batch": {
+    "lookups": 1830,
+    "used": 1625,
+    "served": 0,
+    "detours": 205
+   },
+   "every batch, forgetting": {
+    "lookups": 1844,
+    "used": 1638,
+    "served": 0,
+    "detours": 206
+   }
+  },
+  "after": {
+   "never": {
+    "lookups": 1410,
+    "used": 1172,
+    "served": 0,
+    "detours": 238
+   },
+   "every batch": {
+    "lookups": 1458,
+    "used": 1170,
+    "served": 0,
+    "detours": 288
+   },
+   "every batch, forgetting": {
+    "lookups": 1391,
+    "used": 1127,
+    "served": 0,
+    "detours": 264
+   }
+  }
+ },
+ {
+  "part": "splice",
+  "domain": "retail",
+  "agent": "Claude 3.7 Sonnet, then GPT-4.1-mini",
+  "order": 5,
+  "alarm_after": 60,
+  "false_alarms": 1,
+  "before": {
+   "never": {
+    "lookups": 1875,
+    "used": 1671,
+    "served": 0,
+    "detours": 204
+   },
+   "every batch": {
+    "lookups": 1835,
+    "used": 1630,
+    "served": 0,
+    "detours": 205
+   },
+   "every batch, forgetting": {
+    "lookups": 1844,
+    "used": 1636,
+    "served": 0,
+    "detours": 208
+   }
+  },
+  "after": {
+   "never": {
+    "lookups": 1410,
+    "used": 1172,
+    "served": 0,
+    "detours": 238
+   },
+   "every batch": {
+    "lookups": 1465,
+    "used": 1182,
+    "served": 0,
+    "detours": 283
+   },
+   "every batch, forgetting": {
+    "lookups": 1435,
+    "used": 1202,
+    "served": 0,
+    "detours": 233
+   }
+  }
+ },
+ {
+  "part": "splice",
+  "domain": "retail",
+  "agent": "Claude 3.7 Sonnet, then GPT-4.1-mini",
+  "order": 6,
+  "alarm_after": 9,
+  "false_alarms": 0,
+  "before": {
+   "never": {
+    "lookups": 1875,
+    "used": 1671,
+    "served": 0,
+    "detours": 204
+   },
+   "every batch": {
+    "lookups": 1858,
+    "used": 1642,
+    "served": 0,
+    "detours": 216
+   },
+   "every batch, forgetting": {
+    "lookups": 1853,
+    "used": 1640,
+    "served": 0,
+    "detours": 213
+   }
+  },
+  "after": {
+   "never": {
+    "lookups": 1410,
+    "used": 1172,
+    "served": 0,
+    "detours": 238
+   },
+   "every batch": {
+    "lookups": 1431,
+    "used": 1193,
+    "served": 0,
+    "detours": 238
+   },
+   "every batch, forgetting": {
+    "lookups": 1429,
+    "used": 1196,
+    "served": 0,
+    "detours": 233
+   }
+  }
+ },
+ {
+  "part": "splice",
+  "domain": "retail",
+  "agent": "Claude 3.7 Sonnet, then GPT-4.1-mini",
+  "order": 7,
+  "alarm_after": 3,
+  "false_alarms": 0,
+  "before": {
+   "never": {
+    "lookups": 1875,
+    "used": 1671,
+    "served": 0,
+    "detours": 204
+   },
+   "every batch": {
+    "lookups": 1873,
+    "used": 1660,
+    "served": 0,
+    "detours": 213
+   },
+   "every batch, forgetting": {
+    "lookups": 1838,
+    "used": 1624,
+    "served": 0,
+    "detours": 214
+   }
+  },
+  "after": {
+   "never": {
+    "lookups": 1410,
+    "used": 1172,
+    "served": 0,
+    "detours": 238
+   },
+   "every batch": {
+    "lookups": 1462,
+    "used": 1176,
+    "served": 0,
+    "detours": 286
+   },
+   "every batch, forgetting": {
+    "lookups": 1471,
+    "used": 1191,
+    "served": 0,
+    "detours": 280
+   }
+  }
+ },
+ {
+  "part": "splice",
+  "domain": "retail",
+  "agent": "Claude 3.7 Sonnet, then GPT-4.1-mini",
+  "order": 8,
+  "alarm_after": 15,
+  "false_alarms": 0,
+  "before": {
+   "never": {
+    "lookups": 1875,
+    "used": 1671,
+    "served": 0,
+    "detours": 204
+   },
+   "every batch": {
+    "lookups": 1846,
+    "used": 1634,
+    "served": 0,
+    "detours": 212
+   },
+   "every batch, forgetting": {
+    "lookups": 1847,
+    "used": 1632,
+    "served": 0,
+    "detours": 215
+   }
+  },
+  "after": {
+   "never": {
+    "lookups": 1410,
+    "used": 1172,
+    "served": 0,
+    "detours": 238
+   },
+   "every batch": {
+    "lookups": 1479,
+    "used": 1190,
+    "served": 0,
+    "detours": 289
+   },
+   "every batch, forgetting": {
+    "lookups": 1433,
+    "used": 1199,
+    "served": 0,
+    "detours": 234
+   }
+  }
+ },
+ {
+  "part": "splice",
+  "domain": "retail",
+  "agent": "Claude 3.7 Sonnet, then GPT-4.1-mini",
+  "order": 9,
+  "alarm_after": 8,
+  "false_alarms": 0,
+  "before": {
+   "never": {
+    "lookups": 1875,
+    "used": 1671,
+    "served": 0,
+    "detours": 204
+   },
+   "every batch": {
+    "lookups": 1878,
+    "used": 1657,
+    "served": 0,
+    "detours": 221
+   },
+   "every batch, forgetting": {
+    "lookups": 1860,
+    "used": 1642,
+    "served": 0,
+    "detours": 218
+   }
+  },
+  "after": {
+   "never": {
+    "lookups": 1410,
+    "used": 1172,
+    "served": 0,
+    "detours": 238
+   },
+   "every batch": {
+    "lookups": 1413,
+    "used": 1176,
+    "served": 0,
+    "detours": 237
+   },
+   "every batch, forgetting": {
+    "lookups": 1425,
+    "used": 1196,
+    "served": 0,
+    "detours": 229
+   }
+  }
+ }
+]

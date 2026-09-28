@@ -55,6 +55,15 @@ stretto flow-rollback --flow ~/.stretto/orders.flow.json --to 3
 
 A flow's **Staged** tab in [the console](../console) shows the same: the staged flow, the comparison site by site, what committing it would change, and every version. A `stage` job learns the staged flow, and the tab commits it, with a note, or rolls back to any version. The API under it, `GET /api/flows/:key/stage` and `POST /api/flows/:key/commit` and `/rollback`, does the same from a script.
 
+## What the replays show
+
+A staged flow is not better by default, so commit on the comparison, not on a schedule. Replayed along GLM-5's τ²-bench retail test episodes, 20 at a time ([results](../../../docs/results/staged-2026-09-28.md)):
+- committing the staged flow after every batch found 21% more of the agent's lookups, and made 2.2 times the detours;
+- committing only when it did better on the batch almost never committed;
+- committing when its used lookups less its detours were higher took most of the gain, for fewer detours.
+
+In airline there was nothing to gain. After a new agent took over, relearning from every session did not help, since the old agent's sessions outnumbered the new one's. The drift alarm is the signal there ([`stretto drift`](/reference/cli#stretto-drift)). Learn a fresh flow from the new agent's sessions, or with a half-life, and review it before it is committed.
+
 ## Why it learns again, rather than update
 
 The habit's counts and the bindings' chances are conjugate, and could take in one session at a time. The flow's structure is not. It is fitted to all the sessions at once:

@@ -388,7 +388,7 @@ impl Comparison {
         } else {
             let _ = writeln!(
                 md,
-                "## The last {} sessions\n\nEach session was scored by {flows} as it arrived, before the staged flow learned from it: the lookups each would have made there as served, and how many of them the agent made in a later LLM turn (used), with a 90% interval on the share; the rest are detours.\n",
+                "## The last {} sessions\n\nEach session was scored by {flows} as it arrived, before the staged flow learned from it: the lookups each would have made there as served, and how many of them the agent made in a later LLM turn (used), with a 90% interval on the share; the rest are detours. A lookup counts after each of the agent's calls, as `stretto promote` counts it: one a flow would make after several of the agent's calls counts after each.\n",
                 self.compared
             );
             if self.committed {
@@ -989,6 +989,7 @@ mod tests {
             md.contains("already made 1 of the committed flow's lookups and 0"),
             "{md}"
         );
+        assert!(md.contains("as `stretto promote` counts it"), "{md}");
         // The window, and the staged flow alone.
         assert_eq!(compare(&state, 1, true).compared, 1);
         let alone = compare(&state, 50, false);
