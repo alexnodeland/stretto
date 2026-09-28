@@ -237,6 +237,16 @@ mod tests {
     }
 
     #[test]
+    fn outcomes_round_trip_through_their_indices() {
+        for o in [Outcome::Ok, Outcome::Err, Outcome::Reply, Outcome::End] {
+            assert_eq!(Outcome::from_index(o.index()), Some(o));
+        }
+        assert_eq!(Outcome::from_index(4), None);
+        let vocab = Vocab::build(std::iter::empty(), ["a"]);
+        assert!(!vocab.is_empty() && vocab.len() == 3);
+    }
+
+    #[test]
     fn abstracts_calls_replies_and_errors() {
         let ep = episode(vec![
             Event::User { text: "hi".into() },
