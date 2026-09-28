@@ -70,7 +70,7 @@ These cost Jev dollars, CPU time or people's time, and no LLM runs.
 | [#28](https://github.com/alexnodeland/stretto/issues/28) | Done: `check_flow.py --in-process --jobs N` makes the tools' calls in one process and replays in parallel; `replay_study.py` runs a resumable list of replays |
 | [#29](https://github.com/alexnodeland/stretto/issues/29) | Done: the pilots' recorded episodes are [published](results/episodes-2026-09-24.md) |
 | [#30](https://github.com/alexnodeland/stretto/issues/30) | A first release, 0.1.0. Ready: the release workflow builds five targets with checksums, `install.sh`, `install.ps1`, a Homebrew formula and the image `ghcr.io/alexnodeland/stretto`, and a manual dry run checks them ([releasing](releasing.md)). It waits on the tag |
-| [#40](https://github.com/alexnodeland/stretto/issues/40) | `promote` and the proxy should not look up a call the agent has already asked for in the same LLM turn. Found live on AgentDojo's Slack suite ([results](results/live-benchmarks-2026-09-27.md#promotion-on-the-agents-own-sessions-live)) |
+| [#40](https://github.com/alexnodeland/stretto/issues/40) | Done: a call within half a second of its turn's last response joins the turn unless it needs what the turn returned, which split 20 of 210 multi-call LLM turns in Claude Code's own record, against 122 before. The proxy and `promote` leave the calls still on their way to the agent, and promotion now keeps none of the Slack sites whose lookups the agents had already asked for ([results](results/turns-2026-09-28.md)) |
 
 ## Documentation
 

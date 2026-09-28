@@ -9,8 +9,8 @@ export type Bar = {
  */
 threshold: number, 
 /**
- * The least share of the flow's lookups there that the agent made later
- * in the session.
+ * The least share of the flow's lookups there that the agent made in a
+ * later LLM turn.
  */
 min_used: number, 
 /**

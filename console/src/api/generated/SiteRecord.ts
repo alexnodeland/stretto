@@ -13,7 +13,7 @@ decisions: number,
  */
 lookups: number, 
 /**
- * Of those, the ones the agent made later in the session.
+ * Of those, the ones the agent made in a later LLM turn.
  */
 used: number, 
 /**

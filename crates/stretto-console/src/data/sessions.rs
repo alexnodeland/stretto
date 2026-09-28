@@ -953,11 +953,11 @@ mod tests {
                 {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get"}}]}),
             json!({"t_ms":3,"from":"server","message":{"jsonrpc":"2.0","id":2,"error":{"code":-32602,"message":"bad"}}}),
             json!({"t_ms":4,"from":"server","message":{"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":long}]}}}),
-            json!({"t_ms":5,"from":"client","message":{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"stretto_commit","arguments":{"calls":[{"name":"put","arguments":{}}]}}}}),
-            json!({"t_ms":6,"from":"proxy","message":{"jsonrpc":"2.0","id":"stretto-1","method":"tools/call","params":{"name":"put","arguments":{}}}}),
-            json!({"t_ms":7,"from":"server","message":{"jsonrpc":"2.0","id":"stretto-1","result":{"content":[{"type":"text","text":"done"}]}}}),
-            json!({"t_ms":8,"from":"proxy","message":{"jsonrpc":"2.0","id":4,"result":{"content":[{"type":"text","text":"put {}:\ndone"}]}}}),
-            json!({"t_ms":9,"from":"server","raw":"not json"}),
+            json!({"t_ms":2005,"from":"client","message":{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"stretto_commit","arguments":{"calls":[{"name":"put","arguments":{}}]}}}}),
+            json!({"t_ms":2006,"from":"proxy","message":{"jsonrpc":"2.0","id":"stretto-1","method":"tools/call","params":{"name":"put","arguments":{}}}}),
+            json!({"t_ms":2007,"from":"server","message":{"jsonrpc":"2.0","id":"stretto-1","result":{"content":[{"type":"text","text":"done"}]}}}),
+            json!({"t_ms":2008,"from":"proxy","message":{"jsonrpc":"2.0","id":4,"result":{"content":[{"type":"text","text":"put {}:\ndone"}]}}}),
+            json!({"t_ms":2009,"from":"server","raw":"not json"}),
         ];
         let text: String = lines.iter().map(|l| format!("{l}\n")).collect();
         std::fs::write(dir.join("s1.jsonl"), text).unwrap();
@@ -977,7 +977,8 @@ mod tests {
             })
         );
         assert_eq!(s.agent.as_deref(), Some("m"));
-        // The two calls of the batch share a turn; the commit is its own.
+        // The two calls of the batch share a turn; the commit, two seconds
+        // later, is its own.
         assert_eq!((s.tool_calls, s.llm_turns, s.errors), (3, 2, 1));
         assert_eq!(a.turns[0].calls, ["2", "3"]);
         // The commit's call is the agent's write, not a flow lookup, and the

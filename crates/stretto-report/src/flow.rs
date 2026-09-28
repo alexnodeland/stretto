@@ -226,14 +226,18 @@ impl Promotion {
     }
 }
 
+/// Lookups the proxy appends to one result, at most, by default
+/// (`stretto-proxy --flow-per-call`, `stretto promote --per-call`).
+pub const PER_CALL: usize = 8;
+
 /// What a site's record must show for the flow to act there.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct Bar {
     /// The threshold the flow was scored at, as it will be served.
     pub threshold: f64,
-    /// The least share of the flow's lookups there that the agent made later
-    /// in the session.
+    /// The least share of the flow's lookups there that the agent made in a
+    /// later LLM turn.
     pub min_used: f64,
     /// The least lower bound on that share (Wilson, 90% two-sided).
     pub min_lower: f64,
@@ -250,7 +254,7 @@ pub struct SiteRecord {
     pub decisions: usize,
     /// The lookups it would have made.
     pub lookups: usize,
-    /// Of those, the ones the agent made later in the session.
+    /// Of those, the ones the agent made in a later LLM turn.
     pub used: usize,
     /// The distinct tasks the lookups came from.
     pub tasks: usize,
@@ -778,14 +782,18 @@ impl Flow {
         threshold: f64,
         decider: Decider,
     ) -> Result<Next> {
-        self.next_explored(episode, oracle, threshold, decider, None)
+        self.next_explored(episode, &[], oracle, threshold, decider, None)
     }
 
     /// [`Flow::next_with`], exploring as `explore` says, and logging the
-    /// decision's [`PolicyView`] when it is given.
+    /// decision's [`PolicyView`] when it is given. `pending` are calls the
+    /// agent has made whose results the episode does not show yet, such as
+    /// the rest of a turn still awaiting the server
+    /// ([`Episode::after_call`]): a lookup never repeats one.
     pub fn next_explored(
         &self,
         episode: &Episode,
+        pending: &[ToolCall],
         oracle: &dyn Oracle,
         threshold: f64,
         decider: Decider,
@@ -877,7 +885,7 @@ impl Flow {
                 habit: &prior,
                 decider,
             };
-            return self.look_up(next, episode, chosen, threshold, explore);
+            return self.look_up(next, episode, pending, chosen, threshold, explore);
         }
         if !self.has_arbiter() {
             anyhow::bail!("this flow has no arbiter, so it decides with the habit alone");
@@ -936,7 +944,7 @@ impl Flow {
             habit: &habit,
             decider,
         };
-        self.look_up(next, episode, chosen, threshold, explore)
+        self.look_up(next, episode, pending, chosen, threshold, explore)
     }
 
     /// The rule's choice ([`Flow::rule`]), explored as `explore` says: with
@@ -946,14 +954,16 @@ impl Flow {
         &self,
         next: Next,
         episode: &Episode,
+        pending: &[ToolCall],
         chosen: Chosen,
         threshold: f64,
         explore: Option<Explore>,
     ) -> Result<Next> {
+        let seen = (episode, pending);
         let mut next = if chosen.decider == Decider::Reach {
-            self.rule_set(next, episode, chosen.options, chosen.probs, threshold)?
+            self.rule_set(next, seen, chosen.options, chosen.probs, threshold)
         } else {
-            self.rule(next, episode, chosen.options, chosen.probs, threshold)?
+            self.rule(next, seen, chosen.options, chosen.probs, threshold)
         };
         let Some(explore) = explore else {
             return Ok(next);
@@ -965,7 +975,7 @@ impl Flow {
             .zip(chosen.habit)
             .filter(|((o, _), _)| o.as_str() != RESPOND)
             .map(|((tool, &p), &habit)| {
-                let bound = self.bind_lookup(tool, episode);
+                let bound = self.bind_lookup(tool, episode, pending);
                 OptionView {
                     tool: tool.clone(),
                     p,
@@ -1036,12 +1046,15 @@ impl Flow {
         &self,
         tool: &str,
         episode: &Episode,
+        pending: &[ToolCall],
     ) -> std::result::Result<(Value, f64), String> {
         if self.bindings.knows(tool) {
-            self.bindings.bind(tool, episode)
+            self.bindings.bind_pending(tool, episode, pending)
         } else {
             match self.manifest.docs.get(tool) {
-                Some(doc) => self.bindings.bind_by_name(tool, &doc.args, episode),
+                Some(doc) => self
+                    .bindings
+                    .bind_by_name(tool, &doc.args, episode, pending),
                 None => Err("never called in training, and its arguments are unknown".into()),
             }
         }
@@ -1054,14 +1067,14 @@ impl Flow {
     fn rule(
         &self,
         mut next: Next,
-        episode: &Episode,
+        (episode, pending): (&Episode, &[ToolCall]),
         options: &[String],
         probs: &[f64],
         threshold: f64,
-    ) -> Result<Next> {
+    ) -> Next {
         let hand_back = |mut next: Next, reason: String| {
             next.proposal = Proposal::HandBack { reason };
-            Ok(next)
+            next
         };
         next.probs = options.iter().cloned().zip(probs.iter().copied()).collect();
         let best = options
@@ -1081,7 +1094,7 @@ impl Flow {
         }
         // The lookup is the agent's next step only if the tool is and the
         // arguments are its own.
-        match self.bind_lookup(tool, episode) {
+        match self.bind_lookup(tool, episode, pending) {
             Ok((arguments, chance)) => {
                 next.binding = Some(chance);
                 if p * chance < threshold {
@@ -1094,7 +1107,7 @@ impl Flow {
                     tool: tool.clone(),
                     arguments,
                 };
-                Ok(next)
+                next
             }
             Err(why) => hand_back(next, format!("{tool}: {why}")),
         }
@@ -1111,11 +1124,11 @@ impl Flow {
     fn rule_set(
         &self,
         mut next: Next,
-        episode: &Episode,
+        (episode, pending): (&Episode, &[ToolCall]),
         options: &[String],
         probs: &[f64],
         threshold: f64,
-    ) -> Result<Next> {
+    ) -> Next {
         next.probs = options.iter().cloned().zip(probs.iter().copied()).collect();
         let mut best: Option<(&String, f64, Value, f64)> = None;
         let mut unbound = None;
@@ -1131,7 +1144,7 @@ impl Flow {
                 }
                 continue;
             }
-            match self.bind_lookup(tool, episode) {
+            match self.bind_lookup(tool, episode, pending) {
                 Ok((arguments, chance)) => {
                     if best.as_ref().is_none_or(|b| p * chance > b.1 * b.3) {
                         best = Some((tool, p, arguments, chance));
@@ -1151,7 +1164,7 @@ impl Flow {
             };
             next.prob = p;
             next.proposal = Proposal::HandBack { reason };
-            return Ok(next);
+            return next;
         };
         next.prob = Some(p);
         next.binding = Some(chance);
@@ -1161,13 +1174,13 @@ impl Flow {
                     "{tool} at {p:.2}, times {chance:.2} for its arguments, below {threshold}"
                 ),
             };
-            return Ok(next);
+            return next;
         }
         next.proposal = Proposal::Lookup {
             tool: tool.clone(),
             arguments,
         };
-        Ok(next)
+        next
     }
 }
 
@@ -1857,11 +1870,18 @@ impl Bindings {
         tool: &str,
         args: &BTreeMap<String, String>,
         episode: &Episode,
+        pending: &[ToolCall],
     ) -> std::result::Result<(Value, f64), String> {
         let mut outputs: Vec<Value> = Vec::new();
         let mut customer = String::new();
         let mut used: BTreeSet<(&str, String)> = BTreeSet::new();
         let mut called = false;
+        for c in pending.iter().filter(|c| c.name == tool) {
+            called = true;
+            for (k, v) in c.arguments.as_object().into_iter().flatten() {
+                used.insert((k.as_str(), value_text(v)));
+            }
+        }
         for e in &episode.events {
             match e {
                 Event::User { text } => {
@@ -1931,7 +1951,18 @@ impl Bindings {
     /// mentioned or not (Laplace-smoothed; 1 for a lookup without
     /// arguments). See `Bindings::pick` for the rule.
     pub fn bind(&self, tool: &str, episode: &Episode) -> std::result::Result<(Value, f64), String> {
-        let (args, mentioned) = self.pick(tool, &episode.events, &[])?;
+        self.bind_pending(tool, episode, &[])
+    }
+
+    /// [`Bindings::bind`], counting `pending`, calls made whose results the
+    /// episode does not show yet ([`Flow::next_explored`]), as made.
+    pub fn bind_pending(
+        &self,
+        tool: &str,
+        episode: &Episode,
+        pending: &[ToolCall],
+    ) -> std::result::Result<(Value, f64), String> {
+        let (args, mentioned) = self.pick(tool, &episode.events, pending)?;
         let chance = if args.is_empty() {
             self.bare_chance(tool)
         } else {
@@ -2434,7 +2465,7 @@ pub(crate) mod tests {
         };
         let args = BTreeMap::from([("item_id".to_string(), "The item's id.".to_string())]);
         // The item whose record the customer mentioned, at a chance of 1/2.
-        let (bound, chance) = b.bind_by_name("get_item", &args, &ep).unwrap();
+        let (bound, chance) = b.bind_by_name("get_item", &args, &ep, &[]).unwrap();
         assert_eq!(bound, json!({"item_id": "222"}));
         assert_eq!(chance, 0.5);
         // Once it has been looked up, the next one.
@@ -2447,11 +2478,48 @@ pub(crate) mod tests {
             }],
             usage: None,
         });
-        let (bound, _) = b.bind_by_name("get_item", &args, &ep).unwrap();
+        let (bound, _) = b.bind_by_name("get_item", &args, &ep, &[]).unwrap();
         assert_eq!(bound, json!({"item_id": "111"}));
         // Nothing of that name: no lookup.
         let other = BTreeMap::from([("user_id".to_string(), String::new())]);
-        assert!(b.bind_by_name("get_user", &other, &ep).is_err());
+        assert!(b.bind_by_name("get_user", &other, &ep, &[]).is_err());
+    }
+
+    #[test]
+    fn a_lookup_from_the_manifest_is_not_one_the_agent_has_asked_for() {
+        let mut flow = toy_flow();
+        flow.manifest.docs.insert(
+            "get_item".to_string(),
+            stretto_trace::ToolDoc {
+                summary: "An item's details.".to_string(),
+                args: BTreeMap::from([("item_id".to_string(), "The item's id.".to_string())]),
+            },
+        );
+        let ep = episode(vec![
+            Event::User {
+                text: "The lamp in my order, please.".to_string(),
+            },
+            call("a", "get_order_details", json!({"order_id": "#W1"})),
+            result(
+                "a",
+                "get_order_details",
+                json!({"items": [
+                    {"item_id": "111", "name": "Chair"},
+                    {"item_id": "222", "name": "Lamp"},
+                ]}),
+            ),
+        ]);
+        // Training never made it, so it is bound by name: the lamp.
+        let (bound, _) = flow.bind_lookup("get_item", &ep, &[]).unwrap();
+        assert_eq!(bound, json!({"item_id": "222"}));
+        // With the agent's read of the lamp on its way, the chair.
+        let asked = ToolCall {
+            id: "b".to_string(),
+            name: "get_item".to_string(),
+            arguments: json!({"item_id": "222"}),
+        };
+        let (bound, _) = flow.bind_lookup("get_item", &ep, &[asked]).unwrap();
+        assert_eq!(bound, json!({"item_id": "111"}));
     }
 
     fn manifest() -> ToolManifest {
@@ -3151,6 +3219,7 @@ pub(crate) mod tests {
             let next = flow
                 .next_explored(
                     &live,
+                    &[],
                     &Unasked,
                     0.99,
                     Decider::Habit,
@@ -3188,9 +3257,22 @@ pub(crate) mod tests {
             result("zz9", "get_user_details", user(&["#W7", "#W8"])),
         ]);
         for seed in 0..50 {
-            let a = flow.next_explored(&live, &Unasked, 0.99, Decider::Habit, explore(0.5, seed));
-            let b =
-                flow.next_explored(&renamed, &Unasked, 0.99, Decider::Habit, explore(0.5, seed));
+            let a = flow.next_explored(
+                &live,
+                &[],
+                &Unasked,
+                0.99,
+                Decider::Habit,
+                explore(0.5, seed),
+            );
+            let b = flow.next_explored(
+                &renamed,
+                &[],
+                &Unasked,
+                0.99,
+                Decider::Habit,
+                explore(0.5, seed),
+            );
             assert_eq!(a.unwrap().proposal, b.unwrap().proposal);
         }
         // The view's rule is the flow's, for either decider, at any
@@ -3203,7 +3285,7 @@ pub(crate) mod tests {
             for t in [0.05, 0.3, 0.5, 0.7, 0.95] {
                 let plain = flow.next_with(&live, &oracle, t, decider).unwrap();
                 let logged = flow
-                    .next_explored(&live, &oracle, t, decider, explore(0.0, 0))
+                    .next_explored(&live, &[], &oracle, t, decider, explore(0.0, 0))
                     .unwrap();
                 assert_eq!(plain.proposal, logged.proposal);
                 assert!(plain.policy.is_none());

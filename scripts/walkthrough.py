@@ -21,6 +21,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 SERVER = "npx -y @modelcontextprotocol/server-filesystem@2026.8.31"
@@ -109,7 +110,13 @@ class Session:
             f.write(json.dumps({"role": role, "content": text}) + "\n")
 
     def call(self, name: str, arguments: dict) -> tuple[str, dict]:
-        """The tool's own text, and what the flow looked up after it, by path."""
+        """The tool's own text, and what the flow looked up after it, by path.
+
+        Like a model, the agent takes a moment to read a result before its
+        next call: longer than the half second within which a host's calls
+        count as one LLM turn, so the log shows one turn per call."""
+        if self.calls:
+            time.sleep(0.6)
         self.calls += 1
         result = self.rpc("tools/call", {"name": name, "arguments": arguments})
         texts = [c["text"] for c in result["content"] if c.get("type") == "text"]

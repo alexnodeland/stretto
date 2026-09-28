@@ -7,14 +7,14 @@
 {"t_ms":9,"from":"context","message":{"role":"user","content":"Hi, I'm c1@example.com. I want to cancel an order I no longer need."}}
 {"t_ms":9,"from":"client","message":{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"find_user_id_by_email","arguments":{"email":"c1@example.com"}}}}
 {"t_ms":9,"from":"server","message":{"id":3,"jsonrpc":"2.0","result":{"content":[{"text":"user_1","type":"text"}],"isError":false}}}
-{"t_ms":14,"from":"client","message":{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_user_details","arguments":{"user_id":"user_1"}}}}
-{"t_ms":14,"from":"server","message":{"id":4,"jsonrpc":"2.0","result":{"content":[{"text":"{\"email\":\"c1@example.com\",\"orders\":[\"#W1a\",\"#W1b\"],\"payment_methods\":{\"credit_card_1\":{\"source\":\"credit_card\"}},\"user_id\":\"user_1\"}","type":"text"}],"isError":false}}}
-{"t_ms":19,"from":"client","message":{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_order_details","arguments":{"order_id":"#W1a"}}}}
-{"t_ms":19,"from":"server","message":{"id":5,"jsonrpc":"2.0","result":{"content":[{"text":"{\"items\":[{\"item_id\":\"1\",\"name\":\"Desk lamp\",\"product_id\":\"p1\"}],\"order_id\":\"#W1a\",\"payment_history\":[{\"payment_method_id\":\"credit_card_1\"}],\"status\":\"pending\",\"user_id\":\"user_1\"}","type":"text"}],"isError":false}}}
-{"t_ms":24,"from":"client","message":{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"get_order_details","arguments":{"order_id":"#W1b"}}}}
-{"t_ms":24,"from":"server","message":{"id":6,"jsonrpc":"2.0","result":{"content":[{"text":"{\"items\":[{\"item_id\":\"1\",\"name\":\"Desk lamp\",\"product_id\":\"p1\"}],\"order_id\":\"#W1b\",\"payment_history\":[{\"payment_method_id\":\"credit_card_1\"}],\"status\":\"pending\",\"user_id\":\"user_1\"}","type":"text"}],"isError":false}}}
-{"t_ms":29,"from":"context","message":{"role":"assistant","content":"You have two pending orders, #W1a and #W1b. Which one should I cancel?"}}
-{"t_ms":29,"from":"context","message":{"role":"user","content":"The first one, please."}}
-{"t_ms":29,"from":"client","message":{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"cancel_pending_order","arguments":{"order_id":"#W1a","reason":"no longer needed"}}}}
-{"t_ms":29,"from":"server","message":{"id":7,"jsonrpc":"2.0","result":{"content":[{"text":"{\"order_id\":\"#W1a\",\"status\":\"cancelled\"}","type":"text"}],"isError":false}}}
-{"t_ms":30,"from":"context","message":{"role":"assistant","content":"Order #W1a is cancelled."}}
+{"t_ms":609,"from":"client","message":{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_user_details","arguments":{"user_id":"user_1"}}}}
+{"t_ms":609,"from":"server","message":{"id":4,"jsonrpc":"2.0","result":{"content":[{"text":"{\"email\":\"c1@example.com\",\"orders\":[\"#W1a\",\"#W1b\"],\"payment_methods\":{\"credit_card_1\":{\"source\":\"credit_card\"}},\"user_id\":\"user_1\"}","type":"text"}],"isError":false}}}
+{"t_ms":1209,"from":"client","message":{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_order_details","arguments":{"order_id":"#W1a"}}}}
+{"t_ms":1209,"from":"server","message":{"id":5,"jsonrpc":"2.0","result":{"content":[{"text":"{\"items\":[{\"item_id\":\"1\",\"name\":\"Desk lamp\",\"product_id\":\"p1\"}],\"order_id\":\"#W1a\",\"payment_history\":[{\"payment_method_id\":\"credit_card_1\"}],\"status\":\"pending\",\"user_id\":\"user_1\"}","type":"text"}],"isError":false}}}
+{"t_ms":1809,"from":"client","message":{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"get_order_details","arguments":{"order_id":"#W1b"}}}}
+{"t_ms":1809,"from":"server","message":{"id":6,"jsonrpc":"2.0","result":{"content":[{"text":"{\"items\":[{\"item_id\":\"1\",\"name\":\"Desk lamp\",\"product_id\":\"p1\"}],\"order_id\":\"#W1b\",\"payment_history\":[{\"payment_method_id\":\"credit_card_1\"}],\"status\":\"pending\",\"user_id\":\"user_1\"}","type":"text"}],"isError":false}}}
+{"t_ms":1814,"from":"context","message":{"role":"assistant","content":"You have two pending orders, #W1a and #W1b. Which one should I cancel?"}}
+{"t_ms":1814,"from":"context","message":{"role":"user","content":"The first one, please."}}
+{"t_ms":2409,"from":"client","message":{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"cancel_pending_order","arguments":{"order_id":"#W1a","reason":"no longer needed"}}}}
+{"t_ms":2409,"from":"server","message":{"id":7,"jsonrpc":"2.0","result":{"content":[{"text":"{\"order_id\":\"#W1a\",\"status\":\"cancelled\"}","type":"text"}],"isError":false}}}
+{"t_ms":2410,"from":"context","message":{"role":"assistant","content":"Order #W1a is cancelled."}}

@@ -227,3 +227,54 @@ fn phase0_runs_end_to_end() {
     assert!(md.contains("Read-only flows"));
     let _ = fs::remove_dir_all(&root);
 }
+
+/// `stretto learn` and `stretto promote` on τ²-bench results: a flow learned
+/// from the checkout's training tasks, scored on a test task's episodes.
+#[test]
+fn a_flow_learned_from_results_is_promoted_on_test_tasks() {
+    let root = std::env::temp_dir().join(format!("stretto-promote-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    write_checkout(&root);
+    let stretto = env!("CARGO_BIN_EXE_stretto");
+    let results = root.join("data/tau2/results/final/model-a_retail_default_user-sim_2trials.json");
+    let flow = root.join("retail.flow.json");
+    let learned = std::process::Command::new(stretto)
+        .args(["learn", "--domain", "retail", "--habit-only", "--tau2"])
+        .arg(&root)
+        .arg("--results")
+        .arg(&results)
+        .arg("--out")
+        .arg(&flow)
+        .output()
+        .unwrap();
+    assert!(learned.status.success(), "{learned:?}");
+    let promoted = root.join("retail-promoted.flow.json");
+    let run = std::process::Command::new(stretto)
+        .args(["promote", "--flow"])
+        .arg(&flow)
+        .arg("--results")
+        .arg(&results)
+        // Another domain's results are skipped.
+        .arg("--results")
+        .arg(root.join("targets/model-t_airline.json"))
+        .arg("--tau2")
+        .arg(&root)
+        .args(["--task-ids", "6", "--oracle-cache"])
+        .arg(root.join("cache"))
+        .arg("--out")
+        .arg(&promoted)
+        .output()
+        .unwrap();
+    assert!(run.status.success(), "{run:?}");
+    // Task 6's two trials, and only those: a decision after each call.
+    let report = String::from_utf8_lossy(&run.stdout);
+    for site in ["find_user", "get_order", "cancel_order"] {
+        assert!(report.contains(&format!("| `{site}` | 2 |")), "{report}");
+    }
+    let written: serde_json::Value = serde_json::from_slice(&fs::read(&promoted).unwrap()).unwrap();
+    assert_eq!(
+        written["promoted"]["sites"]["find_user"]["decisions"], 2,
+        "{written}"
+    );
+    fs::remove_dir_all(&root).ok();
+}

@@ -485,7 +485,7 @@ Usage: stretto search [OPTIONS] --flow <FILE> --dir <DIR> -- <COMMAND>...
 
 ### `stretto promote`
 
-Promote a flow's sites (RFC-001 §3.7). Wherever the flow would decide in recorded sessions or τ²-bench results, score the lookup it would make: used if the agent made it later in the session, a detour if it never did. The promoted flow acts only after the calls whose record meets the bar, and hands back after the rest. Sessions recorded with `stretto-proxy --flow-shadow` have the flow's questions answered in the proxy's cache: pass it as --oracle-cache.
+Promote a flow's sites (RFC-001 §3.7). Wherever the flow would decide in recorded sessions or τ²-bench results, score the lookup it would make: used if the agent made it in a later LLM turn, a detour if it never did. The promoted flow acts only after the calls whose record meets the bar, and hands back after the rest. Sessions recorded with `stretto-proxy --flow-shadow` have the flow's questions answered in the proxy's cache: pass it as --oracle-cache.
 
 ```text
 Usage: stretto promote [OPTIONS] --flow <FILE> --out <FILE>
@@ -508,9 +508,10 @@ Usage: stretto promote [OPTIONS] --flow <FILE> --out <FILE>
 **The bar**
 
 - `--threshold <P>` (default `0.3`): The threshold the flow will be served with (`stretto-proxy --flow-threshold`).
-- `--min-used <X>` (default `0.7`): The least share of the flow's lookups at a site that the agent made later in the session.
+- `--min-used <X>` (default `0.7`): The least share of the flow's lookups at a site that the agent made in a later LLM turn.
 - `--min-lower <X>` (default `0.5`): The least lower bound on that share (Wilson, 90% two-sided).
 - `--min-tasks <N>` (default `3`): The fewest distinct tasks (or sessions) the lookups came from.
+- `--per-call <N>` (default `8`): Lookups the proxy will make after one call, at most, as it will be served (`stretto-proxy --flow-per-call`): the flow decides again after each lookup the agent made later.
 
 **Output**
 

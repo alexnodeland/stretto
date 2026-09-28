@@ -2,7 +2,7 @@
 
 [`run.sh`](run.sh) runs stretto's whole loop on `stretto-mcp-demo`, a tiny MCP server that ships with stretto: it records sessions through `stretto-proxy`, learns a flow from them, shows the flow for review, serves it to new customers and counts the calls the agent no longer makes. It needs no API key and no network, only a POSIX shell and the binaries, and it takes about a second. CI runs it, so this page cannot drift from the code.
 
-A scripted agent stands in for an LLM. The demo's shop (`stretto-mcp-demo --world retail`) has three read tools and one write, with canned data: `cN@example.com` is `user_N`, whose orders `#WNa` and `#WNb` are pending. For each customer the agent finds the user, reads their details and both orders, then cancels the first order or says how the orders stand, one call at a time.
+A scripted agent stands in for an LLM. The demo's shop (`stretto-mcp-demo --world retail`) has three read tools and one write, with canned data: `cN@example.com` is `user_N`, whose orders `#WNa` and `#WNb` are pending. For each customer the agent finds the user, reads their details and both orders, then cancels the first order or says how the orders stand, one call at a time. Like a model, it takes a moment to read each result before its next call, so the proxy's log shows one LLM turn per call.
 
 ## Run it
 

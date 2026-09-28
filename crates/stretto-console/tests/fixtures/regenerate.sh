@@ -76,6 +76,7 @@ start() { # start NAME [PROXY OPTIONS...]
     pid=$!
     exec 3>"$work/to-proxy" 4<"$work/from-proxy"
     next=1
+    called=
     rpc initialize '{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"fixtures","version":"1"}}'
     printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}' >&3
     rpc tools/list '{}'
@@ -103,7 +104,10 @@ say() { # say ROLE TEXT
     printf '{"role":"%s","content":"%s"}\n' "$1" "$2" >>"$context"
 }
 
+# As the quickstart's agent, it reads each result before its next call.
 call() { # call TOOL ARGUMENTS
+    [ -z "$called" ] || sleep 0.6
+    called=1
     rpc tools/call "{\"name\":\"$1\",\"arguments\":$2}"
 }
 

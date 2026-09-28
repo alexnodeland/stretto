@@ -38,9 +38,17 @@
 //!   tool calls but no text.
 //! - **Inferred turns.** A tool call sent while an earlier call of the
 //!   current turn still awaits its response joins that turn (parallel
-//!   calls); any other call starts a new turn. A host that runs one LLM
-//!   turn's calls one at a time therefore shows one turn per call, and a
-//!   call that is never answered (nor cancelled) keeps its turn open.
+//!   calls). So does a call sent within [`SAME_TURN_MS`] of the turn's last
+//!   response, with nothing said in between, unless it passes a value that
+//!   first appeared in what the turn returned, which it could not have been
+//!   written without. Hosts send one LLM turn's calls that closely when
+//!   they run them as the model streams them, or one after another: Claude
+//!   Code does both, running reads together and writes one at a time. A new
+//!   LLM turn takes longer, since the model reads the results first. The
+//!   proxy's own requests, a flow's lookups, join a turn only while a call
+//!   of it awaits its response: the flow decides each after the last one's
+//!   result. Any other call starts a new turn, and a call that is never
+//!   answered (nor cancelled) keeps its turn open.
 //! - **No usage or outcome.** Token usage is unknown, and so is whether the
 //!   task succeeded: `reward` is `0.0` unless the caller sets it.
 //! - **One server.** Each wrapped server has its own log.
@@ -55,6 +63,13 @@ use std::path::Path;
 /// The log format version `stretto-proxy` writes. This module also reads
 /// version 1, which had no `proxy` or `context` entries.
 pub const LOG_VERSION: u32 = 2;
+
+/// How soon after its turn's last response a call may still belong to that
+/// LLM turn, in milliseconds ([`episode`]). In 285 Claude Code sessions,
+/// whose own record groups each call by the model's message, a call of the
+/// same turn came a median of 218 ms after the last response and a new turn
+/// never sooner than 850 ms (`docs/results/turns-2026-09-28.md`).
+pub const SAME_TURN_MS: u64 = 500;
 
 /// The first line of a log.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -129,13 +144,18 @@ impl McpLog {
     /// Every JSON-RPC message with its sender, in log order. Batches are
     /// flattened and raw lines skipped.
     pub fn messages(&self) -> impl Iterator<Item = (Peer, &Value)> {
+        self.timed_messages().map(|(_, from, m)| (from, m))
+    }
+
+    /// [`McpLog::messages`], each with when the proxy read it.
+    fn timed_messages(&self) -> impl Iterator<Item = (u64, Peer, &Value)> {
         self.entries.iter().flat_map(|e| {
             let items: &[Value] = match &e.message {
                 Some(Value::Array(batch)) => batch,
                 Some(message) => std::slice::from_ref(message),
                 None => &[],
             };
-            items.iter().map(move |m| (e.from, m))
+            items.iter().map(move |m| (e.t_ms, e.from, m))
         })
     }
 }
@@ -393,6 +413,14 @@ fn tool_doc(tool: &Value) -> Option<ToolDoc> {
 /// the task, trial or outcome, so `task_id` is empty, `trial` is 0 and
 /// `reward` is 0.0; set them where they matter.
 pub fn episode(log: &McpLog) -> Episode {
+    episode_sent(log).0
+}
+
+/// [`episode`], and for each call, by its id, how many results of its turn
+/// had come back when it was sent. A host that runs a turn's calls as the
+/// model streams them sends some only after others have returned; a
+/// decision made when a result came back could not have known of those.
+pub fn episode_sent(log: &McpLog) -> (Episode, HashMap<String, usize>) {
     let mut events = Vec::new();
     let mut pending: HashMap<String, Pending> = HashMap::new();
     // The current turn's index in `events`, and how many of its calls still
@@ -400,9 +428,19 @@ pub fn episode(log: &McpLog) -> Episode {
     // that holds a turn open belongs to the current one.
     let mut turn = 0;
     let mut open = 0;
+    // When the current turn's last open call was answered, what the turn
+    // returned, and everything the session held before that: what was said,
+    // every call's arguments, and what earlier turns returned.
+    let mut answered_ms: Option<u64> = None;
+    let mut returned = String::new();
+    let mut known = String::new();
+    // How many of the current turn's calls have been answered, and for each
+    // call how many had been when it was sent.
+    let mut answered = 0;
+    let mut sent_after = HashMap::new();
     let mut client_name = None;
 
-    for (from, m) in log.messages() {
+    for (t_ms, from, m) in log.timed_messages() {
         match from {
             Peer::Context => {
                 let text = m
@@ -410,6 +448,7 @@ pub fn episode(log: &McpLog) -> Episode {
                     .and_then(Value::as_str)
                     .unwrap_or_default()
                     .to_string();
+                known.push_str(&text);
                 match m.get("role").and_then(Value::as_str) {
                     Some("user") => events.push(Event::User { text }),
                     Some("assistant") if !text.is_empty() => events.push(Event::Assistant {
@@ -437,7 +476,25 @@ pub fn episode(log: &McpLog) -> Episode {
                     if pending.remove(&id_key(id)).is_some_and(|p| p.holds_turn) {
                         open -= 1;
                     }
-                    if open == 0 {
+                    let arguments = m
+                        .pointer("/params/arguments")
+                        .cloned()
+                        .unwrap_or_else(|| json!({}));
+                    // The agent's call closely after the turn's last
+                    // response, with nothing said since, and needing nothing
+                    // it returned: the rest of the same LLM turn. The proxy's
+                    // own requests, a flow's lookups, are its decisions one
+                    // after another.
+                    let continues = from == Peer::Client
+                        && answered_ms.is_some_and(|at| t_ms.saturating_sub(at) <= SAME_TURN_MS)
+                        && events[turn + 1..]
+                            .iter()
+                            .all(|e| matches!(e, Event::ToolResult { .. }))
+                        && !uses_new_values(&arguments, &returned, &known);
+                    if open == 0 && !continues {
+                        known.push_str(&std::mem::take(&mut returned));
+                        answered_ms = None;
+                        answered = 0;
                         events.push(Event::Assistant {
                             text: None,
                             calls: Vec::new(),
@@ -445,14 +502,13 @@ pub fn episode(log: &McpLog) -> Episode {
                         });
                         turn = events.len() - 1;
                     }
+                    known.push_str(&arguments.to_string());
+                    sent_after.insert(id_string(id), answered);
                     if let Some(Event::Assistant { calls, .. }) = events.get_mut(turn) {
                         calls.push(ToolCall {
                             id: id_string(id),
                             name: name.to_string(),
-                            arguments: m
-                                .pointer("/params/arguments")
-                                .cloned()
-                                .unwrap_or_else(|| json!({})),
+                            arguments,
                         });
                     }
                     open += 1;
@@ -484,8 +540,13 @@ pub fn episode(log: &McpLog) -> Episode {
                 };
                 if call.holds_turn {
                     open -= 1;
+                    answered += 1;
+                    if open == 0 {
+                        answered_ms = Some(t_ms);
+                    }
                 }
                 let (error, content) = outcome(m);
+                returned.push_str(&content);
                 events.push(Event::ToolResult {
                     call_id: call.call_id,
                     name: call.name,
@@ -496,7 +557,7 @@ pub fn episode(log: &McpLog) -> Episode {
         }
     }
 
-    Episode {
+    let episode = Episode {
         id: log.header.session.clone(),
         task_id: String::new(),
         trial: 0,
@@ -513,7 +574,37 @@ pub fn episode(log: &McpLog) -> Episode {
             .unwrap_or_else(|| "unknown".to_string()),
         reward: 0.0,
         events,
+    };
+    (episode, sent_after)
+}
+
+/// Whether `arguments` pass a value that first appeared in `returned`: one
+/// of at least two characters that `known`, the session's text before it,
+/// does not hold. The agent could not have written such a call before it
+/// saw what was returned, so it cannot be in the same LLM turn.
+fn uses_new_values(arguments: &Value, returned: &str, known: &str) -> bool {
+    let mut values = Vec::new();
+    scalars(arguments, &mut values);
+    values.iter().any(|v| {
+        v.chars().count() >= 2 && returned.contains(v.as_str()) && !known.contains(v.as_str())
+    })
+}
+
+/// The strings and numbers in `value`, as text.
+fn scalars(value: &Value, out: &mut Vec<String>) {
+    match value {
+        Value::String(s) => out.push(s.clone()),
+        Value::Number(n) => out.push(n.to_string()),
+        Value::Array(items) => items.iter().for_each(|v| scalars(v, out)),
+        Value::Object(fields) => fields.values().for_each(|v| scalars(v, out)),
+        Value::Bool(_) | Value::Null => {}
     }
+}
+
+/// The id of a call as [`ToolCall::id`] holds it: a string as is, anything
+/// else, such as a number, as JSON.
+pub fn call_id(id: &Value) -> String {
+    id_string(id)
 }
 
 /// A tool call awaiting its response.
@@ -610,12 +701,22 @@ mod tests {
 
     const HEADER: &str = r#"{"stretto_mcp_log":1,"session":"s1","started_unix_ms":1790198400000,"server_command":["demo-server","--verbose"],"domain":null,"agent_model":null}"#;
 
-    /// A log of `lines`, 10 ms apart.
+    /// A log of `lines`, a second apart, as long as an LLM turn takes.
     fn log_of(lines: &[(Peer, Value)]) -> McpLog {
+        let timed: Vec<(u64, Peer, Value)> = lines
+            .iter()
+            .enumerate()
+            .map(|(i, (from, message))| (1000 * i as u64, *from, message.clone()))
+            .collect();
+        log_at(&timed)
+    }
+
+    /// A log of `(t_ms, from, message)` lines.
+    fn log_at(lines: &[(u64, Peer, Value)]) -> McpLog {
         let mut text = format!("{HEADER}\n");
-        for (i, (from, message)) in lines.iter().enumerate() {
+        for (t_ms, from, message) in lines {
             let entry = LogEntry {
-                t_ms: 10 * i as u64,
+                t_ms: *t_ms,
                 from: *from,
                 message: Some(message.clone()),
                 raw: None,
@@ -1029,6 +1130,188 @@ mod tests {
         assert_eq!(
             (ep.domain.as_str(), ep.agent_model.as_str()),
             ("shop", "glm-5")
+        );
+    }
+
+    /// A call with `arguments`.
+    fn call_with(id: Value, name: &str, arguments: Value) -> (Peer, Value) {
+        let message = json!({"jsonrpc": "2.0", "id": id, "method": "tools/call",
+                             "params": {"name": name, "arguments": arguments}});
+        (Client, message)
+    }
+
+    /// `lines` at the given times.
+    fn at(lines: Vec<(u64, (Peer, Value))>) -> McpLog {
+        let timed: Vec<(u64, Peer, Value)> = lines
+            .into_iter()
+            .map(|(t, (from, message))| (t, from, message))
+            .collect();
+        log_at(&timed)
+    }
+
+    #[test]
+    fn a_call_close_after_its_turns_last_response_is_the_same_llm_turn() {
+        // As in a Claude Code session: two reads of the turn reach the
+        // server together, and the other two, streamed later, 120 ms after
+        // the last response. The model's next turn comes seconds later.
+        let channel =
+            |id: u64, name: &str, c: &str| call_with(json!(id), name, json!({"channel": c}));
+        let log = at(vec![
+            (0, channel(7, "get_users", "general")),
+            (0, channel(8, "get_users", "External_0")),
+            (7, reply(json!(7), "[\"Alice\"]")),
+            (9, reply(json!(8), "[\"Bob\"]")),
+            (129, channel(9, "get_users", "random")),
+            (129, channel(10, "get_users", "private")),
+            (136, reply(json!(9), "[]")),
+            (137, reply(json!(10), "[]")),
+            // A turn of writes, run one at a time, 7 ms after each response.
+            (
+                9937,
+                call_with(json!(11), "add_user", json!({"user": "Alice"})),
+            ),
+            (9941, reply(json!(11), "ok")),
+            (
+                9948,
+                call_with(json!(12), "add_user", json!({"user": "Bob"})),
+            ),
+            (9952, reply(json!(12), "ok")),
+            // The next turn, after the model read the results.
+            (17963, channel(13, "get_users", "External_0")),
+            (17970, reply(json!(13), "[\"Alice\",\"Bob\"]")),
+        ]);
+        let ep = episode(&log);
+        let turns: Vec<String> = outline(&ep)
+            .into_iter()
+            .filter(|e| e.starts_with("turn"))
+            .collect();
+        assert_eq!(
+            turns,
+            [
+                "turn(get_users,get_users,get_users,get_users)",
+                "turn(add_user,add_user)",
+                "turn(get_users)"
+            ]
+        );
+        // The last two reads were sent after two of their turn's results.
+        let (_, sent) = episode_sent(&log);
+        let after = |id: &str| sent[id];
+        assert_eq!(
+            (after("7"), after("8"), after("9"), after("10")),
+            (0, 0, 2, 2)
+        );
+        assert_eq!((after("11"), after("12"), after("13")), (0, 1, 0));
+        // Half a second is the limit.
+        let late = at(vec![
+            (0, call(json!(1), "a")),
+            (5, reply(json!(1), "one")),
+            (505, call(json!(2), "b")),
+            (510, reply(json!(2), "two")),
+            (1011, call(json!(3), "c")),
+        ]);
+        assert_eq!(episode(&late).assistant_turns(), 2);
+    }
+
+    #[test]
+    fn a_call_that_needs_what_its_turn_returned_starts_a_new_one() {
+        // A scripted agent calls as soon as it has a result: finding the
+        // user comes first, and reading them needs the id it returned.
+        let log = at(vec![
+            (
+                0,
+                call_with(json!(1), "find_user", json!({"email": "c1@example.com"})),
+            ),
+            (3, reply(json!(1), "user_1")),
+            (
+                5,
+                call_with(json!(2), "get_user", json!({"user_id": "user_1"})),
+            ),
+            (8, reply(json!(2), "{\"orders\": [\"#W1a\", \"#W1b\"]}")),
+            (
+                10,
+                call_with(json!(3), "get_order", json!({"order_id": "#W1a"})),
+            ),
+            (13, reply(json!(3), "{\"status\": \"pending\"}")),
+            // The customer's other order was known before this read: the
+            // agent could have asked for both at once.
+            (
+                15,
+                call_with(json!(4), "get_order", json!({"order_id": "#W1b"})),
+            ),
+            (18, reply(json!(4), "{\"status\": \"delivered\"}")),
+        ]);
+        assert_eq!(
+            outline(&episode(&log))
+                .into_iter()
+                .filter(|e| e.starts_with("turn"))
+                .collect::<Vec<_>>(),
+            [
+                "turn(find_user)",
+                "turn(get_user)",
+                "turn(get_order,get_order)"
+            ]
+        );
+        // A value the turn returned, but that the session held before, is
+        // not new: a number and a short value count only when new.
+        assert!(!uses_new_values(
+            &json!({"a": "user_1"}),
+            "user_1",
+            "\"user_1\""
+        ));
+        assert!(uses_new_values(&json!({"a": [7, "x"], "b": 12}), "12", ""));
+        assert!(!uses_new_values(
+            &json!({"a": "x", "b": true, "c": null}),
+            "x",
+            ""
+        ));
+    }
+
+    #[test]
+    fn something_said_between_calls_ends_the_turn() {
+        let said = (
+            Peer::Context,
+            json!({"role": "user", "content": "And my other order?"}),
+        );
+        let log = at(vec![
+            (0, call(json!(1), "get_order")),
+            (5, reply(json!(1), "one")),
+            (50, said),
+            (60, call(json!(2), "get_order")),
+        ]);
+        assert_eq!(
+            outline(&episode(&log)),
+            ["turn(get_order)", "result:1", "user", "turn(get_order)"]
+        );
+        assert_eq!(call_id(&json!(7)), "7");
+        assert_eq!(call_id(&json!("stretto-1")), "stretto-1");
+    }
+
+    #[test]
+    fn the_proxys_lookups_one_after_another_are_turns_of_their_own() {
+        // A flow's chain: each lookup follows the last one's result within
+        // milliseconds, needing nothing it returned.
+        let lookup = |id: &str| {
+            let (_, m) = call_with(json!(id), "get_order", json!({"order_id": "#W1"}));
+            (Peer::Proxy, m)
+        };
+        let log = at(vec![
+            (0, call(json!(1), "get_user")),
+            (5, reply(json!(1), "#W1")),
+            (6, lookup("stretto-1")),
+            (8, reply(json!("stretto-1"), "one")),
+            (9, lookup("stretto-2")),
+            (11, reply(json!("stretto-2"), "two")),
+        ]);
+        assert_eq!(
+            outline(&episode(&log)),
+            [
+                "turn(get_user)",
+                "result:1",
+                "turn(get_order)",
+                "result:stretto-1",
+                "turn(get_order)",
+                "result:stretto-2"
+            ]
         );
     }
 

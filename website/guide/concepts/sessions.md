@@ -62,7 +62,7 @@ With it, a flow can prefer a value the user mentioned when it binds a lookup's a
 
 ## What the proxy cannot see
 
-- **LLM turns.** They are inferred from timing: a call sent while an earlier call of the turn still awaits its response joins that turn; any other call starts a new one.
+- **LLM turns.** They are inferred from timing: a call sent while an earlier call of the turn still awaits its response joins that turn, and so does one sent within half a second of the turn's last response, unless it passes a value that first appeared in what the turn returned. A host that runs a turn's calls as the model streams them, or one after another, sends them that closely, while a new turn waits for the model to read the results. Any other call starts a new turn ([how well this works](../../../docs/results/turns-2026-09-28.md)).
 - **Outcomes, tokens and cost.** Whether a session succeeded is unknown. `stretto learn --rewards FILE` takes rewards by session id; a session without one counts as successful.
 - **Other servers.** One proxy wraps one server. An agent with several servers leaves one log per wrapped server, and a flow learns from one server's calls.
 

@@ -176,8 +176,8 @@ Check: any program other than the standard run is code the proxy runs. `stretto 
 
 Written by `stretto promote` ([RFC-001 §3.7](rfc/001-habit-compiler.md)), and absent until then. A promoted flow acts only after the calls whose record met the bar. After the rest it hands back, with the reason `the site is not promoted`.
 
-- `bar`: `threshold`, the one the flow was scored at, as it will be served; `min_used`, the least share of its lookups at a site that the agent made later in the session; `min_lower`, the least lower bound on that share (Wilson, 90% two-sided); and `min_tasks`, the fewest distinct tasks the lookups came from. Each recorded session counts as its own task.
-- `sites`: for each site scored, by name (the tool, and ` (error)` after a failed call): `decisions`, the times the flow decided there; `lookups`, the lookups it would have made; `used`, the ones the agent made later in the session (the rest are detours); `tasks`; `lower`; and `promoted`. A site never scored is not promoted.
+- `bar`: `threshold`, the one the flow was scored at, as it will be served; `min_used`, the least share of its lookups at a site that the agent made in a later LLM turn; `min_lower`, the least lower bound on that share (Wilson, 90% two-sided); and `min_tasks`, the fewest distinct tasks the lookups came from. Each recorded session counts as its own task.
+- `sites`: for each site scored, by name (the tool, and ` (error)` after a failed call): `decisions`, the times the flow decided there; `lookups`, the lookups it would have made; `used`, the ones the agent made in a later LLM turn (the rest are detours); `tasks`; `lower`; and `promoted`. A site never scored is not promoted.
 
 Check: a site newly promoted lets the flow act where it handed back, and `stretto flow-diff` lists it as needing review.
 

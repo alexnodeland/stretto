@@ -212,11 +212,13 @@ struct Committed {
 
 enum Work {
     /// A flow after the agent's call, holding the server's response to it,
-    /// and the flow's run.
+    /// and the flow's run. `after` is the call the next decision follows,
+    /// as the session's episode names it: the agent's, then each lookup.
     Flow {
         response: Value,
         original: Vec<u8>,
         looked: Vec<Looked>,
+        after: String,
         run: Run,
     },
     /// A commit's calls, in order.
@@ -389,6 +391,8 @@ impl AsyncHandler for LiveRun {
 /// A request of the proxy's own, awaiting the server.
 struct Waiting {
     key: String,
+    /// Its id as the session's episode holds it.
+    call: String,
     tool: String,
     arguments: Value,
     since: Instant,
@@ -586,7 +590,8 @@ impl<'a, W: Write> Engine<'a, W> {
             return self.send_host(&line);
         }
         if self.calls.remove(&k) && self.flow_may_follow(&m) {
-            if let Some(run) = self.flow_run() {
+            let after = mcp::call_id(&id);
+            if let Some(run) = self.flow_run(&after) {
                 let job = Job {
                     client_id: id,
                     waiting: None,
@@ -594,6 +599,7 @@ impl<'a, W: Write> Engine<'a, W> {
                         response: m,
                         original: line,
                         looked: Vec::new(),
+                        after,
                         run,
                     },
                 };
@@ -693,13 +699,14 @@ impl<'a, W: Write> Engine<'a, W> {
         }
     }
 
-    /// The flow's run after the agent's call that just returned: its
-    /// program, from the call's site. `None` when the session's last step is
-    /// not a tool call, so there is no site to start from.
-    fn flow_run(&self) -> Option<Run> {
+    /// The flow's run after the agent's call `after`, which just returned:
+    /// its program, from the call's own site, though other calls of its turn
+    /// may still be on their way. `None` when there is no tool call to start
+    /// from.
+    fn flow_run(&self, after: &str) -> Option<Run> {
         let fc = self.active.flow.as_ref()?;
         let program = self.program.as_ref()?;
-        let episode = self.episode();
+        let (episode, _) = self.episode().after_call(after);
         let steps = stretto_model::steps(&episode);
         let last = steps.last()?;
         let Action::Tool(tool) = &last.action else {
@@ -756,7 +763,10 @@ impl<'a, W: Write> Engine<'a, W> {
     fn decide(&mut self, job: &mut Job, address: &str, site: &DecideSite) -> usize {
         let active = self.active;
         let fc = active.flow.as_ref().expect("flow jobs need a flow");
-        let Work::Flow { looked, run, .. } = &mut job.work else {
+        let Work::Flow {
+            looked, run, after, ..
+        } = &mut job.work
+        else {
             unreachable!("only flow jobs decide")
         };
         if looked.len() >= fc.per_call
@@ -766,10 +776,13 @@ impl<'a, W: Write> Engine<'a, W> {
             return HAND_BACK;
         }
         self.read_context();
-        let episode = self.episode();
+        // The session as it stands after the call just returned; the rest of
+        // its turn is asked for already, so no lookup repeats one.
+        let (episode, pending) = self.episode().after_call(after);
         let asked = Instant::now();
         let next = match fc.flow.next_explored(
             &episode,
+            &pending,
             fc.oracle.as_ref(),
             fc.threshold,
             fc.decider,
@@ -855,6 +868,7 @@ impl<'a, W: Write> Engine<'a, W> {
         self.send_server(&line);
         job.waiting = Some(Waiting {
             key: key(&id),
+            call: mcp::call_id(&id),
             tool,
             arguments,
             since: Instant::now(),
@@ -867,7 +881,10 @@ impl<'a, W: Write> Engine<'a, W> {
         let w = job.waiting.take().expect("resumed jobs wait");
         let (text, error) = result_text(response);
         match &mut job.work {
-            Work::Flow { looked, run, .. } => {
+            Work::Flow {
+                looked, run, after, ..
+            } => {
+                *after = w.call;
                 looked.push(Looked {
                     tool: w.tool,
                     arguments: w.arguments,

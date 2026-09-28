@@ -1115,13 +1115,12 @@ fn a_shadow_flow_decides_and_logs_but_makes_no_lookups() {
         confidence: 0.6,
         noul: 0.5,
     };
-    let scored = stretto_report::promote::score(
-        &flow,
-        &[recorded],
-        &oracle,
-        stretto_report::flow::Decider::Arbiter,
-        0.3,
-    );
+    let serving = stretto_report::promote::Serving {
+        decider: stretto_report::flow::Decider::Arbiter,
+        threshold: 0.3,
+        per_call: stretto_report::flow::PER_CALL,
+    };
+    let scored = stretto_report::promote::score(&flow, &[recorded.into()], &oracle, serving, None);
     let site = &scored.sites["find_user_id_by_email"];
     assert_eq!((site.lookups, site.used), (1, 1), "{scored:?}");
 }
@@ -1209,5 +1208,73 @@ fn a_flow_calls_only_the_tools_the_operator_granted() {
     // tool, it leaves the lookup to the agent.
     assert_eq!(run("get_user_details,get_order_details"), 2);
     assert_eq!(run("get_order_details"), 1);
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn after_one_call_of_a_batch_the_flow_decides_at_its_site_and_leaves_the_rest_to_the_agent() {
+    let dir = std::env::temp_dir().join(format!("stretto-batch-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    let flow = learned_flow(&dir);
+    let log = dir.join("flow.jsonl");
+    // The flow may read the user's details on its own, not their orders.
+    let mut host = Host::start(&[
+        "--domain",
+        "retail",
+        "--flow",
+        flow.to_str().unwrap(),
+        "--oracle",
+        "mock",
+        "--flow-tools",
+        "get_user_details",
+        "--flow-log",
+        log.to_str().unwrap(),
+        "--",
+        DEMO,
+        "--world",
+        "retail",
+    ]);
+    host.send(
+        json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+        "protocolVersion": "2025-06-18", "capabilities": {},
+        "clientInfo": {"name": "stretto-test-host", "version": "0"}}}),
+    );
+    assert_eq!(host.recv()["id"], 1);
+    host.send(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+    let found = host.call(
+        3,
+        "find_user_id_by_email",
+        json!({"email": "c7@example.com"}),
+    );
+    assert!(texts(&found)[1].contains("#W7b"), "{found}");
+    // The agent reads both orders in one turn. The server takes its time
+    // over the first, so the second is on its way when the first answer
+    // comes back.
+    host.send(json!({"jsonrpc": "2.0", "id": 5, "method": "tools/call",
+                     "params": {"name": "get_order_details", "arguments": {"order_id": "#W7a", "delay_ms": 300}}}));
+    host.send(json!({"jsonrpc": "2.0", "id": 6, "method": "tools/call",
+                     "params": {"name": "get_order_details", "arguments": {"order_id": "#W7b"}}}));
+    let answered: Vec<Value> = (0..2).map(|_| host.recv()["id"].clone()).collect();
+    assert_eq!(answered, [json!(5), json!(6)]);
+    assert_eq!(host.finish(), 0);
+    let decisions: Vec<Value> = fs::read_to_string(&log)
+        .unwrap()
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .filter(|d: &Value| d.get("site").is_some())
+        .collect();
+    // After the first order, the flow stands at that call's own site, not
+    // at the unanswered second call's, and does not read the second order,
+    // which the agent asked for already.
+    let after_first = decisions.iter().find(|d| d["after"] == 5).unwrap();
+    assert_eq!(after_first["site"], "get_order_details", "{after_first}");
+    assert_eq!(after_first["action"], "hand_back", "{after_first}");
+    assert_eq!(
+        after_first["reason"],
+        "get_order_details: nothing left to pass as `order_id`"
+    );
+    let after_second = decisions.iter().find(|d| d["after"] == 6).unwrap();
+    assert_eq!(after_second["site"], "get_order_details");
     fs::remove_dir_all(&dir).unwrap();
 }
