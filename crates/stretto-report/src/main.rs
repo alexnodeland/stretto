@@ -3360,13 +3360,13 @@ mod tests {
         std::thread::spawn(move || {
             super::serve(&example_flow(), &ORACLE, &at, habit_rule(5), Some(to))
         });
-        let wait = || std::thread::sleep(std::time::Duration::from_millis(20));
         let ask = |line: &str| {
+            // A pause before each try, the first too, as the server may not
+            // listen yet: whether a try fails is the scheduler's to say.
             let mut stream = (0..250)
                 .find_map(|_| {
-                    std::net::TcpStream::connect(&listen)
-                        .map_err(|_| wait())
-                        .ok()
+                    std::thread::sleep(std::time::Duration::from_millis(20));
+                    std::net::TcpStream::connect(&listen).ok()
                 })
                 .expect("flow-serve listens");
             stream.write_all(line.as_bytes()).unwrap();
