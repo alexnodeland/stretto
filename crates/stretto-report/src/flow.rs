@@ -257,9 +257,15 @@ pub struct SiteRecord {
     pub lookups: usize,
     /// Of those, the ones the agent made in a later LLM turn.
     pub used: usize,
+    /// Of the rest, the ones the proxy had made in the session, serving a
+    /// flow: neither used nor detours. Absent in promotions from before
+    /// they were counted apart, which counted them as used.
+    #[serde(default)]
+    pub served: usize,
     /// The distinct tasks the lookups came from.
     pub tasks: usize,
-    /// The lower bound on `used / lookups` (Wilson, 90% two-sided).
+    /// The lower bound on `used / (lookups - served)` (Wilson, 90%
+    /// two-sided).
     pub lower: f64,
     /// Whether the site met the bar.
     pub promoted: bool,

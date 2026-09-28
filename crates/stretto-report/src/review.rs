@@ -985,7 +985,7 @@ pub struct FlowDiff {
 }
 
 /// The changes under one heading of a change list.
-#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct DiffSection {
     pub title: String,
@@ -1660,6 +1660,7 @@ mod tests {
             decisions: 4,
             lookups: 3,
             used: 3,
+            served: 0,
             tasks: 3,
             lower: 0.5,
             promoted,
@@ -1803,6 +1804,7 @@ mod tests {
                     decisions: 4,
                     lookups: 3,
                     used: 1,
+                    served: 0,
                     tasks: 3,
                     lower: 0.1,
                     promoted: false,

@@ -615,6 +615,53 @@ enum Command {
         #[arg(value_name = "FILE", long)]
         out: Option<PathBuf>,
     },
+    /// Learn a deployment's staged flow: the next version of the flow the
+    /// proxy serves (`--flow`, the committed flow), from every session
+    /// recorded so far, as `learn --habit-only` learns one, keeping the
+    /// committed flow's arbiter, promotion and thresholds. Each session
+    /// that is new since the last run is first scored by the committed
+    /// flow and by the staged flow as it was, as each is served; the report
+    /// compares the two on the last sessions, out of sample for both, and
+    /// lists what committing the staged flow would change. Run it as
+    /// sessions arrive. Nothing reaches the proxy until `flow-commit`.
+    Stage(StageArgs),
+    /// Commit the staged flow that `stage` learned: make it the flow the
+    /// proxy serves (`--flow`, replaced whole, so a proxy that starts reads
+    /// the old flow or the new one). Every version of the committed flow is
+    /// kept in `NAME.history/`, with what changed and, for a commit, the
+    /// comparison `stage` last reported, for `flow-log` and `flow-rollback`.
+    /// A committed flow changed by other means is kept as a version of its
+    /// own first.
+    FlowCommit {
+        /// The committed flow, `NAME.flow.json`.
+        #[arg(value_name = "FILE", long)]
+        flow: PathBuf,
+        /// Why, kept with the version.
+        #[arg(value_name = "TEXT", long)]
+        note: Option<String>,
+    },
+    /// Roll the committed flow back to an earlier version: the one before
+    /// the current version, or `--to N`. The rollback is a version of its
+    /// own, so it can be rolled back too.
+    FlowRollback {
+        /// The committed flow, `NAME.flow.json`.
+        #[arg(value_name = "FILE", long)]
+        flow: PathBuf,
+        /// The version to restore (see `flow-log`).
+        #[arg(value_name = "N", long)]
+        to: Option<u32>,
+        /// Why, kept with the version.
+        #[arg(value_name = "TEXT", long)]
+        note: Option<String>,
+    },
+    /// List the committed flow's versions, the latest first (Markdown): how
+    /// and when each became the committed flow, why, what changed, and for a
+    /// commit, the comparison it rested on.
+    FlowLog {
+        /// The committed flow, `NAME.flow.json`.
+        #[arg(value_name = "FILE", long)]
+        flow: PathBuf,
+    },
     /// Estimate what another rule would have done on a flow's logged
     /// decisions (RFC-001 §3.7). The decisions are JSON lines, each a flow
     /// answer logged with its `policy` (`serve --explore`, `stretto-proxy
@@ -1061,6 +1108,123 @@ struct InitArgs {
 
 /// What Phase 0 reads and how it measures, shared by `phase0` and
 /// `flow-serve`.
+/// `stage`'s arguments, apart from the other commands' so that parsing the
+/// CLI builds them in a stack frame of their own.
+#[derive(clap::Args)]
+struct StageArgs {
+    /// The committed flow, `NAME.flow.json`. The staged flow is
+    /// `NAME.staged.flow.json` beside it, and the staged learner's state
+    /// `NAME.stage.json`. It need not exist yet: then give --domain.
+    #[arg(help_heading = "Inputs", value_name = "FILE", long)]
+    flow: PathBuf,
+    /// Sessions recorded by stretto-proxy (a directory of `*.jsonl`),
+    /// taken in the order they started.
+    #[arg(
+        help_heading = "Inputs",
+        value_name = "DIR",
+        long,
+        required_unless_present_any = ["otel", "results"]
+    )]
+    sessions: Option<PathBuf>,
+    /// OpenTelemetry GenAI spans in place of --sessions: an OTLP JSON
+    /// export, each trace a session (`learn --otel`).
+    #[arg(
+        help_heading = "Inputs",
+        value_name = "FILE",
+        long,
+        conflicts_with = "sessions",
+        requires = "manifest"
+    )]
+    otel: Option<PathBuf>,
+    /// τ²-bench results in place of --sessions (repeatable): their
+    /// episodes, in the order listed, with their rewards. The tools come
+    /// from --tau2's checkout, or --manifest.
+    #[arg(
+        help_heading = "Inputs",
+        value_name = "FILE",
+        long = "results",
+        conflicts_with_all = ["sessions", "otel", "rewards"]
+    )]
+    results: Vec<PathBuf>,
+    /// The τ²-bench checkout whose tools `--results` call.
+    #[arg(
+        help_heading = "Inputs",
+        value_name = "DIR",
+        long,
+        requires = "results"
+    )]
+    tau2: Option<PathBuf>,
+    /// The domain to name the flow for; needed only before there is a
+    /// committed flow.
+    #[arg(help_heading = "Inputs", value_name = "NAME", long)]
+    domain: Option<String>,
+    /// A tool manifest (JSON, as stretto-trace writes it) instead of the
+    /// sessions' own `tools/list`.
+    #[arg(help_heading = "Inputs", value_name = "FILE", long)]
+    manifest: Option<PathBuf>,
+    /// Rewards by session id (JSON object), as for `learn`. Sessions
+    /// without one count as successful.
+    #[arg(help_heading = "Inputs", value_name = "FILE", long)]
+    rewards: Option<PathBuf>,
+    /// Learn constant arguments, as `learn --constants`.
+    #[arg(help_heading = "The staged flow", long)]
+    constants: bool,
+    /// Forget old sessions, as `learn --half-life`: one this many
+    /// sessions older than the newest counts half.
+    #[arg(help_heading = "The staged flow", value_name = "SESSIONS", long, value_parser = positive)]
+    half_life: Option<f64>,
+    /// Compare the flows on the last this many sessions that both were
+    /// scored on.
+    #[arg(
+        help_heading = "The comparison",
+        value_name = "N",
+        long,
+        default_value_t = 50
+    )]
+    window: usize,
+    /// How both flows decide as they are scored: `arbiter`, `habit` or
+    /// `reach`. Default: each as the proxy serves it by default.
+    #[arg(help_heading = "The comparison", long, value_enum)]
+    decider: Option<DeciderArg>,
+    /// The threshold the flows are served with (`stretto-proxy
+    /// --flow-threshold`).
+    #[arg(
+        help_heading = "The comparison",
+        value_name = "P",
+        long,
+        default_value_t = 0.3
+    )]
+    threshold: f64,
+    /// Lookups the proxy makes after one call, at most
+    /// (`stretto-proxy --flow-per-call`).
+    #[arg(
+        help_heading = "The comparison",
+        value_name = "N",
+        long,
+        default_value_t = stretto_report::flow::PER_CALL
+    )]
+    per_call: usize,
+    /// Who answers an arbiter's questions: `replay` (the cache only;
+    /// decisions it cannot answer are left out), `jev` (needs
+    /// TYPESAFE_API_KEY) or `mock`.
+    #[arg(help_heading = "The comparison", long, value_enum, default_value_t = OracleArg::Replay)]
+    oracle: OracleArg,
+    /// Replay cache for oracle answers.
+    #[arg(
+        help_heading = "The comparison",
+        value_name = "DIR",
+        long,
+        default_value = ".oracle-cache"
+    )]
+    oracle_cache: PathBuf,
+    /// Write the report here (Markdown; default: stdout).
+    #[arg(help_heading = "Output", value_name = "FILE", long)]
+    out: Option<PathBuf>,
+    /// Also write the comparison as JSON here.
+    #[arg(help_heading = "Output", value_name = "FILE", long)]
+    json: Option<PathBuf>,
+}
+
 #[derive(clap::Args)]
 struct Phase0Args {
     /// Path to a τ²-bench checkout.
@@ -1515,17 +1679,8 @@ fn run(cli: Cli, env: &mut Env) -> Result<i32> {
             if recorded && (train_fraction < 1.0 || !train_tasks.is_empty() || !trials.is_empty()) {
                 anyhow::bail!("--train-fraction, --train-tasks and --trials apply to --results");
             }
-            let rewards: BTreeMap<String, f64> = match rewards {
-                Some(path) => serde_json::from_str(
-                    &std::fs::read_to_string(&path)
-                        .with_context(|| format!("reading {}", path.display()))?,
-                )?,
-                None => BTreeMap::new(),
-            };
-            let manifest: Option<stretto_trace::ToolManifest> = match manifest {
-                Some(path) => Some(serde_json::from_str(&std::fs::read_to_string(&path)?)?),
-                None => None,
-            };
+            let rewards = read_rewards(rewards)?;
+            let manifest = read_manifest(manifest)?;
             let (mut episodes, manifest, contracts) = match (sessions, otel) {
                 (Some(sessions), _) => {
                     let logs = sessions_in(&sessions)?;
@@ -1963,6 +2118,50 @@ fn run(cli: Cli, env: &mut Env) -> Result<i32> {
                     2
                 }
             };
+            Ok(())
+        }
+        Command::Stage(args) => stage_flow(args, env),
+        Command::FlowCommit { flow, note } => {
+            use stretto_report::stage;
+            let paths = stage::Paths::of(&flow)?;
+            let evidence = stage::State::load(&paths.state)?.and_then(|s| s.last);
+            let record = stage::commit(&paths, note, evidence, now_ms())?;
+            let md =
+                stage::log_markdown(&flow.display().to_string(), std::slice::from_ref(&record));
+            write!(env.stdout, "{md}")?;
+            eprintln!(
+                "stretto: committed the staged flow as version {} of {}",
+                record.version,
+                flow.display()
+            );
+            Ok(())
+        }
+        Command::FlowRollback { flow, to, note } => {
+            use stretto_report::stage;
+            let paths = stage::Paths::of(&flow)?;
+            let record = stage::rollback(&paths, to, note, now_ms())?;
+            let md =
+                stage::log_markdown(&flow.display().to_string(), std::slice::from_ref(&record));
+            write!(env.stdout, "{md}")?;
+            eprintln!(
+                "stretto: rolled {} back to version {}, as version {}",
+                flow.display(),
+                record.restored.unwrap_or_default(),
+                record.version
+            );
+            Ok(())
+        }
+        Command::FlowLog { flow } => {
+            use stretto_report::stage;
+            let paths = stage::Paths::of(&flow)?;
+            let versions = stage::history(&paths)?;
+            let mut md = stage::log_markdown(&flow.display().to_string(), &versions);
+            if stage::unrecorded(&paths, &versions)? {
+                md.push_str(
+                    "The committed flow is not the latest version: it has changed since, by other means than a commit. The next commit or rollback keeps it as a version first.\n",
+                );
+            }
+            write!(env.stdout, "{md}")?;
             Ok(())
         }
         Command::Search {
@@ -2587,6 +2786,237 @@ fn host_path(path: &str) -> Result<String> {
         .with_context(|| format!("resolving {path}"))?
         .display()
         .to_string())
+}
+
+/// `stretto stage`: learn the staged flow beside the committed one, and
+/// report how the two compare.
+fn stage_flow(args: StageArgs, env: &mut Env) -> Result<()> {
+    use stretto_report::flow::Flow;
+    use stretto_report::promote::{Recorded, Serving};
+    use stretto_report::stage;
+    let StageArgs {
+        flow,
+        sessions,
+        otel,
+        results,
+        tau2,
+        domain,
+        manifest,
+        rewards,
+        constants,
+        half_life,
+        window,
+        decider,
+        threshold,
+        per_call,
+        oracle,
+        oracle_cache,
+        out,
+        json,
+    } = args;
+    let paths = stage::Paths::of(&flow)?;
+    let load = |path: &Path| -> Result<Option<Flow>> {
+        match path.exists() {
+            true => Ok(Some(Flow::load(path)?)),
+            false => Ok(None),
+        }
+    };
+    let committed = load(&paths.committed)?;
+    let staged_before = load(&paths.staged)?;
+    let domain = match (&committed, domain) {
+        (Some(f), Some(d)) if f.domain() != d => {
+            anyhow::bail!("the committed flow is for {}, not {d}", f.domain())
+        }
+        (Some(f), _) => f.domain().to_string(),
+        (None, Some(d)) => d,
+        (None, None) => anyhow::bail!(
+            "there is no committed flow at {} yet: name the domain with --domain",
+            paths.committed.display()
+        ),
+    };
+    let mut state = match stage::State::load(&paths.state)? {
+        Some(s) if s.domain != domain => anyhow::bail!(
+            "{} is the staged {} flow's state, not {domain}'s",
+            paths.state.display(),
+            s.domain
+        ),
+        Some(s) => s,
+        None => stage::State::new(&domain),
+    };
+    let rewards = read_rewards(rewards)?;
+    let manifest = read_manifest(manifest)?;
+    let conventions = otel
+        .is_some()
+        .then(|| stretto_trace::otel::CONVENTIONS.to_string());
+    // The stream of sessions, in order.
+    let (mut stream, manifest, contracts) = match (sessions, otel) {
+        (Some(dir), _) => {
+            let logs = sessions_in(&dir)?;
+            let manifest =
+                manifest.unwrap_or_else(|| stretto_trace::mcp::manifest_of(&logs, &domain));
+            let stream: Vec<Recorded> = logs
+                .iter()
+                .map(|log| {
+                    let (episode, sent_after) = stretto_trace::mcp::episode_sent(log);
+                    Recorded {
+                        episode,
+                        sent_after,
+                    }
+                })
+                .collect();
+            (stream, manifest, stretto_trace::mcp::contracts_of(&logs))
+        }
+        (None, Some(path)) => {
+            let manifest = manifest.context("--otel needs --manifest")?;
+            let stream = spans_in(&path)?.into_iter().map(Recorded::from).collect();
+            (stream, manifest, BTreeMap::new())
+        }
+        (None, None) => {
+            let manifest = match (manifest, &tau2) {
+                (Some(m), _) => m,
+                (None, Some(root)) => stretto_trace::tau2::load_manifest(
+                    &domain,
+                    &root.join(format!("src/tau2/domains/{domain}/tools.py")),
+                )?,
+                (None, None) => {
+                    anyhow::bail!("--results needs --tau2, for the tools, or --manifest")
+                }
+            };
+            let mut stream = Vec::new();
+            for path in &results {
+                let run = stretto_trace::tau2::load_results(path)
+                    .with_context(|| format!("reading {}", path.display()))?;
+                if run.domain == domain {
+                    stream.extend(run.episodes.into_iter().map(Recorded::from));
+                }
+            }
+            (stream, manifest, BTreeMap::new())
+        }
+    };
+    if stream.is_empty() {
+        anyhow::bail!("there are no {domain} sessions to learn from");
+    }
+    for r in &mut stream {
+        r.episode.domain = domain.clone();
+        if results.is_empty() {
+            r.episode.reward = rewards.get(&r.episode.id).copied().unwrap_or(1.0);
+        }
+    }
+    // Each new session, scored before the staged flow learns from it.
+    let mut sc = ShadowConfig::new(oracle_kind(oracle));
+    sc.cache_dir = oracle_cache;
+    let oracle = sc.build()?;
+    let serving = |f: &Flow| Serving {
+        decider: decider.map_or(f.served_decider(), Decider::from),
+        threshold,
+        per_call,
+    };
+    let mut known: HashSet<String> = state.sessions.iter().cloned().collect();
+    let mut new = 0;
+    for r in &stream {
+        if !known.insert(r.episode.id.clone()) {
+            continue;
+        }
+        let flows = [committed.as_ref(), staged_before.as_ref()];
+        state.record(stage::score(flows, r, oracle.as_ref(), serving));
+        state.sessions.push(r.episode.id.clone());
+        new += 1;
+    }
+    // The staged flow, learned again from every session so far.
+    let staged = match staged_before {
+        Some(flow) if new == 0 => flow,
+        _ => {
+            let episodes: Vec<stretto_trace::Episode> =
+                stream.iter().map(|r| r.episode.clone()).collect();
+            let mut config = phase0::Config::new(PathBuf::new());
+            config.domains = vec![domain.clone()];
+            config.constants = constants;
+            config.half_life = half_life;
+            let mut flow = phase0::compile_habit_flow_from_episodes(&config, &episodes, &manifest)?
+                .with_contracts(contracts)
+                .with_conventions(conventions);
+            if let Some(c) = &committed {
+                if c.has_arbiter() {
+                    flow = flow.with_arbiter_of(c.clone())?;
+                }
+                flow = flow
+                    .with_promotion(c.promotion().cloned())
+                    .with_thresholds(c.thresholds().clone());
+            }
+            stage::write_atomic(&paths.staged, &serde_json::to_vec(&flow)?)?;
+            flow
+        }
+    };
+    // What the staged flow holds that it did not learn: the committed
+    // flow's, when it was learned.
+    let mut carried: Vec<String> = Vec::new();
+    if staged.has_arbiter() {
+        carried.push("its arbiter".to_string());
+    }
+    if let Some(p) = staged.promotion() {
+        let promoted = p.sites.values().filter(|r| r.promoted).count();
+        carried.push(format!(
+            "its promotion (it acts at {promoted} of {} sites)",
+            p.sites.len()
+        ));
+    }
+    if !staged.thresholds().is_empty() {
+        carried.push(format!(
+            "its thresholds at {} sites",
+            staged.thresholds().len()
+        ));
+    }
+    let mut cmp = stage::compare(&state, window, committed.is_some());
+    cmp.new = new;
+    cmp.learned_unix_ms = staged.provenance().compiled_unix_ms;
+    cmp.carried = carried;
+    if let Some(c) = &committed {
+        let d = stretto_report::review::diff(c, &staged, 0.05, threshold);
+        cmp.changes = d.sections;
+        cmp.needs_review = d.needs_review;
+    }
+    state.last = Some(cmp.clone());
+    state.save(&paths.state)?;
+    let md = cmp.markdown(&flow.display().to_string());
+    match out {
+        Some(path) => write(&path, md.as_bytes())?,
+        None => write!(env.stdout, "{md}")?,
+    }
+    if let Some(path) = json {
+        write(&path, &serde_json::to_vec_pretty(&cmp)?)?;
+    }
+    eprintln!(
+        "stretto: the staged {domain} flow has learned from {} sessions, {new} of them new, and is at {}",
+        state.sessions.len(),
+        paths.staged.display()
+    );
+    Ok(())
+}
+
+/// Rewards by session id, from a JSON object in `path`; none without one.
+fn read_rewards(path: Option<PathBuf>) -> Result<BTreeMap<String, f64>> {
+    let Some(path) = path else {
+        return Ok(BTreeMap::new());
+    };
+    let text =
+        std::fs::read_to_string(&path).with_context(|| format!("reading {}", path.display()))?;
+    Ok(serde_json::from_str(&text)?)
+}
+
+/// A tool manifest from `path`, if one was given.
+fn read_manifest(path: Option<PathBuf>) -> Result<Option<stretto_trace::ToolManifest>> {
+    let Some(path) = path else {
+        return Ok(None);
+    };
+    let text = std::fs::read_to_string(&path)?;
+    Ok(Some(serde_json::from_str(&text)?))
+}
+
+/// Now, in milliseconds since the Unix epoch.
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_millis() as u64)
 }
 
 /// The home directory: HOME, or USERPROFILE on Windows.

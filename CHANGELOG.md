@@ -4,6 +4,17 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ## Unreleased
 
+### Staged flows
+
+- A deployment's flow comes in two parts: the committed flow the proxy serves, and a staged flow that learns as sessions arrive ([#35](https://github.com/alexnodeland/stretto/issues/35), [staged flows](website/guide/concepts/staged-flows.md)).
+  - `stretto stage --flow NAME.flow.json --sessions DIR` learns the staged flow, `NAME.staged.flow.json`, from every session so far, as `learn --habit-only` would. It keeps the committed flow's arbiter, promotion and thresholds. It takes `--otel` spans and `--results` too, and `--half-life`.
+  - Before it learns from a new session, it scores the session with the committed flow and with the staged flow as it was, as each is served. The report compares the two on the last `--window` sessions, out of sample for both, per site, with intervals, and lists what committing would change, as `flow-diff` does. Its state is `NAME.stage.json`.
+  - `stretto flow-commit` makes the staged flow the committed one, written whole. Every committed version is kept in `NAME.history/`, with what changed and the comparison the commit rested on. A committed flow changed by other means is kept as a version first.
+  - `stretto flow-rollback` restores an earlier version as a new one, and `stretto flow-log` lists them.
+- `stretto promote` no longer counts a served flow's lookups as the agent's. In a session a flow served, the proxy's lookups (`stretto-1`, `stretto-2`, …) are in it, and the agent had no reason to make them again. A lookup the proxy had made now counts as served, neither used nor a detour, and the share and its bound rest on the rest. A promotion records them per site (`served`). The proxy's lookups are no longer decision points of their own, either: they are the chain after the agent's call.
+- `stretto doctor` and the console leave committed flows' histories out of their flows.
+- In the libraries: `stretto_report::stage`, `promote::score_as_served`, `promote::Tally::served` and `detours`, `flow::SiteRecord::served`; `stretto_trace::mcp::is_flow_lookup`.
+
 ### Drift
 
 - `stretto drift --flow F --sessions DIR` watches for the agent changing under a flow (RFC-001 §3.3 and §4, [#18](https://github.com/alexnodeland/stretto/issues/18)).

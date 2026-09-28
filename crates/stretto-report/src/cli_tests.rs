@@ -416,6 +416,254 @@ fn learn_and_audit_read_a_host_sessions_servers_as_one_session() {
     assert!(md.contains("# Flow audit"), "{md}");
 }
 
+/// Session `i` of the shop's as a served flow's log names it to sort `i`th:
+/// the proxy read the first order after the account, and the agent only
+/// the second.
+fn served_log(i: usize) -> (String, String) {
+    let (name, text) = common::session_log(&common::session(i), i);
+    let mut lines: Vec<Value> = text
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    let order = json!({"order_id": format!("o{i}a")});
+    let lookup = json!({"jsonrpc": "2.0", "id": "stretto-1", "method": "tools/call",
+        "params": {"name": "get_order", "arguments": order}});
+    let answer = json!({"jsonrpc": "2.0", "id": "stretto-1",
+        "result": {"content": [{"type": "text", "text": "open"}]}});
+    lines.splice(
+        5..7,
+        [
+            json!({"t_ms": 2011, "from": "proxy", "message": lookup}),
+            json!({"t_ms": 2020, "from": "server", "message": answer}),
+        ],
+    );
+    (name, lines.iter().map(|l| format!("{l}\n")).collect())
+}
+
+/// `stage` learns the staged flow as `learn --habit-only` would, and scores
+/// each new session before it learns from it; `flow-commit`, `flow-log` and
+/// `flow-rollback` keep the committed flow's versions.
+#[test]
+fn stage_learns_as_learn_does_and_commits_with_rollback() {
+    let t = Scratch::new("stage");
+    t.shop(20);
+    let flow = "$T/shop.flow.json";
+    let stage = format!("stage --flow {flow} --manifest $T/manifest.json --sessions $T/s");
+    t.fails(&stage, "name the domain with --domain");
+    let md = t.run(&format!("{stage} --domain shop")).ok();
+    assert!(
+        md.contains("It learned from 20 sessions, 20 of them new"),
+        "{md}"
+    );
+    assert!(
+        md.contains("No session has been scored by the staged flow yet"),
+        "{md}"
+    );
+    // The staged flow is the flow `learn` writes from the same sessions.
+    t.run(&format!(
+        "{LEARN_SHOP} --habit-only --out $T/learned.flow.json"
+    ))
+    .ok();
+    let flow_json = |rel: &str| {
+        let mut v: Value = serde_json::from_str(&t.get(rel)).unwrap();
+        v["provenance"]["compiled_unix_ms"] = json!(0);
+        v
+    };
+    assert_eq!(
+        flow_json("shop.staged.flow.json"),
+        flow_json("learned.flow.json")
+    );
+
+    // The first commit is the first version.
+    let log = t
+        .run(&format!("flow-commit --flow {flow} --note first"))
+        .ok();
+    assert!(log.contains("## Version 1"), "{log}");
+    assert_eq!(t.get("shop.flow.json"), t.get("shop.staged.flow.json"));
+    t.fails(&format!("flow-commit --flow {flow}"), "nothing to commit");
+    t.fails(
+        &format!("flow-rollback --flow {flow}"),
+        "no earlier version",
+    );
+    // Nothing new: nothing learned, and nothing scored by both yet.
+    let md = t.run(&stage).ok();
+    assert!(md.contains("20 sessions, 0 of them new"), "{md}");
+    assert!(md.contains("scored by both flows yet"), "{md}");
+
+    // Ten more sessions, each scored by both flows as it arrived. In the
+    // last five the committed flow served.
+    for i in 20..30 {
+        let (name, text) = match i {
+            25.. => served_log(i),
+            _ => common::session_log(&common::session(i), i),
+        };
+        t.put(&format!("s/{name}"), &text);
+    }
+    let md = t.run(&stage).ok();
+    assert!(md.contains("30 sessions, 10 of them new"), "{md}");
+    assert!(md.contains("## The last 10 sessions"), "{md}");
+    // Both flows would read the first order twice in each, after the
+    // account and in the chain after finding it: the proxy had.
+    assert!(
+        md.contains("The proxy had already made 10 of the committed flow's lookups and 10"),
+        "{md}"
+    );
+    let state: Value = serde_json::from_str(&t.get("shop.stage.json")).unwrap();
+    assert_eq!(state["sessions"].as_array().unwrap().len(), 30);
+    assert_eq!(state["ledger"].as_array().unwrap().len(), 30);
+
+    // Committed with the comparison it rested on.
+    let log = t.run(&format!("flow-commit --flow {flow}")).ok();
+    assert!(log.contains("## Version 2"), "{log}");
+    assert!(log.contains("On the last 10 sessions before it"), "{log}");
+    let log = t.run(&format!("flow-log --flow {flow}")).ok();
+    assert!(
+        log.contains("## Version 2 (committed now)") && log.contains("> first"),
+        "{log}"
+    );
+
+    // Rolled back to the first, as the third version.
+    t.run(&format!("flow-rollback --flow {flow}")).ok();
+    assert_eq!(t.get("shop.flow.json"), t.get("shop.history/1.flow.json"));
+    t.fails(
+        &format!("flow-rollback --flow {flow} --to 9"),
+        "there is no version 9",
+    );
+    t.fails(
+        &format!("flow-rollback --flow {flow} --to 3"),
+        "is the committed flow already",
+    );
+    // A committed flow changed by other means is kept before the next.
+    fs::copy(t.at("learned.flow.json"), t.at("shop.flow.json")).unwrap();
+    let log = t.run(&format!("flow-log --flow {flow}")).ok();
+    assert!(log.contains("is not the latest version"), "{log}");
+    t.run(&format!("flow-rollback --flow {flow} --to 2")).ok();
+    let log = t.run(&format!("flow-log --flow {flow}")).ok();
+    assert!(
+        log.contains("## Version 5 (committed now)")
+            && log.contains("## Version 4\n\nfound in place"),
+        "{log}"
+    );
+
+    // What is not a committed flow's name.
+    t.fails(
+        "stage --flow $T/shop.json --sessions $T/s",
+        "name the committed flow NAME.flow.json",
+    );
+    t.fails(
+        "flow-log --flow $T/shop.staged.flow.json",
+        "is a staged flow",
+    );
+}
+
+/// `stage` takes spans and benchmark runs as `learn` does, and keeps what
+/// the committed flow has that it does not learn: its arbiter, promotion
+/// and thresholds.
+#[test]
+fn stage_takes_what_learn_takes_and_keeps_the_committed_flows_arbiter() {
+    let t = Scratch::new("stage-inputs");
+    t.shop(30);
+    let arbiter = t.arbiter_flow();
+    let promote = format!("promote --flow {arbiter} --sessions $T/s --oracle mock");
+    t.run(&format!("{promote} --out $T/shop.flow.json")).ok();
+    let mut committed: Value = serde_json::from_str(&t.get("shop.flow.json")).unwrap();
+    committed["thresholds"] = json!({"find_account": 0.4});
+    committed["stretto_flow"] = json!(2);
+    t.put("shop.flow.json", &committed.to_string());
+    let stage = "stage --flow $T/shop.flow.json --sessions $T/s --manifest $T/manifest.json";
+    t.run(&format!(
+        "{stage} --oracle mock --rewards $T/rewards.json --out $T/stage.md --json $T/stage.json"
+    ))
+    .err();
+    t.put("rewards.json", "{}");
+    t.run(&format!(
+        "{stage} --oracle mock --decider habit --rewards $T/rewards.json --out $T/stage.md --json $T/stage.json"
+    ))
+    .ok();
+    let md = t.get("stage.md");
+    assert!(
+        md.contains("its arbiter, its promotion (it acts at")
+            && md.contains("its thresholds at 1 sites"),
+        "{md}"
+    );
+    let report: Value = serde_json::from_str(&t.get("stage.json")).unwrap();
+    assert_eq!(report["carried"].as_array().unwrap().len(), 3);
+    let staged = stretto_report::flow::Flow::load(&t.at("shop.staged.flow.json")).unwrap();
+    assert!(staged.has_arbiter() && staged.promotion().is_some());
+    assert_eq!(staged.thresholds().len(), 1);
+    t.fails(
+        &format!("{stage} --domain airline"),
+        "the committed flow is for shop, not airline",
+    );
+    t.put(
+        "other.stage.json",
+        &json!({"stretto_stage": 1, "domain": "retail",
+        "sessions": [], "ledger": []})
+        .to_string(),
+    );
+    t.fails(
+        "stage --flow $T/other.flow.json --domain shop --sessions $T/s",
+        "is the staged retail flow's state, not shop's",
+    );
+
+    // Spans, as `learn --otel` reads them.
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let spans = repo.join("docs/examples/pydantic-ai-shop.otlp.jsonl");
+    let manifest = repo.join("docs/examples/shop.manifest.json");
+    let md = t
+        .run(&format!(
+            "stage --flow $T/spans/shop.flow.json --domain shop --otel {} --manifest {}",
+            spans.display(),
+            manifest.display()
+        ))
+        .ok();
+    assert!(
+        md.contains("It learned from 8 sessions, 8 of them new"),
+        "{md}"
+    );
+    let staged = stretto_report::flow::Flow::load(&t.at("spans/shop.staged.flow.json")).unwrap();
+    assert_eq!(
+        staged.provenance().conventions.as_deref(),
+        Some(stretto_trace::otel::CONVENTIONS)
+    );
+
+    // Sessions with the tools their logs list.
+    t.run("stage --flow $T/listed/shop.flow.json --domain shop --sessions $T/s")
+        .ok();
+
+    // Benchmark runs, their episodes in the order listed.
+    common::write_checkout(&t.0);
+    let runs = "$T/data/tau2/results/final/model-a_retail_default_user-sim_2trials.json";
+    let bench = format!("stage --flow $T/bench/retail.flow.json --domain retail --results {runs}");
+    t.fails(
+        &bench,
+        "--results needs --tau2, for the tools, or --manifest",
+    );
+    let md = t.run(&format!("{bench} --tau2 $T")).ok();
+    assert!(
+        md.contains("It learned from 16 sessions, 16 of them new"),
+        "{md}"
+    );
+    t.run(&format!("{bench} --manifest $T/manifest.json")).ok();
+    t.fails(
+        &format!(
+            "stage --flow $T/bench/airline.flow.json --domain airline --results {runs} \
+             --manifest $T/manifest.json"
+        ),
+        "there are no airline sessions to learn from",
+    );
+    t.fails(
+        &format!(
+            "stage --flow $T/bench/airline.flow.json --domain airline --results {runs} --tau2 $T"
+        ),
+        "airline/tools.py",
+    );
+    t.fails(
+        "stage --flow $T/bench/retail.flow.json --domain retail --results $T/none.json --tau2 $T",
+        "reading",
+    );
+}
+
 #[test]
 fn learn_audit_promote_and_drift_read_opentelemetry_spans() {
     use stretto_report::flow::{Decider, Flow, Proposal};

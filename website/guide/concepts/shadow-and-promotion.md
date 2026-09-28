@@ -46,6 +46,8 @@ It writes a report with one row per site (the tool whose call the flow decided a
 
 The promoted flow acts only after the calls whose site met the bar, and hands back after every other call with the reason `the site is not promoted`. A site never scored is not promoted.
 
+On sessions a flow served, its lookups are there already, and the agent had no reason to make them again: `promote` counts a lookup the proxy had made as *served*, neither used nor a detour, and the share and its bound rest on the rest.
+
 A flow with an arbiter asks the System-One model in shadow too. The proxy caches the answers, so pass its cache to `promote`, which then asks nothing: `--oracle-cache ~/.stretto/oracle-cache` (the proxy's default). A flow that asks no model, deciding with `habit` or `reach`, can also be promoted on sessions recorded without it: `promote` makes its decisions again from the sessions alone.
 
 ## 3. Serve the promoted flow
@@ -69,6 +71,7 @@ stretto-proxy --record ~/.stretto/logs/orders --domain orders \
 ## Related
 
 - [Audit and review](./audit-and-review)
+- [Staged flows](./staged-flows): the next version, learned and scored as sessions arrive
 - [`stretto promote`](/reference/cli#stretto-promote) and [`--flow-shadow`](/reference/cli#stretto-proxy)
 - [`promoted` in the file format](/reference/formats#promoted)
 - [The console](../console): shadow sessions, and promotion from the page

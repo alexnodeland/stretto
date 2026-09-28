@@ -201,7 +201,8 @@ pub struct Found {
 }
 
 /// The flows and the recorded sessions under `root`, down to three levels
-/// (`~/.stretto/logs/<domain>/`), leaving the answer cache out.
+/// (`~/.stretto/logs/<domain>/`), leaving the answer cache and the committed
+/// flows' earlier versions (`NAME.history/`) out.
 pub fn scan(root: &Path) -> Found {
     scan_with(root, &|_| true)
 }
@@ -222,7 +223,9 @@ pub fn scan_with(root: &Path, keep: &dyn Fn(&Path) -> bool) -> Found {
             }
             let name = path.file_name().unwrap_or_default().to_string_lossy();
             if path.is_dir() {
-                if depth < 3 && name != "oracle-cache" {
+                // A committed flow's earlier versions (`stretto flow-commit`)
+                // are not flows of their own.
+                if depth < 3 && name != "oracle-cache" && !name.ends_with(".history") {
                     walk(&path, depth + 1, keep, found);
                 }
             } else if name.ends_with(".flow.json") {
@@ -434,6 +437,9 @@ mod tests {
         crate::flow::tests::toy_flow()
             .save(&root.join("good.flow.json"))
             .unwrap();
+        // A committed flow's earlier versions are not flows of their own.
+        std::fs::create_dir_all(root.join("good.history")).unwrap();
+        std::fs::write(root.join("good.history").join("1.flow.json"), "{}").unwrap();
         let found = scan(&root);
         assert_eq!(
             found.flows,

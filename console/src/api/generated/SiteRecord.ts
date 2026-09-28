@@ -17,11 +17,18 @@ lookups: number,
  */
 used: number, 
 /**
+ * Of the rest, the ones the proxy had made in the session, serving a
+ * flow: neither used nor detours. Absent in promotions from before
+ * they were counted apart, which counted them as used.
+ */
+served: number, 
+/**
  * The distinct tasks the lookups came from.
  */
 tasks: number, 
 /**
- * The lower bound on `used / lookups` (Wilson, 90% two-sided).
+ * The lower bound on `used / (lookups - served)` (Wilson, 90%
+ * two-sided).
  */
 lower: number, 
 /**
