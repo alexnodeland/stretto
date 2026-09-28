@@ -103,7 +103,8 @@ pub struct FlowConfig {
     pub per_session: usize,
     /// Questions to the System-One model per session, at most.
     pub max_questions: usize,
-    /// Append every decision here, as JSON lines.
+    /// Append every decision here, as JSON lines; `{session}` in the path
+    /// stands for the session ([`crate::session_path`]).
     pub log: Option<PathBuf>,
     /// Shadow mode (RFC-001 §3.7): decide and log, but make no lookups.
     pub shadow: bool,
@@ -131,7 +132,8 @@ pub struct ConfirmConfig {
     pub enforce: bool,
     /// Questions per session, at most.
     pub max_questions: usize,
-    /// Append every judgment here, as JSON lines.
+    /// Append every judgment here, as JSON lines; `{session}` in the path
+    /// stands for the session ([`crate::session_path`]).
     pub log: Option<PathBuf>,
 }
 
@@ -146,7 +148,8 @@ pub struct Active {
     pub confirm: Option<ConfirmConfig>,
     /// Add [`COMMIT_TOOL`] to the server's tools.
     pub commit: bool,
-    /// Read the conversation from this file (JSON lines).
+    /// Read the conversation from this file (JSON lines); `{session}` in the
+    /// path stands for the session ([`crate::session_path`]).
     pub context: Option<PathBuf>,
     /// The task, for the flow's fold (default: the session).
     pub task_id: Option<String>,
@@ -451,6 +454,8 @@ pub(crate) struct Engine<'a, W: Write> {
     next_id: u64,
     lookups: usize,
     questions: usize,
+    /// The conversation's file, with `{session}` filled in.
+    context: Option<PathBuf>,
     context_read: u64,
     flow_log: Option<File>,
     confirm_log: Option<File>,
@@ -480,6 +485,11 @@ impl<'a, W: Write> Engine<'a, W> {
         let confirm_log = confirm_log
             .as_ref()
             .and_then(|path| open(path, "confirmation"));
+        let session = header.host_session.as_deref().unwrap_or(&header.session);
+        let context = active
+            .context
+            .as_deref()
+            .map(|p| crate::session_path(p, session));
         Self {
             active,
             log: McpLog {
@@ -514,6 +524,7 @@ impl<'a, W: Write> Engine<'a, W> {
             server_checked: false,
             lookups: 0,
             questions: 0,
+            context,
             context_read: 0,
             flow_log,
             confirm_log,
@@ -1228,7 +1239,7 @@ impl<'a, W: Write> Engine<'a, W> {
 
     /// Log the conversation's new lines, if the host keeps one.
     fn read_context(&mut self) {
-        let Some(path) = &self.active.context else {
+        let Some(path) = &self.context else {
             return;
         };
         // No file yet means nothing said yet.

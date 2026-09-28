@@ -78,7 +78,8 @@ fn pumps_until_its_input_ends_or_fails() {
     // Once the output fails, lines are still read and recorded.
     let dir = std::env::temp_dir().join(format!("stretto-proxy-pump-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
-    let recorder = Recorder::start(&dir, &header(&Config::new(["cat"])), Instant::now()).unwrap();
+    let recorder =
+        Recorder::start(&dir, &header(&Config::new(["cat"]), None), Instant::now()).unwrap();
     let mut input = io::Cursor::new(b"{\"a\":1}\n{\"b\":2}\n".to_vec());
     pump(&mut input, &mut Broken, Peer::Client, Some(&recorder.tap()));
     let path = recorder.path().to_path_buf();
@@ -87,6 +88,17 @@ fn pumps_until_its_input_ends_or_fails() {
     assert_eq!(log.messages().count(), 2);
     assert!(log.entries.iter().all(|e| e.from == Peer::Client));
     std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn a_session_of_several_is_numbered_and_names_its_files() {
+    let config = Config::new(["cat"]);
+    let alone = header(&config, None).session;
+    let third = header(&config, Some(3)).session;
+    assert!(!alone.ends_with("-3") && third.ends_with(&format!("-{}-3", std::process::id())));
+    let path = |p: &str| session_path(std::path::Path::new(p), "task-7");
+    assert_eq!(path("/tmp/{session}.jsonl"), PathBuf::from("/tmp/task-7.jsonl"));
+    assert_eq!(path("/tmp/context.jsonl"), PathBuf::from("/tmp/context.jsonl"));
 }
 
 #[cfg(unix)]

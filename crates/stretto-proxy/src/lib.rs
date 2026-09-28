@@ -24,13 +24,19 @@
 //!
 //! With [`Config::upstream`], the server is a Streamable HTTP endpoint
 //! instead of a child process ([`http`]); everything else is the same.
+//!
+//! [`listen`] serves hosts over MCP's Streamable HTTP transport instead of
+//! stdio: each MCP session gets a server, a recording and an [`Active`] run
+//! of its own, as one stdio proxy does ([`listen`](mod@listen)).
 
 pub mod active;
 pub mod http;
+pub mod listen;
 mod record;
 
 pub use active::{Active, ConfirmConfig, FlowConfig, APPENDIX, COMMIT_TOOL};
 pub use http::Upstream;
+pub use listen::{listen, listen_on, Listen};
 
 use anyhow::{Context, Result};
 use record::{Recorder, Tap};
@@ -106,7 +112,7 @@ where
     R: Read + Send + 'static,
     W: Write,
 {
-    serve(config, None, host_in, host_out)
+    serve(config, None, host_in, host_out, None)
 }
 
 /// [`run`], acting on the traffic as `active` says (see [`active`]).
@@ -126,7 +132,7 @@ where
     R: Read + Send + 'static,
     W: Write,
 {
-    serve(config, Some(active), host_in, host_out)
+    serve(config, Some(active), host_in, host_out, None)
 }
 
 /// The server: a child process, or a Streamable HTTP session.
@@ -188,13 +194,25 @@ fn start(config: &Config) -> Result<Ends> {
     ))
 }
 
-fn serve<R, W>(config: &Config, active: Option<&Active>, host_in: R, mut host_out: W) -> Result<i32>
+/// Proxy one session. With `listen`, `seq` numbers the session in the
+/// process, which keeps its log's name apart from the others'.
+pub(crate) fn serve<R, W>(
+    config: &Config,
+    active: Option<&Active>,
+    host_in: R,
+    mut host_out: W,
+    seq: Option<u64>,
+) -> Result<i32>
 where
     R: Read + Send + 'static,
     W: Write,
 {
     let started = Instant::now();
-    let header = header(config);
+    let header = header(config, seq);
+    let session = config
+        .host_session
+        .clone()
+        .unwrap_or_else(|| header.session.clone());
     let recorder = match &config.record {
         Some(dir) => {
             let recorder = Recorder::start(dir, &header, started)?;
@@ -219,7 +237,7 @@ where
         // The flow's decisions go next to the session log, unless the
         // caller says otherwise.
         let flow_log = active.flow.as_ref().and_then(|f| {
-            f.log.clone().or_else(|| {
+            f.log.as_deref().map(|p| session_path(p, &session)).or_else(|| {
                 recorder
                     .as_ref()
                     .map(|r| r.path().with_extension("flow.jsonl"))
@@ -227,7 +245,7 @@ where
         });
         // So do the confirmation judge's.
         let confirm_log = active.confirm.as_ref().and_then(|c| {
-            c.log.clone().or_else(|| {
+            c.log.as_deref().map(|p| session_path(p, &session)).or_else(|| {
                 recorder
                     .as_ref()
                     .map(|r| r.path().with_extension("confirm.jsonl"))
@@ -343,6 +361,30 @@ pub fn prune(dir: &std::path::Path, days: u64) -> Result<usize> {
     Ok(deleted)
 }
 
+/// [`prune`] each of `dirs`, saying on stderr what went.
+pub fn retain(dirs: &[PathBuf], days: u64) {
+    for dir in dirs {
+        match prune(dir, days) {
+            Ok(0) => {}
+            Ok(n) => eprintln!(
+                "stretto-proxy: deleted {n} files older than {days} days from {}",
+                dir.display()
+            ),
+            Err(e) => eprintln!("stretto-proxy: pruning {}: {e:#}", dir.display()),
+        }
+    }
+}
+
+/// `path` with each `{session}` replaced by `session`: how `--context`,
+/// `--flow-log` and `--confirm-log` name a file per session. The session is
+/// the host session, else the session's own id, its log's name.
+pub fn session_path(path: &std::path::Path, session: &str) -> PathBuf {
+    match path.to_str() {
+        Some(p) if p.contains("{session}") => PathBuf::from(p.replace("{session}", session)),
+        _ => path.to_path_buf(),
+    }
+}
+
 /// `path` with a leading `~` replaced by the home directory, as a shell would
 /// do. MCP hosts start servers without a shell, so without this,
 /// `--record ~/.stretto/logs` would create a directory named `~`.
@@ -360,8 +402,9 @@ fn expand_home_with(path: PathBuf, home: Option<OsString>) -> PathBuf {
     path
 }
 
-/// The log header for a session starting now.
-fn header(config: &Config) -> LogHeader {
+/// The log header for a session starting now, numbered `seq` in the process
+/// if there are several.
+fn header(config: &Config, seq: Option<u64>) -> LogHeader {
     let started_unix_ms = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX));
@@ -372,7 +415,10 @@ fn header(config: &Config) -> LogHeader {
         .collect();
     LogHeader {
         stretto_mcp_log: LOG_VERSION,
-        session: record::session_id(started_unix_ms, std::process::id()),
+        session: match seq {
+            Some(n) => format!("{}-{n}", record::session_id(started_unix_ms, std::process::id())),
+            None => record::session_id(started_unix_ms, std::process::id()),
+        },
         started_unix_ms,
         server_command: match &config.upstream {
             Some(upstream) => vec![http::redact_url(&upstream.url)],
