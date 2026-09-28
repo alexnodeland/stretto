@@ -135,22 +135,24 @@ export function stageLink(
   return null
 }
 
-/** `stretto stage`'s report of `last`, as the CLI writes it. */
-export function stageReport(path: string, last: ComparisonView): string {
+/** `stretto stage`'s report of `last`, as the CLI writes it (`stage::Comparison::markdown`). */
+export function stageReport(path: string, domain: string, last: ComparisonView): string {
   const cell = (c: Counts) =>
     c.used_share
       ? `${c.used} (${Math.round(100 * c.used_share.share)}%, ${Math.round(100 * c.used_share.lower)}–${Math.round(100 * c.used_share.upper)}%)`
       : '—'
   const row = (s: SiteCounts) =>
-    `| ${s.site ? `\`${s.site}\`` : '**Total**'} | ${s.committed.lookups} | ${cell(s.committed)} | ${s.committed.detours} | ${s.staged.lookups} | ${cell(s.staged)} | ${s.staged.detours} |`
+    `| ${s.site ? `\`${s.site}\`` : 'All'} | ${s.committed.lookups} | ${cell(s.committed)} | ${s.committed.detours} | ${s.staged.lookups} | ${cell(s.staged)} | ${s.staged.detours} |`
   return [
-    `# Staged flow: ${path}`,
+    `# The staged ${domain} flow`,
     '',
-    `The staged flow learned from ${last.sessions} sessions, ${last.new} of them new since the last run. Each new session was scored by the committed flow, and by the staged flow as it was before it learned from the session.`,
+    `It learned from ${last.sessions} sessions, ${last.new} of them new in this run.`,
     '',
-    `On the last ${last.compared} sessions both flows were scored on:`,
+    `## The last ${last.compared} sessions`,
     '',
-    '| Site | Committed: lookups | used | detours | Staged: lookups | used | detours |',
+    "Each session was scored by both flows as it arrived, before the staged flow learned from it: the lookups each would have made there as served, and how many of them the agent made in a later LLM turn (used), with a 90% interval on the share; the rest are detours. A lookup counts after each of the agent's calls, as `stretto promote` counts it: one a flow would make after several of the agent's calls counts after each.",
+    '',
+    '| After | Committed: lookups | used | detours | Staged: lookups | used | detours |',
     '|---|---|---|---|---|---|---|',
     ...last.sites.map(row),
     row(last.total),
@@ -164,7 +166,7 @@ export function stageReport(path: string, last: ComparisonView): string {
 export function stageView(
   record: StageRecord | null,
   committedKey: string | null,
-  paths: { committed: string; staged: string; dataDir: string },
+  paths: { committed: string; staged: string; dataDir: string; domain: string },
   staged: StageView['staged'],
   diff: StageView['diff'],
 ): StageView {
@@ -181,7 +183,7 @@ export function stageView(
     staged_path: paths.staged,
     last: record?.last ?? null,
     report_markdown: record?.last
-      ? stageReport(`${paths.dataDir}/${paths.committed}`, record.last)
+      ? stageReport(`${paths.dataDir}/${paths.committed}`, paths.domain, record.last)
       : null,
     evidence: !!record?.last && !!staged,
     refused,

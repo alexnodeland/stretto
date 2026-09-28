@@ -219,7 +219,7 @@ function stageFor(key: string) {
   return stageView(
     stageOf(key),
     committed?.summary.key ?? null,
-    { ...paths, dataDir: state.world.dataDir },
+    { ...paths, dataDir: state.world.dataDir, domain: flowRecord(key).summary.domain },
     staged ? (summaries.find((f) => f.key === staged.summary.key) ?? null) : null,
     diff,
   )
