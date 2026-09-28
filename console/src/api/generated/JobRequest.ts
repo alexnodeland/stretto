@@ -35,7 +35,20 @@ oracle_cache?: string | null, threshold?: number | null, min_used?: number | nul
 /**
  * By default `<flow name>.promoted.flow.json` beside the flow.
  */
-out?: string | null, overwrite?: boolean | null, } | { "kind": "audit", flow: string, sessions: string, decider?: DeciderName | null, } | { "kind": "stage", 
+out?: string | null, overwrite?: boolean | null, } | { "kind": "audit", flow: string, sessions: string, decider?: DeciderName | null, } | { "kind": "drift", flow: string, sessions: string, 
+/**
+ * How the flow decides as it is scored: `habit` by default.
+ */
+decider?: DeciderName | null, 
+/**
+ * How recent a change the alarm reports, in sessions (10; at
+ * least 3, as a change needs three sessions of the new run).
+ */
+window?: number | null, 
+/**
+ * The probability of a recent change that sounds the alarm (0.5).
+ */
+threshold?: number | null, } | { "kind": "stage", 
 /**
  * The committed flow's key, or its staged flow's.
  */

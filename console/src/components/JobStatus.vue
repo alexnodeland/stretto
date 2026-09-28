@@ -1,14 +1,15 @@
 <script setup lang="ts">
 /** A job's status, with an icon and its word. */
 import { computed, type Component } from 'vue'
-import { Ban, CircleCheck, CircleX, Clock, LoaderCircle } from '@lucide/vue'
+import { Ban, CircleCheck, CircleX, Clock, LoaderCircle, Siren } from '@lucide/vue'
 import type { JobStatus } from '@/api/types'
 import UiBadge from './ui/UiBadge.vue'
 
-const props = defineProps<{ status: JobStatus }>()
+/** `alarm`: it succeeded, and found something to act on (`stretto drift`'s alarm). */
+const props = defineProps<{ status: JobStatus; alarm?: boolean }>()
 
 interface View {
-  tone: 'accent' | 'danger' | 'neutral'
+  tone: 'accent' | 'danger' | 'neutral' | 'warn'
   icon: Component
   label: string
   spin: boolean
@@ -20,7 +21,10 @@ const views: Record<JobStatus, View> = {
   failed: { tone: 'danger', icon: CircleX, label: 'Failed', spin: false },
   cancelled: { tone: 'neutral', icon: Ban, label: 'Cancelled', spin: false },
 }
-const view = computed(() => views[props.status])
+const alarmView: View = { tone: 'warn', icon: Siren, label: 'Alarm', spin: false }
+const view = computed(() =>
+  props.status === 'succeeded' && props.alarm ? alarmView : views[props.status],
+)
 </script>
 
 <template>

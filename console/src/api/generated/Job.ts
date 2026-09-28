@@ -12,6 +12,11 @@ export type Job = { id: string, kind: JobKind, title: string,
  */
 params: unknown, status: JobStatus, created_unix_ms: number, started_unix_ms: number | null, finished_unix_ms: number | null, exit_code: number | null, 
 /**
+ * Whether it ended with an alarm, which is not a failure: `stretto
+ * drift` found the agent changed under the flow.
+ */
+alarm: boolean, 
+/**
  * What it printed, stdout and stderr as they came: the last 64 KiB in
  * lists and events, all of it from `GET /api/jobs/:id`.
  */

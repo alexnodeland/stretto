@@ -38,6 +38,41 @@ export interface World {
  * A report command's output split as `--out` splits it: the line it prints,
  * and the Markdown it writes to the report.
  */
+/**
+ * `stretto drift`'s reports on `sessions` sessions, as the mock's agent
+ * goes: when one of them surprised the flow, the alarm sounds, with a
+ * change three sessions before the last.
+ */
+export function driftReports(
+  flow: string,
+  sessions: number,
+  alarm: boolean,
+): { line: string; json: string; md: string } {
+  const change = Math.max(0, sessions - 3)
+  const report = {
+    sessions: Array.from({ length: sessions }, (_, i) => ({ id: `session ${i + 1}` })),
+    alarms: alarm
+      ? [
+          {
+            at: sessions - 1,
+            change,
+            probability: 0.78,
+            moved: [{ site: 'get_order_details' }, { site: 'find_user_id_by_email' }],
+          },
+        ]
+      : [],
+    sounding: alarm,
+    unknown_tools: {},
+  }
+  const line = alarm
+    ? `stretto: the alarm sounds: a change ${sessions - change} sessions ago is 78% likely`
+    : `stretto: no change in the flow's ${sessions} sessions`
+  const md = alarm
+    ? `# Drift of ${flow}\n\nThe alarm sounds after the last of ${sessions} sessions: a change ${sessions - change} sessions ago is 78% likely. The flow's surprise rose most after \`get_order_details\` and \`find_user_id_by_email\`.\n`
+    : `# Drift of ${flow}\n\nNo change in ${sessions} sessions.\n`
+  return { line, json: `${JSON.stringify(report, null, 2)}\n`, md }
+}
+
 export function splitReport(text: string): { line: string; report: string } {
   const [line = '', ...rest] = text.trimEnd().split('\n')
   return { line: `${line}\n`, report: `${rest.join('\n').trim()}\n` }
@@ -637,6 +672,7 @@ export function buildWorld(
     started_unix_ms: partial.created_unix_ms + 180,
     finished_unix_ms: partial.created_unix_ms + 1400,
     exit_code: 0,
+    alarm: false,
     output: '',
     artifacts: [],
     ...partial,
@@ -644,12 +680,37 @@ export function buildWorld(
   const learnedAt = shopCompiled - 900
   const audit = splitReport(texts.audit_output)
   const promote = splitReport(texts.promote_output)
+  const drift = driftReports('shop-promoted', 24, true)
   const reports: Record<string, string> = {
+    'console/jobs/j-0007.drift.json': drift.json,
+    'console/jobs/j-0007.drift.md': drift.md,
     'console/jobs/j-0005.audit.md': audit.report,
     'console/jobs/j-0005.audit.json': `${JSON.stringify({ flow: 'shop', episodes: 8, decisions: 32, agreement: 1 }, null, 2)}\n`,
     'console/jobs/j-0003.promote.md': promote.report,
   }
   const jobs: Job[] = [
+    job({
+      id: 'j-0007',
+      kind: 'drift',
+      title: 'Drift of shop-promoted on logs/shop',
+      params: {
+        kind: 'drift',
+        flow: 'shop-promoted',
+        sessions: 'logs/shop',
+        decider: null,
+        window: 10,
+        threshold: 0.5,
+      },
+      exit_code: 1,
+      alarm: true,
+      created_unix_ms: now - 40 * 60_000,
+      finished_unix_ms: now - 40 * 60_000 + 1800,
+      output: `${drift.line}\n`,
+      artifacts: [
+        { kind: 'report', path: 'console/jobs/j-0007.drift.json', key: null },
+        { kind: 'report', path: 'console/jobs/j-0007.drift.md', key: null },
+      ],
+    }),
     job({
       id: 'j-0006',
       kind: 'doctor',

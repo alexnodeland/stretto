@@ -114,6 +114,8 @@ pub struct FlowDetail {
     /// What the recorded sessions say against the flow, such as a tool it
     /// reads that the server now marks `readOnlyHint: false`.
     pub warnings: Vec<String>,
+    /// The last `stretto drift` job on it that ran to its end.
+    pub drift: Option<super::jobs::DriftCheck>,
 }
 
 /// What changed from one flow to another, as `stretto flow-diff` lists it.
@@ -205,6 +207,7 @@ pub async fn detail(
             promotion: view.promotion,
             review_markdown: review::show(&flow, threshold),
             warnings: parse::warnings(state, &flow),
+            drift: super::jobs::latest_drift(state, &file.key),
         }))
     })
     .await

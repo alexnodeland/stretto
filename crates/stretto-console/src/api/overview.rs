@@ -221,6 +221,16 @@ fn build(state: &State, jobs: Vec<Job>) -> Overview {
                         health.push(item(HealthLevel::Warn, format!("{}: {w}", file.rel)));
                     }
                 }
+                if let Some(drift) = super::jobs::latest_drift(state, &file.key).filter(|d| d.alarm)
+                {
+                    health.push(item(
+                        HealthLevel::Warn,
+                        format!(
+                            "{}: the agent may have changed under it: stretto drift sounded its alarm (job {})",
+                            file.rel, drift.job
+                        ),
+                    ));
+                }
             }
         }
     }

@@ -131,7 +131,7 @@ Every session, filtered by domain, mode or text. A session's page is its timelin
 
 ### Flows
 
-Every flow. A flow's page shows its graph, with a threshold slider that shows which lookups would act at another threshold. It has the sites with their bindings, the tools (the writes, which a flow never calls, flagged), the review as `flow-show` prints it, and the raw JSON. From there you can compare it with another flow, download it, promote it or audit it.
+Every flow. A flow's page shows its graph, with a threshold slider that shows which lookups would act at another threshold. It has the sites with their bindings, the tools (the writes, which a flow never calls, flagged), the review as `flow-show` prints it, and the raw JSON. From there you can compare it with another flow, download it, promote it, audit it, or check its sessions for [drift](https://stretto.alexnodeland.com/guide/concepts/audit-and-review#watch-for-drift). When the last drift job on a flow sounded its alarm, its page says so at the top: when, how many sessions ago the change likeliest came, where the flow's surprise rose most, and any tools the agent called that training never saw, with a link to the report. The overview's health lists it too.
 
 Its **Staged** tab is its [staged learning](https://stretto.alexnodeland.com/guide/concepts/staged-flows):
 - the flow a `stage` job learns beside it from the sessions as they arrive;
@@ -168,7 +168,7 @@ It never edits an MCP host's configuration: it shows the snippet to paste, as `s
 
 ## Jobs
 
-Jobs run the `stretto` CLI in the data directory, one at a time, in the order they were queued, with the console's environment. So a job that fits an arbiter needs `TYPESAFE_API_KEY` (or `TYPESAFE_API_KEY_FILE`) where the console runs, and `redact` needs `STRETTO_REDACT_SALT`. The console only checks whether they are set. `learn` and `promote` never write over an existing file unless you ask. `stage` writes the staged flow beside the flow you name, never the flow itself. `doctor` checks the data directory the console serves. A queued or running job can be cancelled from its page: a queued one never runs, and a running one's `stretto` is killed, then the job ends `cancelled`. Stopping the console stops its job too, which is marked as failed at the next start.
+Jobs run the `stretto` CLI in the data directory, one at a time, in the order they were queued, with the console's environment. So a job that fits an arbiter needs `TYPESAFE_API_KEY` (or `TYPESAFE_API_KEY_FILE`) where the console runs, and `redact` needs `STRETTO_REDACT_SALT`. The console only checks whether they are set. `learn` and `promote` never write over an existing file unless you ask. `stage` writes the staged flow beside the flow you name, never the flow itself. `doctor` checks the data directory the console serves. `drift` exits with 1 while its alarm sounds, which the job records as an **alarm**, not a failure: the job succeeded, and found the agent changed under the flow. A queued or running job can be cancelled from its page: a queued one never runs, and a running one's `stretto` is killed, then the job ends `cancelled`. Stopping the console stops its job too, which is marked as failed at the next start.
 
 ## Limits
 
