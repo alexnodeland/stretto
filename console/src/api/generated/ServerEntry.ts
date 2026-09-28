@@ -38,6 +38,11 @@ threshold: number | null,
  */
 surprise: Surprise | null, 
 /**
+ * The only tools the flow may call on its own (`--flow-tools`); none,
+ * every tool it reads as a lookup.
+ */
+flow_tools: Array<string>, 
+/**
  * Check each of the agent's calls against the domain's policy guards,
  * and refuse the ones they fail (`--guards`). `retail` and `airline`
  * have guards.

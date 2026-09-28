@@ -2676,6 +2676,7 @@ fn init(args: InitArgs, env: &mut Env) -> Result<()> {
             decide_with: None,
             threshold: None,
             surprise: None,
+            tools: Vec::new(),
         }),
         domain,
         record,

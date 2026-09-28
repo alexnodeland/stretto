@@ -195,6 +195,14 @@ async function remove() {
                 <dd class="num">{{ server.threshold ?? '0.3 (the proxy’s default)' }}</dd>
                 <dt>Surprise gate</dt>
                 <dd data-testid="server-surprise">{{ surpriseText }}</dd>
+                <dt>Tools it may call</dt>
+                <dd data-testid="server-flow-tools">
+                  <template v-if="server.flow_tools.length"
+                    >only
+                    <span class="mono small">{{ server.flow_tools.join(', ') }}</span></template
+                  >
+                  <span v-else class="subtle">every tool it looks up</span>
+                </dd>
               </template>
               <dt>Guards</dt>
               <dd data-testid="server-guards">

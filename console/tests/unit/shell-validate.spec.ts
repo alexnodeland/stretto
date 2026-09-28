@@ -99,6 +99,13 @@ describe('the server form’s checks', () => {
     }
   })
 
+  it('checks the names of the tools a flow may call', () => {
+    expect(checkServer({ ...base, flow_tools: ['get_a', 'get_b'] })).toEqual({})
+    for (const bad of ['', 'a,b', 'two words']) {
+      expect(checkServer({ ...base, flow_tools: [bad] }).flow_tools).toMatch(/is not a tool’s name/)
+    }
+  })
+
   it('accepts a good server and names every problem by field', () => {
     expect(checkServer(base)).toEqual({})
     expect(checkServer(base, ['orders']).name).toMatch(/exists/)

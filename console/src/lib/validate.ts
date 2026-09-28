@@ -57,6 +57,7 @@ export type ServerErrors = Partial<
     | 'flow'
     | 'threshold'
     | 'surprise'
+    | 'flow_tools'
     | 'guards'
     | 'context'
     | 'retain_days',
@@ -97,6 +98,9 @@ export function checkServer(input: ServerInput, taken: readonly string[] = []): 
   const surprise = input.surprise ?? null
   if (surprise?.kind === 'threshold' && !(Number.isFinite(surprise.nats) && surprise.nats > 0))
     errors.surprise = 'Give the threshold in nats, above 0.'
+  // The proxy takes them comma-separated.
+  const badTool = (input.flow_tools ?? []).find((t) => !t || /[\s,]/.test(t) || t.length > 128)
+  if (badTool !== undefined) errors.flow_tools = `${JSON.stringify(badTool)} is not a tool’s name.`
   if (input.guards && !GUARDED_DOMAINS.includes(input.name))
     errors.guards = `There are no policy guards for ${input.name || 'this server'}: retail and airline have them.`
   if (input.judge && !input.judge.context.trim())

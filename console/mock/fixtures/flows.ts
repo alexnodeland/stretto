@@ -451,6 +451,7 @@ function summary(
     tools: { read: 0, write: 0, generic: 0 },
     sites: 0,
     lookups: 0,
+    lookup_tools: [],
     promoted: null,
     surprise: null,
     served_by: [],
@@ -658,6 +659,11 @@ export function buildFlows(times: FlowTimes): FlowRecord[] {
   for (const f of flows) {
     if (!f.raw) f.raw = rawFlow(f)
   }
+  // What each flow may look up, from its sites, as the console lists it.
+  for (const f of flows)
+    f.summary.lookup_tools = [
+      ...new Set(f.sites.flatMap((s) => s.lookups.map((l) => l.tool))),
+    ].sort()
   return flows
 }
 

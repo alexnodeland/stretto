@@ -23,6 +23,8 @@ const blank: ServerModel = {
   retain_days: '',
   surprise: '',
   surprise_nats: '',
+  flow_tools_only: false,
+  flow_tools: [],
 }
 
 const flow = {
@@ -77,6 +79,7 @@ describe('the server form', () => {
       decider: null,
       threshold: null,
       surprise: null,
+      flow_tools: [],
       guards: false,
       judge: null,
       commit: false,
@@ -156,6 +159,48 @@ describe('the server form', () => {
     await w.find('form').trigger('submit')
     expect((w.emitted('submit')![1] as [ServerInput])[0].surprise).toEqual({ kind: 'off' })
     expect(w.text()).toContain('--flow-surprise off')
+  })
+
+  it('keeps the flow to some of its lookups, chosen from the flow or typed', async () => {
+    const known = {
+      ...flow,
+      lookup_tools: ['get_order_details', 'get_user_details'],
+    } as FlowSummary
+    const w = mount(ServerForm, {
+      props: {
+        initial: { ...blank, name: 'orders', command: 'orders-mcp', mode: 'serve' },
+        editing: false,
+        taken: [],
+        flows: [known],
+        dataDir: '/home/me/.stretto',
+        saving: false,
+        serverError: null,
+      },
+    })
+    await w.find('select[data-testid="server-flow"]').setValue('~/.stretto/orders.flow.json')
+    expect(w.find('[data-testid="server-flow-tool-choices"]').exists()).toBe(false)
+    await w.find('[data-testid="server-flow-tools-only"]').setValue(true)
+    await w.find('form').trigger('submit')
+    expect(w.text()).toContain(
+      'Choose at least one tool, or let the flow call every tool it looks up.',
+    )
+    expect(w.emitted('submit')).toBeUndefined()
+    await w.find('[data-testid="server-flow-tool-get_user_details"]').setValue(true)
+    await w.find('form').trigger('submit')
+    const [input] = w.emitted('submit')![0] as [ServerInput]
+    expect(input.flow_tools).toEqual(['get_user_details'])
+    expect(w.text()).toContain('--flow-tools get_user_details -- orders-mcp')
+    // A flow the console does not have: its tools are typed.
+    const typed = form({
+      name: 'orders',
+      command: 'orders-mcp',
+      mode: 'serve',
+      flow: '/srv/flows/orders.flow.json',
+      flow_tools_only: true,
+    })
+    await typed.find('[data-testid="server-flow-tools-text"]').setValue('get_a, get_b')
+    await typed.find('form').trigger('submit')
+    expect((typed.emitted('submit')![0] as [ServerInput])[0].flow_tools).toEqual(['get_a', 'get_b'])
   })
 
   it('refuses a taken name and an unclosed quote', async () => {

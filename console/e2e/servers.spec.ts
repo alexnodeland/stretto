@@ -84,6 +84,17 @@ test('a served server sets its flow’s surprise gate, and the proxy gets it', a
   await expect(page.getByTestId('host-snippet')).toContainText('--flow-surprise off')
 })
 
+test('a served server keeps its flow to some of its lookups', async ({ page }) => {
+  await page.goto('/servers/shop/edit')
+  await page.getByTestId('server-flow-tools-only').check()
+  await page.getByTestId('server-flow-tool-get_user_details').check()
+  await expect(page.getByText('--flow-tools get_user_details')).toBeVisible()
+  await page.getByTestId('server-save').click()
+  await expect(page).toHaveURL(/\/servers\/shop$/)
+  await expect(page.getByTestId('server-flow-tools')).toHaveText('only get_user_details')
+  await expect(page.getByTestId('host-snippet')).toContainText('--flow-tools get_user_details')
+})
+
 test('testing the connection lists the tools and their kinds', async ({ page }) => {
   await page.goto('/servers/shop')
   await page.getByTestId('probe').click()

@@ -97,6 +97,7 @@ export function proxyArgs(world: World, entry: ServerEntry): string[] {
         '--flow-surprise',
         entry.surprise.kind === 'off' ? 'off' : String(entry.surprise.nats),
       )
+    if (entry.flow_tools.length) args.push('--flow-tools', entry.flow_tools.join(','))
     if (entry.mode === 'shadow') args.push('--flow-shadow')
   }
   args.push(...policyArgs(entry))

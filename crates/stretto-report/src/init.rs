@@ -85,6 +85,9 @@ pub struct Served {
     /// Its surprise gate, off or at another threshold (`--flow-surprise`),
     /// in place of the one it stores.
     pub surprise: Option<Override>,
+    /// The only tools it may call on its own (`--flow-tools`); none, every
+    /// tool it reads as a lookup.
+    pub tools: Vec<String>,
 }
 
 impl Served {
@@ -218,6 +221,9 @@ impl Setup {
             }
             if let Some(surprise) = flow.surprise {
                 args.extend(["--flow-surprise".into(), surprise.to_string()]);
+            }
+            if !flow.tools.is_empty() {
+                args.extend(["--flow-tools".into(), flow.tools.join(",")]);
             }
             if flow.shadow {
                 args.push("--flow-shadow".into());
@@ -555,6 +561,7 @@ mod tests {
             decide_with: None,
             threshold: None,
             surprise: None,
+            tools: Vec::new(),
         }));
         assert_eq!(
             shadow.args()[..9],
@@ -579,6 +586,7 @@ mod tests {
             decide_with: None,
             threshold: None,
             surprise: None,
+            tools: Vec::new(),
         }));
         assert_eq!(
             older.args()[4..8],
@@ -593,6 +601,7 @@ mod tests {
             decide_with: None,
             threshold: None,
             surprise: None,
+            tools: Vec::new(),
         }));
         assert!(!arbiter.args().contains(&"--flow-decider".to_string()));
         assert!(!arbiter.args().contains(&"--flow-shadow".to_string()));
@@ -678,6 +687,7 @@ mod tests {
                 decide_with: None,
                 threshold: None,
                 surprise: None,
+                tools: Vec::new(),
             })),
             INIT,
         );
@@ -696,6 +706,7 @@ mod tests {
             decide_with: None,
             threshold: None,
             surprise: None,
+            tools: Vec::new(),
         }));
         custom.record = "/srv/shadow".to_string();
         let custom = next_steps(&custom, INIT);
@@ -714,6 +725,7 @@ mod tests {
                 decide_with: None,
                 threshold: None,
                 surprise: None,
+                tools: Vec::new(),
             })),
             INIT,
         );
@@ -734,6 +746,7 @@ mod tests {
             decide_with: Some(Decider::Habit),
             threshold: Some(0.5),
             surprise: Some(Override::Off),
+            tools: vec!["read_text_file".to_string(), "list_directory".to_string()],
         }));
         s.server.clear();
         s.upstream = Some(Upstream {
@@ -751,6 +764,8 @@ mod tests {
                 "0.5",
                 "--flow-surprise",
                 "off",
+                "--flow-tools",
+                "read_text_file,list_directory",
                 "--upstream",
                 "https://example.com/mcp",
                 "--upstream-header",

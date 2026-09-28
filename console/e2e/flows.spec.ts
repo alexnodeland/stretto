@@ -85,7 +85,7 @@ test('a drift alarm shows on its flow, and a drift job starts from there', async
   // The shop's sessions include one that surprised its flow: the mock's alarm.
   await expect(page).toHaveURL(/\/jobs\/j-\d+$/)
   await expect(page.getByText('Alarm').first()).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Drift of shop' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Drift of shop', exact: true })).toBeVisible()
   await page.goto('/flows/shop')
   await expect(page.getByTestId('drift-alarm')).toBeVisible()
 })

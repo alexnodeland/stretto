@@ -34,6 +34,9 @@ export interface ServerModel {
   /** The flow's surprise gate: as the flow stores it, off, or at `surprise_nats`. */
   surprise: '' | 'off' | 'threshold'
   surprise_nats: string | number
+  /** Whether the flow may call only `flow_tools` on its own, rather than every tool it looks up. */
+  flow_tools_only: boolean
+  flow_tools: string[]
   guards: boolean
   /** The confirmation judge on guarded writes: off, or how it acts. */
   judge: '' | JudgeMode
@@ -83,6 +86,23 @@ const flowIsOther = ref(!!m.flow && !flowOptions.value.some((o) => o.value === m
 
 const guarded = computed(() => GUARDED_DOMAINS.includes(m.name.trim()))
 
+/** The chosen flow, if the form knows it. */
+const chosenFlow = computed(() => props.flows.find((f) => flowPath(f) === m.flow) ?? null)
+/** The tools the flow may be kept to: its lookups, and any already chosen. */
+const toolChoices = computed(() =>
+  [...new Set([...(chosenFlow.value?.lookup_tools ?? []), ...m.flow_tools])].sort(),
+)
+/** For a flow the form does not know: the tools as typed, comma-separated. */
+const toolsText = computed({
+  get: () => m.flow_tools.join(', '),
+  set: (text: string) => {
+    m.flow_tools = text
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean)
+  },
+})
+
 /** What the chosen flow's own surprise gate does, if the form knows the flow. */
 const gateHint = computed(() => {
   const flow = props.flows.find((f) => flowPath(f) === m.flow)
@@ -124,6 +144,7 @@ function toInput(): ServerInput {
         : m.surprise === 'off'
           ? { kind: 'off' }
           : { kind: 'threshold', nats: nats === '' ? NaN : Number(nats) },
+    flow_tools: m.mode === 'record' || !m.flow_tools_only ? [] : [...m.flow_tools],
     guards: m.guards,
     judge: m.guards && m.judge ? { mode: m.judge, context: m.context.trim() } : null,
     commit: m.commit,
@@ -133,6 +154,8 @@ function toInput(): ServerInput {
 
 const errors = computed<ServerErrors>(() => {
   const e = checkServer(toInput(), props.editing ? [] : props.taken)
+  if (m.mode !== 'record' && m.flow_tools_only && !m.flow_tools.length)
+    e.flow_tools = 'Choose at least one tool, or let the flow call every tool it looks up.'
   if (m.kind === 'stdio' && split.value.error) e.command = split.value.error
   return e
 })
@@ -171,6 +194,7 @@ const preview = computed(() => {
     if (i.surprise?.kind === 'off') args.push('--flow-surprise', 'off')
     else if (i.surprise && !Number.isNaN(i.surprise.nats))
       args.push('--flow-surprise', String(i.surprise.nats))
+    if (i.flow_tools?.length) args.push('--flow-tools', i.flow_tools.join(','))
     if (i.mode === 'shadow') args.push('--flow-shadow')
   }
   if (i.retain_days !== null && i.retain_days !== undefined && !Number.isNaN(i.retain_days))
@@ -529,6 +553,52 @@ const modes: { value: ServerMode; title: string; body: string }[] = [
             />
           </UiField>
         </div>
+        <label class="check">
+          <input
+            v-model="m.flow_tools_only"
+            type="checkbox"
+            data-testid="server-flow-tools-only"
+            @change="touched.add('flow_tools')"
+          />
+          <span class="check-text">
+            <span class="check-title">Only some of its lookups</span>
+            <span class="caption"
+              >Keep the flow to the tools chosen here (<span class="mono">--flow-tools</span>). A
+              read changes nothing, but it can be metered, rate-limited or recorded as an access.
+              Otherwise the flow may call every tool it looks up.</span
+            >
+          </span>
+        </label>
+        <div v-if="m.flow_tools_only" class="sf-tools" data-testid="server-flow-tool-choices">
+          <template v-if="chosenFlow">
+            <label v-for="t in toolChoices" :key="t" class="check">
+              <input
+                v-model="m.flow_tools"
+                type="checkbox"
+                :value="t"
+                :data-testid="`server-flow-tool-${t}`"
+              />
+              <span class="mono">{{ t }}</span>
+            </label>
+            <p v-if="!toolChoices.length" class="caption">The flow looks nothing up.</p>
+          </template>
+          <UiField
+            v-else
+            v-slot="{ id, describedby }"
+            label="Tools"
+            hint="Separated by commas: the flow is not in the data directory, so the console cannot list its lookups."
+          >
+            <input
+              :id="id"
+              v-model.lazy="toolsText"
+              class="input mono"
+              :aria-describedby="describedby"
+              spellcheck="false"
+              data-testid="server-flow-tools-text"
+            />
+          </UiField>
+        </div>
+        <p v-if="shown('flow_tools')" class="field-error">{{ shown('flow_tools') }}</p>
       </template>
       <UiField v-else v-slot="{ id }" label="Record to" optional>
         <input
@@ -811,6 +881,13 @@ const modes: { value: ServerMode; title: string; body: string }[] = [
 
 .days {
   max-width: 160px;
+}
+
+.sf-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding-left: 26px;
 }
 
 .sf-actions {

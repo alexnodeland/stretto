@@ -128,6 +128,7 @@ pub fn summary(file: &FlowFile, loaded: &Loaded, served_by: Vec<String>) -> Flow
         tools: ToolCounts::default(),
         sites: 0,
         lookups: 0,
+        lookup_tools: Vec::new(),
         promoted: None,
         surprise: None,
         served_by,
@@ -160,6 +161,7 @@ pub fn summary(file: &FlowFile, loaded: &Loaded, served_by: Vec<String>) -> Flow
     }
     s.sites = flow.sites().len();
     s.lookups = loaded.lookups.len();
+    s.lookup_tools = loaded.lookups.iter().cloned().collect();
     s.promoted = flow.promotion().map(|p| PromotedCounts {
         sites_promoted: p.sites.values().filter(|r| r.promoted).count(),
         sites_scored: p.sites.len(),
@@ -302,6 +304,7 @@ mod tests {
         assert!(!s.has_arbiter && s.has_reach);
         assert_eq!((s.tools.read, s.tools.write, s.tools.generic), (3, 1, 0));
         assert_eq!((s.sites, s.lookups), (3, 2));
+        assert_eq!(s.lookup_tools, ["get_order_details", "get_user_details"]);
         assert_eq!(s.habit_episodes, 6);
         assert_eq!(s.sources, ["quickstart"]);
         assert!(s.promoted.is_none() && s.error.is_none() && s.surprise.is_none());

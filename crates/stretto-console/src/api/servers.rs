@@ -448,6 +448,7 @@ pub fn setup(state: &State, entry: &ServerEntry, host: Host) -> Setup {
                     Surprise::Off => Override::Off,
                     Surprise::Threshold { nats } => Override::Threshold(nats),
                 }),
+                tools: entry.flow_tools.clone(),
             })
         }
         _ => None,
