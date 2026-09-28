@@ -48,6 +48,21 @@ pub const LEDGER_MAX: usize = 1000;
 /// The z of a 90% two-sided interval.
 const Z90: f64 = 1.644_853_6;
 
+/// Why [`commit`] or [`rollback`] did nothing: what was asked does not fit
+/// the files (nothing is staged, the staged flow is the committed one, there
+/// is no such version). Any other error of theirs is a failure to read or
+/// write the files. `stretto-console` answers it with 409.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Refused(pub String);
+
+impl std::fmt::Display for Refused {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl std::error::Error for Refused {}
+
 /// The files of one deployment's flow, beside the committed flow.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Paths {
@@ -466,6 +481,7 @@ impl Comparison {
 
 /// What a version of the committed flow was.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(rename = "VersionKind"))]
 #[serde(rename_all = "snake_case")]
 pub enum Kind {
     /// The committed flow as it was found: before its first commit, or
@@ -614,6 +630,64 @@ fn changes(old: &Flow, new: &Flow) -> Vec<String> {
     review::diff(old, new, 0.05, 0.3).changes()
 }
 
+/// A staged flow that [`commit`] would take: what it checks first.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Candidate {
+    /// The staged flow's file.
+    pub bytes: Vec<u8>,
+    /// When it was learned: its `compiled_unix_ms`.
+    pub learned_unix_ms: u64,
+    /// The committed flow's file, if there is one.
+    pub committed: Option<Vec<u8>>,
+    /// What committing it changes, as `stretto flow-diff` lists it at its
+    /// defaults.
+    pub changes: Vec<String>,
+}
+
+/// The staged flow, if it can be committed: it exists and loads, the
+/// committed flow (if any) loads and is for its domain, and they differ.
+/// [`Refused`] when there is no staged flow, when the domains differ, and
+/// when the staged flow is the committed one.
+pub fn candidate(paths: &Paths) -> Result<Candidate> {
+    let bytes = match std::fs::read(&paths.staged) {
+        Ok(bytes) => bytes,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => bail!(Refused(format!(
+            "there is no staged flow at {}: stretto stage learns it",
+            paths.staged.display()
+        ))),
+        Err(e) => return Err(e).with_context(|| format!("reading {}", paths.staged.display())),
+    };
+    let staged = Flow::from_json(&String::from_utf8_lossy(&bytes))
+        .with_context(|| format!("parsing {}", paths.staged.display()))?;
+    let committed = read_committed(paths)?;
+    let changes = match &committed {
+        Some(old) => {
+            let flow = Flow::from_json(&String::from_utf8_lossy(old))
+                .with_context(|| format!("parsing {}", paths.committed.display()))?;
+            if flow.domain() != staged.domain() {
+                bail!(Refused(format!(
+                    "the staged flow is for {}, the committed one for {}",
+                    staged.domain(),
+                    flow.domain()
+                )));
+            }
+            if old == &bytes {
+                bail!(Refused(
+                    "the staged flow is the committed one: nothing to commit".to_string()
+                ));
+            }
+            changes(&flow, &staged)
+        }
+        None => Vec::new(),
+    };
+    Ok(Candidate {
+        learned_unix_ms: staged.provenance().compiled_unix_ms,
+        bytes,
+        committed,
+        changes,
+    })
+}
+
 /// Make the staged flow the committed one. The committed flow's versions
 /// are kept, the new one with `evidence`, the staged learner's last
 /// comparison, when it is the staged flow's (it was learned when the
@@ -624,51 +698,24 @@ pub fn commit(
     evidence: Option<Comparison>,
     now: u64,
 ) -> Result<Record> {
-    let staged_bytes = std::fs::read(&paths.staged).with_context(|| {
-        format!(
-            "reading the staged flow {}: stretto stage learns it",
-            paths.staged.display()
-        )
-    })?;
-    let staged = Flow::from_json(&String::from_utf8_lossy(&staged_bytes))
-        .with_context(|| format!("parsing {}", paths.staged.display()))?;
-    let committed = read_committed(paths)?;
-    let changes = match &committed {
-        Some(bytes) => {
-            let committed = Flow::from_json(&String::from_utf8_lossy(bytes))
-                .with_context(|| format!("parsing {}", paths.committed.display()))?;
-            if committed.domain() != staged.domain() {
-                bail!(
-                    "the staged flow is for {}, the committed one for {}",
-                    staged.domain(),
-                    committed.domain()
-                );
-            }
-            if bytes == &staged_bytes {
-                bail!("the staged flow is the committed one: nothing to commit");
-            }
-            changes(&committed, &staged)
-        }
-        None => Vec::new(),
-    };
+    let staged = candidate(paths)?;
     let mut versions = history(paths)?;
-    if let Some(bytes) = &committed {
+    if let Some(bytes) = &staged.committed {
         if differs(paths, &versions, bytes)? {
             keep_found(paths, &mut versions, bytes, now)?;
         }
     }
-    let learned = staged.provenance().compiled_unix_ms;
     let record = Record {
         version: 0,
         kind: Kind::Commit,
         unix_ms: now,
         restored: None,
         note,
-        changes,
-        evidence: evidence.filter(|e| e.learned_unix_ms == learned),
+        changes: staged.changes,
+        evidence: evidence.filter(|e| e.learned_unix_ms == staged.learned_unix_ms),
     };
-    let record = keep(paths, &mut versions, &staged_bytes, record)?;
-    write_atomic(&paths.committed, &staged_bytes)?;
+    let record = keep(paths, &mut versions, &staged.bytes, record)?;
+    write_atomic(&paths.committed, &staged.bytes)?;
     Ok(record)
 }
 
@@ -679,10 +726,10 @@ pub fn commit(
 /// can be rolled back too.
 pub fn rollback(paths: &Paths, to: Option<u32>, note: Option<String>, now: u64) -> Result<Record> {
     let Some(current) = read_committed(paths)? else {
-        bail!(
+        bail!(Refused(format!(
             "there is no committed flow at {}",
             paths.committed.display()
-        );
+        )));
     };
     let mut versions = history(paths)?;
     let changed = differs(paths, &versions, &current)?;
@@ -691,19 +738,21 @@ pub fn rollback(paths: &Paths, to: Option<u32>, note: Option<String>, now: u64) 
         Some(n) => n,
         None if changed && latest > 0 => latest,
         None if !changed && latest > 1 => latest - 1,
-        None => bail!(
+        None => bail!(Refused(format!(
             "{} has no earlier version to roll back to",
             paths.committed.display()
-        ),
+        ))),
     };
     if !versions.iter().any(|r| r.version == to) {
-        bail!(
+        bail!(Refused(format!(
             "there is no version {to}: {} has versions 1 to {latest}",
             paths.committed.display()
-        );
+        )));
     }
     if to == latest && !changed {
-        bail!("version {to} is the committed flow already");
+        bail!(Refused(format!(
+            "version {to} is the committed flow already"
+        )));
     }
     let bytes = std::fs::read(paths.version(to))
         .with_context(|| format!("reading {}", paths.version(to).display()))?;
@@ -1065,6 +1114,11 @@ mod tests {
         format!("{e:#}")
     }
 
+    /// The refusal `e` is, if it is one.
+    fn refused(e: anyhow::Error) -> Option<String> {
+        e.downcast_ref::<Refused>().map(|r| r.to_string())
+    }
+
     #[test]
     fn a_committed_flow_keeps_every_version() {
         let dir = temp("versions");
@@ -1078,7 +1132,17 @@ mod tests {
             (first.version, first.kind, first.changes.len()),
             (1, Kind::Commit, 0)
         );
-        assert!(error(commit(&paths, None, None, 2).unwrap_err()).contains("nothing to commit"));
+        assert!(refused(commit(&paths, None, None, 2).unwrap_err())
+            .unwrap()
+            .contains("nothing to commit"));
+        // What a commit would take: the staged flow, and what it changes.
+        std::fs::write(&paths.staged, &two).unwrap();
+        let next = candidate(&paths).unwrap();
+        assert_eq!(
+            (next.bytes.len(), next.committed),
+            (two.len(), Some(one.clone()))
+        );
+        assert!(!next.changes.is_empty());
         // A second, with the evidence that is the staged flow's.
         std::fs::write(&paths.staged, &two).unwrap();
         let learned = Flow::from_json(&String::from_utf8_lossy(&two))
@@ -1107,8 +1171,12 @@ mod tests {
         // dropped.
         assert_eq!(rollback(&paths, None, None, 5).unwrap().restored, Some(3));
         assert_eq!(rollback(&paths, Some(1), None, 6).unwrap().version, 6);
-        assert!(error(rollback(&paths, Some(6), None, 7).unwrap_err()).contains("already"));
-        assert!(error(rollback(&paths, Some(9), None, 7).unwrap_err()).contains("no version 9"));
+        assert!(refused(rollback(&paths, Some(6), None, 7).unwrap_err())
+            .unwrap()
+            .contains("already"));
+        assert!(refused(rollback(&paths, Some(9), None, 7).unwrap_err())
+            .unwrap()
+            .contains("no version 9"));
         std::fs::write(&paths.staged, &two).unwrap();
         let stale = commit(&paths, None, Some(evidence(learned + 1)), 7).unwrap();
         assert!(stale.evidence.is_none());
@@ -1144,16 +1212,26 @@ mod tests {
         let dir = temp("commit");
         let paths = Paths::of(&dir.join("shop.flow.json")).unwrap();
         let (flow, one, two) = flows();
-        assert!(
-            error(commit(&paths, None, None, 1).unwrap_err()).contains("stretto stage learns it")
-        );
-        assert!(error(rollback(&paths, None, None, 1).unwrap_err())
+        // What was asked does not fit the files: refused.
+        assert!(refused(commit(&paths, None, None, 1).unwrap_err())
+            .unwrap()
+            .contains("stretto stage learns it"));
+        assert!(refused(rollback(&paths, None, None, 1).unwrap_err())
+            .unwrap()
             .contains("there is no committed flow"));
+        // A staged flow that cannot be read, or does not parse: an error.
+        std::fs::create_dir_all(&paths.staged).unwrap();
+        let unread = commit(&paths, None, None, 1).unwrap_err();
+        assert!(error(unread).contains("reading"));
+        assert!(refused(candidate(&paths).unwrap_err()).is_none());
+        std::fs::remove_dir_all(&paths.staged).unwrap();
         std::fs::write(&paths.staged, "not a flow").unwrap();
         assert!(error(commit(&paths, None, None, 1).unwrap_err()).contains("parsing"));
         // Nothing to roll back to, with the committed flow alone.
         std::fs::write(&paths.committed, &one).unwrap();
-        assert!(error(rollback(&paths, None, None, 1).unwrap_err()).contains("no earlier version"));
+        assert!(refused(rollback(&paths, None, None, 1).unwrap_err())
+            .unwrap()
+            .contains("no earlier version"));
         assert!(unrecorded(&paths, &[]).unwrap());
         // A committed flow that does not parse, or is for another domain.
         std::fs::write(&paths.staged, &two).unwrap();
@@ -1162,8 +1240,10 @@ mod tests {
         let mut other: serde_json::Value = serde_json::to_value(&flow).unwrap();
         other["manifest"]["domain"] = serde_json::json!("airline");
         std::fs::write(&paths.committed, other.to_string()).unwrap();
-        assert!(error(commit(&paths, None, None, 1).unwrap_err())
-            .contains("the staged flow is for retail, the committed one for airline"));
+        assert_eq!(
+            refused(commit(&paths, None, None, 1).unwrap_err()).unwrap(),
+            "the staged flow is for retail, the committed one for airline"
+        );
         // A commit that fails keeps nothing.
         assert!(!paths.history.exists());
         // The history is not a directory, or holds what is not a record.

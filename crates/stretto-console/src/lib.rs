@@ -169,6 +169,14 @@ impl State {
         self.config.now_unix_ms.unwrap_or_else(now_unix_ms)
     }
 
+    /// The flow in `file`, parsed now or kept from before.
+    pub fn flow(&self, file: &data::FlowFile) -> Arc<data::flows::Loaded> {
+        self.cache
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .flow(file)
+    }
+
     /// Whether a key for TypeSafe's Jev is configured, from whether
     /// `TYPESAFE_API_KEY` or `TYPESAFE_API_KEY_FILE` is set; never its value.
     pub fn key_set(&self) -> bool {

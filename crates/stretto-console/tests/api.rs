@@ -361,6 +361,8 @@ async fn read_only_refuses_every_change_and_action() {
         ),
         (Method::DELETE, "/api/servers/shop".to_string(), None),
         (Method::POST, "/api/servers/shop/probe".to_string(), None),
+        (Method::POST, "/api/flows/shop/commit".to_string(), None),
+        (Method::POST, "/api/flows/shop/rollback".to_string(), None),
         (
             Method::POST,
             "/api/jobs".to_string(),
@@ -1019,6 +1021,383 @@ async fn a_flow_is_warned_about_what_it_needs() {
 }
 
 // ---- servers --------------------------------------------------------------------
+
+// ---- staged flows --------------------------------------------------------------
+
+/// The flow `key` in `list`.
+fn listed(list: &Value, key: &str) -> Value {
+    list["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["key"] == key)
+        .unwrap_or_else(|| panic!("no flow {key} in {list:#}"))
+        .clone()
+}
+
+/// Run `stretto stage` on `sessions` as a job, and wait for it.
+async fn stage(c: &Console, sessions: &str) -> Value {
+    let queued = c
+        .call(
+            Method::POST,
+            "/api/jobs",
+            Some(json!({"kind": "stage", "flow": "shop", "sessions": sessions})),
+        )
+        .await;
+    assert_eq!(queued.status, StatusCode::ACCEPTED, "{}", queued.text());
+    let job = queued.json();
+    let done = c.finished(job["id"].as_str().unwrap()).await;
+    assert_eq!(done["status"], "succeeded", "{done:#}");
+    done
+}
+
+#[tokio::test]
+async fn a_flow_is_staged_committed_and_rolled_back() {
+    if workspace_bin("stretto").is_none() {
+        return;
+    }
+    let c = console("stage", |_| {});
+    // Before stretto stage: the committed flow alone, and no version.
+    let before = c.get("/api/flows/shop/stage").await;
+    assert_eq!(before.status, StatusCode::OK, "{}", before.text());
+    let v = before.json();
+    assert_eq!(
+        (&v["committed"], &v["committed_path"], &v["staged_path"]),
+        (
+            &json!("shop"),
+            &json!("shop.flow.json"),
+            &json!("shop.staged.flow.json")
+        )
+    );
+    assert!(v["staged"].is_null() && v["last"].is_null() && v["diff"].is_null());
+    assert!(v["refused"]
+        .as_str()
+        .unwrap()
+        .ends_with("stretto stage learns it"));
+    assert_eq!(
+        (&v["versions"], &v["unrecorded"]),
+        (&json!([]), &json!(true))
+    );
+    assert!(listed(&c.get("/api/flows").await.json(), "shop")["stage"].is_null());
+
+    // Staged from the six recorded sessions: nothing to compare yet.
+    let job = stage(&c, "logs/shop").await;
+    assert_eq!(job["title"], "Stage shop from logs/shop");
+    assert_eq!(job["params"]["window"], 50);
+    let artifacts: Vec<(&str, &str)> = job["artifacts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| (a["kind"].as_str().unwrap(), a["path"].as_str().unwrap()))
+        .collect();
+    assert_eq!(artifacts[0], ("flow", "shop.staged.flow.json"));
+    assert_eq!(job["artifacts"][0]["key"], "shop.staged");
+    assert!(artifacts[1..].iter().all(|(kind, _)| *kind == "report"));
+    let v = c.get("/api/flows/shop/stage").await.json();
+    assert_eq!(
+        (&v["last"]["sessions"], &v["last"]["compared"]),
+        (&json!(6), &json!(0))
+    );
+
+    // Then with five more, each scored by both flows before it is learned.
+    let all = c.dir.join("all/shop");
+    std::fs::create_dir_all(&all).unwrap();
+    for dir in ["logs/shop", "served/shop", "shadow/shop"] {
+        for entry in std::fs::read_dir(c.dir.join(dir)).unwrap().flatten() {
+            std::fs::copy(entry.path(), all.join(entry.file_name())).unwrap();
+        }
+    }
+    stage(&c, "all/shop").await;
+    let v = c.get("/api/flows/shop/stage").await.json();
+    let last = &v["last"];
+    assert_eq!(
+        (
+            &last["sessions"],
+            &last["new"],
+            &last["compared"],
+            &last["committed"]
+        ),
+        (&json!(11), &json!(5), &json!(5), &json!(true))
+    );
+    for side in ["committed", "staged"] {
+        let t = &last["total"][side];
+        let n = |k: &str| t[k].as_u64().unwrap();
+        assert!(n("lookups") > 0, "{last:#}");
+        assert_eq!(n("detours"), n("lookups") - n("used") - n("served"));
+        let share = t["used_share"]["share"].as_f64().unwrap();
+        let (lower, upper) = (
+            t["used_share"]["lower"].as_f64().unwrap(),
+            t["used_share"]["upper"].as_f64().unwrap(),
+        );
+        assert!(lower <= share && share <= upper, "{t:#}");
+    }
+    assert!(!last["sites"].as_array().unwrap().is_empty());
+    assert_eq!(
+        (&v["evidence"], &v["refused"]),
+        (&json!(true), &Value::Null)
+    );
+    assert!(v["report_markdown"]
+        .as_str()
+        .unwrap()
+        .contains("stretto flow-commit --flow"));
+    assert_eq!(
+        (&v["diff"]["from"], &v["diff"]["to"]),
+        (&json!("shop"), &json!("shop.staged"))
+    );
+    assert_eq!(v["staged"]["key"], "shop.staged");
+    // Each is marked in the list, and the staged flow's key gives the same view.
+    let flows = c.get("/api/flows").await.json();
+    assert_eq!(
+        listed(&flows, "shop")["stage"],
+        json!({"staged": false, "other": "shop.staged", "pending": true})
+    );
+    assert_eq!(
+        listed(&flows, "shop.staged")["stage"],
+        json!({"staged": true, "other": "shop", "pending": true})
+    );
+    assert!(listed(&flows, "shop.promoted")["stage"].is_null());
+    let detail = c.get("/api/flows/shop").await.json();
+    assert_eq!(detail["summary"]["stage"]["other"], "shop.staged");
+    assert_eq!(
+        c.get("/api/flows/shop.staged/stage").await.json()["committed"],
+        "shop"
+    );
+
+    // Committed, with a note: the flow as it was is kept first.
+    let committed = c
+        .call(
+            Method::POST,
+            "/api/flows/shop/commit",
+            Some(json!({"note": " reads the order first "})),
+        )
+        .await;
+    assert_eq!(committed.status, StatusCode::OK, "{}", committed.text());
+    let r = committed.json();
+    assert_eq!(
+        (&r["version"], &r["kind"], &r["note"], &r["current"]),
+        (
+            &json!(2),
+            &json!("commit"),
+            &json!("reads the order first"),
+            &json!(true)
+        )
+    );
+    assert_eq!(r["evidence"]["compared"], 5);
+    assert_eq!(
+        std::fs::read(c.dir.join("shop.flow.json")).unwrap(),
+        std::fs::read(c.dir.join("shop.staged.flow.json")).unwrap()
+    );
+    let v = c.get("/api/flows/shop/stage").await.json();
+    let versions: Vec<(u64, &str, bool)> = v["versions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| {
+            (
+                r["version"].as_u64().unwrap(),
+                r["kind"].as_str().unwrap(),
+                r["current"].as_bool().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(versions, [(2, "commit", true), (1, "found", false)]);
+    assert_eq!(v["unrecorded"], false);
+    assert!(v["refused"].as_str().unwrap().contains("nothing to commit"));
+    assert_eq!(v["staged"]["stage"]["pending"], false);
+    let again = c.call(Method::POST, "/api/flows/shop/commit", None).await;
+    assert_eq!(again.status, StatusCode::CONFLICT);
+    assert!(again.json()["error"]
+        .as_str()
+        .unwrap()
+        .contains("nothing to commit"));
+
+    // Rolled back, by default to the version before, as a version of its own.
+    let back = c.call(Method::POST, "/api/flows/shop/rollback", None).await;
+    assert_eq!(back.status, StatusCode::OK, "{}", back.text());
+    let back = back.json();
+    assert_eq!(
+        (&back["version"], &back["kind"], &back["restored"]),
+        (&json!(3), &json!("rollback"), &json!(1))
+    );
+    assert_eq!(
+        std::fs::read(c.dir.join("shop.flow.json")).unwrap(),
+        std::fs::read(c.dir.join("shop.history/1.flow.json")).unwrap()
+    );
+    for (body, says) in [
+        (json!({"to": 3}), "is the committed flow already"),
+        (json!({"to": 9}), "there is no version 9"),
+    ] {
+        let answer = c
+            .call(Method::POST, "/api/flows/shop/rollback", Some(body))
+            .await;
+        assert_eq!(answer.status, StatusCode::CONFLICT);
+        assert!(answer.json()["error"].as_str().unwrap().contains(says));
+    }
+    let bad = Request::builder()
+        .method(Method::POST)
+        .uri("/api/flows/shop/rollback")
+        .header(header::AUTHORIZATION, format!("Bearer {TOKEN}"))
+        .header("x-stretto-console", "1")
+        .body(Body::from("{"))
+        .unwrap();
+    let bad = c.send(bad).await;
+    assert_eq!(bad.status, StatusCode::BAD_REQUEST);
+    assert!(bad.json()["error"]
+        .as_str()
+        .unwrap()
+        .starts_with("the request is not as expected"));
+}
+
+#[tokio::test]
+async fn what_cannot_be_staged_or_committed_says_why() {
+    let c = console("stage-refused", |_| {});
+    let shop = std::fs::read(c.dir.join("shop.flow.json")).unwrap();
+    for (method, uri) in [
+        (Method::GET, "/api/flows/nothing/stage"),
+        (Method::POST, "/api/flows/nothing/commit"),
+        (Method::POST, "/api/flows/nothing/rollback"),
+    ] {
+        assert_eq!(
+            c.call(method, uri, None).await.status,
+            StatusCode::NOT_FOUND
+        );
+    }
+    // A name that makes it a staged flow's staged flow.
+    std::fs::write(c.dir.join("x.staged.staged.flow.json"), &shop).unwrap();
+    let odd = c.get("/api/flows/x.staged.staged/stage").await;
+    assert_eq!(odd.status, StatusCode::BAD_REQUEST);
+    assert!(odd.json()["error"]
+        .as_str()
+        .unwrap()
+        .contains("is a staged flow"));
+    // A staged flow before its first commit: no committed flow to compare
+    // with, and a commit makes it.
+    std::fs::write(c.dir.join("solo.staged.flow.json"), &shop).unwrap();
+    let v = c.get("/api/flows/solo.staged/stage").await.json();
+    assert_eq!(
+        (
+            &v["committed"],
+            &v["committed_path"],
+            &v["diff"],
+            &v["refused"]
+        ),
+        (
+            &Value::Null,
+            &json!("solo.flow.json"),
+            &Value::Null,
+            &Value::Null
+        )
+    );
+    assert_eq!(v["unrecorded"], false);
+    assert_eq!(
+        listed(&c.get("/api/flows").await.json(), "solo.staged")["stage"],
+        json!({"staged": true, "other": null, "pending": true})
+    );
+    let first = c
+        .call(Method::POST, "/api/flows/solo.staged/commit", None)
+        .await;
+    assert_eq!(first.json()["version"], 1);
+    assert_eq!(std::fs::read(c.dir.join("solo.flow.json")).unwrap(), shop);
+    // Nothing to roll back to.
+    let none = c.call(Method::POST, "/api/flows/shop/rollback", None).await;
+    assert_eq!(none.status, StatusCode::CONFLICT);
+    assert!(none.json()["error"]
+        .as_str()
+        .unwrap()
+        .contains("no earlier version"));
+    // A staged flow that does not load: said, and not committed.
+    std::fs::write(c.dir.join("shop.staged.flow.json"), "not a flow").unwrap();
+    let v = c.get("/api/flows/shop/stage").await.json();
+    assert!(v["refused"].as_str().unwrap().starts_with("parsing "));
+    assert!(v["diff"].is_null());
+    let broken = c.call(Method::POST, "/api/flows/shop/commit", None).await;
+    assert_eq!(broken.status, StatusCode::UNPROCESSABLE_ENTITY);
+    // A state or a history that cannot be read.
+    std::fs::write(c.dir.join("shop.stage.json"), "{").unwrap();
+    for (method, uri) in [
+        (Method::GET, "/api/flows/shop/stage"),
+        (Method::POST, "/api/flows/shop/commit"),
+    ] {
+        let answer = c.call(method, uri, None).await;
+        assert_eq!(answer.status, StatusCode::UNPROCESSABLE_ENTITY, "{uri}");
+        assert!(answer.json()["error"]
+            .as_str()
+            .unwrap()
+            .contains("shop.stage.json"));
+    }
+    std::fs::remove_file(c.dir.join("shop.stage.json")).unwrap();
+    std::fs::create_dir_all(c.dir.join("shop.history")).unwrap();
+    std::fs::write(c.dir.join("shop.history/1.json"), "{}").unwrap();
+    let history = c.get("/api/flows/shop/stage").await;
+    assert_eq!(history.status, StatusCode::UNPROCESSABLE_ENTITY);
+    // A version whose flow is gone.
+    let record = json!({"version": 1, "kind": "commit", "unix_ms": 1});
+    std::fs::write(c.dir.join("shop.history/1.json"), record.to_string()).unwrap();
+    let gone = c.get("/api/flows/shop/stage").await;
+    assert_eq!(gone.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(gone.json()["error"]
+        .as_str()
+        .unwrap()
+        .contains("1.flow.json"));
+
+    // The stage job's own refusals.
+    std::fs::write(c.dir.join("broken.flow.json"), "{\"stretto_flow\": 7}").unwrap();
+    for (body, status, says) in [
+        (
+            json!({"kind": "stage", "flow": "nothing", "sessions": "logs/shop"}),
+            StatusCode::BAD_REQUEST,
+            "no flow",
+        ),
+        (
+            json!({"kind": "stage", "flow": "x.staged.staged", "sessions": "logs/shop"}),
+            StatusCode::BAD_REQUEST,
+            "is a staged flow",
+        ),
+        (
+            json!({"kind": "stage", "flow": "broken", "sessions": "logs/shop"}),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "broken.flow.json does not load",
+        ),
+        (
+            json!({"kind": "stage", "flow": "shop", "sessions": "logs/nothing"}),
+            StatusCode::BAD_REQUEST,
+            "not a directory",
+        ),
+        (
+            json!({"kind": "stage", "flow": "shop", "sessions": "logs/shop", "window": 0}),
+            StatusCode::BAD_REQUEST,
+            "window",
+        ),
+        (
+            json!({"kind": "stage", "flow": "shop", "sessions": "logs/shop", "half_life": 0}),
+            StatusCode::BAD_REQUEST,
+            "half_life 0",
+        ),
+    ] {
+        let answer = c.call(Method::POST, "/api/jobs", Some(body.clone())).await;
+        assert_eq!(answer.status, status, "{body}: {}", answer.text());
+        let error = answer.json()["error"].as_str().unwrap().to_string();
+        assert!(error.contains(says), "{body}: {error}");
+    }
+    // What it runs, with every option, named by the staged flow.
+    std::fs::write(c.dir.join("shop.staged.flow.json"), &shop).unwrap();
+    let request: stretto_console::api::jobs::JobRequest = serde_json::from_value(json!({
+        "kind": "stage", "flow": "shop.staged", "sessions": "logs/shop",
+        "window": 20, "decider": "reach", "half_life": 100.0, "constants": true
+    }))
+    .unwrap();
+    let plan = stretto_console::api::jobs::plan(&c.state, "j", request).unwrap();
+    assert_eq!(plan.kind, JobKind::Stage);
+    let args = plan.args.join(" ");
+    for part in [
+        format!("stage --flow {}", c.dir.join("shop.flow.json").display()),
+        "--domain shop".to_string(),
+        "--window 20".to_string(),
+        "--decider reach --half-life 100 --constants".to_string(),
+    ] {
+        assert!(args.contains(&part), "{args}");
+    }
+}
 
 fn shop_server(name: &str) -> Value {
     json!({
@@ -2113,11 +2492,12 @@ async fn a_job_is_cancelled_queued_or_running() {
     // It prints a line, and another later, so the job's progress is
     // announced. What it starts outlives it: that holds the pipes open,
     // prints once `sleep`, which keeps the FIFO open, has been killed, and
-    // then ends.
+    // then ends. It says it is ready only once the FIFO is open at both
+    // ends, so a cancel from then on closes it, whichever process it kills.
     let stretto = fake_stretto(
         &bin,
-        "echo started\nsleep 0.3\necho ready\nmkfifo gate\n(read x < gate; echo after) &\n\
-         exec 3>gate\nexec sleep 30\n",
+        "echo started\nsleep 0.3\nmkfifo gate\n(read x < gate; echo after) &\n\
+         exec 3>gate\necho ready\nexec sleep 30\n",
     );
     let c = console("cancel", |config| config.binaries.stretto = Some(stretto));
     let doctor = || c.call(Method::POST, "/api/jobs", Some(json!({"kind": "doctor"})));

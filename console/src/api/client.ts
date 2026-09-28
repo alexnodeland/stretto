@@ -5,6 +5,7 @@
  * handed to the sign-in screen, and other errors handed to the toasts.
  */
 import type {
+  CommitRequest,
   FlowDetail,
   FlowDiffView,
   FlowList,
@@ -18,6 +19,7 @@ import type {
   Ok,
   Overview,
   ProbeResult,
+  RollbackRequest,
   ServerInput,
   ServerList,
   ServerView,
@@ -25,6 +27,8 @@ import type {
   SessionList,
   SessionQuery,
   Settings,
+  StageView,
+  VersionView,
 } from './types'
 
 export type Method = 'GET' | 'POST' | 'PUT' | 'DELETE'
@@ -181,6 +185,15 @@ export const api = {
     request<FlowDiffView>('GET', `/api/flows/diff${query({ from, to, threshold })}`, undefined, o),
   deleteFlow: (key: string, o?: RequestOptions) =>
     request<Ok>('DELETE', `/api/flows/${seg(key)}`, undefined, o),
+  /** The flow's staged learning: the staged flow beside it, the comparison, every version. */
+  flowStage: (key: string, o?: RequestOptions) =>
+    request<StageView>('GET', `/api/flows/${seg(key)}/stage`, undefined, o),
+  /** `stretto flow-commit`: 409 when there is nothing to commit. */
+  commitFlow: (key: string, body: CommitRequest, o?: RequestOptions) =>
+    request<VersionView>('POST', `/api/flows/${seg(key)}/commit`, body, o),
+  /** `stretto flow-rollback`: 409 when there is no such version, or it is committed already. */
+  rollbackFlow: (key: string, body: RollbackRequest, o?: RequestOptions) =>
+    request<VersionView>('POST', `/api/flows/${seg(key)}/rollback`, body, o),
 
   servers: (o?: RequestOptions) => request<ServerList>('GET', '/api/servers', undefined, o),
   createServer: (input: ServerInput, o?: RequestOptions) =>

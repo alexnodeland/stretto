@@ -117,6 +117,24 @@ function learned(f: FlowSummary): string {
             >
               promoted {{ f.promoted.sites_promoted }}/{{ f.promoted.sites_scored }}
             </UiBadge>
+            <UiBadge
+              v-if="f.stage?.staged"
+              tone="dashed"
+              :title="
+                f.stage.other
+                  ? `The staged flow of ${f.stage.other}: commit it on that flow's Staged tab`
+                  : 'A staged flow, never committed'
+              "
+              :data-testid="`staged-${f.key}`"
+              >staged</UiBadge
+            >
+            <UiBadge
+              v-else-if="f.stage?.pending"
+              tone="accent"
+              :title="`A staged flow waits beside it: ${f.stage.other}`"
+              :data-testid="`staged-${f.key}`"
+              >staged changes</UiBadge
+            >
           </template>
         </header>
         <p class="flow-path caption">

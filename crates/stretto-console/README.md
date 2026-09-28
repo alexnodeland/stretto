@@ -30,7 +30,7 @@ Open the URL it prints: the token in it signs the browser in (a cookie), and the
 
 ## The API
 
-JSON under `/api`, `snake_case` fields. Times are milliseconds since the Unix epoch (`*_unix_ms`), sizes are bytes, probabilities are 0 to 1. An error is `{"error": "message"}` with its status: 400 for a request that is not as expected, 401 without the token, 403 for a refused change (no `X-Stretto-Console: 1`, `--read-only`, the Host check), 404 for what is not there, 409 for a name or file that exists, 422 for a file stretto cannot read (a flow of another format, a log that is not a session log), 500 otherwise.
+JSON under `/api`, `snake_case` fields. Times are milliseconds since the Unix epoch (`*_unix_ms`), sizes are bytes, probabilities are 0 to 1. An error is `{"error": "message"}` with its status: 400 for a request that is not as expected, 401 without the token, 403 for a refused change (no `X-Stretto-Console: 1`, `--read-only`, the Host check), 404 for what is not there, 409 for a name or file that exists or a commit or rollback that does not fit the files (nothing to commit, no such version), 422 for a file stretto cannot read (a flow of another format, a log that is not a session log), 500 otherwise.
 
 | Method and path | What |
 |---|---|
@@ -46,12 +46,15 @@ JSON under `/api`, `snake_case` fields. Times are milliseconds since the Unix ep
 | `GET /api/flows/:key/raw` | the file, to download |
 | `GET /api/flows/diff?from=&to=&threshold=0.3&tolerance=0.05` | `flow-diff`: the changes to review, every change by heading, and the Markdown |
 | `DELETE /api/flows/:key` | moves the file to the trash |
+| `GET /api/flows/:key/stage` | the flow's staged learning (`stretto stage`), by the committed flow's key or the staged flow's: the staged flow, the last run's comparison site by site with the share's interval, its report, why a commit would be refused, what committing would change (`flow-diff` at its defaults), and every committed version, the latest first (`flow-log`) |
+| `POST /api/flows/:key/commit` | `flow-commit`, with `{note}`: the staged flow becomes the committed flow, with the last comparison as its evidence |
+| `POST /api/flows/:key/rollback` | `flow-rollback`, with `{to, note}`: version `to` (by default the one before) becomes the committed flow again, as a version of its own |
 | `GET /api/servers` | the registry, each server with its `stretto-proxy` arguments, sessions, flow and issues; and the upstreams seen in session headers |
 | `POST /api/servers`, `PUT /api/servers/:name`, `DELETE /api/servers/:name` | change the registry; a `PUT` with another name renames |
 | `GET /api/servers/:name/config?host=claude-code\|claude-desktop\|cursor\|vscode` | what `stretto init` prints for the server: the snippet, where it goes, the next steps |
 | `POST /api/servers/:name/probe` | a live test: `initialize` and `tools/list` now, the tools with their kinds, and what they say against the server's flow |
 | `GET /api/jobs`, `GET /api/jobs/:id` | jobs, newest first, with the last 64 KiB of output; one job with all of it |
-| `POST /api/jobs` | queue `learn`, `promote`, `audit`, `redact` or `doctor` (202) |
+| `POST /api/jobs` | queue `learn`, `promote`, `audit`, `stage`, `redact` or `doctor` (202) |
 | `POST /api/jobs/:id/cancel` | cancel a job: a queued one at once, so it never runs; a running one's `stretto` is killed, and the job ends `cancelled` (409 once it has ended) |
 | `GET /api/jobs/:id/artifacts/:index` | a report or flow a job wrote, to show |
 | `GET /api/settings` | the data directory's size by kind, the binaries, the key, the retention note |
@@ -62,7 +65,7 @@ A session or flow is named by its **key**: its file's stem (`20260928T020401.117
 
 **Types.** With the `ts` feature, every type the API answers with, and each request body, derives `ts_rs::TS`, and `make types` (`cargo test -p stretto-console --features ts --lib api::typescript`) writes them as TypeScript to `console/src/api/generated/` (one file per type, and `index.ts`). The test fails when the files it found there differed, so CI fails until the change to a type is committed with its TypeScript. `src/api/typescript.rs` lists the types. The feature is off by default, so a build, and coverage, leave the derives out.
 
-**Jobs** run the `stretto` CLI as subprocesses, one at a time in the order they were queued (a cancelled one is skipped, and a running one's CLI killed), in the data directory, with the console's environment: the keys and the salt the console was started with reach the CLI, and the console itself only checks whether they are set. A request's paths are relative to the data directory, or start with `~/`; `learn` and `promote` never write over a file unless asked (`overwrite`). `learn` writes `<domain>.flow.json` by default, and fits no arbiter unless `habit_only` is false and a key is set; `promote` writes `<flow name>.promoted.flow.json` beside the flow; `audit` writes its report as JSON and Markdown; `redact` needs `STRETTO_REDACT_SALT`. `doctor` checks the data directory the console serves (`stretto doctor --data`).
+**Jobs** run the `stretto` CLI as subprocesses, one at a time in the order they were queued (a cancelled one is skipped, and a running one's CLI killed), in the data directory, with the console's environment: the keys and the salt the console was started with reach the CLI, and the console itself only checks whether they are set. A request's paths are relative to the data directory, or start with `~/`; `learn` and `promote` never write over a file unless asked (`overwrite`). `learn` writes `<domain>.flow.json` by default, and fits no arbiter unless `habit_only` is false and a key is set; `promote` writes `<flow name>.promoted.flow.json` beside the flow; `audit` writes its report as JSON and Markdown; `stage` learns `<name>.staged.flow.json` beside the flow, and writes its comparison as JSON and Markdown; `redact` needs `STRETTO_REDACT_SALT`. `doctor` checks the data directory the console serves (`stretto doctor --data`).
 
 ## Security
 
@@ -82,8 +85,9 @@ It writes only:
 
 - `servers.json`, the registry: `{"stretto_servers": 1, "servers": [...]}`, written whole to a temporary file beside it and renamed over it;
 - `console/jobs/<id>.json` and `<id>.log`, each job and its output, and the reports jobs write;
-- `console/trash/<time>/`, where deleted sessions and flows go, at their paths. Nothing is unlinked; empty the trash when you choose.
+- `console/trash/<time>/`, where deleted sessions and flows go, at their paths. Nothing is unlinked; empty the trash when you choose;
+- on a commit or a rollback, what `stretto flow-commit` and `flow-rollback` write: the committed flow, and its versions in `<name>.history/`, each written whole to a temporary file and renamed.
 
 ## Tests
 
-The unit tests cover the keys, the scan, the session parser, flows, the registry, the auth checks and path safety. `tests/api.rs` drives every endpoint through the router (`tower::ServiceExt::oneshot`) over a copy of `tests/fixtures/home`, a small `~/.stretto` the real tools made on `stretto-mcp-demo`'s shop, whose customers are synthetic: the quickstart's six recorded sessions, its flow and two served sessions, three sessions with the flow in shadow and the promoted flow, a retail session through the guards with the confirmation judge logging, and a registry of two servers. `tests/fixtures/regenerate.sh` makes them again. The connection tests run `stretto-mcp-demo` over stdio and over HTTP, and the job tests run `stretto`, from the workspace's target directory.
+The unit tests cover the keys, the scan, the session parser, flows, the registry, the auth checks and path safety. `tests/api.rs` drives every endpoint through the router (`tower::ServiceExt::oneshot`) over a copy of `tests/fixtures/home`, a small `~/.stretto` the real tools made on `stretto-mcp-demo`'s shop, whose customers are synthetic: the quickstart's six recorded sessions, its flow and two served sessions, three sessions with the flow in shadow and the promoted flow, a retail session through the guards with the confirmation judge logging, and a registry of two servers. `tests/fixtures/regenerate.sh` makes them again. The connection tests run `stretto-mcp-demo` over stdio and over HTTP, and the job tests run `stretto`, from the workspace's target directory: a flow is staged from the recorded sessions, then from those and five more, committed and rolled back.

@@ -54,3 +54,12 @@ test('promote and audit start from the flow', async ({ page }) => {
   await expect(page).toHaveURL(/\/jobs\/new\?kind=promote&flow=shop/)
   await expect(page.getByTestId('job-flow')).toHaveValue('shop')
 })
+
+test('a flow with nothing staged says how to stage it', async ({ page }) => {
+  await page.goto('/flows/shop?tab=staged')
+  await expect(page.getByTestId('stage-empty')).toContainText('Nothing is staged')
+  await expect(page.getByText('No version has been committed')).toBeVisible()
+  await page.getByRole('link', { name: 'Stage this flow' }).click()
+  await expect(page).toHaveURL(/\/jobs\/new\?kind=stage&flow=shop/)
+  await expect(page.getByTestId('job-flow')).toHaveValue('shop')
+})

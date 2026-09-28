@@ -15,6 +15,7 @@ import {
   Scale,
   Server,
   FileSearch,
+  GitBranch,
   Trash,
   TriangleAlert,
   Workflow,
@@ -35,6 +36,7 @@ import SitesTable from '@/components/flow/SitesTable.vue'
 import BindingsList from '@/components/flow/BindingsList.vue'
 import FlowToolsTable from '@/components/flow/FlowToolsTable.vue'
 import FlowCompare from '@/components/flow/FlowCompare.vue'
+import FlowStage from '@/components/flow/FlowStage.vue'
 import { api, ApiError } from '@/api/client'
 import { useResource } from '@/composables/useResource'
 import { useTitle } from '@/composables/useTitle'
@@ -117,6 +119,7 @@ const tabs = computed(() => [
   { id: 'review', label: 'Review', icon: FileText },
   { id: 'raw', label: 'Raw JSON', icon: Braces },
   { id: 'compare', label: 'Compare', icon: GitCompareArrows },
+  { id: 'staged', label: 'Staged', icon: GitBranch },
 ])
 
 const deciderText = computed(() => {
@@ -166,6 +169,18 @@ async function remove() {
               summary.promoted.sites_scored
             }}</UiBadge
           >
+          <UiBadge
+            v-if="summary.stage?.staged"
+            tone="dashed"
+            title="Learned by stretto stage: commit it on the Staged tab"
+            >staged</UiBadge
+          >
+          <UiBadge
+            v-else-if="summary.stage?.pending"
+            tone="accent"
+            :title="`A staged flow waits beside it: ${summary.stage.other}`"
+            >staged changes</UiBadge
+          >
         </template>
       </template>
       <p v-if="summary" class="sub">
@@ -174,6 +189,16 @@ async function remove() {
         {{ plural(summary.habit_episodes, 'session') }} of
         {{ summary.sources.join(', ') || 'no named source' }}, on
         {{ formatDateTime(summary.compiled_unix_ms) }}. {{ deciderText }}
+      </p>
+      <p v-if="summary?.stage?.staged" class="sub" data-testid="staged-of">
+        The staged flow
+        <template v-if="summary.stage.other"
+          >of
+          <RouterLink :to="{ name: 'flow', params: { key: summary.stage.other } }" class="mono">{{
+            summary.stage.other
+          }}</RouterLink></template
+        >: <span class="mono">stretto stage</span> learns it as sessions arrive, and a commit makes
+        it the committed flow.
       </p>
       <template #actions>
         <UiButton
@@ -397,6 +422,8 @@ async function remove() {
           />
           <UiSkeleton v-else :lines="10" />
         </div>
+
+        <FlowStage v-else-if="tab === 'staged'" :flow-key="key" />
 
         <FlowCompare
           v-else-if="summary"

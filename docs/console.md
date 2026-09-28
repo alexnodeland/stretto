@@ -11,13 +11,14 @@
   - the graph of calls and the lookups that follow them;
   - the sites and their bindings;
   - what would act at another threshold;
-  - the difference from another flow.
-- **Jobs.** `learn`, `promote`, `audit`, `redact` and `doctor`, run from the page, with their output as it comes and the files they wrote.
+  - the difference from another flow;
+  - its staged next version, how the two did on the sessions as they arrived, and every committed version: commit or roll back from there.
+- **Jobs.** `learn`, `promote`, `audit`, `stage`, `redact` and `doctor`, run from the page, with their output as it comes and the files they wrote.
 
 ![The console's overview: this week's sessions, tool calls, lookups served and shadow decisions; the tool calls of the last 14 days; the health checks; and each domain](../brand/media/console/overview-light.png#gh-light-mode-only)
 ![The console's overview: this week's sessions, tool calls, lookups served and shadow decisions; the tool calls of the last 14 days; the health checks; and each domain](../brand/media/console/overview-dark.png#gh-dark-mode-only)
 
-It reads everything through stretto's own code, so what it shows is what `stretto flow-show`, `stretto init` and `stretto doctor` say. The one file it owns is `servers.json`, the registry of servers. [The crate's README](../crates/stretto-console/README.md) documents its API.
+It reads everything through stretto's own code, so what it shows is what `stretto flow-show`, `stretto init`, `stretto flow-log` and `stretto doctor` say. The one file it owns is `servers.json`, the registry of servers. [The crate's README](../crates/stretto-console/README.md) documents its API.
 
 ## Start it
 
@@ -132,6 +133,14 @@ Every session, filtered by domain, mode or text. A session's page is its timelin
 
 Every flow. A flow's page shows its graph, with a threshold slider that shows which lookups would act at another threshold. It has the sites with their bindings, the tools (the writes, which a flow never calls, flagged), the review as `flow-show` prints it, and the raw JSON. From there you can compare it with another flow, download it, promote it or audit it.
 
+Its **Staged** tab is its [staged learning](https://stretto.alexnodeland.com/guide/concepts/staged-flows):
+- the flow a `stage` job learns beside it from the sessions as they arrive;
+- how the two did on those sessions, site by site: the lookups each would have made, how many the agent made later, with a 90% interval on the share, and the detours;
+- what committing the staged flow would change, as `flow-diff` lists it;
+- every committed version, with the evidence each commit rested on.
+
+Commit the staged flow, with a note, or roll back to any version from there. The staged flow's own page names the flow it is staged for.
+
 ![A flow's page: its graph at a threshold of 0.30, where after the agent's find_user_id_by_email the flow looks up get_user_details, then get_order_details, each edge labelled with its share times binding chance](../brand/media/console/flow-light.png#gh-light-mode-only)
 ![A flow's page: its graph at a threshold of 0.30, where after the agent's find_user_id_by_email the flow looks up get_user_details, then get_order_details, each edge labelled with its share times binding chance](../brand/media/console/flow-dark.png#gh-dark-mode-only)
 
@@ -148,17 +157,18 @@ The data directory and its size by kind, the binaries found, whether a Jev key i
 
 ## What it changes
 
-It writes three things, all in the data directory:
+It writes these, all in the data directory:
 
 - `servers.json`, the registry, each time you save a server;
 - `console/jobs/`, each job with its output, and the reports jobs write;
-- `console/trash/`, where a deleted session or flow is moved, never unlinked. Empty it when you choose.
+- `console/trash/`, where a deleted session or flow is moved, never unlinked. Empty it when you choose;
+- when you commit a staged flow or roll back, the committed flow and its versions in `<name>.history/`, as `stretto flow-commit` and `flow-rollback` write them.
 
 It never edits an MCP host's configuration: it shows the snippet to paste, as `stretto init` prints it.
 
 ## Jobs
 
-Jobs run the `stretto` CLI in the data directory, one at a time, in the order they were queued, with the console's environment. So a job that fits an arbiter needs `TYPESAFE_API_KEY` (or `TYPESAFE_API_KEY_FILE`) where the console runs, and `redact` needs `STRETTO_REDACT_SALT`. The console only checks whether they are set. `learn` and `promote` never write over an existing file unless you ask. `doctor` checks the data directory the console serves. A queued or running job can be cancelled from its page: a queued one never runs, and a running one's `stretto` is killed, then the job ends `cancelled`. Stopping the console stops its job too, which is marked as failed at the next start.
+Jobs run the `stretto` CLI in the data directory, one at a time, in the order they were queued, with the console's environment. So a job that fits an arbiter needs `TYPESAFE_API_KEY` (or `TYPESAFE_API_KEY_FILE`) where the console runs, and `redact` needs `STRETTO_REDACT_SALT`. The console only checks whether they are set. `learn` and `promote` never write over an existing file unless you ask. `stage` writes the staged flow beside the flow you name, never the flow itself. `doctor` checks the data directory the console serves. A queued or running job can be cancelled from its page: a queued one never runs, and a running one's `stretto` is killed, then the job ends `cancelled`. Stopping the console stops its job too, which is marked as failed at the next start.
 
 ## Limits
 

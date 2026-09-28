@@ -51,6 +51,10 @@ stretto flow-rollback --flow ~/.stretto/orders.flow.json --to 3
 - **`flow-log`** lists the versions, the latest first.
 - **`flow-rollback`** restores the version before the current one, or `--to` another. The restored flow becomes a new version, so a rollback can be rolled back too.
 
+## In the console
+
+A flow's **Staged** tab in [the console](../console) shows the same: the staged flow, the comparison site by site, what committing it would change, and every version. A `stage` job learns the staged flow, and the tab commits it, with a note, or rolls back to any version. The API under it, `GET /api/flows/:key/stage` and `POST /api/flows/:key/commit` and `/rollback`, does the same from a script.
+
 ## Why it learns again, rather than update
 
 The habit's counts and the bindings' chances are conjugate, and could take in one session at a time. The flow's structure is not. It is fitted to all the sessions at once:

@@ -55,3 +55,64 @@ test('promote and audit start from the flow', async ({ page }) => {
     page.getByText('stretto promote --flow shop.flow.json --sessions shadow/shop'),
   ).toBeVisible()
 })
+
+test('a staged flow is compared with the committed one, committed and rolled back', async ({
+  page,
+}) => {
+  await page.goto('/flows')
+  await expect(page.getByTestId('staged-shop')).toHaveText('staged changes')
+  await expect(page.getByTestId('staged-shop.staged')).toHaveText('staged')
+  await page.goto('/flows/shop?tab=staged')
+  await expect(page.getByTestId('stage-status')).toContainText('learned from 11 sessions')
+  await expect(page.getByTestId('stage-total')).toContainText('12 lookups')
+  await expect(page.getByTestId('stage-delta')).toHaveText('+1 used, −2 detours')
+  await expect(page.getByText('What committing it would change')).toBeVisible()
+  await expect(page.getByText('No version has been committed')).toBeVisible()
+
+  // Committed, with a note: the flow as it was is kept first.
+  await page.getByTestId('stage-commit').click()
+  await expect(page.getByRole('dialog')).toContainText('as version 2')
+  await page.getByTestId('stage-note').fill('reads the order after the account')
+  await page.getByTestId('stage-commit-confirm').click()
+  await expect(page.getByText('Committed as version 2')).toBeVisible()
+  await expect(page.getByTestId('version-2')).toContainText('committed now')
+  await expect(page.getByTestId('version-2')).toContainText('reads the order after the account')
+  await expect(page.getByTestId('version-1')).toContainText('found in place')
+  await expect(page.getByTestId('stage-same')).toBeVisible()
+  await expect(page.getByTestId('stage-commit')).toBeDisabled()
+
+  // Rolled back to the flow as it was, as a version of its own.
+  await page.getByTestId('rollback-1').click()
+  await page.getByTestId('rollback-note').fill('too few sessions yet')
+  await page.getByTestId('rollback-confirm').click()
+  await expect(page.getByText('Rolled back to version 1', { exact: true })).toBeVisible()
+  await expect(page.getByTestId('version-3')).toContainText('rolled back to version 1')
+  await expect(page.getByTestId('version-3')).toContainText('committed now')
+  await expect(page.getByTestId('stage-commit')).toBeEnabled()
+})
+
+test('the staged flow’s page names its committed flow', async ({ page }) => {
+  await page.goto('/flows/shop.staged')
+  await expect(page.getByTestId('staged-of')).toContainText('The staged flow of shop')
+  await page.getByTestId('staged-of').getByRole('link', { name: 'shop' }).click()
+  await expect(page).toHaveURL(/\/flows\/shop$/)
+})
+
+test('a flow with nothing staged is staged by a job', async ({ page }) => {
+  await page.goto('/flows/retail?tab=staged')
+  await expect(page.getByTestId('stage-empty')).toContainText('Nothing is staged')
+  await page.getByRole('link', { name: 'Stage this flow' }).click()
+  await expect(page).toHaveURL(/\/jobs\/new\?kind=stage&flow=retail/)
+  await expect(page.getByTestId('job-flow')).toHaveValue('retail')
+  await expect(
+    page.getByText(
+      'stretto stage --flow flows/retail.flow.json --sessions logs/retail --window 50',
+    ),
+  ).toBeVisible()
+  await page.getByTestId('job-start').click()
+  await expect(page).toHaveURL(/\/jobs\/j-\d+/)
+  await expect(page.getByTestId('job-artifacts')).toContainText('flows/retail.staged.flow.json')
+  await page.goto('/flows/retail?tab=staged')
+  await expect(page.getByTestId('stage-status')).toBeVisible()
+  await expect(page.getByText('No session has been scored by both flows yet')).toBeVisible()
+})

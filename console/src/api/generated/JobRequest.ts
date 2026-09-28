@@ -35,4 +35,23 @@ oracle_cache?: string | null, threshold?: number | null, min_used?: number | nul
 /**
  * By default `<flow name>.promoted.flow.json` beside the flow.
  */
-out?: string | null, overwrite?: boolean | null, } | { "kind": "audit", flow: string, sessions: string, decider?: DeciderName | null, } | { "kind": "redact", sessions: string, out: string, keep_shared?: number | null, hash_fields?: Array<string> | null, } | { "kind": "doctor" };
+out?: string | null, overwrite?: boolean | null, } | { "kind": "audit", flow: string, sessions: string, decider?: DeciderName | null, } | { "kind": "stage", 
+/**
+ * The committed flow's key, or its staged flow's.
+ */
+flow: string, sessions: string, 
+/**
+ * Compare the flows on the last this many sessions both were scored
+ * on (50).
+ */
+window?: number | null, 
+/**
+ * How both flows decide as they are scored; by default each as the
+ * proxy serves it.
+ */
+decider?: DeciderName | null, 
+/**
+ * Forget old sessions: one this many sessions older than the newest
+ * counts half.
+ */
+half_life?: number | null, constants?: boolean | null, } | { "kind": "redact", sessions: string, out: string, keep_shared?: number | null, hash_fields?: Array<string> | null, } | { "kind": "doctor" };

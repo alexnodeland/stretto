@@ -375,11 +375,10 @@ pub fn view(
                 let catalog = data::catalog(state.data_dir());
                 if let Some(file) = catalog.flow_at(path) {
                     let registry = registry::load(state.data_dir()).unwrap_or_default();
-                    flow_summary = Some(flows::summary(
-                        file,
-                        loaded,
-                        flows::served_by(file, &registry, state),
-                    ));
+                    let mut summary =
+                        flows::summary(file, loaded, flows::served_by(file, &registry, state));
+                    summary.stage = flows::stage_link(file, &catalog.flows);
+                    flow_summary = Some(summary);
                 }
             }
         }

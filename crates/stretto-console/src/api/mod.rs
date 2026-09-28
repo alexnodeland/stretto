@@ -15,6 +15,7 @@ pub mod overview;
 pub mod servers;
 pub mod sessions;
 pub mod settings;
+pub mod stage;
 
 use crate::{assets, auth, Shared, State};
 use axum::http::{Method, StatusCode, Uri};
@@ -45,6 +46,9 @@ pub fn router(state: Shared) -> Router {
         .route("/api/flows/diff", get(flows::diff))
         .route("/api/flows/{key}", get(flows::detail).delete(flows::delete))
         .route("/api/flows/{key}/raw", get(flows::raw))
+        .route("/api/flows/{key}/stage", get(stage::view))
+        .route("/api/flows/{key}/commit", post(stage::commit))
+        .route("/api/flows/{key}/rollback", post(stage::rollback))
         .route("/api/servers", get(servers::list).post(servers::create))
         .route(
             "/api/servers/{name}",

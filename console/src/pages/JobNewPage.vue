@@ -1,11 +1,12 @@
 <script setup lang="ts">
-/** Start a job: learn a flow, promote it, audit it, redact sessions to share, or run stretto doctor. */
+/** Start a job: learn a flow, promote it, audit it, stage its next version, redact sessions to share, or run stretto doctor. */
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   BadgeCheck,
   Eraser,
   FileSearch,
+  GitBranch,
   History,
   Play,
   Plus,
@@ -47,6 +48,12 @@ const kinds: { value: JobKind; label: string; icon: typeof Sparkles; body: strin
     label: 'Audit',
     icon: FileSearch,
     body: 'Score a flow against sessions it did not learn from.',
+  },
+  {
+    value: 'stage',
+    label: 'Stage',
+    icon: GitBranch,
+    body: 'Learn a flow’s next version beside it, and compare the two.',
   },
   {
     value: 'redact',
@@ -96,6 +103,14 @@ const promote = reactive({
   overwrite: false,
 })
 const audit = reactive({ flow: q('flow'), sessions: '', decider: '' as '' | DeciderName })
+const stage = reactive({
+  flow: q('flow'),
+  sessions: '',
+  window: 50,
+  decider: '' as '' | DeciderName,
+  half_life: null as number | null,
+  constants: false,
+})
 const redact = reactive({ sessions: '', out: '', keep_shared: 3, hash_fields: [] as string[] })
 const hashDraft = ref('')
 
@@ -154,6 +169,17 @@ function fill(p: unknown) {
         decider: str(p.decider) as '' | DeciderName,
       })
       break
+    case 'stage':
+      kind.value = 'stage'
+      Object.assign(stage, {
+        flow: str(p.flow),
+        sessions: str(p.sessions),
+        window: num(p.window, stage.window),
+        decider: str(p.decider) as '' | DeciderName,
+        half_life: typeof p.half_life === 'number' ? p.half_life : null,
+        constants: p.constants === true,
+      })
+      break
     case 'redact':
       kind.value = 'redact'
       Object.assign(redact, {
@@ -177,6 +203,11 @@ const promoteSessions = computed(
 )
 const auditSessions = computed(
   () => audit.sessions || (flowOf(audit.flow) ? `logs/${flowOf(audit.flow)!.domain}` : ''),
+)
+/** The half-life asked for: an emptied number field holds '', which is none. */
+const halfLife = computed(() => (typeof stage.half_life === 'number' ? stage.half_life : null))
+const stageSessions = computed(
+  () => stage.sessions || (flowOf(stage.flow) ? `logs/${flowOf(stage.flow)!.domain}` : ''),
 )
 const redactOut = computed(
   () =>
@@ -206,6 +237,13 @@ const errors = computed(() => {
   } else if (kind.value === 'audit') {
     if (!audit.flow) e.flow = 'Choose the flow to audit.'
     if (!auditSessions.value) e.sessions = 'Give the directory of sessions.'
+  } else if (kind.value === 'stage') {
+    if (!stage.flow) e.flow = 'Choose the flow to stage.'
+    if (!stageSessions.value) e.sessions = 'Give the directory of sessions.'
+    if (!(stage.window >= 1 && Number.isInteger(stage.window)))
+      e.window = 'A whole number, 1 or more.'
+    if (halfLife.value !== null && !(halfLife.value > 0))
+      e.half_life = 'A number of sessions, more than 0.'
   } else if (kind.value === 'redact') {
     if (!redact.sessions) e.sessions = 'Give the directory of sessions.'
     if (!redactOut.value) e.out = 'Give a directory to write to.'
@@ -247,6 +285,16 @@ const body = computed<JobRequest>(() => {
         flow: audit.flow,
         sessions: auditSessions.value,
         decider: audit.decider || null,
+      }
+    case 'stage':
+      return {
+        kind: 'stage',
+        flow: stage.flow,
+        sessions: stageSessions.value,
+        window: stage.window,
+        decider: stage.decider || null,
+        half_life: halfLife.value,
+        constants: stage.constants,
       }
     case 'redact':
       return {
@@ -309,6 +357,20 @@ const preview = computed(() => {
         ...(b.decider ? ['--decider', b.decider] : []),
         '--json',
         '<report>',
+      ])
+    case 'stage':
+      return commandText([
+        'stretto',
+        'stage',
+        '--flow',
+        flowPath(b.flow),
+        '--sessions',
+        b.sessions || '<dir>',
+        '--window',
+        String(b.window),
+        ...(b.decider ? ['--decider', b.decider] : []),
+        ...(b.half_life ? ['--half-life', String(b.half_life)] : []),
+        ...(b.constants ? ['--constants'] : []),
       ])
     case 'redact':
       return commandText([
@@ -633,6 +695,97 @@ async function submit() {
             <option value="arbiter">arbiter (asks the replay cache)</option>
           </select>
         </UiField>
+      </template>
+
+      <template v-else-if="kind === 'stage'">
+        <div class="row2">
+          <UiField
+            v-slot="{ id, describedby, invalid }"
+            label="Flow"
+            hint="The committed flow: the staged one is learned beside it."
+            :error="err('flow')"
+          >
+            <select
+              :id="id"
+              v-model="stage.flow"
+              class="select"
+              :aria-describedby="describedby"
+              :aria-invalid="invalid"
+              data-testid="job-flow"
+            >
+              <option value="">Choose a flow</option>
+              <option v-for="f in goodFlows" :key="f.key" :value="f.key">
+                {{ f.key }} · {{ f.domain }}
+              </option>
+            </select>
+          </UiField>
+          <UiField
+            v-slot="{ id, describedby, invalid }"
+            label="Sessions"
+            hint="Where the proxy records the flow’s sessions, served or in shadow."
+            :error="err('sessions')"
+          >
+            <input
+              :id="id"
+              v-model="stage.sessions"
+              class="input mono"
+              list="job-dirs"
+              :aria-describedby="describedby"
+              :aria-invalid="invalid"
+              :placeholder="stageSessions || 'logs/<domain>'"
+              spellcheck="false"
+            />
+          </UiField>
+        </div>
+        <div class="row2">
+          <UiField
+            v-slot="{ id, describedby }"
+            label="Compare on the last"
+            hint="Sessions both flows were scored on (--window)."
+            :error="err('window')"
+          >
+            <input
+              :id="id"
+              v-model.number="stage.window"
+              class="input num"
+              type="number"
+              min="1"
+              step="1"
+              :aria-describedby="describedby"
+            />
+          </UiField>
+          <UiField
+            v-slot="{ id, describedby }"
+            label="Forget old sessions"
+            optional
+            hint="A half-life, in sessions: one this many older than the newest counts half."
+            :error="err('half_life')"
+          >
+            <input
+              :id="id"
+              v-model.number="stage.half_life"
+              class="input num"
+              type="number"
+              min="1"
+              step="1"
+              placeholder="never"
+              :aria-describedby="describedby"
+            />
+          </UiField>
+        </div>
+        <UiField v-slot="{ id }" label="Decider" optional>
+          <select :id="id" v-model="stage.decider" class="select">
+            <option value="">Each flow as it is served by default</option>
+            <option value="reach">reach</option>
+            <option value="habit">habit</option>
+            <option value="arbiter">arbiter (asks the replay cache)</option>
+          </select>
+        </UiField>
+        <UiSwitch
+          v-model="stage.constants"
+          label="Constants (--constants)"
+          hint="Also pass arguments the agent always passed with one value, as learn does."
+        />
       </template>
 
       <template v-else-if="kind === 'redact'">

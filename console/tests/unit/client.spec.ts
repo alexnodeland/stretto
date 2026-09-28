@@ -87,6 +87,20 @@ describe('the API client', () => {
     expect(calls[3]!.url).toBe('/api/servers/a%2Fb/config?host=claude-code')
   })
 
+  it('reads a flow’s stage, and commits and rolls it back with the write header', async () => {
+    await api.flowStage('shop.staged')
+    await api.commitFlow('shop', { note: 'reads the order first' })
+    await api.rollbackFlow('shop', { to: 1, note: null })
+    expect(calls.map((c) => [c.init.method, c.url])).toEqual([
+      ['GET', '/api/flows/shop.staged/stage'],
+      ['POST', '/api/flows/shop/commit'],
+      ['POST', '/api/flows/shop/rollback'],
+    ])
+    expect(headers(1)[WRITE_HEADER]).toBe('1')
+    expect(JSON.parse(String(calls[1]!.init.body))).toEqual({ note: 'reads the order first' })
+    expect(JSON.parse(String(calls[2]!.init.body))).toEqual({ to: 1, note: null })
+  })
+
   it('turns {"error"} into an ApiError with the server’s message, and toasts it', async () => {
     next = () => respond(409, { error: 'a server named shop exists' })
     const error = await api.createServer({} as never).catch((e: unknown) => e)

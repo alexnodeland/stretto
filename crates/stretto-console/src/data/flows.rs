@@ -1,6 +1,6 @@
 //! Flows: `*.flow.json`, loaded by [`Flow::load`](stretto_report::flow::Flow).
 
-use crate::api::flows::{FlowSummary, PromotedCounts, ToolCounts};
+use crate::api::flows::{FlowSummary, PromotedCounts, StageLink, ToolCounts};
 use crate::api::sessions::ToolInfo;
 use crate::data::registry::{self, DeciderName, Registry};
 use crate::data::{paths, FlowFile};
@@ -130,6 +130,7 @@ pub fn summary(file: &FlowFile, loaded: &Loaded, served_by: Vec<String>) -> Flow
         lookups: 0,
         promoted: None,
         served_by,
+        stage: None,
         error: None,
     };
     let flow = match &loaded.flow {
@@ -163,6 +164,33 @@ pub fn summary(file: &FlowFile, loaded: &Loaded, served_by: Vec<String>) -> Flow
         sites_scored: p.sites.len(),
     });
     s
+}
+
+/// The part `file` has in staged learning (`stretto stage`), among
+/// `flows`: a staged flow, `NAME.staged.flow.json`, or the committed flow
+/// `NAME.flow.json` beside one.
+pub fn stage_link(file: &FlowFile, flows: &[FlowFile]) -> Option<StageLink> {
+    let name = file.path.file_name()?.to_string_lossy();
+    let (staged, other) = match name.strip_suffix(".staged.flow.json") {
+        Some(stem) if !stem.is_empty() => (true, format!("{stem}.flow.json")),
+        _ => (
+            false,
+            format!("{}.staged.flow.json", name.strip_suffix(".flow.json")?),
+        ),
+    };
+    let other = flows
+        .iter()
+        .find(|f| f.path == file.path.with_file_name(&other));
+    if !staged && other.is_none() {
+        return None;
+    }
+    let pending =
+        other.is_none_or(|o| std::fs::read(&o.path).ok() != std::fs::read(&file.path).ok());
+    Some(StageLink {
+        staged,
+        other: other.map(|o| o.key.clone()),
+        pending,
+    })
 }
 
 /// What a server's tools, as listed now (`tools`, described as `source`),
