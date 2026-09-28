@@ -1,0 +1,82 @@
+/** The server form's checks, the same the server makes, so mistakes show before a save. */
+import type { ServerInput } from '@/api/types'
+
+/** The host's name for the server is the domain: it names a directory and a flow's file. */
+export function checkServerName(name: string): string | null {
+  if (!name) return 'Give the server a name.'
+  if (name.length > 64) return 'Keep the name to 64 characters.'
+  if (!/^[a-z0-9_-]+$/.test(name)) return 'Use lowercase letters, digits, - and _.'
+  if (name.startsWith('-')) return 'Start with a letter, a digit or _.'
+  return null
+}
+
+export function checkEnvName(name: string): string | null {
+  if (!name) return 'Name the variable.'
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name))
+    return `${name} is not a variable name: letters, digits and _, not starting with a digit.`
+  return null
+}
+
+export function checkHeaderName(name: string): string | null {
+  if (!name) return 'Name the header.'
+  if (!/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(name)) return `${name} is not a header name.`
+  return null
+}
+
+export function checkUrl(url: string): string | null {
+  if (!url) return 'Give the server’s URL.'
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return 'That is not a URL.'
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:')
+    return 'Use an http:// or https:// URL.'
+  if (parsed.username || parsed.password)
+    return 'Leave credentials out of the URL: send them in a header from a variable.'
+  return null
+}
+
+export function checkThreshold(value: number | null): string | null {
+  if (value === null) return null
+  if (Number.isNaN(value) || value < 0 || value > 1) return 'A threshold is between 0 and 1.'
+  return null
+}
+
+export type ServerErrors = Partial<
+  Record<'name' | 'command' | 'env' | 'url' | 'headers' | 'flow' | 'threshold', string>
+>
+
+/** Every problem with a server, by field. */
+export function checkServer(input: ServerInput, taken: readonly string[] = []): ServerErrors {
+  const errors: ServerErrors = {}
+  const name = checkServerName(input.name)
+  if (name) errors.name = name
+  else if (taken.includes(input.name)) errors.name = `A server named ${input.name} exists.`
+  if (input.upstream.kind === 'stdio') {
+    if (!input.upstream.command.length || !input.upstream.command[0])
+      errors.command = 'Give the command that starts the server.'
+    const env = input.upstream.env.map(checkEnvName).find(Boolean)
+    if (env) errors.env = env
+  } else {
+    const url = checkUrl(input.upstream.url)
+    if (url) errors.url = url
+    for (const h of input.upstream.headers) {
+      const problem = checkHeaderName(h.name) ?? checkEnvName(h.env)
+      if (problem) {
+        errors.headers = problem
+        break
+      }
+    }
+  }
+  if (input.mode !== 'record' && !input.flow) {
+    errors.flow =
+      input.mode === 'shadow'
+        ? 'Shadow mode runs a flow: choose one.'
+        : 'Serving runs a flow: choose one.'
+  }
+  const threshold = checkThreshold(input.threshold)
+  if (threshold) errors.threshold = threshold
+  return errors
+}
