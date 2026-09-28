@@ -46,7 +46,8 @@ judge: Judge | null,
  */
 commit: boolean, 
 /**
- * When the proxy starts, delete the sessions it recorded, and the logs
- * beside them, older than this many days (`--retain-days`).
+ * When the proxy starts, delete what is older than this many days: the
+ * sessions it recorded, with the logs beside them, and its cached
+ * answers (`--retain-days`).
  */
 retain_days: number | null, created_unix_ms: number, updated_unix_ms: number, };

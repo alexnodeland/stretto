@@ -762,7 +762,7 @@ Usage: stretto init [OPTIONS] --host <HOST> [-- <SERVER_COMMAND>...]
 - `--confirm-judge <MODE>` (one of `log`, `enforce`): Also put each write the guards check for a confirmation to the System-One model: `log` records its judgments, `enforce` refuses the writes it fails (`stretto-proxy --confirm-judge`). The proxy needs TYPESAFE_API_KEY, and the conversation in --context.
 - `--context <FILE>`: The file the host appends the conversation to, as JSON lines, which the confirmation judge reads (`stretto-proxy --context`).
 - `--commit`: Offer `stretto_commit`: several calls in one, in order, each checked by the guards (`stretto-proxy --commit`).
-- `--retain-days <DAYS>`: When the proxy starts, delete the sessions it recorded, and the logs beside them, older than this many days (`stretto-proxy --retain-days`).
+- `--retain-days <DAYS>`: When the proxy starts, delete what is older than this many days: the sessions it recorded, with the logs beside them, and its cached answers (`stretto-proxy --retain-days`).
 - `--upstream <URL>`: A Streamable HTTP server, such as `https://example.com/mcp`, in place of a server command: the proxy connects to it (`stretto-proxy --upstream`).
 - `--upstream-header <NAME=VAR>` (repeatable): With --upstream: send header NAME with the value of environment variable VAR, which the host gives the proxy in its `env` (`stretto-proxy --upstream-header`). The value is not written.
 

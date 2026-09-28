@@ -1650,6 +1650,16 @@ async fn a_servers_guards_judge_commit_and_retention_reach_the_proxy() {
         .as_str()
         .unwrap()
         .contains("--guards --confirm-judge enforce"));
+    // The next steps keep them, and say what the judge needs.
+    let steps = config["next_steps"].as_str().unwrap();
+    assert!(
+        steps.contains("--domain retail --retain-days 30 --guards --confirm-judge enforce"),
+        "{steps}"
+    );
+    assert!(
+        steps.contains("reads the conversation from ~/.stretto/context/retail.jsonl"),
+        "{steps}"
+    );
     // Guards are the domain's, and the judge asks about the writes they check.
     let mut unguarded = body.clone();
     unguarded["name"] = json!("shop-guarded");

@@ -14,7 +14,7 @@ A deployment records what its tools read and return, and what its customers say.
 | Flow, `*.flow.json` | `stretto compile`, `stretto learn` | Tool names and their documentation, argument names, JSON paths, counts and question texts. **`map.ids` holds values copied from training outputs** ([formats](formats.md)); `compile --no-features` leaves it empty. `flow-show` counts them but doesn't print them. |
 | Arbiter, `*.arbiter.json` | `stretto export-arbiter`, `fit-arbiter` | Weights, the predicates' texts, the model's name and the flow it came from. No session data. |
 | Answer bundle, `answers-*.jsonl.gz` | `stretto export-answers` | Request keys and answers, as in the cache. No states. |
-| Server registry, `servers.json` | `stretto-console` | Each server's name, its command or URL, the *names* of the environment variables and headers it needs (never their values), its mode, flow, decider and threshold. |
+| Server registry, `servers.json` | `stretto-console` | Each server's name, its command or URL, the *names* of the environment variables and headers it needs (never their values), its mode, flow, decider and threshold; the guards, the confirmation judge and the path of the conversation file it reads, `stretto_commit`, and how many days the proxy keeps what it records. |
 | Jobs, `console/jobs/<id>.json` and `<id>.log` | `stretto-console` | Each job's parameters, its command line and exit code, and everything the `stretto` CLI printed. The reports jobs write (an audit's, a promotion's) are beside them. |
 | Trash, `console/trash/<time>/` | `stretto-console` | Sessions and flows deleted from the console, whole, at their paths. **As sensitive as what they were**, until you empty it. |
 

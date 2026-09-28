@@ -113,8 +113,9 @@ pub struct Policy {
     /// Offer `stretto_commit`, several calls in one, each checked by the
     /// guards (`--commit`).
     pub commit: bool,
-    /// When the proxy starts, delete the sessions it recorded, and the logs
-    /// beside them, older than this many days (`--retain-days`).
+    /// When the proxy starts, delete what is older than this many days: the
+    /// sessions it recorded, with the logs beside them, and its cached
+    /// answers (`--retain-days`).
     pub retain_days: Option<u64>,
 }
 
@@ -358,6 +359,14 @@ pub fn expand_home(path: &str, home: Option<&Path>) -> PathBuf {
 /// run. `init` is how to call `stretto init` again for the same host and
 /// server, up to the options that differ.
 pub fn next_steps(setup: &Setup, init: &str) -> String {
+    // The guards, the judge, `stretto_commit` and retention are init's
+    // options too, the same at every step.
+    let mut init = init.to_string();
+    for word in setup.policy.args() {
+        init.push(' ');
+        init.push_str(&shell_quote(&word));
+    }
+    let init = init.as_str();
     let d = &setup.domain;
     let server: Vec<String> = setup.target().iter().map(|w| shell_quote(w)).collect();
     let server = server.join(" ");
@@ -446,6 +455,15 @@ pub fn next_steps(setup: &Setup, init: &str) -> String {
              server TYPESAFE_API_KEY (or TYPESAFE_API_KEY_FILE) in the host's `env`, or serve it \
              with `--flow-decider habit`, which needs no key.\n",
         );
+    }
+    if let Some(judge) = &setup.policy.judge {
+        out.push_str(&format!(
+            "\nThe confirmation judge asks TypeSafe's Jev about each write the guards check for a \
+             confirmation: give the server TYPESAFE_API_KEY (or TYPESAFE_API_KEY_FILE) in the \
+             host's `env`. It reads the conversation from {}, which the host appends to, one JSON \
+             line per message: {{\"role\": \"user\" | \"assistant\", \"content\": text}}.\n",
+            judge.context
+        ));
     }
     out
 }
@@ -777,6 +795,35 @@ mod tests {
         assert_eq!(expand_home("~bob/f", Some(home)), Path::new("~bob/f"));
         assert_eq!(expand_home("~/f", None), Path::new("~/f"));
         assert_eq!(expand_home("/abs/f", Some(home)), Path::new("/abs/f"));
+    }
+
+    #[test]
+    fn the_next_steps_keep_the_policy_and_say_what_the_judge_needs() {
+        let mut s = setup(None);
+        s.domain = "retail".to_string();
+        s.policy = Policy {
+            guards: true,
+            judge: Some(Judge {
+                enforce: false,
+                context: "~/.stretto/context/retail.jsonl".to_string(),
+            }),
+            commit: true,
+            retain_days: Some(30),
+        };
+        let steps = next_steps(&s, "stretto init --host cursor --domain retail");
+        assert!(
+            steps.contains(
+                "stretto init --host cursor --domain retail --retain-days 30 --guards \
+                 --confirm-judge log --context ~/.stretto/context/retail.jsonl --commit \
+                 --flow ~/.stretto/retail.flow.json --shadow -- npx"
+            ),
+            "{steps}"
+        );
+        assert!(
+            steps.contains("reads the conversation from ~/.stretto/context/retail.jsonl"),
+            "{steps}"
+        );
+        assert!(!next_steps(&setup(None), INIT).contains("confirmation judge"));
     }
 
     #[test]

@@ -992,9 +992,9 @@ struct InitArgs {
     /// by the guards (`stretto-proxy --commit`).
     #[arg(long)]
     commit: bool,
-    /// When the proxy starts, delete the sessions it recorded, and the logs
-    /// beside them, older than this many days (`stretto-proxy
-    /// --retain-days`).
+    /// When the proxy starts, delete what is older than this many days: the
+    /// sessions it recorded, with the logs beside them, and its cached
+    /// answers (`stretto-proxy --retain-days`).
     #[arg(long, value_name = "DAYS", value_parser = clap::value_parser!(u64).range(1..))]
     retain_days: Option<u64>,
     /// A Streamable HTTP server, such as `https://example.com/mcp`, in place

@@ -553,7 +553,7 @@ const modes: { value: ServerMode; title: string; body: string }[] = [
         v-slot="{ id, describedby, invalid }"
         label="Keep sessions for"
         optional
-        hint="Days. When the proxy starts, it deletes the sessions it recorded, and the logs beside them, older than this (--retain-days). Empty keeps them all."
+        hint="Days. When the proxy starts, it deletes what is older: the sessions it recorded, with the logs beside them, and its cached answers (--retain-days). Empty keeps everything."
         :error="shown('retain_days')"
       >
         <input

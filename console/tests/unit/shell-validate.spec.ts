@@ -81,9 +81,9 @@ describe('the server form’s checks', () => {
       /no policy guards for orders: retail and airline have them/,
     )
     expect(checkServer({ ...base, name: '', guards: true }).guards).toMatch(/this server/)
-    expect(
-      checkServer({ ...retail, judge: { mode: 'log', context: '  ' } }).context,
-    ).toMatch(/conversation/)
+    expect(checkServer({ ...retail, judge: { mode: 'log', context: '  ' } }).context).toMatch(
+      /conversation/,
+    )
     for (const days of [0, 1.5, -3]) {
       expect(checkServer({ ...retail, retain_days: days }).retain_days).toMatch(/at least one/)
     }
