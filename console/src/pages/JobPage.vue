@@ -172,7 +172,11 @@ const icons = { flow: Workflow, report: FileText, dir: FolderOpen }
         <UiCard
           :title="shownView === 'report' ? 'Report' : 'Output'"
           :caption="
-            running ? 'Live, as the job writes it' : 'stdout and stderr, the last 64 KiB in lists'
+            shownView === 'report'
+              ? 'The Markdown report it wrote, rendered'
+              : running
+                ? 'Live, as the job writes it'
+                : 'stdout and stderr, as it printed them'
           "
           flush
         >
