@@ -1,15 +1,17 @@
 name: Container
 
-# The container image, from the Dockerfile.
+# The container images, from the Dockerfile: the CLI (the default target)
+# and the console (`--target console`).
 #
-# - Pull requests and pushes to main that change what goes into the image:
-#   build it for linux/amd64, publish nothing, and run each binary and the
-#   quickstart in it.
-# - A version tag (v0.2.0): build it for linux/amd64 and linux/arm64 (arm64
-#   under QEMU, which is slow) and publish ghcr.io/alexnodeland/stretto with
-#   the tags 0.2.0, 0.2 and latest (a pre-release tag, v0.2.0-rc.1, gets
-#   only its own). Run by hand on a tag, it publishes that tag's image: the
-#   release workflow does so when it is itself run by hand.
+# - Pull requests and pushes to main that change what goes into them: build
+#   both for linux/amd64, publish nothing, run each binary and the quickstart
+#   in the CLI's image, and start the console's and use it over HTTP.
+# - A version tag (v0.2.0): build both for linux/amd64 and linux/arm64 (arm64
+#   under QEMU, which is slow) and publish ghcr.io/alexnodeland/stretto and
+#   ghcr.io/alexnodeland/stretto-console with the tags 0.2.0, 0.2 and latest
+#   (a pre-release tag, v0.2.0-rc.1, gets only its own). Run by hand on a
+#   tag, it publishes that tag's images: the release workflow does so when
+#   it is itself run by hand.
 #
 # docs/releasing.md has the steps around it.
 on:
@@ -20,7 +22,12 @@ on:
       - Cargo.toml
       - Cargo.lock
       - "crates/**"
+      - "console/**"
+      - brand/tokens.css
+      - "brand/fonts/**"
+      - "brand/logo/**"
       - "examples/quickstart/**"
+      - compose.yaml
       - .github/workflows/container.yml
   push:
     branches: [main]
@@ -32,7 +39,12 @@ on:
       - Cargo.toml
       - Cargo.lock
       - "crates/**"
+      - "console/**"
+      - brand/tokens.css
+      - "brand/fonts/**"
+      - "brand/logo/**"
       - "examples/quickstart/**"
+      - compose.yaml
       - .github/workflows/container.yml
   workflow_dispatch:
 
@@ -41,6 +53,7 @@ permissions:
 
 env:
   IMAGE: ghcr.io/alexnodeland/stretto
+  CONSOLE_IMAGE: ghcr.io/alexnodeland/stretto-console
 
 jobs:
   build:
@@ -65,6 +78,54 @@ jobs:
           done
           docker run --rm stretto:ci doctor
           docker run --rm --entrypoint /usr/local/share/stretto/quickstart/run.sh stretto:ci
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: console
+          platforms: linux/amd64
+          load: true
+          tags: stretto-console:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      # As compose.yaml runs it: this runner's user, a data directory mounted
+      # from the host, the port on 127.0.0.1 only, and a token of its own.
+      - name: The console, in its image
+        env:
+          STRETTO_CONSOLE_TOKEN: ci-token
+        run: |
+          mkdir -p "$RUNNER_TEMP/stretto"
+          docker run -d --name console --user "$(id -u):$(id -g)" \
+            -p 127.0.0.1:8080:8080 -e STRETTO_CONSOLE_TOKEN \
+            -v "$RUNNER_TEMP/stretto:/data/.stretto" stretto-console:ci
+          # The image's HEALTHCHECK runs `stretto-console healthcheck`.
+          for _ in $(seq 30); do
+            [ "$(docker inspect -f '{{.State.Health.Status}}' console)" = healthy ] && break
+            sleep 2
+          done
+          docker logs console
+          test "$(docker inspect -f '{{.State.Health.Status}}' console)" = healthy
+          curl -fsS http://127.0.0.1:8080/api/health
+          # The API wants the token; with it, the console reads the mounted directory.
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/meta)" = 401
+          curl -fsS -H "Authorization: Bearer $STRETTO_CONSOLE_TOKEN" http://127.0.0.1:8080/api/meta \
+            | grep -q '"data_dir":"/data/.stretto"'
+          curl -fsS -H "Authorization: Bearer $STRETTO_CONSOLE_TOKEN" http://127.0.0.1:8080/api/overview >/dev/null
+          # The UI is built in: the app's page, not the one saying how to build it.
+          page=$(curl -fsS http://127.0.0.1:8080/)
+          echo "$page" | grep -q 'id="app"'
+          if echo "$page" | grep -q 'has no UI in it'; then exit 1; fi
+          # A job runs the stretto CLI beside the console in the image.
+          auth="Authorization: Bearer $STRETTO_CONSOLE_TOKEN"
+          id=$(curl -fsS -H "$auth" -H 'X-Stretto-Console: 1' -H 'Content-Type: application/json' \
+            -d '{"kind":"doctor"}' http://127.0.0.1:8080/api/jobs | jq -r .id)
+          for _ in $(seq 30); do
+            status=$(curl -fsS -H "$auth" "http://127.0.0.1:8080/api/jobs/$id" | jq -r .status)
+            case $status in succeeded|failed) break ;; esac
+            sleep 1
+          done
+          curl -fsS -H "$auth" "http://127.0.0.1:8080/api/jobs/$id" | jq .
+          test "$status" = succeeded
+          docker rm -f console
 
   publish:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -106,3 +167,37 @@ jobs:
           cache-to: type=gha,mode=max
       - name: The published image runs
         run: docker run --rm "$IMAGE:${{ steps.meta.outputs.version }}" --version
+      # The console, from the same build: only its last stage differs.
+      - id: console-meta
+        uses: docker/metadata-action@v5
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
+        with:
+          images: ${{ env.CONSOLE_IMAGE }}
+          flavor: latest=false
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+          # The repository's title and description would name the CLI.
+          labels: |
+            org.opencontainers.image.title=stretto-console
+            org.opencontainers.image.description=stretto's web console: the MCP servers stretto fronts, their recorded sessions, the flows learned from them, and jobs, over ~/.stretto.
+            org.opencontainers.image.documentation=https://github.com/alexnodeland/stretto/blob/main/docs/console.md
+          annotations: |
+            org.opencontainers.image.title=stretto-console
+            org.opencontainers.image.description=stretto's web console: the MCP servers stretto fronts, their recorded sessions, the flows learned from them, and jobs, over ~/.stretto.
+            org.opencontainers.image.documentation=https://github.com/alexnodeland/stretto/blob/main/docs/console.md
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: console
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.console-meta.outputs.tags }}
+          labels: ${{ steps.console-meta.outputs.labels }}
+          annotations: ${{ steps.console-meta.outputs.annotations }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: The published console runs
+        run: docker run --rm "$CONSOLE_IMAGE:${{ steps.console-meta.outputs.version }}" --version

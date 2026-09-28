@@ -6,9 +6,11 @@ name: Release
 # v<the version in Cargo.toml> first. Run by hand as a dry run (the
 # default), it builds and packages every target and uploads what the
 # release would carry as the workflow's artifact `release`, and publishes
-# nothing. The release carries the binaries for five targets, an archive each
-# with LICENSE and README.md, their SHA256SUMS, install.sh, install.ps1 and
-# a Homebrew formula with the checksums filled in. A tag with a hyphen
+# nothing. The release carries the binaries for five targets (stretto,
+# stretto-proxy, stretto-procedure, stretto-mcp-demo, and stretto-console
+# with its UI built in), an archive each with LICENSE and README.md, their
+# SHA256SUMS, install.sh, install.ps1 and a Homebrew formula with the
+# checksums filled in. A tag with a hyphen
 # (v0.2.0-rc.1) makes a pre-release, which install.sh does not take as the
 # latest. Nothing is published to crates.io. docs/releasing.md has the
 # steps.
@@ -68,8 +70,27 @@ jobs:
           path: notes.md
           if-no-files-found: error
 
+  # The console's UI (console/dist), built once: every target's
+  # stretto-console embeds the same files.
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+      - run: npm ci --prefix console
+      - run: npm run build --prefix console
+      - uses: actions/upload-artifact@v4
+        with:
+          name: console-ui
+          path: console/dist/
+          if-no-files-found: error
+
   build:
-    needs: notes
+    needs: [notes, ui]
     name: build (${{ matrix.target }})
     strategy:
       fail-fast: false
@@ -96,9 +117,16 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: console-ui
+          path: console/dist
       - name: Build
         shell: bash
-        run: cargo build --locked --release --target "$TARGET" -p stretto-report -p stretto-proxy
+        run: |
+          # stretto-console embeds console/dist; without it, it would build with no UI.
+          test -f console/dist/index.html
+          cargo build --locked --release --target "$TARGET" -p stretto-report -p stretto-proxy -p stretto-console
       - name: Package
         shell: bash
         run: |
@@ -106,13 +134,13 @@ jobs:
           exe=
           case $TARGET in *-windows-*) exe=.exe ;; esac
           mkdir "$name"
-          for bin in stretto stretto-proxy stretto-procedure stretto-mcp-demo; do
+          for bin in stretto stretto-proxy stretto-procedure stretto-mcp-demo stretto-console; do
             cp "target/$TARGET/release/$bin$exe" "$name/"
           done
           cp LICENSE README.md "$name/"
           # Each binary answers --version, where the runner can run it.
           if [ "$TARGET" != x86_64-apple-darwin ]; then
-            for bin in stretto stretto-proxy stretto-procedure stretto-mcp-demo; do
+            for bin in stretto stretto-proxy stretto-procedure stretto-mcp-demo stretto-console; do
               "./$name/$bin$exe" --version
             done
           fi
@@ -141,7 +169,12 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: dist
+          pattern: stretto-*
           merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: notes
+          path: dist
       - name: Checksums, the installers and the Homebrew formula
         working-directory: dist
         run: |

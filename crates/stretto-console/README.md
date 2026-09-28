@@ -1,6 +1,6 @@
 # stretto-console
 
-stretto's management plane: a local web app over the files stretto already writes to `~/.stretto`. It shows the MCP servers stretto fronts and the host configuration for each, the recorded sessions call by call with the flow's lookups and why it made them, the flows as a reviewer reads them, and the `stretto` CLI's jobs, and it runs those jobs. It is one binary, `stretto-console`, with the UI (`console/`, Vue) embedded.
+stretto's management plane: a local web app over the files stretto already writes to `~/.stretto`. It shows the MCP servers stretto fronts and the host configuration for each, the recorded sessions call by call with the flow's lookups and why it made them, the flows as a reviewer reads them, and the `stretto` CLI's jobs, and it runs those jobs. It is one binary, `stretto-console`, with the UI (`console/`, Vue) embedded. [docs/console.md](../../docs/console.md) is the guide to using it; this page documents how it works.
 
 It reads through stretto's own library, so it cannot disagree with the CLI: sessions through `stretto_trace::mcp`, flows through `stretto_report::flow::Flow` and `stretto_report::review::view` (what `stretto flow-show` renders), host configuration through `stretto_report::init` (what `stretto init` prints), and the data directory as `stretto doctor` walks it. The one file it owns is the server registry, `servers.json`.
 
@@ -17,7 +17,7 @@ Open the URL it prints: the token in it signs the browser in (a cookie), and the
 | Option | What it does |
 |---|---|
 | `--data DIR` | The data directory. Default: `$STRETTO_HOME`, else `~/.stretto`, created if missing. |
-| `--listen ADDR` | Where to listen. Default: `$STRETTO_CONSOLE_LISTEN`, else `127.0.0.1:7878`. A container passes `--listen 0.0.0.0:8080`. |
+| `--listen ADDR` | Where to listen. Default: `$STRETTO_CONSOLE_LISTEN`, else `127.0.0.1:7878`. The container image sets `STRETTO_CONSOLE_LISTEN=0.0.0.0:8080`. |
 | `--token TOKEN` | The token the API requires. Default: `$STRETTO_CONSOLE_TOKEN`, else 32 random bytes as hex, new at each start and printed in the URL. A token you give is never printed. |
 | `--no-auth` | Require no token. Refused unless `--listen` is a loopback address. |
 | `--read-only` | Change nothing: every write and action is refused. |
