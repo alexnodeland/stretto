@@ -62,6 +62,11 @@ pub struct Config {
     pub domain: Option<String>,
     /// Model that drives the agent, for the log header.
     pub agent_model: Option<String>,
+    /// The host session the proxy runs in, for the log header
+    /// ([`LogHeader::host_session`]).
+    pub host_session: Option<String>,
+    /// The server's name, for the log header ([`LogHeader::server_name`]).
+    pub server_name: Option<String>,
 }
 
 impl Config {
@@ -375,6 +380,8 @@ fn header(config: &Config) -> LogHeader {
         },
         domain: config.domain.clone(),
         agent_model: config.agent_model.clone(),
+        host_session: config.host_session.clone(),
+        server_name: config.server_name.clone(),
     }
 }
 

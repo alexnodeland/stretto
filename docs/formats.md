@@ -56,7 +56,7 @@ The actions the habit predicts: `"Respond"` (a message to the customer with no t
 ### `manifest`
 
 - `domain`: the domain's name, from `--domain`.
-- `tools`: each tool's kind: `read` (reads without changing anything), `write` (changes state) or `generic` (neither, or unknown). `compile` takes kinds from τ²-bench's tool types. `learn` takes them from the servers' `readOnlyHint` annotations in the recorded `tools/list`, or from `--manifest`. A tool that gave no hint is `generic`. Only `read` tools are ever looked up by the flow.
+- `tools`: each tool's kind: `read` (reads without changing anything), `write` (changes state) or `generic` (neither, or unknown). `compile` takes kinds from τ²-bench's tool types. `learn` takes them from the servers' `readOnlyHint` annotations in the recorded `tools/list`, or from `--manifest`. A tool that gave no hint is `generic`. Only `read` tools are ever looked up by the flow. A flow learned from sessions of several servers names each tool after its server, `docs::search`, everywhere in the file, and after a call looks up only that call's server's tools ([several servers](../crates/stretto-proxy/README.md#several-servers)).
 - `docs`: each tool's documentation, where the source had any: `summary`, one paragraph, and `args`, each argument's description. The System-One questions show it.
 
 ### `map`

@@ -116,6 +116,8 @@ enum Command {
     /// logs in a directory) and write its IR, as `compile` does from
     /// τ²-bench results. The tools come from the sessions' `tools/list`
     /// responses (their `readOnlyHint` annotations), or from `--manifest`.
+    /// The logs one host session left with several servers are one session,
+    /// each tool named after its server (`server::tool`).
     /// With `--results`, the sessions are τ²-bench episodes on a checkout's
     /// training tasks instead, as if a deployment had recorded them.
     Learn {
@@ -203,8 +205,9 @@ enum Command {
         /// sessions' own `tools/list`.
         #[arg(help_heading = "Inputs", value_name = "FILE", long)]
         manifest: Option<PathBuf>,
-        /// Rewards by session id (JSON object). Sessions without one count as
-        /// successful.
+        /// Rewards by session id (JSON object): a log's session, or, for the
+        /// logs a host session left with several servers, the host session.
+        /// Sessions without one count as successful.
         #[arg(help_heading = "Inputs", value_name = "FILE", long)]
         rewards: Option<PathBuf>,
         /// Who answers the held-out questions the arbiter is fitted on.
@@ -1475,7 +1478,7 @@ fn run(cli: Cli, env: &mut Env) -> Result<i32> {
                         )?,
                         None => BTreeMap::new(),
                     };
-                    let logs = stretto_trace::mcp::read_sessions(&sessions)?;
+                    let logs = sessions_in(&sessions)?;
                     let manifest = match manifest {
                         Some(path) => serde_json::from_str(&std::fs::read_to_string(&path)?)?,
                         None => stretto_trace::mcp::manifest_of(&logs, &domain),
@@ -2834,6 +2837,28 @@ fn ask(
     Ok(())
 }
 
+/// The sessions recorded in `dir`: its session logs, with the logs of each
+/// host session that spans several servers merged into one
+/// ([`stretto_trace::mcp::merge`]), as it says on stderr.
+fn sessions_in(dir: &Path) -> Result<Vec<stretto_trace::mcp::McpLog>> {
+    let sessions = stretto_trace::mcp::merge(stretto_trace::mcp::read_sessions(dir)?);
+    if sessions.merged_sessions > 0 {
+        eprintln!(
+            "stretto: merged {} logs of several servers into {} sessions, each tool named \
+             after its server (server::tool)",
+            sessions.merged_logs, sessions.merged_sessions
+        );
+    }
+    for host in &sessions.apart {
+        eprintln!(
+            "stretto: kept the logs of host session {host} apart, as two servers of the same \
+             name ran in it at once; name each server with stretto-proxy --server-name, or give \
+             each session its own STRETTO_SESSION"
+        );
+    }
+    Ok(sessions.logs)
+}
+
 /// Recorded episodes for a flow of `domain`: the proxy's sessions in
 /// `sessions` (each its own task), and the episodes of `results` for the
 /// domain, only the test split of `tau2` if given, and only `task_ids` if
@@ -2847,7 +2872,7 @@ fn recorded(
 ) -> Result<Vec<stretto_report::promote::Recorded>> {
     let mut episodes = Vec::new();
     if let Some(dir) = sessions {
-        for log in stretto_trace::mcp::read_sessions(dir)? {
+        for log in sessions_in(dir)? {
             let (mut episode, sent_after) = stretto_trace::mcp::episode_sent(&log);
             episode.task_id = episode.id.clone();
             episodes.push(stretto_report::promote::Recorded {

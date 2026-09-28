@@ -148,7 +148,7 @@ A flow learned with `--habit-only` has no arbiter, so `init` serves it with the 
 - **Paths.** Hosts start servers without a shell. The proxy expands a leading `~` in its own path options (`--record`, `--flow`, `--context`, `--flow-log`, `--confirm-log`, `--oracle-cache`), but the server's arguments after `--` are passed as written: give them as absolute paths.
 - **Finding the program.** Some hosts do not see your shell's `PATH`. `init` writes `stretto-proxy`'s full path for Claude Desktop, which starts servers with a minimal `PATH`. If another host cannot start it, use its full path too, from `which stretto-proxy`; the same goes for `npx` or the server's own command.
 - **Credentials.** Put them in `env`, not in `args`. The proxy never records its environment; it replaces credential-looking arguments in the log's header with `<redacted>`, but only as a best effort.
-- **One proxy per server.** Wrap each server you want to record in its own proxy, with its own `--domain`. A flow learns from one server's calls.
+- **One proxy per server.** Wrap each server you want to record in its own proxy, with its own `--domain`. For a flow across several servers, record them into one directory ([several servers](/guide/concepts/sessions#several-servers)).
 - **Its messages.** The proxy writes to stderr, prefixed `stretto-proxy:`; the first message says where the log is. Hosts usually keep a server's stderr in their MCP logs.
 - **Exit status.** The proxy exits with the server's status, or with 125 if the proxy itself fails, such as when the log cannot be created or the server cannot be started.
 

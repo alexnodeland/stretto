@@ -40,6 +40,15 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 - With `--commit`, the proxy tells the agent when to use `stretto_commit`: a sentence after the server's own `instructions` in its answer to `initialize`, which hosts such as Claude Code put in the system prompt ([#37](https://github.com/alexnodeland/stretto/issues/37)).
 
+### Several servers
+
+- An agent with several MCP servers leaves one log per server in each session; stretto now learns from them as one session ([#22](https://github.com/alexnodeland/stretto/issues/22), [several servers](crates/stretto-proxy/README.md#several-servers)).
+  - Each proxy records the host session it ran in, in the log header (`host_session`): `STRETTO_SESSION` when the host's environment sets it, else the host's process, `host-<pid>` (on Unix). `stretto-proxy --server-name` names the server (`server_name`); by default a server goes by `--domain`, else the name it gives itself.
+  - `stretto learn`, `promote`, `audit` and `drift` merge the logs of one host session that ran at the same time into one session: their lines in time order, each tool named after its server (`docs::search`), the conversation once, and LLM turns inferred across the servers. They say so on stderr. A host session in which two servers of one name ran at once, such as a harness's sessions run from one process, stays apart, and they say that too.
+  - `stretto-proxy`, serving a flow learned so, looks up only its own server's tools, by their own names, and leaves a lookup on another server to the agent. A proxy whose server's name is none of the flow's says so, and looks nothing up.
+  - `stretto redact` counts a host session's logs as one session when it decides which values few sessions share.
+- In the libraries: `stretto_trace::mcp::merge` with `Sessions`, `session_groups`, `server_name`, `qualify`, `server_of`, `unqualified` and `qualify_episode`; `LogHeader::host_session` and `server_name`; `stretto_proxy::Config::host_session` and `server_name`. A flow learned across servers still decides at every site, and looks up only the tools of the server whose call returned.
+
 ### The console
 
 - `stretto-console`, a new crate and binary: the server of stretto's management plane, a local web app over the data directory (`~/.stretto`, `--data` or `$STRETTO_HOME`). Its JSON API lists and shows the recorded sessions call by call, with each of the flow's lookups and the decision that made it; the flows, as `stretto flow-show` reviews them and as `stretto flow-diff` compares them; a registry of the MCP servers stretto fronts (`servers.json`), with the host configuration `stretto init` prints for each and a live test of the connection; and jobs that run the `stretto` CLI (`learn`, `promote`, `audit`, `redact`, `doctor`). It requires a token (a cookie, or a bearer), a header on every change, and a loopback Host under `--no-auth`; `--read-only` changes nothing ([its README](crates/stretto-console/README.md)). The UI is `console/`; its API types are generated from the Rust.

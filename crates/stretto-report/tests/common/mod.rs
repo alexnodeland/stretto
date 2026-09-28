@@ -274,6 +274,59 @@ pub fn session_log(episode: &Episode, n: usize) -> (String, String) {
     (format!("{session}.jsonl"), lines.join("\n") + "\n")
 }
 
+/// `episode` as the logs of one host session, named to sort `n`th: the
+/// accounts server's calls in one proxy's log and the orders server's in
+/// another's, each call a second after the last answer.
+pub fn host_session_logs(episode: &Episode, n: usize) -> Vec<(String, String)> {
+    let server = |tool: &str| {
+        if tool.contains("order") {
+            "orders"
+        } else {
+            "accounts"
+        }
+    };
+    let name = |server: &str| format!("20260928T{n:06}.000Z-{}-{server}", episode.id);
+    let mut logs: BTreeMap<&str, Vec<String>> = BTreeMap::new();
+    for s in ["accounts", "orders"] {
+        let header = json!({"stretto_mcp_log": 2, "session": name(s),
+            "started_unix_ms": 1_790_000_000_000u64 + n as u64 * 60_000,
+            "server_command": [s], "domain": null, "agent_model": null,
+            "host_session": format!("host-{n}"), "server_name": s});
+        logs.insert(s, vec![header.to_string()]);
+    }
+    let (mut t, mut on) = (0, BTreeMap::new());
+    for e in &episode.events {
+        match e {
+            Event::Assistant { calls, .. } => {
+                for c in calls {
+                    t += 1000;
+                    on.insert(c.id.clone(), server(&c.name));
+                    logs.get_mut(server(&c.name)).unwrap().push(
+                        json!({"t_ms": t, "from": "client", "message": {"jsonrpc": "2.0",
+                            "id": c.id, "method": "tools/call",
+                            "params": {"name": c.name, "arguments": c.arguments}}})
+                        .to_string(),
+                    );
+                }
+            }
+            Event::ToolResult {
+                call_id, content, ..
+            } => {
+                t += 10;
+                logs.get_mut(on[call_id]).unwrap().push(
+                    json!({"t_ms": t, "from": "server", "message": {"jsonrpc": "2.0",
+                        "id": call_id, "result": {"content": [{"type": "text", "text": content}]}}})
+                    .to_string(),
+                );
+            }
+            _ => {}
+        }
+    }
+    logs.into_iter()
+        .map(|(s, lines)| (format!("{}.jsonl", name(s)), lines.join("\n") + "\n"))
+        .collect()
+}
+
 /// `episodes` as session logs in `dir`, in their order.
 pub fn write_sessions(dir: &std::path::Path, episodes: &[Episode]) {
     std::fs::create_dir_all(dir).unwrap();

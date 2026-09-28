@@ -63,6 +63,8 @@ fn header() -> LogHeader {
         server_command: Vec::new(),
         domain: Some("retail".to_string()),
         agent_model: None,
+        host_session: None,
+        server_name: None,
     }
 }
 
@@ -102,10 +104,20 @@ fn harness_with(
     tap: Option<Tap>,
     logs: (Option<PathBuf>, Option<PathBuf>),
 ) -> Harness<'_> {
+    harness_of(active, header(), tap, logs)
+}
+
+/// The engine, its log started with `header`.
+fn harness_of(
+    active: &Active,
+    header: LogHeader,
+    tap: Option<Tap>,
+    logs: (Option<PathBuf>, Option<PathBuf>),
+) -> Harness<'_> {
     let (server, host) = (Wire::default(), Wire::default());
     let engine = Engine::new(
         active,
-        header(),
+        header,
         tap,
         Instant::now(),
         (Box::new(server.clone()), host.clone()),
@@ -1220,4 +1232,157 @@ fn a_runs_entry_holds_each_site_in_order() {
                          ["decide#10", 1, -0.25], ["outcome#10", true, -0.25]],
                "surprise": 0.5}})
     );
+}
+
+// ---- a flow learned across servers ----------------------------------------------------------
+
+/// A flow of the habit alone, learned from host sessions of two servers,
+/// `shop` and `notes`: the agent finds the user, reads their details, looks
+/// the user up in its notes, then reads their order.
+fn across_servers() -> Flow {
+    use stretto_trace::{Event, ToolManifest};
+    let server = |tool: &str| if tool == "lookup" { "notes" } else { "shop" };
+    let q = |tool: &str| mcp::qualify(server(tool), tool);
+    let call = |id: &str, tool: &str, arguments: Value| Event::Assistant {
+        text: None,
+        calls: vec![ToolCall {
+            id: id.to_string(),
+            name: q(tool),
+            arguments,
+        }],
+        usage: None,
+    };
+    let result = |id: &str, tool: &str, content: String| Event::ToolResult {
+        call_id: id.to_string(),
+        name: q(tool),
+        error: false,
+        content,
+    };
+    let episodes: Vec<Episode> = (0..30)
+        .map(|i| {
+            let user = format!("user_{i}");
+            let details = json!({"user_id": user, "orders": [format!("#W{i}a")]});
+            Episode {
+                id: format!("host-{i}"),
+                task_id: String::new(),
+                trial: 0,
+                domain: "support".to_string(),
+                agent_model: "agent".to_string(),
+                reward: 1.0,
+                events: vec![
+                    call(
+                        "1",
+                        "find_user_id_by_email",
+                        json!({"email": format!("c{i}@example.com")}),
+                    ),
+                    result("1", "find_user_id_by_email", user.clone()),
+                    call("2", "get_user_details", json!({"user_id": user})),
+                    result("2", "get_user_details", details.to_string()),
+                    call("3", "lookup", json!({"text": user})),
+                    result("3", "lookup", json!({"text": user}).to_string()),
+                    call(
+                        "4",
+                        "get_order_details",
+                        json!({"order_id": format!("#W{i}a")}),
+                    ),
+                    result("4", "get_order_details", "{}".to_string()),
+                ],
+            }
+        })
+        .collect();
+    let tools = [
+        "find_user_id_by_email",
+        "get_user_details",
+        "get_order_details",
+        "lookup",
+    ];
+    let manifest = ToolManifest {
+        domain: "support".to_string(),
+        tools: tools.iter().map(|t| (q(t), ToolKind::Read)).collect(),
+        docs: BTreeMap::new(),
+    };
+    let mut config = stretto_report::phase0::Config::new(PathBuf::new());
+    config.alpha_samples = 0;
+    stretto_report::phase0::compile_habit_flow_from_episodes(&config, &episodes, &manifest).unwrap()
+}
+
+/// The engine as the proxy of the server named `name`.
+fn serving_as<'a>(active: &'a Active, name: &str) -> Harness<'a> {
+    let mut named = header();
+    named.server_name = Some(name.to_string());
+    harness_of(active, named, None, (None, None))
+}
+
+#[test]
+fn a_flow_learned_across_servers_looks_up_this_servers_tools_by_their_own_names() {
+    let flow = across_servers();
+    let granted = |tools: Option<&[&str]>| Active {
+        flow: Some(FlowConfig {
+            flow: flow.clone(),
+            tools: tools.map(|t| t.iter().map(|t| t.to_string()).collect()),
+            ..flow_config(SHOP, Decider::Habit)
+        }),
+        ..Active::default()
+    };
+    // Granted by its own name or the flow's, or not named at all.
+    for tools in [
+        None,
+        Some(&["get_user_details"][..]),
+        Some(&["shop::get_user_details"][..]),
+    ] {
+        let active = granted(tools);
+        let mut h = serving_as(&active, "shop");
+        h.found_user();
+        h.server_says(result(3, "user_7"));
+        let asked = h.server.take();
+        assert_eq!(asked.len(), 1, "{tools:?}: {asked:?}");
+        assert_eq!(asked[0]["params"]["name"], "get_user_details");
+        let details = shop(
+            &asked[0]["params"]["name"],
+            &asked[0]["params"]["arguments"],
+        );
+        h.server_says(result(asked[0]["id"].clone(), &details));
+        // Next came the notes server's lookup, which this proxy leaves to
+        // the agent.
+        assert!(h.server.take().is_empty());
+        let answer = h.host.take();
+        let parts = texts(&answer[0]);
+        assert!(
+            parts[1].contains("\n\nget_user_details {\"user_id\":\"user_7\"}:\n"),
+            "{parts:?}"
+        );
+    }
+    // A lookup not granted is left to the agent.
+    let active = granted(Some(&["get_order_details"]));
+    let mut h = serving_as(&active, "shop");
+    h.found_user();
+    h.server_says(result(3, "user_7"));
+    assert!(h.server.take().is_empty());
+    assert_eq!(texts(&h.host.take()[0]), ["user_7"]);
+}
+
+#[test]
+fn a_server_the_flow_does_not_name_gets_no_lookups() {
+    let active = Active {
+        flow: Some(FlowConfig {
+            flow: across_servers(),
+            ..flow_config(SHOP, Decider::Habit)
+        }),
+        ..Active::default()
+    };
+    let mut h = serving_as(&active, "billing");
+    h.found_user();
+    for (id, user) in [(3, "user_7"), (4, "user_8")] {
+        if id == 4 {
+            h.client(call(
+                id,
+                "find_user_id_by_email",
+                json!({"email": "c8@example.com"}),
+            ));
+            h.server.take();
+        }
+        h.server_says(result(id, user));
+        assert!(h.server.take().is_empty());
+        assert_eq!(texts(&h.host.take()[0]), [user]);
+    }
 }

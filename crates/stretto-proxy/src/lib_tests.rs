@@ -113,6 +113,8 @@ fn forwards_every_line_unchanged_and_records_it() {
     let mut config = Config::new(["cat"]);
     config.record = Some(dir.join("logs"));
     config.domain = Some("echo".into());
+    config.host_session = Some("task-1".into());
+    config.server_name = Some("echoes".into());
 
     let mut output = Vec::new();
     let code = run_with(&config, io::Cursor::new(input.to_vec()), &mut output).unwrap();
@@ -129,6 +131,13 @@ fn forwards_every_line_unchanged_and_records_it() {
 
     assert_eq!(log.header.server_command, ["cat"]);
     assert_eq!(log.header.domain.as_deref(), Some("echo"));
+    assert_eq!(
+        (
+            log.header.host_session.as_deref(),
+            log.header.server_name.as_deref()
+        ),
+        (Some("task-1"), Some("echoes"))
+    );
     let lines = |from| {
         log.entries
             .iter()
