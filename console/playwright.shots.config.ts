@@ -8,5 +8,7 @@ export default defineConfig({
   testIgnore: ['real/**'],
   testMatch: ['shots.spec.ts'],
   timeout: 180_000,
+  // One long test of screenshots: a trace of it would be all pictures.
+  use: { ...base.use, trace: 'off' },
   projects: [{ name: 'shots' }],
 })

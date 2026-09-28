@@ -14,7 +14,7 @@ interface Shot {
   act?: (page: Page) => Promise<void>
 }
 
-test('every page, in light and dark, wide and narrow', async ({ page }) => {
+test('every page, in light and dark, wide and narrow', async ({ page, browser, baseURL }) => {
   const served = await sessionKey(page, 'served', 'shop')
   const shadow = await sessionKey(page, 'shadow')
   const shots: Shot[] = [
@@ -54,24 +54,30 @@ test('every page, in light and dark, wide and narrow', async ({ page }) => {
     { name: 'not-found', path: '/nowhere' },
   ]
   for (const theme of themes) {
-    await page.emulateMedia({ colorScheme: theme })
     for (const width of widths) {
-      await page.setViewportSize({ width, height: width > 800 ? 900 : 844 })
+      // A page of its own for each pass: a dev server's page loads a hundred
+      // modules, and one page loaded a hundred times runs out of resources.
+      const shotPage = await browser.newPage({
+        baseURL,
+        colorScheme: theme,
+        viewport: { width, height: width > 800 ? 900 : 844 },
+      })
       for (const shot of shots) {
-        await mockState(page, { reset: true, latency: 0, ...(shot.state ?? {}) })
+        await mockState(shotPage, { reset: true, latency: 0, ...(shot.state ?? {}) })
         const url = typeof shot.path === 'string' ? shot.path : await shot.path()
-        await page.goto(url)
-        await page.locator('h1').first().waitFor()
-        await page.waitForLoadState('load')
-        await page.waitForTimeout(700)
-        if (shot.act) await shot.act(page)
-        await page.waitForTimeout(250)
+        await shotPage.goto(url)
+        await shotPage.locator('h1').first().waitFor()
+        await shotPage.waitForLoadState('load')
+        await shotPage.waitForTimeout(700)
+        if (shot.act) await shot.act(shotPage)
+        await shotPage.waitForTimeout(250)
         const full = shot.name !== 'palette'
-        await page.screenshot({
+        await shotPage.screenshot({
           path: path.join(dir, `${shot.name}-${theme}-${width}.png`),
           fullPage: full,
         })
       }
+      await shotPage.close()
     }
   }
 })

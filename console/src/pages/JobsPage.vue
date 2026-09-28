@@ -160,12 +160,17 @@ const icons = { flow: Workflow, report: FileText, dir: FolderOpen }
   font-size: 12.5px;
 }
 
+/* One artifact a line. */
 .art {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 5px;
   color: var(--stretto-text-subtle);
   white-space: nowrap;
+}
+
+.art + .art {
+  margin-top: 3px;
 }
 
 .art .mono {
