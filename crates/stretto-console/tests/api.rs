@@ -1188,8 +1188,10 @@ async fn an_http_server_is_probed_with_its_header_from_the_environment() {
     let Some(demo) = workspace_bin("stretto-mcp-demo") else {
         return;
     };
-    // The header's value comes from a variable already set: HOME.
-    let home = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
+    // The header's value comes from a variable already set: HOME, or
+    // USERPROFILE on Windows, which has no HOME.
+    let var = if cfg!(windows) { "USERPROFILE" } else { "HOME" };
+    let home = std::env::var(var).unwrap_or_else(|_| "/".to_string());
     let mut server = std::process::Command::new(&demo)
         .args([
             "--world",
@@ -1212,7 +1214,7 @@ async fn an_http_server_is_probed_with_its_header_from_the_environment() {
     let c = console("probe-http", |_| {});
     let body = json!({
         "name": "remote",
-        "upstream": {"kind": "http", "url": url, "headers": [{"name": "Authorization", "env": "HOME"}]},
+        "upstream": {"kind": "http", "url": url, "headers": [{"name": "Authorization", "env": var}]},
         "mode": "record"
     });
     assert_eq!(
