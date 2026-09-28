@@ -1,0 +1,32 @@
+# The stretto console in a container, over the ~/.stretto on this machine.
+#
+#   STRETTO_UID=$(id -u) STRETTO_GID=$(id -g) docker compose up -d
+#   docker compose logs console     # the URL to open, with its token
+#
+# It pulls ghcr.io/alexnodeland/stretto-console; `docker compose up --build`
+# builds it from this checkout instead. docs/console.md has the rest.
+services:
+  console:
+    image: ghcr.io/alexnodeland/stretto-console:latest
+    build:
+      context: .
+      target: console
+    # This machine only. The console also asks for its token.
+    ports:
+      - "127.0.0.1:8080:8080"
+    # The data stretto writes, read and written in place: sessions, flows,
+    # the server registry and the console's jobs. STRETTO_HOME, when set,
+    # is where it is instead of ~/.stretto.
+    volumes:
+      - ${STRETTO_HOME:-${HOME}/.stretto}:/data/.stretto
+    # Your user and group, so the files the console writes are yours. Leave
+    # them unset on macOS and Windows, where Docker Desktop maps ownership.
+    user: "${STRETTO_UID:-10001}:${STRETTO_GID:-10001}"
+    environment:
+      # A token of your own keeps the console's URL the same across restarts;
+      # without one, it makes one at each start and prints it in the logs.
+      - STRETTO_CONSOLE_TOKEN
+      # For jobs that ask Jev (learning with an arbiter): passed through from
+      # your environment when set, never written here.
+      - TYPESAFE_API_KEY
+    restart: unless-stopped

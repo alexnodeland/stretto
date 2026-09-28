@@ -1,13 +1,13 @@
 #!/bin/sh
 # Install stretto from a GitHub release: stretto, stretto-proxy,
-# stretto-procedure and stretto-mcp-demo, on Linux (x86_64 or aarch64, with
-# glibc 2.35 or later) or macOS (Apple silicon or Intel).
+# stretto-procedure, stretto-mcp-demo and stretto-console, on Linux (x86_64
+# or aarch64, with glibc 2.35 or later) or macOS (Apple silicon or Intel).
 #
 #   curl -fsSL https://github.com/alexnodeland/stretto/releases/latest/download/install.sh | sh
 #   curl -fsSL .../install.sh | sh -s -- --version v0.2.0 --prefix /usr/local
 #
 # It downloads the release's archive for this system and its SHA256SUMS,
-# checks the archive's checksum, and copies the four binaries into
+# checks the archive's checksum, and copies the binaries into
 # PREFIX/bin. It changes nothing else: if that directory is not on PATH, it
 # says how to add it. docs/install.md has the other ways to install.
 
@@ -15,6 +15,9 @@ set -eu
 
 repo=alexnodeland/stretto
 binaries="stretto stretto-proxy stretto-procedure stretto-mcp-demo"
+# Installed when the archive has it: a release from before the console has
+# none, and installs without it.
+optional="stretto-console"
 
 usage() {
     cat <<'EOF'
@@ -134,6 +137,9 @@ bindir=${prefix%/}/bin
 mkdir -p "$bindir" || die "cannot create $bindir: pass --prefix"
 for bin in $binaries; do
     [ -f "$tmp/stretto-$target/$bin" ] || die "$archive has no $bin"
+done
+for bin in $optional; do
+    if [ -f "$tmp/stretto-$target/$bin" ]; then binaries="$binaries $bin"; fi
 done
 # Each binary is copied beside its final name, then renamed over it, so a
 # running copy is replaced cleanly.

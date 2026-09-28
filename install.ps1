@@ -1,11 +1,12 @@
 # Install stretto on Windows (x64) from a GitHub release: stretto.exe,
-# stretto-proxy.exe, stretto-procedure.exe and stretto-mcp-demo.exe.
+# stretto-proxy.exe, stretto-procedure.exe, stretto-mcp-demo.exe and
+# stretto-console.exe.
 #
 #   irm https://github.com/alexnodeland/stretto/releases/latest/download/install.ps1 | iex
 #   & ([scriptblock]::Create((irm https://github.com/alexnodeland/stretto/releases/latest/download/install.ps1))) -Version v0.2.0
 #
 # It downloads the release's archive and its SHA256SUMS, checks the
-# archive's checksum, and copies the four binaries into PREFIX\bin. It
+# archive's checksum, and copies the binaries into PREFIX\bin. It
 # changes nothing else: if that directory is not on PATH, it says how to
 # add it. docs/install.md has the other ways to install.
 #
@@ -26,6 +27,9 @@ $ProgressPreference = "SilentlyContinue"
 
 $repo = "alexnodeland/stretto"
 $binaries = @("stretto", "stretto-proxy", "stretto-procedure", "stretto-mcp-demo")
+# Installed when the archive has it: a release from before the console has
+# none, and installs without it.
+$optional = @("stretto-console")
 # The x64 build; Windows on Arm runs it under emulation.
 $target = "x86_64-pc-windows-msvc"
 $archive = "stretto-$target.zip"
@@ -69,6 +73,11 @@ try {
     foreach ($bin in $binaries) {
         if (-not (Test-Path (Join-Path $unpacked "$bin.exe"))) {
             throw "$archive has no $bin.exe"
+        }
+    }
+    foreach ($bin in $optional) {
+        if (Test-Path (Join-Path $unpacked "$bin.exe")) {
+            $binaries += $bin
         }
     }
     $bindir = Join-Path $Prefix "bin"

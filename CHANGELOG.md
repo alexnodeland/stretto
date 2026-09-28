@@ -15,6 +15,7 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
   - the jobs, run from the page, with their output as it comes.
 
   It has light and dark themes, works from a phone's width up, and has a command palette (Ctrl-K or ⌘K). It follows the data directory as it changes. `make console` builds it and runs the console.
+- The console ships with the rest. The release archives, `install.sh`, `install.ps1` and the Homebrew formula install `stretto-console`, with its UI built in; the installers still install a release from before it. A second image, `ghcr.io/alexnodeland/stretto-console` (the Dockerfile's `console` target), runs it on port 8080 with a health check, and [`compose.yaml`](compose.yaml) runs it over your `~/.stretto`. [docs/console.md](docs/console.md) is its guide.
 - The console's jobs can be cancelled, from the job's page or with `POST /api/jobs/:id/cancel`: a queued job never runs, and a running one's `stretto` is killed. A job that ends so is `cancelled`.
 - `stretto init --upstream URL [--upstream-header NAME=VAR]` configures the proxy in front of a Streamable HTTP server.
 - `stretto doctor --data DIR` checks a data directory other than `~/.stretto`; the console's doctor job checks the one it serves.
@@ -22,7 +23,7 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ### Development
 
-- A `Makefile` with the everyday commands (`make help`). `make ci` runs what CI's check job runs; `make coverage`, `make msrv`, `make bless`, `make quickstart`, `make walkthrough`, `make site` and `make docker` run the rest.
+- A `Makefile` with the everyday commands (`make help`). `make ci` runs what CI's check job runs; `make coverage`, `make msrv`, `make bless`, `make quickstart`, `make walkthrough`, `make site`, `make docker` and `make docker-console` run the rest.
 - CI also runs the doctests, builds the API docs with rustdoc warnings as errors, and checks the workspace on Rust 1.88, the `rust-version`, with the committed lockfile. A coverage workflow measures line coverage with cargo-llvm-cov and fails under 78%; its LCOV report is an artifact, and goes to Codecov when a `CODECOV_TOKEN` secret is set.
 - A Claude Code setup: `CLAUDE.md`, which imports `AGENTS.md`, and `.claude/`, with permission rules, a hook that runs rustfmt on each edited Rust file, a session-start hook for Claude Code on the web, four skills (`check`, `results`, `release`, `steward`) and two subagents (`reviewer`, `claims-checker`).
 - A dev container (`.devcontainer/`) and VS Code settings (`.vscode/`).

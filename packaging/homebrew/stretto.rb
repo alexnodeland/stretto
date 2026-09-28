@@ -33,7 +33,7 @@ class Stretto < Formula
   end
 
   def install
-    bin.install "stretto", "stretto-proxy", "stretto-procedure", "stretto-mcp-demo"
+    bin.install "stretto", "stretto-proxy", "stretto-procedure", "stretto-mcp-demo", "stretto-console"
     generate_completions_from_executable(bin/"stretto", "completions")
   end
 

@@ -4,12 +4,13 @@ description: Install stretto from source today; release binaries, install script
 
 # Installation
 
-stretto is four programs from two Rust packages. Until the first release is tagged, you build them from source. From then on, each release carries prebuilt binaries for Linux, macOS and Windows, install scripts that check each archive's checksum, and a Docker image ([every way to install](../../docs/install.md)).
+stretto is five programs from three Rust packages. Until the first release is tagged, you build them from source. From then on, each release carries prebuilt binaries for Linux, macOS and Windows, install scripts that check each archive's checksum, and Docker images ([every way to install](../../docs/install.md)).
 
 | Package | Installs |
 |---|---|
 | `stretto-report` | `stretto`: learn, review, audit, promote and redact flows and sessions, and measure agents |
 | `stretto-proxy` | `stretto-proxy`, the MCP proxy; `stretto-procedure`, which runs a compiled procedure; `stretto-mcp-demo`, a tiny server for trying the proxy |
+| `stretto-console` | `stretto-console`, [the console](./console): a web app over `~/.stretto` with your servers, sessions, flows and jobs |
 
 <!--
   FIRST RELEASE: the three tabs marked "First release" hold what each release ships
@@ -42,6 +43,13 @@ cargo install --locked --path crates/stretto-report
 
 Cargo puts the programs in `~/.cargo/bin`. Once releases are tagged, add `--tag vX.Y.Z` to the first command to build one.
 
+The console embeds its UI, which is built with Node 22.12 or later, so install it from a checkout, UI first:
+
+```sh
+npm --prefix console ci && npm --prefix console run build
+cargo install --locked --path crates/stretto-console
+```
+
 </template>
 <template #binaries>
 
@@ -49,7 +57,7 @@ Cargo puts the programs in `~/.cargo/bin`. Once releases are tagged, add `--tag 
 Until the first release is tagged, install from source.
 :::
 
-Each release on [GitHub Releases](https://github.com/alexnodeland/stretto/releases) carries an archive of the four binaries for Linux (x86_64 and aarch64, glibc 2.35 or later), macOS (Apple silicon and Intel) and Windows x64, with `SHA256SUMS`:
+Each release on [GitHub Releases](https://github.com/alexnodeland/stretto/releases) carries an archive of the binaries for Linux (x86_64 and aarch64, glibc 2.35 or later), macOS (Apple silicon and Intel) and Windows x64, with `SHA256SUMS`:
 
 ```sh
 sha256sum --ignore-missing --check SHA256SUMS
@@ -90,6 +98,12 @@ docker run --rm ghcr.io/alexnodeland/stretto --help
 docker run --rm --entrypoint /usr/local/share/stretto/quickstart/run.sh ghcr.io/alexnodeland/stretto
 ```
 
+`ghcr.io/alexnodeland/stretto-console` is [the console](./console) on port 8080, and the repository's `compose.yaml` runs it over your `~/.stretto`:
+
+```sh
+STRETTO_UID=$(id -u) STRETTO_GID=$(id -g) docker compose up -d
+```
+
 </template>
 </Tabs>
 
@@ -121,5 +135,5 @@ The crate named `stretto` on crates.io is an unrelated cache library, and nothin
 Run the install command again to update; `cargo install` replaces the programs. To remove them:
 
 ```sh
-cargo uninstall stretto-proxy stretto-report
+cargo uninstall stretto-proxy stretto-report stretto-console
 ```

@@ -42,7 +42,7 @@ make ci     # the formatting check, clippy, the tests and doctests, and the API 
 - the proxy in front of the reference Streamable HTTP server (`python3 scripts/http_check.py --bin target/debug`);
 - the doctests of `scripts/telecom_workflow.py` and `scripts/ceiling.py`, and the benchmarks round's scripts on a fixture.
 
-On macOS and Windows, CI builds the four programs and runs each one's `--version`.
+On macOS and Windows, CI builds the five programs, runs each one's `--version`, and runs the console's tests.
 
 ## Conventions
 
