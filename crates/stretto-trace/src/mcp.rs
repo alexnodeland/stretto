@@ -51,7 +51,10 @@
 //!   answered (nor cancelled) keeps its turn open.
 //! - **No usage or outcome.** Token usage is unknown, and so is whether the
 //!   task succeeded: `reward` is `0.0` unless the caller sets it.
-//! - **One server.** Each wrapped server has its own log.
+//! - **One server per log.** Each wrapped server has its own log. [`merge`]
+//!   makes one session of the logs an agent's host session left with its
+//!   servers, naming each tool after its server (`docs::search`), and
+//!   [`episode`] then infers the LLM turns across all of them.
 
 use crate::{Episode, Event, ToolCall, ToolDoc, ToolKind, ToolManifest};
 use anyhow::{bail, ensure, Context, Result};
@@ -88,6 +91,16 @@ pub struct LogHeader {
     pub domain: Option<String>,
     /// The model the proxy was told drives the agent, if any.
     pub agent_model: Option<String>,
+    /// The host session the proxy ran in, which every proxy the host
+    /// started shares: `STRETTO_SESSION` when the host set it, else the
+    /// host's process, `host-<pid>`. [`merge`] makes one session of a host
+    /// session's logs. Absent in logs of proxies that did not know it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub host_session: Option<String>,
+    /// The server's name, if the proxy was given one (`--server-name`); see
+    /// [`server_name`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_name: Option<String>,
 }
 
 /// Which side of the connection sent a line.
@@ -199,6 +212,398 @@ pub fn manifest_of(logs: &[McpLog], domain: &str) -> ToolManifest {
         all.docs.extend(listed.docs);
     }
     all
+}
+
+// ---- sessions across servers --------------------------------------------------------------
+
+/// Between a server's name and its tool's in a session that spans several
+/// servers ([`merge`]): `docs::search`.
+pub const SERVER_SEPARATOR: &str = "::";
+
+/// `tool` of `server` as a session that spans several servers names it:
+/// `docs::search`.
+pub fn qualify(server: &str, tool: &str) -> String {
+    format!("{server}{SERVER_SEPARATOR}{tool}")
+}
+
+/// The server a qualified tool name names ([`qualify`]): `docs` for
+/// `docs::search`, and `None` for a tool its server's name is not part of.
+pub fn server_of(tool: &str) -> Option<&str> {
+    tool.split_once(SERVER_SEPARATOR).map(|(server, _)| server)
+}
+
+/// A tool's name on its own server: `search` for `docs::search`, and the
+/// name as it is when it is not qualified.
+pub fn unqualified(tool: &str) -> &str {
+    tool.split_once(SERVER_SEPARATOR)
+        .map_or(tool, |(_, name)| name)
+}
+
+/// Name the tools of `episode`, all of them `server`'s, as a session that
+/// spans several servers names them ([`qualify`]).
+pub fn qualify_episode(episode: &mut Episode, server: &str) {
+    for event in &mut episode.events {
+        match event {
+            Event::Assistant { calls, .. } => {
+                for call in calls {
+                    call.name = qualify(server, &call.name);
+                }
+            }
+            Event::ToolResult { name, .. } => *name = qualify(server, name),
+            Event::User { .. } => {}
+        }
+    }
+}
+
+/// The name a log's server goes by in a session that spans several servers:
+/// the proxy's `--server-name`, else its `--domain`, else the name the
+/// server gave itself when it answered `initialize` (`serverInfo.name`).
+/// Characters other than ASCII letters, digits, `-`, `_` and `.` become
+/// `_`, so that a qualified tool name ([`qualify`]) splits back into server
+/// and tool. `None` for a log with none of them, such as one cut off before
+/// the server answered.
+pub fn server_name(log: &McpLog) -> Option<String> {
+    let given = [&log.header.server_name, &log.header.domain]
+        .into_iter()
+        .flatten()
+        .map(String::as_str)
+        .find(|name| !name.is_empty());
+    let name = given.or_else(|| {
+        log.messages().find_map(|(from, m)| {
+            let name = m.pointer("/result/serverInfo/name")?.as_str()?;
+            (from == Peer::Server && !name.is_empty()).then_some(name)
+        })
+    })?;
+    let plain = |c: char| {
+        if c.is_ascii_alphanumeric() || "-_.".contains(c) {
+            c
+        } else {
+            '_'
+        }
+    };
+    Some(name.chars().map(plain).collect())
+}
+
+/// Sessions made of logs ([`merge`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Sessions {
+    /// Each session's log, in the order of the logs it came from: a log as
+    /// it was, or a host session's logs merged into one.
+    pub logs: Vec<McpLog>,
+    /// How many logs were merged.
+    pub merged_logs: usize,
+    /// How many sessions they were merged into.
+    pub merged_sessions: usize,
+    /// Host sessions whose logs were kept apart, since two of them ran
+    /// servers of the same name at once.
+    pub apart: Vec<String>,
+}
+
+/// The sessions `logs` make up: the logs of each host session that spans
+/// several servers ([`LogHeader::host_session`]) merged into one, and each
+/// other log as it is.
+///
+/// - **Which logs.** Logs are one host session's when their headers name
+///   the same one, their servers have names ([`server_name`]), and they ran
+///   at overlapping times, directly or through each other: a host process's
+///   id is used again once it has ended. A host session in which two
+///   servers of the same name ran at once was not one agent's (it may be a
+///   harness running several sessions from one process), so its logs stay
+///   apart, and [`Sessions::apart`] names it.
+/// - **The merged log.** Its lines are the logs' lines in the order the
+///   proxies read them, timed from the first proxy's start. Each tool is
+///   named after its server ([`qualify`]), in calls and in answers to
+///   `tools/list`, so that the manifest spans the servers, and so is each
+///   JSON-RPC id, since each proxy's ids are its own. The conversation,
+///   which each proxy logs from the host's one file, is kept once: a proxy's
+///   n-th `context` line is dropped when another proxy logged the same line
+///   n-th already. The header's session is the host session, with `#k`
+///   added when the host session's id stood for several (the k-th, from 0);
+///   its start is the first proxy's; its domain is the logs' when they all
+///   name the same one; its agent model is the first one named.
+/// - **The other logs.** Once any host session is merged, every other log's
+///   tools and ids are named after its server too, so that a tool has one
+///   name across the sessions. When none is, the logs are returned as they
+///   are.
+pub fn merge(logs: Vec<McpLog>) -> Sessions {
+    let names: Vec<Option<String>> = logs.iter().map(server_name).collect();
+    let (groups, apart) = sessions_of(&logs, &names);
+    let host = |group: &[usize]| {
+        logs[group[0]]
+            .header
+            .host_session
+            .clone()
+            .unwrap_or_default()
+    };
+    let mut ids: HashMap<String, usize> = HashMap::new();
+    for group in groups.iter().filter(|g| g.len() > 1) {
+        *ids.entry(host(group)).or_default() += 1;
+    }
+    if ids.is_empty() {
+        return Sessions {
+            logs,
+            apart,
+            ..Sessions::default()
+        };
+    }
+    let mut numbered: HashMap<String, usize> = HashMap::new();
+    let mut sessions = Sessions {
+        apart,
+        ..Sessions::default()
+    };
+    for group in &groups {
+        let parts: Vec<(&McpLog, &str)> = group
+            .iter()
+            .filter_map(|&i| Some((&logs[i], names[i].as_deref()?)))
+            .collect();
+        let log = match parts.as_slice() {
+            [] => logs[group[0]].clone(),
+            [(log, name)] => qualified(log, name),
+            _ => {
+                let host = host(group);
+                let k = numbered.entry(host.clone()).or_default();
+                let session = if ids[&host] > 1 {
+                    format!("{host}#{k}")
+                } else {
+                    host
+                };
+                *k += 1;
+                sessions.merged_logs += parts.len();
+                sessions.merged_sessions += 1;
+                merged(session, &parts)
+            }
+        };
+        sessions.logs.push(log);
+    }
+    sessions
+}
+
+/// The sessions `logs` make up, as the indices of their logs, in the order
+/// of the logs: a host session's logs together, in the order they started,
+/// and each other log alone ([`merge`]).
+pub fn session_groups(logs: &[McpLog]) -> Vec<Vec<usize>> {
+    let names: Vec<Option<String>> = logs.iter().map(server_name).collect();
+    sessions_of(logs, &names).0
+}
+
+/// [`session_groups`], with the servers' `names`, and the host sessions
+/// kept apart.
+fn sessions_of(logs: &[McpLog], names: &[Option<String>]) -> (Vec<Vec<usize>>, Vec<String>) {
+    let mut sessions = Vec::new();
+    let mut hosts: BTreeMap<&str, Vec<usize>> = BTreeMap::new();
+    for (i, log) in logs.iter().enumerate() {
+        match (&log.header.host_session, &names[i]) {
+            (Some(host), Some(_)) => hosts.entry(host).or_default().push(i),
+            _ => sessions.push(vec![i]),
+        }
+    }
+    let span = |i: usize| (logs[i].header.started_unix_ms, ended_unix_ms(&logs[i]));
+    let mut apart = Vec::new();
+    for (host, mut members) in hosts {
+        members.sort_by_key(|&i| span(i).0);
+        // Logs that ran at overlapping times, directly or through each other.
+        let mut runs: Vec<Vec<usize>> = Vec::new();
+        let mut end = 0;
+        for i in members {
+            let (start, stop) = span(i);
+            match runs.last_mut() {
+                Some(run) if start <= end => run.push(i),
+                _ => runs.push(vec![i]),
+            }
+            end = end.max(stop);
+        }
+        for run in runs {
+            let at_once = |i: usize, j: usize| span(j).0 <= span(i).1 && span(i).0 <= span(j).1;
+            let clash = run.iter().enumerate().any(|(k, &i)| {
+                run[k + 1..]
+                    .iter()
+                    .any(|&j| names[i] == names[j] && at_once(i, j))
+            });
+            if clash {
+                if !apart.iter().any(|a| a == host) {
+                    apart.push(host.to_string());
+                }
+                sessions.extend(run.into_iter().map(|i| vec![i]));
+            } else {
+                sessions.push(run);
+            }
+        }
+    }
+    sessions.sort_by_key(|s| s.iter().min().copied());
+    (sessions, apart)
+}
+
+/// When the proxy read a log's last line, in milliseconds since the Unix
+/// epoch.
+fn ended_unix_ms(log: &McpLog) -> u64 {
+    let last = log.entries.last().map_or(0, |e| e.t_ms);
+    log.header.started_unix_ms.saturating_add(last)
+}
+
+/// One log of a host session's logs, `parts`, each with its server's name,
+/// as [`merge`] makes it.
+fn merged(session: String, parts: &[(&McpLog, &str)]) -> McpLog {
+    let start = parts
+        .iter()
+        .map(|(log, _)| log.header.started_unix_ms)
+        .min()
+        .unwrap_or_default();
+    let mut lines: Vec<(usize, LogEntry)> = Vec::new();
+    for (k, (log, name)) in parts.iter().enumerate() {
+        let offset = log.header.started_unix_ms - start;
+        let own = qualified(log, name);
+        let end = ended_unix_ms(&own) - start;
+        let cut_off = unanswered(&own);
+        for entry in own.entries {
+            let t_ms = entry.t_ms.saturating_add(offset);
+            lines.push((k, LogEntry { t_ms, ..entry }));
+        }
+        // A call its proxy's log ended without an answer to, when its
+        // server died, say, never gets one: it is cancelled there, so that
+        // it does not hold the other servers' turns open.
+        for id in cut_off {
+            let message = json!({"jsonrpc": "2.0", "method": "notifications/cancelled",
+                                 "params": {"requestId": id}});
+            lines.push((
+                k,
+                LogEntry {
+                    t_ms: end,
+                    from: Peer::Proxy,
+                    message: Some(message),
+                    raw: None,
+                },
+            ));
+        }
+    }
+    // A stable sort keeps each log's own order.
+    lines.sort_by_key(|(k, entry)| (entry.t_ms, *k));
+    // Each proxy logs the host's conversation from the start of its file.
+    let mut said: Vec<(Option<Value>, Option<String>)> = Vec::new();
+    let mut heard = vec![0; parts.len()];
+    let mut entries = Vec::with_capacity(lines.len());
+    for (k, entry) in lines {
+        if entry.from == Peer::Context {
+            let line = (entry.message.clone(), entry.raw.clone());
+            let n = heard[k];
+            heard[k] += 1;
+            if said.get(n) == Some(&line) {
+                continue;
+            }
+            if n == said.len() {
+                said.push(line);
+            }
+        }
+        entries.push(entry);
+    }
+    let first = &parts[0].0.header;
+    let same_domain = parts
+        .iter()
+        .all(|(log, _)| log.header.domain == first.domain);
+    McpLog {
+        header: LogHeader {
+            stretto_mcp_log: parts
+                .iter()
+                .map(|(log, _)| log.header.stretto_mcp_log)
+                .max()
+                .unwrap_or(LOG_VERSION),
+            session,
+            started_unix_ms: start,
+            server_command: Vec::new(),
+            domain: first.domain.clone().filter(|_| same_domain),
+            agent_model: parts
+                .iter()
+                .find_map(|(log, _)| log.header.agent_model.clone()),
+            host_session: first.host_session.clone(),
+            server_name: None,
+        },
+        entries,
+    }
+}
+
+/// The ids of the calls in `log` that no response answered and no
+/// cancellation released, in the order they were made.
+fn unanswered(log: &McpLog) -> Vec<Value> {
+    let mut open: Vec<Value> = Vec::new();
+    for (from, m) in log.messages() {
+        match (from, method(m)) {
+            (Peer::Client | Peer::Proxy, Some("tools/call")) => open.extend(request_id(m).cloned()),
+            (Peer::Client | Peer::Proxy, Some("notifications/cancelled")) => {
+                let released = m.pointer("/params/requestId");
+                open.retain(|id| Some(id) != released);
+            }
+            (Peer::Server | Peer::Proxy, None) => {
+                let answered = response_id(m);
+                open.retain(|id| Some(id) != answered);
+            }
+            _ => {}
+        }
+    }
+    open
+}
+
+/// `log`, its tools and JSON-RPC ids named after its server, `server`
+/// ([`merge`]). The conversation is left as it is.
+fn qualified(log: &McpLog, server: &str) -> McpLog {
+    let entries = log
+        .entries
+        .iter()
+        .map(|entry| {
+            if entry.from == Peer::Context {
+                return entry.clone();
+            }
+            let message = entry.message.as_ref().map(|m| match m {
+                Value::Array(batch) => {
+                    Value::Array(batch.iter().map(|m| qualified_message(m, server)).collect())
+                }
+                m => qualified_message(m, server),
+            });
+            LogEntry {
+                message,
+                ..entry.clone()
+            }
+        })
+        .collect();
+    McpLog {
+        header: log.header.clone(),
+        entries,
+    }
+}
+
+/// A JSON-RPC message with its tools and ids named after `server`: the id,
+/// a called tool's name, the request a cancellation names, and the tools a
+/// `tools/list` answer lists.
+fn qualified_message(message: &Value, server: &str) -> Value {
+    let mut m = message.clone();
+    let id = |id: &mut Value| {
+        if !id.is_null() {
+            *id = Value::String(qualify(server, &id_string(id)));
+        }
+    };
+    if let Some(v) = m.get_mut("id") {
+        id(v);
+    }
+    match method(message) {
+        Some("tools/call") => {
+            if let Some(Value::String(name)) = m.pointer_mut("/params/name") {
+                *name = qualify(server, name);
+            }
+        }
+        Some("notifications/cancelled") => {
+            if let Some(v) = m.pointer_mut("/params/requestId") {
+                id(v);
+            }
+        }
+        _ => {}
+    }
+    if method(message).is_none() {
+        let listed = m.pointer_mut("/result/tools").and_then(Value::as_array_mut);
+        for tool in listed.into_iter().flatten() {
+            if let Some(Value::String(name)) = tool.get_mut("name") {
+                *name = qualify(server, name);
+            }
+        }
+    }
+    m
 }
 
 /// Parse the text of a log.
@@ -1423,5 +1828,429 @@ mod tests {
             contracts_of(&[log])["get_order"],
             "limit:integer|null, order_id:string!, x:any"
         );
+    }
+
+    // ---- sessions across servers ------------------------------------------------------
+
+    /// A log of `server`'s that started at `start`, in host session `host`.
+    fn server_log(
+        server: &str,
+        host: Option<&str>,
+        start: u64,
+        lines: &[(u64, Peer, Value)],
+    ) -> McpLog {
+        let mut log = log_at(lines);
+        log.header.stretto_mcp_log = 2;
+        log.header.session = format!("{start}-{server}");
+        log.header.started_unix_ms = start;
+        log.header.host_session = host.map(str::to_string);
+        log.header.server_name = Some(server.to_string());
+        log
+    }
+
+    fn timed(t_ms: u64, (from, message): (Peer, Value)) -> (u64, Peer, Value) {
+        (t_ms, from, message)
+    }
+
+    fn said(text: &str) -> (Peer, Value) {
+        (Peer::Context, json!({"role": "user", "content": text}))
+    }
+
+    /// A short call and its answer, the whole of a log.
+    fn one_call(tool: &str, at: u64, took: u64) -> Vec<(u64, Peer, Value)> {
+        vec![
+            timed(at, call(json!(1), tool)),
+            timed(at + took, reply(json!(1), "done")),
+        ]
+    }
+
+    fn sessions(merged: &Sessions) -> Vec<&str> {
+        merged
+            .logs
+            .iter()
+            .map(|l| l.header.session.as_str())
+            .collect()
+    }
+
+    #[test]
+    fn a_host_sessions_logs_are_one_session_across_servers() {
+        let list = |id: u64, tool: &str| {
+            [
+                (
+                    Client,
+                    json!({"jsonrpc": "2.0", "id": id, "method": "tools/list"}),
+                ),
+                (
+                    Server,
+                    json!({"jsonrpc": "2.0", "id": id, "result": {"tools": [
+                        {"name": tool, "annotations": {"readOnlyHint": true}}]}}),
+                ),
+            ]
+        };
+        let [ask, listed] = list(1, "get_ticket");
+        let mut tickets = server_log(
+            "tickets",
+            Some("h1"),
+            1_000,
+            &[
+                timed(0, ask),
+                timed(5, listed),
+                timed(90, said("My ticket is T-1.")),
+                timed(100, call_with(json!(2), "get_ticket", json!({"id": "T-1"}))),
+                timed(150, reply(json!(2), "T-1: the printer is on fire")),
+                timed(1_990, said("Thanks. And T-2?")),
+                timed(
+                    2_000,
+                    call_with(json!(3), "get_ticket", json!({"id": "T-2"})),
+                ),
+                timed(2_050, reply(json!(3), "T-2: toner low")),
+            ],
+        );
+        let [ask, listed] = list(1, "search");
+        let mut docs = server_log(
+            "docs",
+            Some("h1"),
+            1_020,
+            &[
+                timed(0, ask),
+                timed(4, listed),
+                // The docs proxy reads what was said before its own calls.
+                timed(100, said("My ticket is T-1.")),
+                timed(101, call_with(json!(2), "search", json!({"q": "printer"}))),
+                timed(140, reply(json!(2), "Printer fires: unplug it.")),
+                timed(2_080, said("Thanks. And T-2?")),
+                timed(
+                    2_081,
+                    call_with(json!(3), "search", json!({"q": "printer toner"})),
+                ),
+                timed(2_120, reply(json!(3), "Toner: order more.")),
+            ],
+        );
+        docs.header.agent_model = Some("glm-5.3".to_string());
+        tickets.header.domain = Some("tickets".to_string());
+        docs.header.domain = Some("docs".to_string());
+
+        let merged = merge(vec![tickets, docs]);
+        assert_eq!(
+            (
+                merged.merged_logs,
+                merged.merged_sessions,
+                merged.apart.len()
+            ),
+            (2, 1, 0)
+        );
+        assert_eq!(sessions(&merged), ["h1"]);
+        let log = &merged.logs[0];
+        let h = &log.header;
+        assert_eq!(
+            (
+                h.session.as_str(),
+                h.started_unix_ms,
+                h.host_session.as_deref()
+            ),
+            ("h1", 1_000, Some("h1"))
+        );
+        assert_eq!(
+            (
+                h.domain.as_deref(),
+                h.agent_model.as_deref(),
+                h.server_name.as_deref()
+            ),
+            (None, Some("glm-5.3"), None)
+        );
+        assert!(h.server_command.is_empty());
+        assert_eq!(log.entries[0].message.as_ref().unwrap()["id"], "tickets::1");
+        assert_eq!(log.entries[2].t_ms, 20);
+
+        // The tools of both servers, each named after its own.
+        let m = manifest_of(&merged.logs, "support");
+        assert_eq!(
+            m.tools.keys().collect::<Vec<_>>(),
+            ["docs::search", "tickets::get_ticket"]
+        );
+        // What was said once, and the LLM turns across the servers: the
+        // docs search went out while the ticket was still being read, and
+        // the second came right after the second ticket, needing nothing
+        // it returned.
+        let ep = episode(log);
+        assert_eq!(ep.id, "h1");
+        assert_eq!(
+            outline(&ep),
+            [
+                "user",
+                "turn(tickets::get_ticket,docs::search)",
+                "result:tickets::2",
+                "result:docs::2",
+                "user",
+                "turn(tickets::get_ticket,docs::search)",
+                "result:tickets::3",
+                "result:docs::3"
+            ]
+        );
+    }
+
+    #[test]
+    fn a_reused_host_id_names_each_of_its_sessions() {
+        let mut a1 = server_log("a", Some("host-7"), 0, &one_call("x", 0, 10));
+        let mut b1 = server_log("b", Some("host-7"), 5, &one_call("y", 0, 3));
+        // The host's process id, used again by a later host.
+        let mut a2 = server_log("a", Some("host-7"), 100, &one_call("x", 0, 10));
+        let mut b2 = server_log("b", Some("host-7"), 101, &one_call("y", 0, 3));
+        for (log, domain) in [
+            (&mut a1, "support"),
+            (&mut b1, "support"),
+            (&mut a2, "support"),
+            (&mut b2, "other"),
+        ] {
+            log.header.domain = Some(domain.to_string());
+        }
+        // A log of no host session, and one whose server has no name.
+        let lone = server_log("c", None, 50, &one_call("z", 0, 1));
+        let unnamed = log_at(&one_call("w", 0, 1));
+        let logs = vec![a1, b1, lone, a2, b2, unnamed];
+        assert_eq!(
+            session_groups(&logs),
+            [vec![0, 1], vec![2], vec![3, 4], vec![5]]
+        );
+
+        let merged = merge(logs);
+        assert_eq!(sessions(&merged), ["host-7#0", "50-c", "host-7#1", "s1"]);
+        assert_eq!((merged.merged_logs, merged.merged_sessions), (4, 2));
+        let domains: Vec<Option<&str>> = merged
+            .logs
+            .iter()
+            .map(|l| l.header.domain.as_deref())
+            .collect();
+        assert_eq!(domains, [Some("support"), None, None, None]);
+        // Once a host session is merged, every tool has its server's name,
+        // where the server has one.
+        let names = |log: &McpLog| -> Vec<String> {
+            episode(log)
+                .events
+                .iter()
+                .filter_map(|e| match e {
+                    Event::ToolResult { call_id, name, .. } => Some(format!("{call_id} {name}")),
+                    _ => None,
+                })
+                .collect()
+        };
+        assert_eq!(names(&merged.logs[1]), ["c::1 c::z"]);
+        assert_eq!(names(&merged.logs[3]), ["1 w"]);
+        assert_eq!(names(&merged.logs[0]), ["b::1 b::y", "a::1 a::x"]);
+    }
+
+    #[test]
+    fn two_servers_of_one_name_at_once_were_not_one_hosts() {
+        // A harness ran two sessions of the same server from one process.
+        let x1 = || server_log("a", Some("h"), 0, &one_call("x", 0, 50));
+        let x2 = || server_log("a", Some("h"), 10, &one_call("x", 0, 20));
+        let later1 = server_log("a", Some("h"), 1_000, &one_call("x", 0, 50));
+        let later2 = server_log("a", Some("h"), 1_010, &one_call("x", 0, 20));
+        let as_is = merge(vec![x1(), x2(), later1, later2]);
+        assert_eq!(as_is.apart, ["h"]);
+        assert_eq!(
+            as_is.logs,
+            vec![x1(), x2(), as_is.logs[2].clone(), as_is.logs[3].clone()]
+        );
+        assert_eq!(as_is.merged_sessions, 0);
+
+        // A server that died and was started again while another ran: one
+        // host's session, where the call it died on holds no turn open.
+        let mut y1 = server_log("a", Some("r"), 0, &[timed(0, call(json!(1), "x"))]);
+        y1.entries.push(LogEntry {
+            t_ms: 30,
+            from: Server,
+            message: None,
+            raw: Some("crashed".to_string()),
+        });
+        let cancel = json!({"jsonrpc": "2.0", "method": "notifications/cancelled",
+                            "params": {"requestId": 2}});
+        let z = server_log(
+            "b",
+            Some("r"),
+            0,
+            &[
+                timed(500, call(json!(1), "y")),
+                timed(600, reply(json!(1), "done")),
+                timed(700, call(json!(2), "slow")),
+                timed(750, (Client, cancel)),
+            ],
+        );
+        let y2 = server_log(
+            "a",
+            Some("r"),
+            100,
+            &[
+                timed(1_100, call(json!(1), "x")),
+                timed(1_110, reply(json!(1), "done")),
+            ],
+        );
+        let merged = merge(vec![x1(), x2(), y1, z, y2]);
+        assert_eq!(merged.apart, ["h"]);
+        assert_eq!(sessions(&merged), ["0-a", "10-a", "r"]);
+        assert_eq!((merged.merged_logs, merged.merged_sessions), (3, 1));
+        assert_eq!(
+            outline(&episode(&merged.logs[2])),
+            [
+                "turn(a::x)",
+                "turn(b::y,b::slow)",
+                "result:b::1",
+                "turn(a::x)",
+                "result:a::1"
+            ]
+        );
+        // Merged or not, the logs apart are named alike.
+        assert_eq!(
+            outline(&episode(&merged.logs[0])),
+            ["turn(a::x)", "result:a::1"]
+        );
+    }
+
+    #[test]
+    fn a_proxy_that_logs_a_different_line_keeps_it() {
+        let a = server_log(
+            "a",
+            Some("h"),
+            0,
+            &[
+                timed(0, said("one")),
+                timed(1, said("two")),
+                timed(2, (Peer::Context, json!("not a message"))),
+            ],
+        );
+        let mut b = server_log(
+            "b",
+            Some("h"),
+            0,
+            &[timed(5, said("one")), timed(6, said("other"))],
+        );
+        b.entries.push(LogEntry {
+            t_ms: 7,
+            from: Peer::Context,
+            message: None,
+            raw: Some("not json".to_string()),
+        });
+        let merged = merge(vec![a, b]);
+        let lines: Vec<String> = merged.logs[0]
+            .entries
+            .iter()
+            .map(|e| match (&e.message, &e.raw) {
+                (Some(m), _) => m.get("content").unwrap_or(m).to_string(),
+                (None, raw) => format!("raw {}", raw.as_deref().unwrap_or_default()),
+            })
+            .collect();
+        assert_eq!(
+            lines,
+            [
+                "\"one\"",
+                "\"two\"",
+                "\"not a message\"",
+                "\"other\"",
+                "raw not json"
+            ]
+        );
+    }
+
+    #[test]
+    fn a_servers_name_is_its_proxys_or_its_own() {
+        let mut log = log_of(&[
+            (
+                Client,
+                json!({"jsonrpc": "2.0", "id": 9, "result": {"serverInfo": {"name": "not the server"}}}),
+            ),
+            (
+                Server,
+                json!({"jsonrpc": "2.0", "id": 0, "result": {"serverInfo": {"name": ""}}}),
+            ),
+            (
+                Server,
+                json!({"jsonrpc": "2.0", "id": 1, "result": {"serverInfo": {"name": "My Server::v2"}}}),
+            ),
+        ]);
+        assert_eq!(server_name(&log).as_deref(), Some("My_Server__v2"));
+        log.header.domain = Some("retail".to_string());
+        assert_eq!(server_name(&log).as_deref(), Some("retail"));
+        log.header.server_name = Some("orders".to_string());
+        assert_eq!(server_name(&log).as_deref(), Some("orders"));
+        log.header.server_name = Some(String::new());
+        assert_eq!(server_name(&log).as_deref(), Some("retail"));
+        assert_eq!(server_name(&log_of(&[])), None);
+        // The header reads the same without the fields it did not have.
+        let text = serde_json::to_string(&log_of(&[]).header).unwrap();
+        assert!(
+            !text.contains("host_session") && !text.contains("server_name"),
+            "{text}"
+        );
+    }
+
+    #[test]
+    fn a_qualified_name_splits_back_into_server_and_tool() {
+        assert_eq!(qualify("docs", "search"), "docs::search");
+        assert_eq!(server_of("docs::search"), Some("docs"));
+        assert_eq!(server_of("search"), None);
+        assert_eq!(unqualified("docs::search"), "search");
+        assert_eq!(unqualified("search"), "search");
+        let mut ep = episode(&log_of(&[
+            said("hi"),
+            call(json!(1), "search"),
+            reply(json!(1), "found"),
+        ]));
+        qualify_episode(&mut ep, "docs");
+        assert_eq!(outline(&ep), ["user", "turn(docs::search)", "result:1"]);
+        assert!(matches!(&ep.events[2], Event::ToolResult { name, .. } if name == "docs::search"));
+    }
+
+    #[test]
+    fn every_id_and_tool_of_a_log_is_named_after_its_server() {
+        let log = log_of(&[
+            (
+                Client,
+                json!([
+                    {"jsonrpc": "2.0", "id": "c1", "method": "tools/call", "params": {"name": "get"}},
+                    {"jsonrpc": "2.0", "method": "notifications/cancelled", "params": {"requestId": "c1"}}
+                ]),
+            ),
+            (
+                Client,
+                json!({"jsonrpc": "2.0", "method": "notifications/cancelled", "params": {}}),
+            ),
+            (
+                Server,
+                json!({"jsonrpc": "2.0", "id": 4, "result": {"tools": [{"name": "get"}, {"title": "no name"}]}}),
+            ),
+            (
+                Server,
+                json!({"jsonrpc": "2.0", "id": null, "error": {"message": "bad"}}),
+            ),
+            (Server, json!("a string")),
+        ]);
+        let mut log = log;
+        log.entries.push(LogEntry {
+            t_ms: 9,
+            from: Server,
+            message: None,
+            raw: Some("starting".to_string()),
+        });
+        let q = qualified(&log, "s");
+        let messages: Vec<Value> = q
+            .entries
+            .iter()
+            .map(|e| e.message.clone().unwrap_or_default())
+            .collect();
+        assert_eq!(
+            messages[0],
+            json!([
+                {"jsonrpc": "2.0", "id": "s::c1", "method": "tools/call", "params": {"name": "s::get"}},
+                {"jsonrpc": "2.0", "method": "notifications/cancelled", "params": {"requestId": "s::c1"}}
+            ])
+        );
+        assert_eq!(messages[1], log.entries[1].message.clone().unwrap());
+        assert_eq!(
+            messages[2],
+            json!({"jsonrpc": "2.0", "id": "s::4", "result": {"tools": [{"name": "s::get"}, {"title": "no name"}]}})
+        );
+        assert_eq!(messages[3]["id"], Value::Null);
+        assert_eq!(messages[4], json!("a string"));
+        assert_eq!(q.entries[5].raw.as_deref(), Some("starting"));
     }
 }

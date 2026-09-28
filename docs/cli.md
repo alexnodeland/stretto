@@ -201,7 +201,7 @@ Usage: stretto compile [OPTIONS] --tau2 <DIR> --out <FILE>
 
 ### `stretto learn`
 
-Learn a live flow from sessions recorded by `stretto-proxy` (JSONL logs in a directory) and write its IR, as `compile` does from τ²-bench results. The tools come from the sessions' `tools/list` responses (their `readOnlyHint` annotations), or from `--manifest`. With `--results`, the sessions are τ²-bench episodes on a checkout's training tasks instead, as if a deployment had recorded them.
+Learn a live flow from sessions recorded by `stretto-proxy` (JSONL logs in a directory) and write its IR, as `compile` does from τ²-bench results. The tools come from the sessions' `tools/list` responses (their `readOnlyHint` annotations), or from `--manifest`. The logs one host session left with several servers are one session, each tool named after its server (`server::tool`). With `--results`, the sessions are τ²-bench episodes on a checkout's training tasks instead, as if a deployment had recorded them.
 
 ```text
 Usage: stretto learn [OPTIONS] --domain <NAME> --out <FILE>
@@ -217,7 +217,7 @@ Usage: stretto learn [OPTIONS] --domain <NAME> --out <FILE>
 - `--trials <N>...` (repeatable): With `--results`, only these trials of each task (default: all).
 - `--domain <NAME>` (required): The domain to name the flow for.
 - `--manifest <FILE>` (not with `--results`): A tool manifest (JSON, as stretto-trace writes it) instead of the sessions' own `tools/list`.
-- `--rewards <FILE>` (not with `--results`): Rewards by session id (JSON object). Sessions without one count as successful.
+- `--rewards <FILE>` (not with `--results`): Rewards by session id (JSON object): a log's session, or, for the logs a host session left with several servers, the host session. Sessions without one count as successful.
 
 **The arbiter**
 
@@ -715,6 +715,7 @@ Usage: stretto-proxy [OPTIONS] [-- <SERVER_COMMAND>...]
 - `--record <DIR>`: Write a session log (JSONL) into this directory, created if missing. A leading `~` is expanded, since hosts start servers without a shell.
 - `--domain <NAME>`: Domain for the log header, e.g. `retail`; --guards uses its rules.
 - `--agent-model <MODEL>`: Model that drives the agent, for the log header.
+- `--server-name <NAME>`: The server's name, for the log header. `stretto learn` merges the logs of one host session's servers into one session, naming each tool after its server (`NAME::tool`), and a flow learned so looks up only this server's tools here. Default: --domain, else the name the server gives itself. The host session is STRETTO_SESSION when set, else the host's process.
 - `--retain-days <DAYS>`: On start, delete what is older than this many days: the session logs in --record with the flow and confirmation logs beside them, and the answers in --oracle-cache.
 
 **Flows**

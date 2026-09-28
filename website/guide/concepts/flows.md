@@ -4,7 +4,7 @@ description: What a flow is, what stretto learn puts in it, and how it is learne
 
 # Flows
 
-A *flow* is what stretto serves behind an agent: a JSON file that says, for one server's tools, which lookups the agent made after each call, how often, and where each lookup's arguments came from. It holds counts, tool and argument names and JSON paths, and no model weights, so a person can read it, and a change to it can be reviewed like code.
+A *flow* is what stretto serves behind an agent: a JSON file that says, for one server's tools (or [several servers'](./sessions#several-servers)), which lookups the agent made after each call, how often, and where each lookup's arguments came from. It holds counts, tool and argument names and JSON paths, and no model weights, so a person can read it, and a change to it can be reviewed like code.
 
 ## Learn one
 

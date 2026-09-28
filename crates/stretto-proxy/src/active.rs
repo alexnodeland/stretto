@@ -47,7 +47,7 @@ use fugue::{
 };
 use serde_json::{json, Value};
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::future::Future;
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
@@ -440,6 +440,11 @@ pub(crate) struct Engine<'a, W: Write> {
     server_contracts: HashMap<String, String>,
     /// Tools the flow may not call, reported once each ([`Engine::withheld`]).
     left: HashSet<String>,
+    /// The servers a flow learned across servers names its tools after
+    /// ([`mcp::merge`]); empty for a flow learned from one server's logs.
+    flow_servers: BTreeSet<String>,
+    /// Whether this server's name was checked against them.
+    server_checked: bool,
     jobs: Vec<Job>,
     /// Requests of the proxy's own it stopped waiting for.
     abandoned: HashSet<String>,
@@ -495,6 +500,18 @@ impl<'a, W: Write> Engine<'a, W> {
             next_id: 0,
             server_contracts: HashMap::new(),
             left: HashSet::new(),
+            flow_servers: active
+                .flow
+                .as_ref()
+                .map(|fc| {
+                    let tools = fc.flow.manifest().tools.keys();
+                    tools
+                        .filter_map(|t| mcp::server_of(t))
+                        .map(String::from)
+                        .collect()
+                })
+                .unwrap_or_default(),
+            server_checked: false,
             lookups: 0,
             questions: 0,
             context_read: 0,
@@ -719,10 +736,26 @@ impl<'a, W: Write> Engine<'a, W> {
     /// its program, from the call's own site, though other calls of its turn
     /// may still be on their way. `None` when there is no tool call to start
     /// from.
-    fn flow_run(&self, after: &str) -> Option<Run> {
+    fn flow_run(&mut self, after: &str) -> Option<Run> {
         let fc = self.active.flow.as_ref()?;
         let program = self.program.as_ref()?;
-        let (episode, _) = self.episode().after_call(after);
+        if let Some(server) = self.flow_server() {
+            if !self.flow_servers.contains(&server)
+                && !std::mem::replace(&mut self.server_checked, true)
+            {
+                eprintln!(
+                    "stretto-proxy: the flow was learned across servers ({}), and this server's \
+                     name, {server:?}, is none of them, so it looks nothing up here; name the \
+                     server with --server-name",
+                    self.flow_servers
+                        .iter()
+                        .cloned()
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+            }
+        }
+        let (episode, _) = self.flow_episode().after_call(after);
         let steps = stretto_model::steps(&episode);
         let last = steps.last()?;
         let Action::Tool(tool) = &last.action else {
@@ -789,7 +822,7 @@ impl<'a, W: Write> Engine<'a, W> {
         self.read_context();
         // The session as it stands after the call just returned; the rest of
         // its turn is asked for already, so no lookup repeats one.
-        let (episode, pending) = self.episode().after_call(&flow.after);
+        let (episode, pending) = self.flow_episode().after_call(&flow.after);
         let asked = Instant::now();
         let next = match fc.flow.next_explored(
             &episode,
@@ -833,7 +866,7 @@ impl<'a, W: Write> Engine<'a, W> {
                     return HAND_BACK;
                 };
                 self.lookups += 1;
-                flow.run.pending = Some((tool, arguments));
+                flow.run.pending = Some((self.own_name(&tool).to_string(), arguments));
                 choice
             }
             _ => HAND_BACK,
@@ -1095,16 +1128,20 @@ impl<'a, W: Write> Engine<'a, W> {
     /// bind them is left to the agent. The first time, it says so on
     /// stderr.
     fn withheld(&mut self, fc: &FlowConfig, tool: &str) -> Option<String> {
-        let listed = self.server_tools.get(tool);
+        // The server knows the tool by its own name.
+        let own = self.own_name(tool);
+        let listed = self.server_tools.get(own);
         let pinned = fc.flow.contracts().get(tool);
-        let now = self.server_contracts.get(tool);
+        let now = self.server_contracts.get(own);
         let reasons = [
             (
                 fc.flow.manifest().tools.get(tool) != Some(&ToolKind::Read),
                 "the flow does not read it".to_string(),
             ),
             (
-                fc.tools.as_ref().is_some_and(|t| !t.contains(tool)),
+                fc.tools
+                    .as_ref()
+                    .is_some_and(|t| !t.contains(tool) && !t.contains(own)),
                 "--flow-tools does not grant it".to_string(),
             ),
             (
@@ -1149,6 +1186,32 @@ impl<'a, W: Write> Engine<'a, W> {
                     self.server_contracts.insert(name.to_string(), c);
                 }
             }
+        }
+    }
+
+    /// The name this server goes by in a flow learned across servers
+    /// ([`mcp::server_name`]); `None` for a flow learned from one server's
+    /// logs.
+    fn flow_server(&self) -> Option<String> {
+        (!self.flow_servers.is_empty()).then(|| mcp::server_name(&self.log).unwrap_or_default())
+    }
+
+    /// The session so far as the flow names its tools: after this server's
+    /// name, for a flow learned across servers.
+    fn flow_episode(&self) -> Episode {
+        let mut episode = self.episode();
+        if let Some(server) = self.flow_server() {
+            mcp::qualify_episode(&mut episode, &server);
+        }
+        episode
+    }
+
+    /// The name the server knows a tool of the flow's by.
+    fn own_name<'t>(&self, tool: &'t str) -> &'t str {
+        if self.flow_servers.is_empty() {
+            tool
+        } else {
+            mcp::unqualified(tool)
         }
     }
 

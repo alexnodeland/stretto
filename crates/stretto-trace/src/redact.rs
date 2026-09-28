@@ -4,7 +4,8 @@
 //! customer typed. [`redact`] rewrites a set of logs so that a value fewer
 //! than `keep_shared` sessions share is replaced by a salted hash, and a
 //! value that many sessions share (a status, a reason, a product type, a
-//! field name) is kept. A value hashes the same wherever it appears, in any
+//! field name) is kept. The logs of one host session, one per server, are
+//! one session here, as they are to `stretto learn` ([`crate::mcp::merge`]). A value hashes the same wherever it appears, in any
 //! of the logs, so what `stretto learn` needs still holds: which lookup
 //! followed which call, where each argument's value was found in an earlier
 //! result, and whether the customer had mentioned it.
@@ -37,7 +38,7 @@
 //! such as an address typed in the conversation and stored whole in a
 //! record, no longer matches.
 
-use crate::mcp::{LogEntry, McpLog, Peer};
+use crate::mcp::{session_groups, LogEntry, McpLog, Peer};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
@@ -58,9 +59,10 @@ pub fn redact(
 ) -> Vec<McpLog> {
     let fields: HashSet<String> = hash_fields.iter().map(|f| normalize(f)).collect();
     let mut census = Census::default();
-    for log in logs {
-        census.session = log.header.session.clone();
-        for entry in walk(log) {
+    // A host session's logs, one per server, are one session.
+    for group in session_groups(logs) {
+        census.session = logs[group[0]].header.session.clone();
+        for entry in group.iter().flat_map(|&i| walk(&logs[i])) {
             visit(&entry.kind, entry.value, &mut |v| {
                 census.add(v);
                 if v.split_whitespace().nth(1).is_some() {
@@ -754,6 +756,34 @@ mod tests {
         // Another salt, other hashes.
         let other = redact(&logs, "pepper", 3, &[]);
         assert_ne!(other[0].entries[1].message, out[0].entries[1].message);
+    }
+
+    #[test]
+    fn the_servers_of_one_host_session_are_one_session() {
+        // Two customers, each seen by two servers of their host session.
+        let logs: Vec<McpLog> = (0..4)
+            .map(|i| {
+                let mut log = log(i, &format!("c{}@x.com", i / 2), "user_x");
+                log.header.host_session = Some(format!("host-{}", i / 2));
+                log.header.server_name = Some(format!("server-{}", i % 2));
+                log
+            })
+            .collect();
+        assert_eq!(session_groups(&logs), [vec![0, 1], vec![2, 3]]);
+        let email = |logs: &[McpLog]| {
+            logs[0].entries[1].message.clone().unwrap()["params"]["arguments"]["email"].clone()
+        };
+        // Each email is one session's, however many servers saw it...
+        assert_ne!(email(&redact(&logs, "salt", 2, &[])), "c0@x.com");
+        // ...but four sessions share what four hosts saw.
+        let apart: Vec<McpLog> = logs
+            .into_iter()
+            .map(|mut log| {
+                log.header.host_session = None;
+                log
+            })
+            .collect();
+        assert_eq!(email(&redact(&apart, "salt", 2, &[])), "c0@x.com");
     }
 
     #[test]

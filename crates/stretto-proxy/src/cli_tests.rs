@@ -310,6 +310,8 @@ fn setup_sweeps_then_says_what_to_serve() {
         "retail",
         "--agent-model",
         "glm-5.3",
+        "--server-name",
+        "orders",
         "--commit",
         "--",
         "cat",
@@ -318,6 +320,26 @@ fn setup_sweeps_then_says_what_to_serve() {
     let (config, active) = setup(&args, &env).unwrap();
     assert!(!logs.join("old.jsonl").exists());
     assert_eq!(config.command, ["cat", "-u"]);
+    assert_eq!(config.server_name.as_deref(), Some("orders"));
+    // The host session is the host's process, unless the host names one.
+    #[cfg(unix)]
+    assert_eq!(
+        config.host_session,
+        Some(format!("host-{}", std::os::unix::process::parent_id()))
+    );
+    for (set, session) in [("task-17", "task-17"), ("", "")] {
+        let var = |name: &str| (name == "STRETTO_SESSION").then(|| set.to_string());
+        let env = Env {
+            jev: &no_jev,
+            var: &var,
+        };
+        let (config, _) = setup(&args, &env).unwrap();
+        if !session.is_empty() {
+            assert_eq!(config.host_session.as_deref(), Some(session));
+        } else {
+            assert_ne!(config.host_session.as_deref(), Some(""));
+        }
+    }
     assert_eq!(config.record, Some(logs.clone()));
     assert_eq!(
         (config.domain.as_deref(), config.agent_model.as_deref()),

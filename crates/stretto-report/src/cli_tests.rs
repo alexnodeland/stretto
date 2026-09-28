@@ -384,6 +384,39 @@ fn learn_takes_sessions_or_results_and_an_arbiter_from_either_file() {
 }
 
 #[test]
+fn learn_and_audit_read_a_host_sessions_servers_as_one_session() {
+    let t = Scratch::new("servers");
+    for n in 0..30 {
+        for (name, text) in common::host_session_logs(&common::session(n), n) {
+            t.put(&format!("m/{name}"), &text);
+        }
+    }
+    // A host session with two servers of one name at once stays apart.
+    for (name, text) in common::host_session_logs(&common::session(30), 30) {
+        t.put(
+            &format!("m/{name}"),
+            &text.replace("\"orders\"", "\"accounts\""),
+        );
+    }
+    let manifest = json!({"domain": "shop", "tools": {
+        "accounts::find_account": "read", "accounts::get_account": "read",
+        "orders::get_order": "read", "orders::close_order": "write"}});
+    t.put("mm.json", &manifest.to_string());
+    let learn = "learn --domain shop --manifest $T/mm.json --sessions $T/m --habit-only";
+    t.run(&format!("{learn} --out $T/m.flow.json")).ok();
+    let flow = stretto_report::flow::Flow::load(&t.at("m.flow.json")).unwrap();
+    for site in [
+        "accounts::find_account",
+        "accounts::get_account",
+        "orders::get_order",
+    ] {
+        assert!(flow.sites().iter().any(|s| s == site), "{:?}", flow.sites());
+    }
+    let md = t.run("audit --flow $T/m.flow.json --sessions $T/m").ok();
+    assert!(md.contains("# Flow audit"), "{md}");
+}
+
+#[test]
 fn learn_counts_the_customers_tools_as_the_agents_in_a_solo_run() {
     let t = Scratch::new("solo");
     common::write_checkout(&t.0);

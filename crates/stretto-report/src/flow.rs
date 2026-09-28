@@ -456,6 +456,18 @@ struct Chosen<'a> {
     habit: &'a [f64],
     /// Who decided.
     decider: Decider,
+    /// The server of the call the flow follows, in a flow learned across
+    /// servers ([`stretto_trace::mcp::merge`]).
+    server: Option<&'a str>,
+}
+
+impl Chosen<'_> {
+    /// Whether the flow may look `tool` up here. A flow learned across
+    /// servers looks up only the tools of the server whose call it follows,
+    /// since that server's proxy is connected to no other.
+    fn may_look_up(&self, tool: &str) -> bool {
+        tool != RESPOND && stretto_trace::mcp::server_of(tool) == self.server
+    }
 }
 
 /// What the flow does next.
@@ -775,7 +787,9 @@ impl Flow {
     /// has returned: take the most likely lookup if its probability (the
     /// arbiter's for the tool, times the chance that the bound arguments are
     /// the agent's) is at least `threshold`, else hand back (also if
-    /// `oracle`, asked one request, fails).
+    /// `oracle`, asked one request, fails). A flow learned across servers
+    /// looks up only the tools of the server whose call returned, and the
+    /// probabilities it reports still cover every option.
     pub fn next(&self, episode: &Episode, oracle: &dyn Oracle, threshold: f64) -> Result<Next> {
         self.next_with(episode, oracle, threshold, Decider::Arbiter)
     }
@@ -887,6 +901,7 @@ impl Flow {
                 probs: &probs,
                 habit: &prior,
                 decider,
+                server: stretto_trace::mcp::server_of(&live.prev),
             };
             return self.look_up(next, episode, pending, chosen, threshold, explore);
         }
@@ -946,6 +961,7 @@ impl Flow {
             probs: &judged.probs,
             habit: &habit,
             decider,
+            server: stretto_trace::mcp::server_of(&live.prev),
         };
         self.look_up(next, episode, pending, chosen, threshold, explore)
     }
@@ -964,9 +980,9 @@ impl Flow {
     ) -> Result<Next> {
         let seen = (episode, pending);
         let mut next = if chosen.decider == Decider::Reach {
-            self.rule_set(next, seen, chosen.options, chosen.probs, threshold)
+            self.rule_set(next, seen, &chosen, threshold)
         } else {
-            self.rule(next, seen, chosen.options, chosen.probs, threshold)
+            self.rule(next, seen, &chosen, threshold)
         };
         let Some(explore) = explore else {
             return Ok(next);
@@ -976,7 +992,7 @@ impl Flow {
             .iter()
             .zip(chosen.probs)
             .zip(chosen.habit)
-            .filter(|((o, _), _)| o.as_str() != RESPOND)
+            .filter(|((o, _), _)| chosen.may_look_up(o))
             .map(|((tool, &p), &habit)| {
                 let bound = self.bind_lookup(tool, episode, pending);
                 OptionView {
@@ -1063,27 +1079,27 @@ impl Flow {
         }
     }
 
-    /// Lookup first: take the most likely lookup among `options` (the first
-    /// of equals, as offline) if its probability in `probs`, times the
-    /// chance that its bound arguments are the agent's, is at least
-    /// `threshold`; else hand back.
+    /// Lookup first: take the most likely lookup the flow may make here
+    /// ([`Chosen::may_look_up`]; the first of equals, as offline) if its
+    /// probability, times the chance that its bound arguments are the
+    /// agent's, is at least `threshold`; else hand back.
     fn rule(
         &self,
         mut next: Next,
         (episode, pending): (&Episode, &[ToolCall]),
-        options: &[String],
-        probs: &[f64],
+        chosen: &Chosen,
         threshold: f64,
     ) -> Next {
         let hand_back = |mut next: Next, reason: String| {
             next.proposal = Proposal::HandBack { reason };
             next
         };
+        let (options, probs) = (chosen.options, chosen.probs);
         next.probs = options.iter().cloned().zip(probs.iter().copied()).collect();
         let best = options
             .iter()
             .zip(probs)
-            .filter(|(o, _)| o.as_str() != RESPOND)
+            .filter(|(o, _)| chosen.may_look_up(o))
             .fold(None::<(&String, f64)>, |best, (o, &p)| match best {
                 Some((_, q)) if q >= p => best,
                 _ => Some((o, p)),
@@ -1121,24 +1137,25 @@ impl Flow {
     /// The rule for [`Decider::Reach`], where each lookup is judged on its
     /// own: a read's result stays current until the next write, so the agent
     /// can use it whenever it gets to it, and whether one lookup pays off
-    /// does not depend on the others. Of the lookups that bind, the one
-    /// whose probability times its binding's chance is highest, if that
-    /// reaches the threshold; the next decision weighs the rest again.
+    /// does not depend on the others. Of the lookups the flow may make here
+    /// ([`Chosen::may_look_up`]) that bind, the one whose probability times
+    /// its binding's chance is highest, if that reaches the threshold; the
+    /// next decision weighs the rest again.
     fn rule_set(
         &self,
         mut next: Next,
         (episode, pending): (&Episode, &[ToolCall]),
-        options: &[String],
-        probs: &[f64],
+        chosen: &Chosen,
         threshold: f64,
     ) -> Next {
+        let (options, probs) = (chosen.options, chosen.probs);
         next.probs = options.iter().cloned().zip(probs.iter().copied()).collect();
         let mut best: Option<(&String, f64, Value, f64)> = None;
         let mut unbound = None;
         // The likeliest lookup under the threshold, to say why none was made.
         let mut below: Option<(&String, f64)> = None;
         for (tool, &p) in options.iter().zip(probs) {
-            if tool.as_str() == RESPOND {
+            if !chosen.may_look_up(tool) {
                 continue;
             }
             if p < threshold {
@@ -3618,6 +3635,18 @@ pub(crate) mod tests {
         }
     }
 
+    /// `options` with the decider's `probs`, after a call of a flow learned
+    /// from one server's logs.
+    fn chosen<'a>(options: &'a [String], probs: &'a [f64]) -> Chosen<'a> {
+        Chosen {
+            options,
+            probs,
+            habit: probs,
+            decider: Decider::Habit,
+            server: None,
+        }
+    }
+
     #[test]
     fn the_rules_say_why_they_hand_back() {
         let (habit, _) = shop();
@@ -3629,29 +3658,29 @@ pub(crate) mod tests {
         // With the habit: nothing but handing back; the first of equals;
         // a lookup it cannot bind.
         let only = names(&[RESPOND]);
-        let next = habit.rule(blank(), seen, &only, &[1.0], 0.3);
+        let next = habit.rule(blank(), seen, &chosen(&only, &[1.0]), 0.3);
         assert_eq!(reason(&next), "no lookup to make");
         let two = names(&["get_account", "get_order"]);
-        let next = habit.rule(blank(), seen, &two, &[0.5, 0.5], 0.3);
+        let next = habit.rule(blank(), seen, &chosen(&two, &[0.5, 0.5]), 0.3);
         assert_eq!(reason(&next), "a lookup", "{next:?}");
         let odd = names(&["get_rewards"]);
-        let next = habit.rule(blank(), seen, &odd, &[0.9], 0.3);
+        let next = habit.rule(blank(), seen, &chosen(&odd, &[0.9]), 0.3);
         assert!(
             reason(&next).starts_with("get_rewards: never called in training"),
             "{next:?}"
         );
         // With reach: nothing to make, one below the bar and one unbound,
         // one bound too weakly, and the best of two.
-        let next = habit.rule_set(blank(), seen, &only, &[1.0], 0.3);
+        let next = habit.rule_set(blank(), seen, &chosen(&only, &[1.0]), 0.3);
         assert_eq!(reason(&next), "no lookup to make");
         let three = names(&["get_order", "get_account", "get_rewards", RESPOND]);
-        let next = habit.rule_set(blank(), seen, &three, &[0.1, 0.2, 0.9, 0.0], 0.3);
+        let next = habit.rule_set(blank(), seen, &chosen(&three, &[0.1, 0.2, 0.9, 0.0]), 0.3);
         assert!(reason(&next).starts_with("get_rewards:"), "{next:?}");
-        let next = habit.rule_set(blank(), seen, &three[..2], &[0.1, 0.2], 0.3);
+        let next = habit.rule_set(blank(), seen, &chosen(&three[..2], &[0.1, 0.2]), 0.3);
         assert_eq!(reason(&next), "get_account at 0.20, below 0.3");
-        let next = habit.rule_set(blank(), seen, &three[..2], &[0.91, 0.92], 0.9);
+        let next = habit.rule_set(blank(), seen, &chosen(&three[..2], &[0.91, 0.92]), 0.9);
         assert!(reason(&next).contains("arguments, below 0.9"), "{next:?}");
-        let next = habit.rule_set(blank(), seen, &three[..2], &[0.9, 0.95], 0.3);
+        let next = habit.rule_set(blank(), seen, &chosen(&three[..2], &[0.9, 0.95]), 0.3);
         assert_eq!(reason(&next), "a lookup");
         // Two that bind: once the agent has read another account than the
         // one it found, the found one and the other's first order.
@@ -3666,8 +3695,25 @@ pub(crate) mod tests {
             .map(|t| habit.bind_lookup(t, &read, &[]))
             .collect();
         assert!(bound.iter().all(Result::is_ok), "{bound:?}");
-        let next = habit.rule_set(blank(), (&read, &[][..]), &both, &[0.9, 0.95], 0.3);
+        let next = habit.rule_set(blank(), (&read, &[][..]), &chosen(&both, &[0.9, 0.95]), 0.3);
         assert_eq!(reason(&next), "a lookup");
+        // A flow learned across servers looks up only the tools of the
+        // server whose call it follows, and still reports every option.
+        let across = names(&["docs::search", "tickets::get"]);
+        let on = |server| Chosen {
+            server: Some(server),
+            ..chosen(&across, &[0.9, 0.5])
+        };
+        let next = habit.rule(blank(), seen, &on("tickets"), 0.3);
+        assert!(
+            reason(&next).starts_with("tickets::get: never called in training"),
+            "{next:?}"
+        );
+        assert_eq!(next.probs.len(), 2);
+        let next = habit.rule_set(blank(), seen, &on("tickets"), 0.3);
+        assert!(reason(&next).starts_with("tickets::get:"), "{next:?}");
+        let next = habit.rule(blank(), seen, &on("billing"), 0.3);
+        assert_eq!(reason(&next), "no lookup to make");
         // Served on reach, the flow decides by it.
         let mock = stretto_oracle::MockOracle {
             confidence: 0.6,

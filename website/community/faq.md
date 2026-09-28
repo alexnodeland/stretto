@@ -26,7 +26,7 @@ Deciding took under a millisecond per tool response in the live run (at most 4 m
 
 ## Which hosts and servers does it work with?
 
-Any host that runs MCP servers over stdio, and any MCP server: one run as a command, or one reached over Streamable HTTP with `--upstream`. For Claude Code, Claude Desktop, Cursor and VS Code, `stretto init` prints the configuration ([integrations](/integrations/)). One proxy wraps one server; an agent with several servers needs one proxy for each.
+Any host that runs MCP servers over stdio, and any MCP server: one run as a command, or one reached over Streamable HTTP with `--upstream`. For Claude Code, Claude Desktop, Cursor and VS Code, `stretto init` prints the configuration ([integrations](/integrations/)). One proxy wraps one server; an agent with several servers needs one proxy for each, and a flow can learn across them ([several servers](/guide/concepts/sessions#several-servers)).
 
 ## Is there a UI?
 

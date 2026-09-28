@@ -17,9 +17,10 @@ stretto-proxy --record ~/.stretto/logs/orders --domain orders \
 
 `stretto init` prints this for your host, in the host's own format ([integrations](/integrations/)).
 
-- `--record DIR` writes one log per session, `DIR/<session>.jsonl`, and creates `DIR` if it is missing. Keep one directory per server, since `stretto learn` reads every session in a directory; `stretto init` uses `~/.stretto/logs/NAME`. Without `--record`, the proxy only forwards.
+- `--record DIR` writes one log per session, `DIR/<session>.jsonl`, and creates `DIR` if it is missing. Keep one directory per server, or one for all of a host's servers when a flow should learn across them ([several servers](#several-servers)): `stretto learn` reads every session in a directory. `stretto init` uses `~/.stretto/logs/NAME`. Without `--record`, the proxy only forwards.
 - `--domain NAME` names the domain in the log's header, and later the flow's.
 - `--agent-model MODEL` names the model that drives the agent, which the proxy cannot see. Without it, the log names the host application from `initialize`.
+- `--server-name NAME` names the server, for a host with several servers.
 
 Its stdout carries only the protocol. Its own messages go to stderr, prefixed `stretto-proxy:`, and the first says where the log is. It exits with the server's status, or with 125 if the proxy itself fails. When nothing but recording is asked of it, it parses nothing it forwards. A writer thread writes the log off the forwarding path, so forwarding never waits for the disk.
 
@@ -28,7 +29,7 @@ Its stdout carries only the protocol. Its own messages go to stderr, prefixed `s
 A log is JSON lines. The first line is a header:
 
 ```json
-{"stretto_mcp_log":2,"session":"20260923T212000.123Z-4242","started_unix_ms":1790198400123,"server_command":["npx","-y","some-mcp-server"],"domain":"orders","agent_model":null}
+{"stretto_mcp_log":2,"session":"20260923T212000.123Z-4242","started_unix_ms":1790198400123,"server_command":["npx","-y","some-mcp-server"],"domain":"orders","agent_model":null,"host_session":"host-4211"}
 ```
 
 Every other line is one line from the wire, with when the proxy read it (`t_ms`, milliseconds since it started) and who sent it (`from`): `client` (the host), `server`, and, when the proxy acts, `proxy` (its own requests) and `context` (the conversation):
@@ -60,11 +61,22 @@ MCP carries tool calls, not the conversation. `--context FILE` gives the proxy t
 
 With it, a flow can prefer a value the user mentioned when it binds a lookup's arguments, and the logs hold the user's turns. Without it, a flow still works. The proxy reads the file from its start, so give each session its own file, or empty it when a session starts. The MCP hosts on the [integrations](/integrations/) pages do not write such a file themselves; a harness that drives the agent can, as [the pilots'](../../../pilot/run_episode.py) does.
 
+## Several servers
+
+An agent often uses several servers in one session, such as a ticketing server and a docs server. One proxy wraps one server, so each server's calls go to a log of their own; `stretto learn` makes one session of the logs one host session left, so a flow learns that a docs search follows a ticket's read.
+
+- Give every server's proxy the same `--record` directory.
+- The proxies of one host share a host session: `STRETTO_SESSION` when the host's environment sets it, else the host's own process (on Unix). Set `STRETTO_SESSION` on Windows, and when the host starts each server through a shell.
+- Each tool is named after its server, `docs::search`: the proxy's `--server-name`, else its `--domain`, else the name the server gives itself. Name the servers when two of them could share a name.
+- Serve the flow from every proxy. Each looks up only its own server's tools, and leaves a lookup on another server to the agent.
+
+[The proxy's reference](/reference/proxy#several-servers) has a configuration and the details.
+
 ## What the proxy cannot see
 
 - **LLM turns.** They are inferred from timing: a call sent while an earlier call of the turn still awaits its response joins that turn, and so does one sent within half a second of the turn's last response, unless it passes a value that first appeared in what the turn returned. A host that runs a turn's calls as the model streams them, or one after another, sends them that closely, while a new turn waits for the model to read the results. Any other call starts a new turn ([how well this works](../../../docs/results/turns-2026-09-28.md)).
 - **Outcomes, tokens and cost.** Whether a session succeeded is unknown. `stretto learn --rewards FILE` takes rewards by session id; a session without one counts as successful.
-- **Other servers.** One proxy wraps one server. An agent with several servers leaves one log per wrapped server, and a flow learns from one server's calls.
+- **Other servers.** One proxy wraps one server and sees only its calls. `stretto learn` merges a host session's logs of several servers ([above](#several-servers)), but each proxy serving the flow decides from its own server's calls alone.
 
 ## How many sessions
 

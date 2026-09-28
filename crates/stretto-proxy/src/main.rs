@@ -36,6 +36,14 @@ struct Cli {
     /// Model that drives the agent, for the log header.
     #[arg(help_heading = "Recording", long, value_name = "MODEL")]
     agent_model: Option<String>,
+    /// The server's name, for the log header. `stretto learn` merges the
+    /// logs of one host session's servers into one session, naming each
+    /// tool after its server (`NAME::tool`), and a flow learned so looks up
+    /// only this server's tools here. Default: --domain, else the name the
+    /// server gives itself. The host session is STRETTO_SESSION when set,
+    /// else the host's process.
+    #[arg(help_heading = "Recording", long, value_name = "NAME")]
+    server_name: Option<String>,
     /// On start, delete what is older than this many days: the session
     /// logs in --record with the flow and confirmation logs beside them,
     /// and the answers in --oracle-cache.
@@ -278,8 +286,29 @@ fn setup(cli: &Cli, env: &Env) -> Result<(Config, Active)> {
         record: cli.record.clone().map(expand_home),
         domain: cli.domain.clone(),
         agent_model: cli.agent_model.clone(),
+        host_session: host_session(env.var),
+        server_name: cli.server_name.clone(),
     };
     Ok((config, active))
+}
+
+/// The host session the proxy runs in, which every proxy the host starts
+/// shares: `STRETTO_SESSION` when the host sets it, else the host's
+/// process, `host-<pid>` (on Unix; elsewhere none).
+fn host_session(var: &dyn Fn(&str) -> Option<String>) -> Option<String> {
+    var("STRETTO_SESSION")
+        .filter(|s| !s.is_empty())
+        .or_else(host_process)
+}
+
+#[cfg(unix)]
+fn host_process() -> Option<String> {
+    Some(format!("host-{}", std::os::unix::process::parent_id()))
+}
+
+#[cfg(not(unix))]
+fn host_process() -> Option<String> {
+    None
 }
 
 /// Delete what is older than `days` in the log directory and the answer
