@@ -26,6 +26,7 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 - CI also runs the doctests, builds the API docs with rustdoc warnings as errors, and checks the workspace on Rust 1.88, the `rust-version`, with the committed lockfile. A coverage workflow measures line coverage with cargo-llvm-cov and fails under 78%; its LCOV report is an artifact, and goes to Codecov when a `CODECOV_TOKEN` secret is set.
 - A Claude Code setup: `CLAUDE.md`, which imports `AGENTS.md`, and `.claude/`, with permission rules, a hook that runs rustfmt on each edited Rust file, a session-start hook for Claude Code on the web, four skills (`check`, `results`, `release`, `steward`) and two subagents (`reviewer`, `claims-checker`).
 - A dev container (`.devcontainer/`) and VS Code settings (`.vscode/`).
+- A debug build of `stretto-console` serves the UI in `console/dist` even when the UI was built after it (`make ci`, then `make console`). Before, such a build served only the page that says how to build the UI.
 - CI's `ui` job checks the console's UI: Prettier, ESLint, vue-tsc, Vitest and the build (`make ui-check`). It also runs Playwright in Chromium on a mock API and on the console serving its test fixtures (`make e2e`), and fails on any error in the browser's console. `make types` regenerates the API's TypeScript, and CI's check job fails when it has drifted.
 
 ## 0.1.0 (2026-09-27)
