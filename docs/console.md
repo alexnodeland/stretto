@@ -14,6 +14,9 @@
   - the difference from another flow.
 - **Jobs.** `learn`, `promote`, `audit`, `redact` and `doctor`, run from the page, with their output as it comes and the files they wrote.
 
+![The console's overview: this week's sessions, tool calls, lookups served and shadow decisions; the tool calls of the last 14 days; the health checks; and each domain](../brand/media/console/overview-light.png#gh-light-mode-only)
+![The console's overview: this week's sessions, tool calls, lookups served and shadow decisions; the tool calls of the last 14 days; the health checks; and each domain](../brand/media/console/overview-dark.png#gh-dark-mode-only)
+
 It reads everything through stretto's own code, so what it shows is what `stretto flow-show`, `stretto init` and `stretto doctor` say. The one file it owns is `servers.json`, the registry of servers. [The crate's README](../crates/stretto-console/README.md) documents its API.
 
 ## Start it
@@ -47,7 +50,7 @@ A build made without `console/dist` serves the API and, at `/`, a page that says
 
 ### In a container
 
-`ghcr.io/alexnodeland/stretto-console` is the console, with the `stretto` CLI beside it for its jobs. It serves on port 8080 in the container, and keeps its data in `/data/.stretto`. [`compose.yaml`](../compose.yaml) runs it over your `~/.stretto`:
+`ghcr.io/alexnodeland/stretto-console` is the console, with the `stretto` CLI beside it for its jobs. It is published from the first release after 0.1.0; until then, `docker compose up -d --build` builds it from a checkout. It serves on port 8080 in the container, and keeps its data in `/data/.stretto`. [`compose.yaml`](../compose.yaml) runs it over your `~/.stretto`:
 
 ```sh
 STRETTO_UID=$(id -u) STRETTO_GID=$(id -g) docker compose up -d
@@ -91,16 +94,43 @@ Then open the printed URL on your own machine. On a shared machine, `--read-only
 
 ## The pages
 
-| Page | What it shows, and what you can do there |
-|---|---|
-| Overview | This week's sessions, calls, lookups served and shadow lookups; the last 14 days; each domain with its mode, flow, server and last session; the newest sessions and jobs; health checks. With no data yet, the three steps to get some: add a server, use your agent, learn a flow. |
-| Servers | The registry. Add or edit a server: a command or a URL, the environment variables and headers it needs (by name), its mode, flow, decider and threshold. Copy the host configuration for your MCP host. Run the connection test. Upstreams found in recorded sessions but not in the registry can be added in one click. |
-| Sessions | Every session, filtered by domain, mode or text. A session's page shows its timeline: the conversation, each call with its arguments and result, the lookups the flow made after it ("read ahead by stretto"), and each decision with its probability against the threshold. Tabs hold every decision in a table and the raw log. |
-| Flows | Every flow. A flow's page shows its graph and a threshold slider that shows which lookups would act. It has the sites with their bindings, the tools (writes flagged), the review as `flow-show` prints it, and the raw JSON. From there you can compare it with another flow, download it, promote it or audit it. |
-| Jobs | New jobs, the queue, and each job's live output and the files it wrote, such as a new flow or an audit's report. |
-| Settings | The data directory and its size by kind, the binaries found, whether a Jev key is set (never its value), the read-only mode, the theme, and sign out. |
+The console follows the data directory as it changes: a new session, flow or job shows up within a second, without a reload. Ctrl-K (⌘K on a Mac) jumps to any page, server, session or flow, and the domain filter at the top narrows every page to one domain. The pages work from a phone's width up.
 
-The console follows the data directory as it changes: a new session, flow or job shows up within a second, without a reload.
+### Overview
+
+This week's sessions, tool calls, lookups served and shadow decisions, and the tool calls of the last 14 days, as a chart or a table. Each domain, with its mode, flow, server and last session. The newest sessions and jobs, and the checks `stretto doctor` makes. The picture at the top of this page is one. With no data yet, it shows the three steps to get some: add a server, use your agent through it, learn a flow.
+
+### Servers
+
+The registry. Add or edit a server: a command or a URL, the environment variables and headers it needs (by name, never their values), its mode, flow, decider and threshold. A server's page has the configuration to paste into Claude Code, Claude Desktop, Cursor or VS Code, and the connection test. Upstreams found in recorded sessions but not in the registry can be added in one click.
+
+![A server's page: the configuration to paste into each MCP host, its setup (upstream, mode, flow, decider and threshold), the connection test, and the proxy's command line](../brand/media/console/server-light.png#gh-light-mode-only)
+![A server's page: the configuration to paste into each MCP host, its setup (upstream, mode, flow, decider and threshold), the connection test, and the proxy's command line](../brand/media/console/server-dark.png#gh-dark-mode-only)
+
+### Sessions
+
+Every session, filtered by domain, mode or text. A session's page is its timeline: the conversation, each call with its arguments and result, and under it the lookups the flow made ("read ahead by stretto"), each with its probability against the threshold. In shadow mode, the lookups it would have made. Tabs hold every decision in a table, the raw log, and the tools. A session can be downloaded, or moved to the trash.
+
+![A served session: the customer's request, the agent's first call, and the three lookups stretto read ahead after it, each with its probability against the threshold of 0.30](../brand/media/console/session-light.png#gh-light-mode-only)
+![A served session: the customer's request, the agent's first call, and the three lookups stretto read ahead after it, each with its probability against the threshold of 0.30](../brand/media/console/session-dark.png#gh-dark-mode-only)
+
+### Flows
+
+Every flow. A flow's page shows its graph, with a threshold slider that shows which lookups would act at another threshold. It has the sites with their bindings, the tools (the writes, which a flow never calls, flagged), the review as `flow-show` prints it, and the raw JSON. From there you can compare it with another flow, download it, promote it or audit it.
+
+![A flow's page: its graph at a threshold of 0.30, where after the agent's find_user_id_by_email the flow looks up get_user_details, then get_order_details, each edge labelled with its share times binding chance](../brand/media/console/flow-light.png#gh-light-mode-only)
+![A flow's page: its graph at a threshold of 0.30, where after the agent's find_user_id_by_email the flow looks up get_user_details, then get_order_details, each edge labelled with its share times binding chance](../brand/media/console/flow-dark.png#gh-dark-mode-only)
+
+### Jobs
+
+New jobs, the queue, and each job: its output as it comes, and the files it wrote, such as a new flow or an audit's report, which the page renders.
+
+![An audit job's page: the report it wrote, rendered, with the agreement and surprise of each site, the files it wrote and its parameters](../brand/media/console/jobs-light.png#gh-light-mode-only)
+![An audit job's page: the report it wrote, rendered, with the agreement and surprise of each site, the files it wrote and its parameters](../brand/media/console/jobs-dark.png#gh-dark-mode-only)
+
+### Settings
+
+The data directory and its size by kind, the binaries found, whether a Jev key is set (never its value), the read-only mode, the theme, and sign out.
 
 ## What it changes
 

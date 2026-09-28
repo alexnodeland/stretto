@@ -10,7 +10,9 @@
 //   points at that page, keeping its #fragment;
 // - a link to any other repository file or folder points at it on GitHub;
 // - an image stored outside `website/` is imported from where it is, so Vite copies it
-//   into the build (and `vitepress dev` serves it from there);
+//   into the build (and `vitepress dev` serves it from there). GitHub's
+//   #gh-light-mode-only and #gh-dark-mode-only stay on it, and the theme's CSS shows it
+//   in that theme only, as GitHub does;
 // - a link to a file that does not exist fails the build, as VitePress's own dead-link
 //   check does for pages.
 //
@@ -256,16 +258,17 @@ export function repoLinks(md: MarkdownRenderer, options: RepoLinksOptions) {
       if (ABSOLUTE_URL_RE.test(src) || src.startsWith('/') || src.startsWith('data:')) return undefined
       const resolved = resolve(src, source)
       if (!resolved) return undefined
-      const { abs } = resolved
+      const { abs, suffix } = resolved
       if (source === page && inside(abs, srcDir)) return undefined
       if (!fs.existsSync(abs)) {
         problems.push(`image ${src} (in ${shown(source)}): ${shown(abs)} does not exist`)
         return undefined
       }
-      if (devServer) return `${base}@fs${posix(abs).startsWith('/') ? '' : '/'}${posix(abs)}`
+      const theme = /#gh-(?:light|dark)-mode-only$/.exec(suffix)?.[0] ?? ''
+      if (devServer) return `${base}@fs${posix(abs).startsWith('/') ? '' : '/'}${posix(abs)}${theme}`
       // Relative to the page, so that Vite imports the file and copies it into the build.
       const rel = posix(path.relative(path.dirname(page), abs))
-      return rel.startsWith('.') ? rel : './' + rel
+      return (rel.startsWith('.') ? rel : './' + rel) + theme
     }
 
     let line: number | undefined

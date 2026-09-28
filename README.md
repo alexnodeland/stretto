@@ -83,12 +83,30 @@ stretto init --host claude-code --flow orders.flow.json --shadow -- npx -y @your
 - [The guide](https://alexnodeland.github.io/stretto/guide/) walks through each step.
 - [The walkthrough](docs/walkthrough.md) runs the loop on the official MCP filesystem server.
 
+## The console
+
+`stretto-console` is a web app on your machine, over the files stretto writes to `~/.stretto`. In one place it shows:
+- the MCP servers stretto fronts, with the configuration to paste into each host and a live test of the connection;
+- every recorded session, call by call, with the lookups the flow made after each call and why;
+- each flow's graph and review, and what would change at another threshold;
+- the CLI's jobs (`learn`, `promote`, `audit`, `redact`, `doctor`), run from the page.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/media/console/session-dark.png">
+    <img src="brand/media/console/session-light.png" alt="A served session in the console: the customer's request, the agent's first call, and the three lookups stretto read ahead after it, each with its probability against the threshold" width="860">
+  </picture>
+</p>
+
+From a checkout, `make console` builds the UI and serves `~/.stretto` on 127.0.0.1:7878. Open the URL it prints, which carries a token. [The console's guide](docs/console.md) covers the container, signing in, and each page.
+
 ## Documentation
 
 | | |
 |---|---|
 | [Guide](https://alexnodeland.github.io/stretto/guide/) | What stretto is and the quick start. The concepts: sessions, flows, lookups and detours, deciders, bindings, shadow mode, procedures |
 | [Integrations](https://alexnodeland.github.io/stretto/integrations/) | Claude Code, Claude Desktop, Cursor and VS Code, and servers over Streamable HTTP |
+| [The console](docs/console.md) | The web app over `~/.stretto`: running it, signing in, and each page |
 | [CLI reference](docs/cli.md) | Every command and option, generated from the code |
 | [File formats](docs/formats.md) | The flow IR, arbiters, procedures and session logs, field by field |
 | [Privacy](docs/privacy.md) | What each file keeps, what is sent where, and `stretto redact` |
@@ -128,6 +146,7 @@ stretto is pre-release.
 |---|---|
 | `stretto-proxy` | `stretto-proxy`, the MCP proxy: it records sessions and serves flows, guards and the confirmation judge ([README](crates/stretto-proxy/README.md)). Also `stretto-procedure`, the procedure runtime, and `stretto-mcp-demo`, the demo server |
 | `stretto-report` | `stretto`, the CLI: `init`, `doctor`, `learn`, `flow-show`, `flow-diff`, `promote`, `audit`, `redact`, and the research commands |
+| `stretto-console` | `stretto-console`, the console: an HTTP API over `~/.stretto`, and the web app in `console/`, built into the binary ([README](crates/stretto-console/README.md)) |
 | `stretto-model` | The habit (a hierarchical Dirichlet back-off model), argument provenance and bindings, policy checks |
 | `stretto-trace` | The episode schema, and ingest of τ²-bench results and the proxy's session logs |
 | `stretto-oracle` | The System-One client (TypeSafe's Jev), with an on-disk replay cache |
