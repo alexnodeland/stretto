@@ -1766,7 +1766,7 @@ impl Bindings {
     }
 
     /// For review: each lookup argument's sources at each site where the
-    /// binding orders them (at least [`MIN_SITE_VALUES`] values there), as
+    /// binding orders them (at least `MIN_SITE_VALUES` values there), as
     /// `(source tool, path)` with the values taken from it, most used first.
     pub fn site_orders(&self) -> Vec<SiteOrder> {
         let sites: BTreeSet<(&str, &str, &str)> = self
@@ -1919,7 +1919,7 @@ impl Bindings {
     /// the chance that they are the agent's own: how often the binding
     /// picked the agent's arguments in training, for picks the customer
     /// mentioned or not (Laplace-smoothed; 1 for a lookup without
-    /// arguments). See [`Bindings::pick`] for the rule.
+    /// arguments). See `Bindings::pick` for the rule.
     pub fn bind(&self, tool: &str, episode: &Episode) -> std::result::Result<(Value, f64), String> {
         let (args, mentioned) = self.pick(tool, &episode.events, &[])?;
         let chance = if args.is_empty() {
