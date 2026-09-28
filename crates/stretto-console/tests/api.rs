@@ -446,12 +446,28 @@ async fn unknown_paths_and_methods_and_the_ui() {
         let route = c.send(plain(Method::GET, "/flows/shop")).await;
         assert!(route.text().contains("The API is up"));
     }
-    assert_eq!(
-        c.send(plain(Method::GET, "/assets/missing.js"))
-            .await
-            .status,
-        StatusCode::NOT_FOUND
-    );
+    // A route whose key holds a dot is the app's too: a reload of a
+    // session, a job, or a flow such as shop.promoted.
+    for route in [
+        "/sessions/20260928T020401.195Z-14715",
+        "/jobs/20260928T034808.428Z-1ec2",
+        "/flows/shop.promoted",
+    ] {
+        let page = c.send(plain(Method::GET, route)).await;
+        assert_eq!(page.status, StatusCode::OK, "{route}");
+        assert!(
+            page.header(header::CONTENT_TYPE).starts_with("text/html"),
+            "{route}"
+        );
+    }
+    // A file of the build that is not there is not found.
+    for file in ["/assets/missing.js", "/missing.ico", "/missing.css"] {
+        assert_eq!(
+            c.send(plain(Method::GET, file)).await.status,
+            StatusCode::NOT_FOUND,
+            "{file}"
+        );
+    }
     assert_eq!(
         c.send(plain(Method::GET, "/../servers.json")).await.status,
         StatusCode::NOT_FOUND
