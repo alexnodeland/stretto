@@ -432,19 +432,30 @@ mod tests {
         assert_eq!(usage[0].map(|u| u.prompt_tokens), Some(1200));
         assert_eq!(usage[0].map(|u| u.cost), Some(0.01));
         assert_eq!(usage[1], None);
-        match &ep.events[2] {
-            Event::ToolResult {
-                name,
-                error,
-                content,
-                ..
-            } => {
-                assert_eq!(name, "get_order_details");
-                assert!(!error);
-                assert!(content.contains("pending"));
-            }
-            other => panic!("expected a tool result, got {other:?}"),
-        }
+        let result = &ep.events[2];
+        assert!(
+            matches!(result, Event::ToolResult { name, error: false, content, .. } if name == "get_order_details" && content.contains("pending")),
+            "{result:?}"
+        );
+    }
+
+    /// A run without the agent's model, a message in another role, and a
+    /// file that is not a run.
+    #[test]
+    fn a_run_says_what_it_does_not_know() {
+        let json = RUN.replace(r#""agent_info": {"llm": "agent-x"}"#, r#""agent_info": {}"#);
+        let json = json.replace(
+            r#"{"role": "user", "content": "Where is order #W1?"},"#,
+            r#"{"role": "system", "content": "Be brief."}, {"role": "user", "content": "Where is order #W1?"},"#,
+        );
+        let run = parse_results(&json).unwrap();
+        assert_eq!(run.agent_model, "unknown");
+        assert_eq!(run.episodes[0].events.len(), 4);
+        let path = std::env::temp_dir().join(format!("stretto-tau2-{}.json", std::process::id()));
+        std::fs::write(&path, "not json").unwrap();
+        let e = format!("{:#}", load_results(&path).unwrap_err());
+        assert!(e.starts_with(&format!("parsing {}", path.display())), "{e}");
+        std::fs::remove_file(&path).unwrap();
     }
 
     #[test]
@@ -464,6 +475,9 @@ mod tests {
     def transfer_to_human_agents(self, summary: str) -> str:
         ...
     def helper(self):
+        ...
+    @is_tool(ToolType.READ)
+    def (self):
         ...
 "#;
         let m = parse_tool_kinds("retail", py);

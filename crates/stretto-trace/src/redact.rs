@@ -598,6 +598,92 @@ mod tests {
     use crate::mcp::parse_log;
     use serde_json::json;
 
+    /// Entries of every kind, and values of every JSON type, in one session,
+    /// so that every value is its own and hashed.
+    #[test]
+    fn every_kind_of_entry_is_rewritten_where_it_holds_data() {
+        let result = json!({"items": ["Desk Fan", "Desk Lamp"], "ok": true});
+        let lines = [
+            json!({"stretto_mcp_log": 2, "session": "s0", "started_unix_ms": 0,
+                   "server_command": ["demo"], "domain": "shop", "agent_model": null}),
+            json!({"t_ms": 0, "from": "context", "message": {"role": "user",
+                   "content": "Well ... the desk fan, or the desk lamp?"}}),
+            json!({"t_ms": 1, "from": "client", "message": {"jsonrpc": "2.0", "id": 1,
+                   "method": "tools/call", "params": {"name": "get", "arguments":
+                   {"id": "ab12", "none": "#", "flag": true, "gone": null,
+                    "meta": {"n": 5, "list": [1, "x"], "flag": false}}}}}),
+            json!({"t_ms": 2, "from": "server", "message": {"jsonrpc": "2.0", "id": 1, "result":
+                   {"content": [{"type": "text", "text": result.to_string()}],
+                    "structuredContent": result}}}),
+            json!({"t_ms": 3, "from": "server", "message": {"jsonrpc": "2.0",
+                   "method": "notifications/message", "params": {"data": "ab12"}}}),
+            json!({"t_ms": 4, "from": "client", "message": {"jsonrpc": "2.0", "id": 99,
+                   "result": {}}}),
+            json!({"t_ms": 5, "from": "client", "message": {"jsonrpc": "2.0", "id": 2,
+                   "method": "tools/call", "params": {"name": "get", "arguments": {"id": "ab12"}}}}),
+            json!({"t_ms": 6, "from": "server", "message": {"jsonrpc": "2.0", "id": 2,
+                   "error": {"code": -1, "message": "no ab12", "data": {"id": "ab12"}}}}),
+            json!({"t_ms": 7, "from": "server", "raw": "stray ab12"}),
+            json!({"t_ms": 8, "from": "client"}),
+            // The server's answer to a request that is neither a call nor a
+            // listing.
+            json!({"t_ms": 9, "from": "client", "message": {"jsonrpc": "2.0", "id": 7,
+                   "method": "initialize", "params": {}}}),
+            json!({"t_ms": 9, "from": "server", "message": {"jsonrpc": "2.0", "id": 7,
+                   "result": {"serverInfo": {"name": "ab12"}}}}),
+            // An error answering no call of the session's.
+            json!({"t_ms": 9, "from": "server", "message": {"jsonrpc": "2.0", "id": 5,
+                   "error": {"code": -1, "message": "ab12"}}}),
+            // The schema declares the keys, which are kept however rare.
+            json!({"t_ms": 9, "from": "client", "message": {"jsonrpc": "2.0", "id": 0,
+                   "method": "tools/list"}}),
+            json!({"t_ms": 10, "from": "server", "message": {"jsonrpc": "2.0", "id": 0,
+                   "result": {"tools": [{"name": "get", "inputSchema": {"properties": {
+                     "id": {}, "none": {}, "flag": {}, "gone": {}, "meta": {}, "data": {},
+                     "items": {}, "ok": {}}}}]}}}),
+        ];
+        let text: String = lines.iter().map(|l| format!("{l}\n")).collect();
+        let log = parse_log(&text).unwrap();
+        let out = redact(std::slice::from_ref(&log), "salt", 2, &["meta".to_string()]);
+        let (before, after) = (&log.entries, &out[0].entries);
+        let m = |i: usize| after[i].message.clone().unwrap();
+        let id = m(1)["params"]["arguments"]["id"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        assert!(id.starts_with("h_"), "{id}");
+        // Booleans, nulls and what is empty once trimmed are kept.
+        let args = &m(1)["params"]["arguments"];
+        assert!(args.as_object().unwrap().values().any(|v| v == true));
+        assert!(args.as_object().unwrap().values().any(|v| v.is_null()));
+        assert!(args.as_object().unwrap().values().any(|v| v == "#"));
+        // A named field's numbers are hashed too.
+        let mut numbers = 0;
+        scalars(args, &mut |s| {
+            numbers += usize::from(s.parse::<f64>().is_ok())
+        });
+        assert_eq!(numbers, 0, "{args}");
+        // A phrase of the records is replaced whole in the conversation.
+        let items = &m(2)["result"]["structuredContent"]["items"];
+        let said = m(0)["content"].as_str().unwrap().to_string();
+        assert!(said.contains(" ... "), "{said}");
+        for item in items.as_array().unwrap() {
+            assert!(said.contains(item.as_str().unwrap()), "{item} in {said}");
+        }
+        assert_eq!(m(2)["result"]["structuredContent"]["ok"], true);
+        // The server's own message, an error's text and data, a line that
+        // was not JSON: the id is hashed in each.
+        assert_eq!(m(3)["params"]["data"], id.as_str());
+        assert!(m(6)["error"]["message"].as_str().unwrap().ends_with(&id));
+        assert!(m(6)["error"]["data"].to_string().contains(&id));
+        assert!(after[7].raw.as_deref().unwrap().ends_with(&id));
+        assert_eq!(after[10], before[10]);
+        assert_eq!(m(11)["error"]["message"], id.as_str());
+        // The client's response and the empty entry are as they were.
+        assert_eq!(after[4], before[4]);
+        assert_eq!(after[8], before[8]);
+    }
+
     fn log(session: usize, email: &str, user: &str) -> McpLog {
         let lines = [
             json!({"stretto_mcp_log": 2, "session": format!("s{session}"), "started_unix_ms": 0,

@@ -486,7 +486,7 @@ struct RunPlan {
 /// Replay `inputs` under `scenario` and `gate`, with flows that may call any
 /// tool.
 pub fn project(
-    model: &impl Predictor,
+    model: &dyn Predictor,
     inputs: &[ProjectionInput<'_>],
     scenario: Scenario,
     gate: Gate<'_>,
@@ -497,7 +497,7 @@ pub fn project(
 
 /// Replay `inputs` under `scenario` and `gate`, with flows built to `design`.
 pub fn project_design(
-    model: &impl Predictor,
+    model: &dyn Predictor,
     inputs: &[ProjectionInput<'_>],
     scenario: Scenario,
     gate: Gate<'_>,
@@ -835,6 +835,159 @@ mod tests {
         }
     }
 
+    /// A habit sure to take `self.0[k]` at step `k`, with evidence to act.
+    struct Scripted(Vec<u32>);
+
+    impl Predictor for Scripted {
+        fn predict_at(&self, _: &EncodedEpisode, k: usize) -> Vec<f64> {
+            let mut p = vec![0.0; 6];
+            p[self.0[k] as usize] = 1.0;
+            p
+        }
+
+        fn evidence_at(&self, _: &EncodedEpisode, _: usize) -> f64 {
+            100.0
+        }
+    }
+
+    /// Every verdict a decision can get, inside a run and where it ends,
+    /// for read-only flows and any tool; closed-set arguments under each
+    /// System-One scenario; a run that ends the episode; no validated
+    /// context at all.
+    #[test]
+    fn every_verdict_is_counted() {
+        // The agent looks up a, then b, writes w, then replies.
+        let steps = vec![reply(), tool("a"), tool("b"), tool("w"), reply()];
+        let vocab = Vocab::build(steps.iter(), ["a", "b", "c", "w"]);
+        let enc = EncodedEpisode::encode(&steps, &vocab, true);
+        let id = |t: &str| vocab.id(&Action::Tool(t.into()));
+        let (b, c, w) = (id("b"), id("c"), id("w"));
+        let (high, none) = (HashSet::from([w]), HashSet::new());
+        let design = |high| Design::ReadOnly {
+            high,
+            detour_tokens: 10.0,
+        };
+        let input = |args: Vec<ArgNeed>, steps: Vec<Option<OracleStep>>, picked| ProjectionInput {
+            encoded: &enc,
+            turns: vec![0, 1, 2, 3, 4],
+            args,
+            usage: vec![TurnUsage::default(); 5],
+            input_price: 0.0,
+            oracle_steps: steps,
+            oracle_args: picked,
+        };
+        let bound = || vec![ArgNeed::Bound; 5];
+        let sure = Gate::Threshold(0.5);
+        let replay = |habit: Vec<u32>, i, scenario, gate, design| {
+            project_design(&Scripted(habit), &[i], scenario, gate, 0.0, design)
+        };
+        // A read-only habit that looks up c for b, and again where the agent
+        // replied: two detours; w is handed back.
+        let p = replay(
+            vec![0, 0, c, w, c],
+            input(bound(), vec![], vec![]),
+            Scenario::HabitOnly,
+            sure,
+            design(&high),
+        );
+        assert_eq!((p.detours, p.handoffs, p.episodes_with_detour), (2, 1, 1));
+        // Each carries a lookup's output in its turn's prompt and every later one.
+        assert_eq!(p.detour_tokens, 10.0 * (3 + 1) as f64);
+        assert_eq!(p.cost_saved_share(), 0.0);
+        // With any tool, looking up c where the agent replied is a risk.
+        let p = replay(
+            vec![0, 0, b, w, c],
+            input(bound(), vec![], vec![]),
+            Scenario::HabitOnly,
+            sure,
+            Design::AnyTool,
+        );
+        assert_eq!((p.disagreements, p.episodes_with_disagreement), (1, 1));
+        // A System-One model that looks up c where the agent replied.
+        let mut picks = vec![None; 5];
+        picks[4] = Some(OracleStep { top: c, prob: 0.95 });
+        let p = replay(
+            vec![0; 5],
+            input(bound(), picks, vec![]),
+            Scenario::HabitThenOracle(0.9),
+            Gate::Threshold(2.0),
+            design(&high),
+        );
+        assert_eq!(p.oracle_detours, 1);
+        // Closed-set arguments: another value is a detour for a read-only
+        // flow, and a step the System-One model did not answer pauses.
+        let mut args = bound();
+        (args[2], args[3]) = (ArgNeed::ClosedSet, ArgNeed::ClosedSet);
+        let mut picked = vec![None; 5];
+        picked[2] = Some(OracleArgs {
+            agrees: false,
+            prob: 0.95,
+        });
+        for scenario in [
+            Scenario::HabitThenOracle(0.9),
+            Scenario::TwoKeys(0.9),
+            Scenario::Arbitrated(0.9),
+            Scenario::LookupFirst(0.9),
+        ] {
+            let p = replay(
+                vec![0, 0, b, w, 0],
+                input(args.clone(), vec![], picked.clone()),
+                scenario,
+                sure,
+                design(&none),
+            );
+            assert_eq!((p.oracle_detours, p.pauses), (1, 2), "{scenario:?}");
+        }
+        // A run that ends the episode has no decision to stop.
+        let cut = EncodedEpisode::encode(&steps[..3], &vocab, true);
+        let p = project_design(
+            &Scripted(vec![0, 0, b]),
+            &[ProjectionInput {
+                encoded: &cut,
+                turns: vec![0, 1, 2],
+                args: vec![ArgNeed::Bound; 3],
+                usage: vec![TurnUsage::default(); 3],
+                input_price: 0.0,
+                oracle_steps: vec![],
+                oracle_args: vec![],
+            }],
+            Scenario::HabitOnly,
+            sure,
+            0.0,
+            Design::AnyTool,
+        );
+        assert_eq!((p.habit_decisions, p.turns_saved), (1, 1));
+        // With no validated context, the habit never acts.
+        let empty = validated_contexts(&[], 1, 0.5, vocab.len(), 5, 20, 10, 0.99);
+        assert!(empty.is_empty());
+        let p = replay(
+            vec![0, 0, b, w, 0],
+            input(bound(), vec![], vec![]),
+            Scenario::HabitOnly,
+            Gate::Validated(&empty),
+            Design::AnyTool,
+        );
+        assert_eq!((p.gate, p.habit_decisions), (GateKind::Validated(0), 0));
+    }
+
+    /// Each argument's need by where its value came from; a call needs
+    /// what its neediest argument needs.
+    #[test]
+    fn arguments_need_what_their_source_cannot_give() {
+        let leaf = |arg: &str, source| (arg.to_string(), source, "v".to_string());
+        let steps = [tool("a"), tool("b"), tool("c"), tool("d"), reply()];
+        let sources = vec![
+            vec![leaf("x", Source::Literal), leaf("u", Source::User)],
+            vec![leaf("y", Source::Short), leaf("o", Source::ToolOutput)],
+            vec![leaf("z", Source::Generated), leaf("w", Source::Both)],
+            vec![leaf("q", Source::Generated)],
+        ];
+        let closed = HashSet::from([("c".to_string(), "z".to_string())]);
+        let needs = arg_needs(&steps, &sources, &closed);
+        use ArgNeed::{Bound, ClosedSet, Llm};
+        assert_eq!(needs, [ClosedSet, ClosedSet, ClosedSet, Llm, Bound]);
+    }
+
     #[test]
     fn a_predictable_run_collapses_to_one_turn() {
         // Every episode: reply, then a run a → b → c, then reply.
@@ -879,6 +1032,7 @@ mod tests {
         assert_eq!(p.input_saved, (1220 + 1330 + 200) as f64);
         assert_eq!(p.output_saved, 20.0);
         assert!((p.cost_saved - (0.02 + 200.0 * 1e-5)).abs() < 1e-12);
+        assert!((p.cost_saved_share() - p.cost_saved / 0.05).abs() < 1e-12);
     }
 
     #[test]

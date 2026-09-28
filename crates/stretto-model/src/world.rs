@@ -637,6 +637,32 @@ mod tests {
         assert_eq!(Outcome::from_index(4), None);
     }
 
+    /// A model of its own: its probability of an action is its prediction's.
+    #[test]
+    fn a_predictor_reads_its_probabilities_off_its_prediction() {
+        struct Even;
+        impl Predictor for Even {
+            fn predict_at(&self, _: &EncodedEpisode, _: usize) -> Vec<f64> {
+                vec![0.25; 4]
+            }
+            fn evidence_at(&self, _: &EncodedEpisode, _: usize) -> f64 {
+                0.0
+            }
+        }
+        assert_eq!(Even.prob_at(&ep(&[1]), 0, 3), 0.25);
+        assert_eq!(Even.evidence_at(&ep(&[1]), 0), 0.0);
+        let m = BackoffModel::new(0, 0.5, 4);
+        assert_eq!((m.order(), m.alpha()), (0, 0.5));
+        // With no context at all, nothing is known to follow a step.
+        // What follows the first step, not the padding before it.
+        let first = |s: Symbol| s == 4;
+        let (by_action, total) = m.followed(first);
+        assert!(by_action.is_empty() && total == 0.0);
+        let fitted = BackoffModel::fit(1, 0.5, 4, &[ep(&[1, 2])]);
+        let (by_action, total) = fitted.followed(first);
+        assert_eq!((by_action.len(), by_action[&2], total), (1, 1.0, 1.0));
+    }
+
     #[test]
     fn predictive_is_normalized_and_backs_off() {
         let data = vec![ep(&[1, 2, 1, 2, 1, 2]); 5];

@@ -193,9 +193,10 @@ impl<O> ReplayCache<O> {
         static WRITES: AtomicU64 = AtomicU64::new(0);
         let n = WRITES.fetch_add(1, Ordering::Relaxed);
         let tmp = path.with_extension(format!("tmp{}-{n}", std::process::id()));
-        std::fs::write(&tmp, serde_json::to_vec_pretty(response)?)
-            .with_context(|| format!("writing {}", tmp.display()))?;
-        std::fs::rename(&tmp, &path).with_context(|| format!("writing {}", path.display()))?;
+        let bytes = serde_json::to_vec_pretty(response)?;
+        std::fs::write(&tmp, bytes)
+            .and_then(|()| std::fs::rename(&tmp, &path))
+            .with_context(|| format!("writing {}", path.display()))?;
         Ok(())
     }
 
@@ -330,12 +331,119 @@ mod tests {
             }"#,
         )
         .unwrap();
-        match &resp.answers["dept"] {
-            Answer::Choice { choice, .. } => assert_eq!(choice, "billing"),
-            other => panic!("{other:?}"),
-        }
+        let dept = &resp.answers["dept"];
+        assert!(
+            matches!(dept, Answer::Choice { choice, .. } if choice == "billing"),
+            "{dept:?}"
+        );
         assert!(matches!(resp.answers["sev"], Answer::Score { .. }));
         assert_eq!(resp.usage, Usage::default());
+    }
+
+    /// The mock rates every score at the lowest level, and puts all of a
+    /// choice with one option on it.
+    #[test]
+    fn the_mock_answers_every_kind_of_question() {
+        let req = Request {
+            model: "m".into(),
+            state: serde_json::Value::Null,
+            questions: BTreeMap::from([
+                (
+                    "sev".to_string(),
+                    Question::Score {
+                        instructions: "How bad?".into(),
+                        criteria: vec!["Cosmetic".into(), "Broken".into()],
+                    },
+                ),
+                (
+                    "yes".to_string(),
+                    Question::Noul {
+                        instructions: "Is it?".into(),
+                        criteria: None,
+                    },
+                ),
+                (
+                    "only".to_string(),
+                    Question::Choice {
+                        instructions: "Which?".into(),
+                        criteria: BTreeMap::from([("one".to_string(), "It".to_string())]),
+                    },
+                ),
+            ]),
+        };
+        let mock = MockOracle {
+            confidence: 0.7,
+            noul: 0.5,
+        };
+        let resp = mock.ask(&req).unwrap();
+        let sev = &resp.answers["sev"];
+        let lowest = BTreeMap::from([("0".to_string(), 1.0), ("1".to_string(), 0.0)]);
+        assert!(
+            matches!(sev, Answer::Score { score, probabilities, .. } if *score == 0.0 && *probabilities == lowest),
+            "{sev:?}"
+        );
+        assert_eq!(resp.answers["yes"], Answer::Noul { noul: 0.5 });
+        let only = &resp.answers["only"];
+        assert!(
+            matches!(only, Answer::Choice { choice, probabilities, .. } if choice == "one" && probabilities["one"] == 0.7),
+            "{only:?}"
+        );
+    }
+
+    /// What a cache cannot read or write is an error that names it; what is
+    /// not a cached answer is passed over.
+    #[test]
+    fn a_cache_says_what_it_cannot_read_or_write() {
+        let root =
+            std::env::temp_dir().join(format!("stretto-cache-errors-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        let mock = || MockOracle {
+            confidence: 0.7,
+            noul: 0.5,
+        };
+        let req = Request {
+            model: "m".into(),
+            state: serde_json::json!("a"),
+            questions: BTreeMap::new(),
+        };
+        let answer = mock().ask(&req).unwrap();
+        // A cache whose directory is a file can neither list nor store.
+        let file = root.join("file");
+        std::fs::write(&file, "").unwrap();
+        let broken = ReplayCache::new(&file, Some(mock()));
+        assert!(broken.entries().is_err());
+        let e = format!("{:#}", broken.insert("abc", &answer).unwrap_err());
+        assert!(e.starts_with("creating "), "{e}");
+        // A cache that asks on a miss, and stores what it was told.
+        let dir = root.join("cache");
+        let cache = ReplayCache::new(&dir, Some(mock()));
+        assert_eq!(cache.ask(&req).unwrap(), answer);
+        let key = request_key(&req);
+        let shard = dir.join(&key[..2]);
+        // Beside it, a stray file, a file that is not an answer, and an
+        // answer that is a directory.
+        std::fs::write(dir.join("README"), "").unwrap();
+        std::fs::write(shard.join("notes.txt"), "").unwrap();
+        std::fs::create_dir_all(shard.join("ffffff.json")).unwrap();
+        let e = format!("{:#}", cache.entries().unwrap_err());
+        assert!(e.starts_with("reading "), "{e}");
+        std::fs::remove_dir(shard.join("ffffff.json")).unwrap();
+        assert_eq!(cache.entries().unwrap().len(), 1);
+        // An answer the cache cannot read, or cannot write over.
+        let other = Request {
+            state: serde_json::json!("b"),
+            ..req
+        };
+        let path = cache.path(&request_key(&other));
+        std::fs::create_dir_all(path.join("inside")).unwrap();
+        assert!(cache.ask(&other).is_err());
+        let e = format!(
+            "{:#}",
+            cache.insert(&request_key(&other), &answer).unwrap_err()
+        );
+        assert!(e.starts_with("writing "), "{e}");
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     struct Counting {

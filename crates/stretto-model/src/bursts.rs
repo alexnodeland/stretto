@@ -194,6 +194,36 @@ mod tests {
         }
     }
 
+    /// Shares of nothing are nothing, and counts add up.
+    #[test]
+    fn empty_totals_have_empty_shares_and_counts_add() {
+        assert_eq!(RunSummary::default().removable_share(), 0.0);
+        let summary = RunSummary {
+            assistant_turns: 4,
+            removable_turns: 1,
+            ..RunSummary::default()
+        };
+        assert_eq!(summary.removable_share(), 0.25);
+        let mut lookups = LookupsInRuns::default();
+        assert_eq!(lookups.share(3), 0.0);
+        let some = LookupsInRuns {
+            assistant_turns: 4,
+            from_outputs: 2,
+            from_conversation: 1,
+        };
+        lookups.add(&some);
+        lookups.add(&some);
+        assert_eq!(
+            lookups,
+            LookupsInRuns {
+                assistant_turns: 8,
+                from_outputs: 4,
+                from_conversation: 2,
+            }
+        );
+        assert_eq!(lookups.share(lookups.from_outputs), 0.5);
+    }
+
     #[test]
     fn splits_runs_at_messages() {
         let ep = Episode {

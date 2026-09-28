@@ -393,6 +393,41 @@ mod tests {
         assert_eq!(read(&v, &Field::Len("items".into())), "2+");
         assert_eq!(read(&v, &Field::Scalar("missing".into())), "∅");
         assert_eq!(read(&json!([]), &Field::Len(String::new())), "0");
+        // Booleans and numbers as text; a list or a record is no scalar,
+        // and what is not a list has no length.
+        let v = json!({"ok": true, "n": 3, "items": [1], "user": {}});
+        let scalar = |path: &str| read(&v, &Field::Scalar(path.into()));
+        assert_eq!((scalar("ok"), scalar("n")), ("true".into(), "3".into()));
+        assert_eq!((scalar("items"), scalar("user")), ("∅".into(), "∅".into()));
+        assert_eq!(read(&v, &Field::Len("items".into())), "1");
+        assert_eq!(read(&v, &Field::Len("n".into())), "∅");
+    }
+
+    /// A list's length, a record's scalar fields, and a field some outputs
+    /// lack, counted as missing there.
+    #[test]
+    fn discovers_lengths_nested_fields_and_missing_values() {
+        let eps: Vec<Vec<StepOutput>> = (0..40)
+            .map(|i| {
+                let user = if i % 4 == 0 {
+                    json!({"id": i, "tags": []})
+                } else {
+                    json!({"id": i, "tier": if i % 2 == 0 { "gold" } else { "silver" }})
+                };
+                vec![
+                    out("list_orders", json!(vec![0; i % 3])),
+                    out("get_user", json!({"user": user})),
+                    out("ping", json!("pong")),
+                ]
+            })
+            .collect();
+        let refs: Vec<&[StepOutput]> = eps.iter().map(|e| e.as_slice()).collect();
+        let found: Vec<String> = discover(&refs, 8)
+            .into_iter()
+            .map(|c| c.field.to_string())
+            .collect();
+        assert!(found.contains(&"len(output)".to_string()), "{found:?}");
+        assert!(found.contains(&"user.tier".to_string()), "{found:?}");
     }
 
     #[test]
@@ -471,5 +506,7 @@ mod tests {
         let described = map.describe("get_order", f[0]).expect("a fitted id");
         assert!(described.starts_with("status="), "{described}");
         assert_eq!(map.describe("get_order", 999), None);
+        assert_eq!(map.combinations("get_order"), 2);
+        assert_eq!(map.combinations("x"), 0);
     }
 }

@@ -246,6 +246,14 @@ impl ShadowConfig {
 
     /// The oracle, ready to share across threads.
     pub fn build(&self) -> Result<Box<dyn Oracle + Sync>> {
+        self.build_with(&stretto_oracle::jev::JevClient::from_env)
+    }
+
+    /// [`ShadowConfig::build`], with `jev` making the Jev client.
+    fn build_with(
+        &self,
+        jev: &dyn Fn() -> Result<stretto_oracle::jev::JevClient>,
+    ) -> Result<Box<dyn Oracle + Sync>> {
         Ok(match self.oracle {
             OracleKind::Mock => Box::new(MockOracle {
                 confidence: 0.6,
@@ -253,7 +261,7 @@ impl ShadowConfig {
             }),
             OracleKind::Jev => Box::new(stretto_oracle::ReplayCache::new(
                 &self.cache_dir,
-                Some(stretto_oracle::jev::JevClient::from_env()?),
+                Some(jev()?),
             )),
             OracleKind::Replay => Box::new(stretto_oracle::ReplayCache::<MockOracle>::new(
                 &self.cache_dir,
@@ -1646,6 +1654,21 @@ fn clip(s: &str, max: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Each oracle is built as asked; Jev's only with a client to ask.
+    #[test]
+    fn each_oracle_is_built_as_asked() {
+        let jev = || stretto_oracle::jev::JevClient::new("http://localhost", "k");
+        for kind in [OracleKind::Mock, OracleKind::Jev, OracleKind::Replay] {
+            assert!(ShadowConfig::new(kind).build_with(&jev).is_ok(), "{kind:?}");
+        }
+        let down = || Err(anyhow::anyhow!("no key"));
+        let e = ShadowConfig::new(OracleKind::Jev)
+            .build_with(&down)
+            .err()
+            .unwrap();
+        assert_eq!(e.to_string(), "no key");
+    }
 
     #[test]
     fn each_oracle_is_named_as_the_command_line_takes_it() {

@@ -1090,10 +1090,67 @@ mod tests {
             results(&ep),
             [("abc-1", false, "order"), ("7", false, "user")]
         );
-        match &ep.events[2] {
-            Event::ToolResult { name, .. } => assert_eq!(name, "get_user"),
-            other => panic!("expected a tool result, got {other:?}"),
-        }
+        let result = &ep.events[2];
+        assert!(
+            matches!(result, Event::ToolResult { name, .. } if name == "get_user"),
+            "{result:?}"
+        );
+    }
+
+    /// Lines that make no event: a message of the conversation in another
+    /// role, a call without a name, a cancellation of nothing and a request
+    /// of the client's own. A call that reuses the id of one still awaiting
+    /// its result replaces it, and an error without a message is shown whole.
+    #[test]
+    fn lines_that_make_no_event_change_nothing() {
+        let log = log_of(&[
+            (
+                Peer::Context,
+                json!({"role": "system", "content": "Be brief."}),
+            ),
+            (
+                Client,
+                json!({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {}}),
+            ),
+            call(json!(2), "get_user"),
+            call(json!(2), "get_order"),
+            (
+                Client,
+                json!({"jsonrpc": "2.0", "method": "notifications/cancelled",
+                       "params": {"requestId": 9}}),
+            ),
+            (Client, json!({"jsonrpc": "2.0", "id": 3, "method": "ping"})),
+            (
+                Server,
+                json!({"jsonrpc": "2.0", "id": 2, "error": {"code": -32000}}),
+            ),
+        ]);
+        let ep = episode(&log);
+        assert_eq!(
+            outline(&ep),
+            ["turn(get_user)", "turn(get_order)", "result:2"]
+        );
+        assert_eq!(results(&ep), [("2", true, r#"{"code":-32000}"#)]);
+    }
+
+    #[test]
+    fn a_listed_tool_without_a_name_is_left_out() {
+        let log = log_of(&[
+            (
+                Client,
+                json!({"jsonrpc": "2.0", "id": 1, "method": "tools/list"}),
+            ),
+            (
+                Server,
+                json!({"jsonrpc": "2.0", "id": 1, "result": {"tools": [
+                    {"description": "nameless"}, {"name": "get"}]}}),
+            ),
+        ]);
+        let m = manifest(&log, "d");
+        assert_eq!(m.tools.keys().collect::<Vec<_>>(), ["get"]);
+        let missing = Path::new("/nonexistent/session.jsonl");
+        let e = format!("{:#}", read_log(missing).unwrap_err());
+        assert!(e.starts_with("reading /nonexistent/session.jsonl"), "{e}");
     }
 
     #[test]
