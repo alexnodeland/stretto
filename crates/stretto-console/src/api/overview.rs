@@ -12,10 +12,12 @@ use axum::Json;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use stretto_report::doctor::{self, Report};
+#[cfg(feature = "ts")]
 use ts_rs::TS;
 
 /// Counts over everything in the data directory.
-#[derive(Clone, Debug, Default, Serialize, TS)]
+#[derive(Clone, Debug, Default, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct Totals {
     pub sessions: usize,
     /// Sessions started in the last 7 days.
@@ -37,7 +39,8 @@ pub struct Totals {
 }
 
 /// Sessions by mode.
-#[derive(Clone, Debug, Default, Serialize, TS)]
+#[derive(Clone, Debug, Default, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct ModeCounts {
     pub recorded: usize,
     pub shadow: usize,
@@ -45,7 +48,8 @@ pub struct ModeCounts {
 }
 
 /// A domain: a server's sessions and flows go by its name.
-#[derive(Clone, Debug, Default, Serialize, TS)]
+#[derive(Clone, Debug, Default, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct DomainSummary {
     pub name: String,
     pub sessions: usize,
@@ -58,7 +62,8 @@ pub struct DomainSummary {
 }
 
 /// One UTC day.
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct DayActivity {
     /// `YYYY-MM-DD`
     pub day: String,
@@ -68,7 +73,8 @@ pub struct DayActivity {
     pub flow_lookups: usize,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum HealthLevel {
     Ok,
@@ -78,14 +84,16 @@ pub enum HealthLevel {
 }
 
 /// A check, as `stretto doctor` words its own.
-#[derive(Clone, Debug, PartialEq, Serialize, TS)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct HealthItem {
     pub level: HealthLevel,
     pub message: String,
 }
 
 /// `GET /api/overview`
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct Overview {
     pub totals: Totals,
     pub domains: Vec<DomainSummary>,

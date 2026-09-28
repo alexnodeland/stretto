@@ -8,10 +8,12 @@ use axum::extract::State as AxumState;
 use axum::Json;
 use serde::Serialize;
 use std::path::Path;
+#[cfg(feature = "ts")]
 use ts_rs::TS;
 
 /// The data directory's size, by what its files are.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct Disk {
     /// Session logs and the flow and confirmation logs beside them.
     pub logs_bytes: u64,
@@ -25,7 +27,8 @@ pub struct Disk {
 }
 
 /// A binary of stretto's, found or not.
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct BinaryStatus {
     pub name: String,
     pub path: Option<String>,
@@ -33,7 +36,8 @@ pub struct BinaryStatus {
 }
 
 /// `GET /api/settings`
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct Settings {
     pub data_dir: String,
     pub disk: Disk,

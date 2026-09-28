@@ -10,6 +10,7 @@ use crate::Shared;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::time::Duration;
+#[cfg(feature = "ts")]
 use ts_rs::TS;
 
 /// How often the data directory is looked at.
@@ -24,7 +25,8 @@ pub enum Event {
     Job(Box<Job>),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum ChangedWhat {
     Sessions,
@@ -35,7 +37,8 @@ pub enum ChangedWhat {
 
 /// `event: changed`: which items were added, changed or removed, by key
 /// (servers: `servers.json`; jobs: by id).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct Changed {
     pub what: ChangedWhat,
     pub keys: Vec<String>,

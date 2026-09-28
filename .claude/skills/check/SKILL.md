@@ -10,10 +10,12 @@ CI is `.github/workflows/ci.yml` (jobs `check`, `msrv`, `walkthrough` and `platf
 ## 1. Always: the check job
 
 ```bash
-make ci    # make check lint test doc
+make ci    # make check lint test types doc
 ```
 
-That is `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test --all-targets`, `cargo test --doc` and `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps`, as CI runs them.
+That is `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings` (and again on `stretto-console --features ts`), `cargo test --all-targets`, `cargo test --doc`, the TypeScript drift test (`cargo test -p stretto-console --features ts --lib api::typescript`) and `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps`, as CI runs them.
+
+The drift test rewrites `console/src/api/generated/` when a type the API serves changed: commit what it wrote, and it passes on the next run.
 
 ## 2. When the proxy, the CLI, an example or a script changed: the walkthrough job
 

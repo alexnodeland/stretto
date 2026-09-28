@@ -9,7 +9,7 @@ description: Drive a stretto pull request to green and ready to merge, covering 
 
 | Workflow, job | Runs on | What it checks | Reproduce |
 |---|---|---|---|
-| ci.yml `check` | every PR and push to main | `cargo fmt --check`, clippy with `-D warnings`, `cargo test --all-targets`, `cargo test --doc`, rustdoc with `-D warnings` | `make ci` |
+| ci.yml `check` | every PR and push to main | `cargo fmt --check`, clippy with `-D warnings`, `cargo test --all-targets`, `cargo test --doc`, the API's TypeScript is current, rustdoc with `-D warnings` | `make ci` |
 | ci.yml `msrv` | every PR and push to main | `cargo +1.88.0 check --workspace --all-targets --locked`, and that Cargo.toml's `rust-version` is still 1.88 | `make msrv` |
 | ci.yml `walkthrough` | every PR and push to main | the quickstart, `packaging/test-install.sh`, shellcheck, `scripts/walkthrough.py`, `scripts/http_check.py`, the scripts' doctests and the benchmark tables' fixture | the `check` skill, step 2 |
 | ci.yml `platforms` | every PR and push to main | a `--locked` build on macOS 14 and Windows, and each binary's `--version` | not locally: read the log |

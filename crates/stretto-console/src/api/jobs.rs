@@ -14,9 +14,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::PathBuf;
 use stretto_report::init::check_domain;
+#[cfg(feature = "ts")]
 use ts_rs::TS;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum JobKind {
     Learn,
@@ -26,7 +28,8 @@ pub enum JobKind {
     Doctor,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum JobStatus {
     Queued,
@@ -35,7 +38,8 @@ pub enum JobStatus {
     Failed,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum ArtifactKind {
     /// A flow the job wrote.
@@ -47,7 +51,8 @@ pub enum ArtifactKind {
 }
 
 /// Something a job writes.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct Artifact {
     pub kind: ArtifactKind,
     /// Relative to the data directory, or `~/…` outside it.
@@ -57,13 +62,14 @@ pub struct Artifact {
 }
 
 /// A run of the `stretto` CLI.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct Job {
     pub id: String,
     pub kind: JobKind,
     pub title: String,
     /// The request, with its defaults filled in.
-    #[ts(type = "unknown")]
+    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
     pub params: Value,
     pub status: JobStatus,
     pub created_unix_ms: u64,
@@ -78,13 +84,15 @@ pub struct Job {
 }
 
 /// `GET /api/jobs`
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct JobList {
     pub items: Vec<Job>,
 }
 
 /// `POST /api/jobs`: what to run.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum JobRequest {
     /// `stretto learn`: a flow from recorded sessions.
@@ -95,19 +103,19 @@ pub enum JobRequest {
         /// Where to write the flow; by default `<domain>.flow.json` in the
         /// data directory.
         #[serde(default)]
-        #[ts(optional = nullable)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
         out: Option<String>,
         /// Replace `out` if it exists; else a job that would is refused.
         #[serde(default)]
-        #[ts(optional = nullable)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
         overwrite: Option<bool>,
         /// Ask no System-One model (the default): without it, an arbiter is
         /// fitted, which needs a key.
         #[serde(default)]
-        #[ts(optional = nullable)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
         habit_only: Option<bool>,
         #[serde(default)]
-        #[ts(optional = nullable)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
         constants: Option<bool>,
     },
     /// `stretto promote`: keep a flow to the sites where its lookups were the
@@ -119,26 +127,26 @@ pub enum JobRequest {
         /// The answers the proxy cached in shadow; by default `oracle-cache`
         /// in the data directory.
         #[serde(default)]
-        #[ts(optional = nullable)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
         oracle_cache: Option<String>,
         #[serde(default)]
-        #[ts(optional = nullable)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
         threshold: Option<f64>,
         #[serde(default)]
-        #[ts(optional = nullable)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
         min_used: Option<f64>,
         #[serde(default)]
-        #[ts(optional = nullable)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
         min_lower: Option<f64>,
         #[serde(default)]
-        #[ts(optional = nullable)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
         min_tasks: Option<usize>,
         /// By default `<flow name>.promoted.flow.json` beside the flow.
         #[serde(default)]
-        #[ts(optional = nullable)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
         out: Option<String>,
         #[serde(default)]
-        #[ts(optional = nullable)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
         overwrite: Option<bool>,
     },
     /// `stretto audit`, with its report as JSON.
@@ -146,7 +154,7 @@ pub enum JobRequest {
         flow: String,
         sessions: String,
         #[serde(default)]
-        #[ts(optional = nullable)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
         decider: Option<DeciderName>,
     },
     /// `stretto redact`: needs `STRETTO_REDACT_SALT` in the console's
@@ -155,10 +163,10 @@ pub enum JobRequest {
         sessions: String,
         out: String,
         #[serde(default)]
-        #[ts(optional = nullable)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
         keep_shared: Option<usize>,
         #[serde(default)]
-        #[ts(optional = nullable)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
         hash_fields: Option<Vec<String>>,
     },
     /// `stretto doctor`.

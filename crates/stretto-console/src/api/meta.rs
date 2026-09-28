@@ -6,17 +6,20 @@ use axum::extract::State;
 use axum::Json;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
+#[cfg(feature = "ts")]
 use ts_rs::TS;
 
 /// `GET /api/health`, which needs no token.
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct Health {
     pub ok: bool,
     pub version: String,
 }
 
 /// A binary of stretto's the console found.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct Binary {
     pub path: String,
     /// What `--version` printed, such as `stretto 0.1.0`; `null` if it did
@@ -25,7 +28,8 @@ pub struct Binary {
 }
 
 /// `GET /api/meta`
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct Meta {
     pub version: String,
     pub data_dir: String,

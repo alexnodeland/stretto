@@ -12,12 +12,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use stretto_trace::ToolKind;
+#[cfg(feature = "ts")]
 use ts_rs::TS;
 
 /// Whether a session was only recorded, ran a flow in shadow, or was served
 /// one: `served` if the flow looked anything up (or the proxy answered a
 /// call itself), `shadow` if its decisions were logged in shadow.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum SessionMode {
     Recorded,
@@ -37,7 +39,8 @@ impl SessionMode {
 }
 
 /// The server a session's proxy fronted, from its log's header.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum UpstreamView {
     /// A command the proxy started, credential-looking arguments redacted.
@@ -47,7 +50,8 @@ pub enum UpstreamView {
 }
 
 /// One session, in short.
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct SessionSummary {
     pub key: String,
     /// The log, relative to the data directory.
@@ -86,7 +90,8 @@ pub struct SessionSummary {
 }
 
 /// A page of sessions, newest first.
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct SessionList {
     /// Sessions matching the filters, on every page.
     pub total: usize,
@@ -94,7 +99,8 @@ pub struct SessionList {
 }
 
 /// A tool a server listed, as `tools/list` described it.
-#[derive(Clone, Debug, PartialEq, Serialize, TS)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct ToolInfo {
     pub name: String,
     /// From `readOnlyHint`: `true` is `read`, `false` is `write`, none is
@@ -108,7 +114,8 @@ pub struct ToolInfo {
 }
 
 /// An LLM turn: calls the agent sent together, or a message of its own.
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct Turn {
     pub index: usize,
     /// When its first call was sent (or its message logged), in
@@ -120,7 +127,8 @@ pub struct Turn {
     pub calls: Vec<String>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum CallBy {
     /// The agent's own call (and the calls `stretto_commit` made for it).
@@ -130,14 +138,15 @@ pub enum CallBy {
 }
 
 /// One `tools/call`, the agent's or the flow's.
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct CallView {
     /// The JSON-RPC id: a string as is, a number in decimal.
     pub id: String,
     pub by: CallBy,
     pub tool: String,
     pub kind: ToolKind,
-    #[ts(type = "unknown")]
+    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
     pub arguments: Value,
     pub t_ms: u64,
     pub result_t_ms: Option<u64>,
@@ -147,7 +156,7 @@ pub struct CallView {
     /// The result's text items, joined; cut at 64 KiB.
     pub result_text: Option<String>,
     /// The text, when it parses as JSON (and was not cut).
-    #[ts(type = "unknown")]
+    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
     pub result_json: Option<Value>,
     pub result_truncated: bool,
     /// The agent's turn, an index into `turns`.
@@ -159,7 +168,8 @@ pub struct CallView {
     pub decision: Option<usize>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum Role {
     User,
@@ -168,14 +178,16 @@ pub enum Role {
 
 /// A message of the conversation, as the host handed it to the proxy
 /// (`--context`).
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct ContextMessage {
     pub t_ms: u64,
     pub role: Role,
     pub content: String,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum DecisionAction {
     Lookup,
@@ -183,7 +195,8 @@ pub enum DecisionAction {
 }
 
 /// One decision of the flow, from `<session>.flow.jsonl`.
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct FlowDecision {
     /// The agent's call it followed.
     pub after: String,
@@ -194,7 +207,7 @@ pub struct FlowDecision {
     pub action: DecisionAction,
     /// The lookup, for `lookup`.
     pub tool: Option<String>,
-    #[ts(type = "unknown")]
+    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
     pub arguments: Option<Value>,
     /// The lookup's probability, what the threshold is compared with.
     pub prob: Option<f64>,
@@ -211,7 +224,8 @@ pub struct FlowDecision {
 }
 
 /// One run of the flow after a call, from `<session>.flow.jsonl`.
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct FlowRun {
     pub after: String,
     /// The tool whose call just returned.
@@ -219,13 +233,14 @@ pub struct FlowRun {
     pub failed: bool,
     pub max_lookups: usize,
     /// Each site of the run: `[address, value, logp]`.
-    #[ts(type = "Array<[string, unknown, number]>")]
+    #[cfg_attr(feature = "ts", ts(type = "Array<[string, unknown, number]>"))]
     pub sites: Vec<(String, Value, f64)>,
     /// How unexpected the server's answers were, in nats.
     pub surprise: Option<f64>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum EventFrom {
     Client,
@@ -234,7 +249,8 @@ pub enum EventFrom {
     Context,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum EventKind {
     Request,
@@ -248,7 +264,8 @@ pub enum EventKind {
 }
 
 /// A line of the log, in short.
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct TimelineEvent {
     pub t_ms: u64,
     pub from: EventFrom,
@@ -260,11 +277,12 @@ pub struct TimelineEvent {
 }
 
 /// One session in full.
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct SessionDetail {
     pub summary: SessionSummary,
     /// The log's header line, as written.
-    #[ts(type = "unknown")]
+    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
     pub header: Value,
     /// The tools the server listed, by name.
     pub tools: Vec<ToolInfo>,
@@ -275,7 +293,7 @@ pub struct SessionDetail {
     pub decisions: Vec<FlowDecision>,
     pub runs: Vec<FlowRun>,
     /// The lines of `<session>.confirm.jsonl`, as written.
-    #[ts(type = "Array<unknown>")]
+    #[cfg_attr(feature = "ts", ts(type = "Array<unknown>"))]
     pub confirmations: Vec<Value>,
     pub events: Vec<TimelineEvent>,
     /// Whether any result was cut at 64 KiB.

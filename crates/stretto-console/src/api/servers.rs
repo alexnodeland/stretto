@@ -14,10 +14,12 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use stretto_report::init::{self, Host, Served, Setup};
+#[cfg(feature = "ts")]
 use ts_rs::TS;
 
 /// A server in the registry, with what the console knows about it.
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct ServerView {
     #[serde(flatten)]
     pub entry: ServerEntry,
@@ -34,7 +36,8 @@ pub struct ServerView {
 }
 
 /// An upstream seen in recorded sessions' headers.
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct DiscoveredUpstream {
     pub domain: String,
     pub upstream: UpstreamView,
@@ -45,13 +48,15 @@ pub struct DiscoveredUpstream {
 }
 
 /// `GET /api/servers`
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct ServerList {
     pub items: Vec<ServerView>,
     pub discovered: Vec<DiscoveredUpstream>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum ConfigLanguage {
     Shell,
@@ -59,7 +64,8 @@ pub enum ConfigLanguage {
 }
 
 /// What to give an MCP host: `stretto init`'s output for the server.
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct HostConfig {
     /// `claude-code`, `claude-desktop`, `cursor` or `vscode`.
     pub host: String,
@@ -74,7 +80,8 @@ pub struct HostConfig {
 
 /// `POST /api/servers/:name/probe`: the server, asked `initialize` and
 /// `tools/list` now.
-#[derive(Clone, Debug, Default, Serialize, TS)]
+#[derive(Clone, Debug, Default, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct ProbeResult {
     pub ok: bool,
     /// How long the whole exchange took.

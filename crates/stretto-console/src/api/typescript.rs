@@ -1,8 +1,9 @@
 //! The API's types as TypeScript, for the UI: `console/src/api/generated/`,
 //! one file per type as ts-rs writes it, and `index.ts` exporting them all.
 //!
-//! `cargo test` writes them, and fails when what was there differed, so a
-//! change to a type that is not committed with its TypeScript fails CI.
+//! `cargo test --features ts` (`make types`) writes them, and fails when
+//! what was there differed, so a change to a type that is not committed with
+//! its TypeScript fails CI.
 //! Integers are `number`: every count and time the API sends fits one.
 
 use super::flows::{FlowDetail, FlowDiffView, FlowList};
@@ -79,7 +80,7 @@ fn generate() -> BTreeMap<PathBuf, String> {
         .collect();
     let mut index = String::from(
         "// The API's types, generated from the Rust by ts-rs (crates/stretto-console/src/api/typescript.rs).\n\
-         // Do not edit these files: `cargo test -p stretto-console` writes them.\n",
+         // Do not edit these files: `make types` writes them.\n",
     );
     for name in names {
         index.push_str(&format!("export type * from \"./{name}\";\n"));

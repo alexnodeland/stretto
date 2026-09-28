@@ -12,7 +12,7 @@ crates/
   stretto-report/  `stretto` CLI: first run (`init`, `doctor`, `completions`); the Phase 0 report; Phase 0b (`shadow`: System-One questions at held-out decisions; `arbitrate`: combining them with the habit); read-only flows (`flow`: compile, learn, serve); policy guards (`guards`); the flow audit as a fugue program (`audit`)
   stretto-proxy/   stdio MCP proxy: records sessions, and in active mode (`active`) runs a flow, guards, `stretto_commit` and the conversation context; plus `stretto-procedure`, the procedure runtime, and a demo MCP server (echo or a tiny retail world)
   stretto-console/ the console's server (`stretto-console`, axum): a JSON API over ~/.stretto (sessions, flows, the server registry `servers.json`, jobs that run the `stretto` CLI), token auth, and the UI embedded; its tests run over `tests/fixtures/home`
-console/           the console's UI (Vue); `src/api/generated/` is the API's TypeScript, which `cargo test -p stretto-console` writes
+console/           the console's UI (Vue); `src/api/generated/` is the API's TypeScript, which `make types` writes
 pilot/             live τ²-bench episodes: GLM in Claude Code, tools over MCP, the flows arm, and a replay check
 pilot/bench/       live runs of other benchmarks (AgentDojo, BFCL) in their own environments
 website/           the documentation site (VitePress), deployed to GitHub Pages by .github/workflows/pages.yml

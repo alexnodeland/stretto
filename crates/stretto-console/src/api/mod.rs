@@ -2,9 +2,10 @@
 //!
 //! Every handler answers JSON (`snake_case` fields; times in milliseconds
 //! since the Unix epoch, `*_unix_ms`; sizes in bytes; probabilities from 0
-//! to 1), and every error is `{"error": "message"}` with its status. Each
-//! type a handler answers with derives [`ts_rs::TS`], and the tests export
-//! them to `console/src/api/generated/`, which the UI imports.
+//! to 1), and every error is `{"error": "message"}` with its status. With
+//! the `ts` feature, each type a handler answers with derives ts-rs's `TS`,
+//! and the tests export them to `console/src/api/generated/`, which the UI
+//! imports (`make types`).
 
 pub mod events;
 pub mod flows;
@@ -22,6 +23,7 @@ use axum::routing::{get, post, put};
 use axum::{middleware, Json, Router};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
+#[cfg(feature = "ts")]
 use ts_rs::TS;
 
 /// The whole HTTP surface: the API, then the UI for every other path,
@@ -83,13 +85,15 @@ async fn method_not_allowed(method: Method, uri: Uri) -> ApiError {
 }
 
 /// The body of every error: `{"error": "message"}`.
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct ErrorBody {
     pub error: String,
 }
 
 /// `{"ok": true}`.
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct Ok {
     pub ok: bool,
 }
@@ -197,5 +201,5 @@ pub fn console_dir(root: &Path) -> std::io::Result<PathBuf> {
     Ok(dir)
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "ts"))]
 mod typescript;

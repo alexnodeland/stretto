@@ -8,6 +8,7 @@
       "Bash(make check)",
       "Bash(make lint)",
       "Bash(make test)",
+      "Bash(make types)",
       "Bash(make doc)",
       "Bash(make ci)",
       "Bash(make msrv)",

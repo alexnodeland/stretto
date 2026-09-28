@@ -12,10 +12,12 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 use stretto_report::flow::Provenance;
 use stretto_report::review::{self, BindingView, DiffSection, FlowTool, PromotionView, SiteView};
+#[cfg(feature = "ts")]
 use ts_rs::TS;
 
 /// A flow's tools, by kind.
-#[derive(Clone, Debug, Default, Serialize, TS)]
+#[derive(Clone, Debug, Default, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct ToolCounts {
     pub read: usize,
     pub write: usize,
@@ -23,7 +25,8 @@ pub struct ToolCounts {
 }
 
 /// A promoted flow's sites.
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct PromotedCounts {
     pub sites_promoted: usize,
     pub sites_scored: usize,
@@ -31,7 +34,8 @@ pub struct PromotedCounts {
 
 /// One flow file, in short. When the file does not load, `error` says why
 /// and the fields the flow would give are empty or zero.
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct FlowSummary {
     pub key: String,
     /// The file, relative to the data directory.
@@ -65,14 +69,16 @@ pub struct FlowSummary {
 }
 
 /// `GET /api/flows`
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct FlowList {
     pub items: Vec<FlowSummary>,
 }
 
 /// One flow as a reviewer reads it, at a threshold: `stretto flow-show`'s
 /// review ([`review::view`], and the same text in `review_markdown`).
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct FlowDetail {
     pub summary: FlowSummary,
     pub threshold: f64,
@@ -89,7 +95,8 @@ pub struct FlowDetail {
 }
 
 /// What changed from one flow to another, as `stretto flow-diff` lists it.
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct FlowDiffView {
     /// The flow before, by key.
     pub from: String,

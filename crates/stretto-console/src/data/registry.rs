@@ -15,6 +15,7 @@ use crate::data::paths;
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+#[cfg(feature = "ts")]
 use ts_rs::TS;
 
 /// The registry's file name in the data directory.
@@ -23,14 +24,16 @@ pub const FILE: &str = "servers.json";
 pub const VERSION: u32 = 1;
 
 /// `servers.json`.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TS)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct Registry {
     pub stretto_servers: u32,
     pub servers: Vec<ServerEntry>,
 }
 
 /// How the proxy runs in front of a server.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum ServerMode {
     /// Record sessions, run no flow.
@@ -42,7 +45,8 @@ pub enum ServerMode {
 }
 
 /// Where a flow's probabilities come from (`--flow-decider`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum DeciderName {
     Arbiter,
@@ -71,7 +75,8 @@ impl DeciderName {
 }
 
 /// An HTTP header the proxy sends, by the variable holding its value.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct HeaderRef {
     /// The header, such as `Authorization`.
     pub name: String,
@@ -80,7 +85,8 @@ pub struct HeaderRef {
 }
 
 /// The server behind the proxy.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Upstream {
     /// A command the proxy starts.
@@ -100,7 +106,8 @@ pub enum Upstream {
 }
 
 /// A server in the registry.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct ServerEntry {
     /// The host's name for the server, which is also the domain of its
     /// sessions and flows (`a-z`, `0-9`, `_`, `-`).
@@ -123,25 +130,26 @@ pub struct ServerEntry {
 }
 
 /// A server as a request describes it: an entry without its timestamps.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
 pub struct ServerInput {
     pub name: String,
     #[serde(default)]
-    #[ts(optional = nullable)]
+    #[cfg_attr(feature = "ts", ts(optional = nullable))]
     pub description: Option<String>,
     pub upstream: Upstream,
     pub mode: ServerMode,
     #[serde(default)]
-    #[ts(optional = nullable)]
+    #[cfg_attr(feature = "ts", ts(optional = nullable))]
     pub flow: Option<String>,
     #[serde(default)]
-    #[ts(optional = nullable)]
+    #[cfg_attr(feature = "ts", ts(optional = nullable))]
     pub record_dir: Option<String>,
     #[serde(default)]
-    #[ts(optional = nullable)]
+    #[cfg_attr(feature = "ts", ts(optional = nullable))]
     pub decider: Option<DeciderName>,
     #[serde(default)]
-    #[ts(optional = nullable)]
+    #[cfg_attr(feature = "ts", ts(optional = nullable))]
     pub threshold: Option<f64>,
 }
 
