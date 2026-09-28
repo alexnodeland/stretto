@@ -2742,6 +2742,119 @@ async fn a_cancelled_job_ends_though_a_child_holds_its_output() {
     std::fs::remove_dir_all(&bin).unwrap();
 }
 
+#[cfg(unix)]
+#[tokio::test]
+async fn a_drift_job_that_sounds_its_alarm_is_no_failure() {
+    let bin = std::env::temp_dir().join(format!("stretto-console-drift-{}", std::process::id()));
+    std::fs::create_dir_all(&bin).unwrap();
+    // It writes its reports where it is told, and exits as `stretto drift`
+    // does: 1 while its alarm sounds, 0 when the agent did not change, 2 on
+    // an error. The window says which.
+    let stretto = fake_stretto(
+        &bin,
+        r#"while [ $# -gt 0 ]; do
+  case "$1" in --json) json=$2; shift;; --out) md=$2; shift;; --window) window=$2; shift;; esac
+  shift
+done
+if [ "$window" = 20 ]; then
+  printf '{"sessions":[{},{}],"alarms":[],"sounding":false,"unknown_tools":{}}' > "$json"
+  echo '# No change' > "$md"
+  exit 0
+fi
+if [ "$window" = 30 ]; then echo 'no sessions'; exit 2; fi
+printf '{"sessions":[{},{},{},{},{},{}],"alarms":[{"at":5,"change":2,"probability":0.83,"moved":[{"site":"get_order_details"},{"site":"find_user_id_by_email"},{"site":"a"},{"site":"b"}]}],"sounding":true,"unknown_tools":{"refund":3}}' > "$json"
+echo '# The agent changed' > "$md"
+echo 'the alarm sounds'
+exit 1
+"#,
+    );
+    let c = console("drift", |config| config.binaries.stretto = Some(stretto));
+    let drift = |window: u32| json!({"kind": "drift", "flow": "shop", "sessions": "served/shop", "window": window});
+    let (status, job) = submit(&c, drift(10)).await;
+    assert_eq!(status, StatusCode::ACCEPTED, "{job}");
+    assert_eq!(job["params"]["threshold"], 0.5);
+    let done = c.finished(job["id"].as_str().unwrap()).await;
+    assert_eq!(
+        (&done["status"], &done["exit_code"], &done["alarm"]),
+        (&json!("succeeded"), &json!(1), &json!(true))
+    );
+    // The flow's page and the overview say so.
+    let d = c.get("/api/flows/shop").await.json()["drift"].clone();
+    assert_eq!(d["job"], job["id"]);
+    assert_eq!(
+        (
+            d["alarm"].as_bool(),
+            d["sessions"].as_u64(),
+            d["since"].as_u64()
+        ),
+        (Some(true), Some(6), Some(4))
+    );
+    assert_eq!(d["probability"], 0.83);
+    assert_eq!(
+        d["sites"],
+        json!(["get_order_details", "find_user_id_by_email", "a"])
+    );
+    assert_eq!(d["unknown_tools"], json!(["refund"]));
+    let overview = c.get("/api/overview").await.json();
+    assert!(
+        overview["health"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|h| h["message"]
+                .as_str()
+                .unwrap()
+                .contains("stretto drift sounded its alarm")),
+        "{overview}"
+    );
+    // A later run that finds no change is the one the flow shows. It may
+    // name the decider.
+    let mut body = drift(20);
+    body["decider"] = json!("reach");
+    let (_, calm) = submit(&c, body).await;
+    assert_eq!(calm["params"]["decider"], "reach");
+    let done = c.finished(calm["id"].as_str().unwrap()).await;
+    assert_eq!(
+        (&done["status"], &done["alarm"]),
+        (&json!("succeeded"), &json!(false))
+    );
+    let d = c.get("/api/flows/shop").await.json()["drift"].clone();
+    assert_eq!(
+        (d["alarm"].as_bool(), d["sessions"].as_u64(), &d["since"]),
+        (Some(false), Some(2), &Value::Null)
+    );
+    // Any other exit is a failure, and leaves the last run as it was.
+    let (_, broken) = submit(&c, drift(30)).await;
+    let done = c.finished(broken["id"].as_str().unwrap()).await;
+    assert_eq!(
+        (&done["status"], &done["alarm"]),
+        (&json!("failed"), &json!(false))
+    );
+    assert_eq!(
+        c.get("/api/flows/shop").await.json()["drift"]["job"],
+        calm["id"]
+    );
+    // What a drift job refuses.
+    for (body, says) in [
+        (
+            json!({"kind": "drift", "flow": "shop", "sessions": "served/shop", "window": 2}),
+            "window 2: at least 3",
+        ),
+        (
+            json!({"kind": "drift", "flow": "shop", "sessions": "served/shop", "threshold": 0}),
+            "threshold 0: a probability above 0",
+        ),
+    ] {
+        let (status, answer) = submit(&c, body).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert!(
+            answer["error"].as_str().unwrap().starts_with(says),
+            "{answer}"
+        );
+    }
+    std::fs::remove_dir_all(&bin).unwrap();
+}
+
 // ---- planning jobs ----------------------------------------------------------------
 
 /// Post `body` as a job: the status, and the job or the error.

@@ -53,6 +53,10 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
   - `--flow-tools` does not grant it.
 - `stretto-mcp-demo --world retail` takes `--hide TOOL` and `--hint TOOL=false|none`, to stand in for a server that changed since a flow was learned.
 - In the libraries: `stretto_report::drift`, `Flow::trained_on`, `phase0::Config::half_life`; in `stretto_model`, `EncodedEpisode::weight` and `with_weight`, `BackoffModel::observe_weighted` and `count`.
+- **In the console** ([#36](https://github.com/alexnodeland/stretto/issues/36)), a `drift` job runs `stretto drift` on a flow's sessions, from the flow's page or the jobs page.
+  - `stretto drift` exits with 1 while its alarm sounds. The job records that as an alarm (`alarm` on the job), not a failure, and the jobs list shows it as one.
+  - When a flow's last drift job sounded its alarm, the flow's page says so at the top, with how many sessions ago the change likeliest came, where the flow's surprise rose most, any tools training never saw, and a link to the report. The overview's health lists it too.
+  - The API: `drift` among the jobs, and a flow's last drift run in its detail (`drift`).
 
 ### LLM turns and promotion
 

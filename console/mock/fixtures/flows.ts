@@ -429,6 +429,7 @@ export function detailAt(flow: FlowRecord, threshold: number): FlowDetail {
     promotion: flow.promotion,
     review_markdown: flow.review(threshold),
     warnings: flow.warnings,
+    drift: null,
   }
 }
 

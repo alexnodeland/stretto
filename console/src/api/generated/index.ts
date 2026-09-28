@@ -24,6 +24,7 @@ export type * from "./DiffSection";
 export type * from "./DiscoveredUpstream";
 export type * from "./Disk";
 export type * from "./DomainSummary";
+export type * from "./DriftCheck";
 export type * from "./ErrorBody";
 export type * from "./EventFrom";
 export type * from "./EventKind";

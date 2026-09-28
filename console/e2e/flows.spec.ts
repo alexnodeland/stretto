@@ -56,6 +56,40 @@ test('promote and audit start from the flow', async ({ page }) => {
   ).toBeVisible()
 })
 
+test('a drift alarm shows on its flow, and a drift job starts from there', async ({ page }) => {
+  await page.goto('/flows/shop-promoted')
+  const alarm = page.getByTestId('drift-alarm')
+  await expect(alarm).toContainText(
+    'The agent may have changed under this flow: stretto drift sounded its alarm',
+  )
+  await expect(alarm).toContainText('a change likeliest 3 sessions ago, at 78%')
+  await expect(alarm).toContainText('get_order_details, find_user_id_by_email')
+  // A flow whose last drift run found nothing, or that never had one, shows none.
+  await page.goto('/flows/shop')
+  await expect(page.getByRole('heading', { name: 'shop', level: 1 })).toBeVisible()
+  await expect(page.getByTestId('drift-alarm')).toHaveCount(0)
+
+  await page.getByRole('link', { name: 'Drift' }).click()
+  await expect(page).toHaveURL(/\/jobs\/new\?kind=drift&flow=shop/)
+  await expect(page.getByTestId('job-flow')).toHaveValue('shop')
+  await expect(
+    page.getByText(
+      'stretto drift --flow shop.flow.json --sessions logs/shop --window 10 --threshold 0.5',
+    ),
+  ).toBeVisible()
+  await page.getByTestId('job-window').fill('2')
+  await page.getByTestId('job-start').click()
+  await expect(page.getByText('A whole number of sessions, 3 or more.')).toBeVisible()
+  await page.getByTestId('job-window').fill('10')
+  await page.getByTestId('job-start').click()
+  // The shop's sessions include one that surprised its flow: the mock's alarm.
+  await expect(page).toHaveURL(/\/jobs\/j-\d+$/)
+  await expect(page.getByText('Alarm').first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Drift of shop' })).toBeVisible()
+  await page.goto('/flows/shop')
+  await expect(page.getByTestId('drift-alarm')).toBeVisible()
+})
+
 test('a staged flow is compared with the committed one, committed and rolled back', async ({
   page,
 }) => {

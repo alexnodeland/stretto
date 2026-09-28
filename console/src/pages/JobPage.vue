@@ -174,7 +174,7 @@ const icons = { flow: Workflow, report: FileText, dir: FolderOpen }
     <UiPageHeader :back="{ name: 'jobs' }" back-label="Jobs">
       <template #title>
         {{ job?.title ?? id }}
-        <JobStatus v-if="job" :status="job.status" />
+        <JobStatus v-if="job" :status="job.status" :alarm="job.alarm" />
       </template>
       <p v-if="job" class="meta">
         <UiBadge mono>{{ job.kind }}</UiBadge>

@@ -4,9 +4,10 @@
  * The threshold slider previews which lookups act; the server confirms each
  * threshold with review::show's own computation.
  */
-import { computed, ref, watch } from 'vue'
+import { computed, onScopeDispose, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  Activity,
   BadgeCheck,
   Download,
   FileText,
@@ -16,6 +17,7 @@ import {
   Server,
   FileSearch,
   GitBranch,
+  Siren,
   Trash,
   TriangleAlert,
   Workflow,
@@ -38,6 +40,8 @@ import FlowToolsTable from '@/components/flow/FlowToolsTable.vue'
 import FlowCompare from '@/components/flow/FlowCompare.vue'
 import FlowStage from '@/components/flow/FlowStage.vue'
 import { api, ApiError } from '@/api/client'
+import { onJob } from '@/api/events'
+import { isRecord } from '@/lib/json'
 import { useResource } from '@/composables/useResource'
 import { useTitle } from '@/composables/useTitle'
 import { readOnly } from '@/stores/auth'
@@ -78,8 +82,17 @@ const flow = useResource((o) => api.flow(key.value, asked.value, o), {
   events: ['flows', 'servers'],
   filter: (e) => e.what === 'servers' || e.keys.length === 0 || e.keys.includes(key.value),
 })
+// A drift job on this flow that ends changes what the page says about it.
+const stopJobs = onJob((j) => {
+  const ended = j.status !== 'queued' && j.status !== 'running'
+  if (ended && j.kind === 'drift' && isRecord(j.params) && j.params.flow === key.value)
+    void flow.refresh()
+})
+onScopeDispose(stopJobs)
 const all = useResource((o) => api.flows(o), { events: ['flows'] })
 const detail = flow.data
+/** The last drift run on the flow, if one ran to its end. */
+const drift = computed(() => detail.value?.drift ?? null)
 const summary = computed(() => detail.value?.summary ?? null)
 
 const previews = computed(() => (detail.value ? previewSites(detail.value, threshold.value) : []))
@@ -224,6 +237,14 @@ async function remove() {
           Audit
         </UiButton>
         <UiButton
+          :icon="Activity"
+          :to="{ name: 'job-new', query: { kind: 'drift', flow: key } }"
+          :disabled="readOnly"
+          reason="The console is read-only"
+        >
+          Drift
+        </UiButton>
+        <UiButton
           variant="danger"
           :icon="Trash"
           square
@@ -245,6 +266,28 @@ async function remove() {
     </div>
 
     <template v-else>
+      <div v-if="drift?.alarm" class="notice warn" role="status" data-testid="drift-alarm">
+        <Siren :size="16" :stroke-width="2" aria-hidden="true" />
+        <span
+          >The agent may have changed under this flow: stretto drift sounded its alarm on
+          {{ formatDateTime(drift.finished_unix_ms)
+          }}<template v-if="drift.since !== null"
+            >, with a change likeliest {{ plural(drift.since, 'session') }} ago<template
+              v-if="drift.probability !== null"
+              >, at {{ Math.round(drift.probability * 100) }}%</template
+            ></template
+          >.<template v-if="drift.sites.length">
+            Its surprise rose most after <span class="mono">{{ drift.sites.join(', ') }}</span
+            >.</template
+          ><template v-if="drift.unknown_tools.length">
+            The agent called tools training never saw:
+            <span class="mono">{{ drift.unknown_tools.join(', ') }}</span
+            >.</template
+          >
+          Learn it again, or stage it.
+          <RouterLink :to="{ name: 'job', params: { id: drift.job } }">The report</RouterLink></span
+        >
+      </div>
       <div v-for="w in detail?.warnings ?? []" :key="w" class="notice warn" role="status">
         <TriangleAlert :size="16" :stroke-width="2" aria-hidden="true" />
         <span>{{ w }}</span>

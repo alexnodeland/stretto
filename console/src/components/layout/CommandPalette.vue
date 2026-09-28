@@ -79,7 +79,15 @@ const actions = computed<Entry[]>(() => {
       icon: Plus,
       to: { name: 'server-new' },
     })
-    for (const kind of ['learn', 'promote', 'audit', 'stage', 'redact', 'doctor'] as const) {
+    for (const kind of [
+      'learn',
+      'promote',
+      'audit',
+      'stage',
+      'drift',
+      'redact',
+      'doctor',
+    ] as const) {
       list.push({
         id: `a-job-${kind}`,
         group: 'Actions',

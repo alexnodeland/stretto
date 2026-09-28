@@ -167,6 +167,7 @@ impl Jobs {
             started_unix_ms: None,
             finished_unix_ms: None,
             exit_code: None,
+            alarm: false,
             output: String::new(),
             artifacts: plan.artifacts,
         };
@@ -269,19 +270,24 @@ impl Inner {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .take();
-        let (status, code) = match outcome {
-            Ok(Ended::Exited(0)) => (JobStatus::Succeeded, Some(0)),
-            Ok(Ended::Exited(code)) => (JobStatus::Failed, Some(code)),
-            Ok(Ended::Cancelled(code)) => (JobStatus::Cancelled, Some(code)),
+        let (status, code, alarm) = match outcome {
+            Ok(Ended::Exited(0)) => (JobStatus::Succeeded, Some(0), false),
+            // It did its work, and found something to act on.
+            Ok(Ended::Exited(code)) if job.kind.alarm_exit() == Some(code) => {
+                (JobStatus::Succeeded, Some(code), true)
+            }
+            Ok(Ended::Exited(code)) => (JobStatus::Failed, Some(code), false),
+            Ok(Ended::Cancelled(code)) => (JobStatus::Cancelled, Some(code), false),
             Err(e) => {
                 append(&log_path, &format!("stretto-console: {e}\n")).await;
-                (JobStatus::Failed, None)
+                (JobStatus::Failed, None, false)
             }
         };
         let catalog = data::catalog(&self.data_dir);
         self.update(id, |j| {
             j.status = status;
             j.exit_code = code;
+            j.alarm = alarm;
             j.finished_unix_ms = Some(now());
             j.artifacts = std::mem::take(&mut j.artifacts)
                 .into_iter()
@@ -537,6 +543,7 @@ mod tests {
             started_unix_ms: Some(2),
             finished_unix_ms: None,
             exit_code: None,
+            alarm: false,
             output: String::new(),
             artifacts: Vec::new(),
         };
@@ -570,6 +577,7 @@ mod tests {
             started_unix_ms: None,
             finished_unix_ms: None,
             exit_code: None,
+            alarm: false,
             output: String::new(),
             artifacts: Vec::new(),
         };

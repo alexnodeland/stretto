@@ -102,7 +102,7 @@ const icons = { flow: Workflow, report: FileText, dir: FolderOpen }
               <td class="inline">
                 <UiBadge mono>{{ j.kind }}</UiBadge>
               </td>
-              <td class="inline"><JobStatus :status="j.status" /></td>
+              <td class="inline"><JobStatus :status="j.status" :alarm="j.alarm" /></td>
               <td class="arts" :class="{ 'stack-hide': !j.artifacts.length }">
                 <template v-if="j.artifacts.length">
                   <span v-for="a in j.artifacts" :key="a.path" class="art">

@@ -26,8 +26,20 @@ pub enum JobKind {
     Promote,
     Audit,
     Stage,
+    Drift,
     Redact,
     Doctor,
+}
+
+impl JobKind {
+    /// The exit code with which the kind's command says it found something
+    /// to act on, rather than that it failed: `stretto drift`'s alarm.
+    pub fn alarm_exit(self) -> Option<i32> {
+        match self {
+            JobKind::Drift => Some(1),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -81,6 +93,10 @@ pub struct Job {
     pub started_unix_ms: Option<u64>,
     pub finished_unix_ms: Option<u64>,
     pub exit_code: Option<i32>,
+    /// Whether it ended with an alarm, which is not a failure: `stretto
+    /// drift` found the agent changed under the flow.
+    #[serde(default)]
+    pub alarm: bool,
     /// What it printed, stdout and stderr as they came: the last 64 KiB in
     /// lists and events, all of it from `GET /api/jobs/:id`.
     pub output: String,
@@ -161,6 +177,27 @@ pub enum JobRequest {
         #[serde(default)]
         #[cfg_attr(feature = "ts", ts(optional = nullable))]
         decider: Option<DeciderName>,
+    },
+    /// `stretto drift`: score the flow's sessions in the order they ran,
+    /// and sound an alarm when the agent seems to have changed under it.
+    /// The CLI exits with 1 while its alarm sounds, which the job records as
+    /// an alarm, not a failure.
+    Drift {
+        flow: String,
+        sessions: String,
+        /// How the flow decides as it is scored: `habit` by default.
+        #[serde(default)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
+        decider: Option<DeciderName>,
+        /// How recent a change the alarm reports, in sessions (10; at
+        /// least 3, as a change needs three sessions of the new run).
+        #[serde(default)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
+        window: Option<usize>,
+        /// The probability of a recent change that sounds the alarm (0.5).
+        #[serde(default)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
+        threshold: Option<f64>,
     },
     /// `stretto stage`: learn the staged flow beside a committed one from
     /// its sessions, scoring each new session with both flows first.
@@ -314,6 +351,76 @@ pub async fn artifact(
         .headers_mut()
         .insert(header::CONTENT_TYPE, HeaderValue::from_static(kind));
     Ok(response)
+}
+
+/// The last `stretto drift` job on a flow that ran to its end: whether its
+/// alarm sounded, and what its report says.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
+pub struct DriftCheck {
+    /// The job.
+    pub job: String,
+    pub finished_unix_ms: u64,
+    /// Whether the alarm sounded after the last session: the agent may
+    /// have changed under the flow.
+    pub alarm: bool,
+    /// The sessions it scored.
+    pub sessions: usize,
+    /// With the alarm: the sessions since the likeliest change.
+    pub since: Option<usize>,
+    /// With the alarm: the probability of a change within the window.
+    pub probability: Option<f64>,
+    /// With the alarm: the sites where the flow's surprise rose most, at
+    /// most three.
+    pub sites: Vec<String>,
+    /// The tools the agent called that training never saw.
+    pub unknown_tools: Vec<String>,
+}
+
+/// The newest drift job on flow `key` that ran to its end, as its JSON
+/// report says it went.
+pub fn latest_drift(state: &State, key: &str) -> Option<DriftCheck> {
+    let job = state.jobs.list().into_iter().find(|j| {
+        j.kind == JobKind::Drift
+            && j.status == JobStatus::Succeeded
+            && j.params.get("flow").and_then(Value::as_str) == Some(key)
+    })?;
+    let report = job
+        .artifacts
+        .iter()
+        .filter(|a| a.path.ends_with(".json"))
+        .find_map(|a| {
+            let path =
+                paths::resolve(state.data_dir(), state.config.home.as_deref(), &a.path).ok()?;
+            serde_json::from_slice::<Value>(&std::fs::read(path).ok()?).ok()
+        })
+        .unwrap_or(Value::Null);
+    let sessions = report["sessions"].as_array().map_or(0, Vec::len);
+    let last = report["alarms"]
+        .as_array()
+        .and_then(|a| a.last())
+        .filter(|_| job.alarm);
+    Some(DriftCheck {
+        finished_unix_ms: job.finished_unix_ms.unwrap_or(job.created_unix_ms),
+        alarm: job.alarm,
+        sessions,
+        since: last
+            .and_then(|a| a["change"].as_u64())
+            .map(|change| sessions.saturating_sub(change as usize)),
+        probability: last.and_then(|a| a["probability"].as_f64()),
+        sites: last
+            .and_then(|a| a["moved"].as_array())
+            .into_iter()
+            .flatten()
+            .filter_map(|m| m["site"].as_str().map(str::to_string))
+            .take(3)
+            .collect(),
+        unknown_tools: report["unknown_tools"]
+            .as_object()
+            .map(|o| o.keys().cloned().collect())
+            .unwrap_or_default(),
+        job: job.id,
+    })
 }
 
 /// A request's plan, or why it cannot run.
@@ -535,6 +642,67 @@ pub fn plan(state: &State, id: &str, request: JobRequest) -> ApiResult<Plan> {
                     flow,
                     sessions: shown(state, &from),
                     decider,
+                }),
+                args,
+                artifacts: vec![
+                    artifact(ArtifactKind::Report, &json),
+                    artifact(ArtifactKind::Report, &md),
+                ],
+            }
+        }
+        JobRequest::Drift {
+            flow,
+            sessions,
+            decider,
+            window,
+            threshold,
+        } => {
+            let file = flow_of(&flow)?;
+            let from = dir("sessions", &sessions)?;
+            let window = window.unwrap_or(10);
+            if window < 3 {
+                return Err(ApiError::bad_request(format!(
+                    "window {window}: at least 3 sessions, as a change needs three of the new run"
+                )));
+            }
+            let threshold = threshold.unwrap_or(0.5);
+            if !(threshold > 0.0 && threshold <= 1.0) {
+                return Err(ApiError::bad_request(format!(
+                    "threshold {threshold}: a probability above 0 and at most 1"
+                )));
+            }
+            let (json, md) = (report("drift.json"), report("drift.md"));
+            let mut args = vec![
+                "drift".into(),
+                "--flow".into(),
+                s(&file.path),
+                "--sessions".into(),
+                s(&from),
+                "--oracle".into(),
+                "replay".into(),
+                "--oracle-cache".into(),
+                s(&root.join("oracle-cache")),
+                "--window".into(),
+                window.to_string(),
+                "--threshold".into(),
+                threshold.to_string(),
+                "--out".into(),
+                s(&md),
+                "--json".into(),
+                s(&json),
+            ];
+            if let Some(d) = decider {
+                args.extend(["--decider".into(), d.decider().name().into()]);
+            }
+            Plan {
+                kind: JobKind::Drift,
+                title: format!("Drift of {} on {}", file.name, shown(state, &from)),
+                params: params(&JobRequest::Drift {
+                    flow,
+                    sessions: shown(state, &from),
+                    decider,
+                    window: Some(window),
+                    threshold: Some(threshold),
                 }),
                 args,
                 artifacts: vec![

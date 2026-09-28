@@ -23,6 +23,7 @@ import type {
 } from '../src/api/types.ts'
 import {
   buildWorld,
+  driftReports,
   servedShopSession,
   shopSpec,
   splitReport,
@@ -35,6 +36,7 @@ import {
   doctorOutput,
   flowSummaries,
   hostConfig,
+  latestDrift,
   overview,
   probe,
   serverView,
@@ -463,7 +465,7 @@ function checkPath(path: unknown, what: string): string {
 
 // ---------------------------------------------------------------- jobs
 
-let jobCounter = 7
+let jobCounter = 8
 /** The timers that move each unfinished job on, so that it can be cancelled. */
 const jobTimers = new Map<
   string,
@@ -480,6 +482,8 @@ function jobTitle(job: JobRequest): string {
       return `Audit ${flowRecord(job.flow).summary.name} on ${job.sessions}`
     case 'stage':
       return `Stage ${stagePaths(job.flow).name} from ${job.sessions}`
+    case 'drift':
+      return `Drift of ${flowRecord(job.flow).summary.name} on ${job.sessions}`
     case 'redact':
       return `Redact ${job.sessions}`
     default:
@@ -519,6 +523,13 @@ function withDefaults(req: JobRequest): JobRequest {
         half_life: req.half_life ?? null,
         constants: req.constants ?? false,
       }
+    case 'drift':
+      return {
+        ...req,
+        decider: req.decider ?? null,
+        window: req.window ?? 10,
+        threshold: req.threshold ?? 0.5,
+      }
     case 'redact':
       return { ...req, keep_shared: req.keep_shared ?? 3, hash_fields: req.hash_fields ?? [] }
     default:
@@ -528,7 +539,7 @@ function withDefaults(req: JobRequest): JobRequest {
 
 function startJob(input: unknown): Job {
   if (!input || typeof input !== 'object') throw new HttpError(400, 'the body must be a job')
-  const kinds: JobKind[] = ['learn', 'promote', 'audit', 'stage', 'redact', 'doctor']
+  const kinds: JobKind[] = ['learn', 'promote', 'audit', 'stage', 'drift', 'redact', 'doctor']
   if (!kinds.includes((input as JobRequest).kind))
     throw new HttpError(
       400,
@@ -538,6 +549,8 @@ function startJob(input: unknown): Job {
   const id = `j-${String(jobCounter).padStart(4, '0')}`
   let lines: string[] = []
   let fail = false
+  /** For a drift job: whether its alarm sounds, which is no failure. */
+  let alarm = false
   /** What it writes, as planned: after it ends, only what exists. */
   const artifacts: Job['artifacts'] = []
   const reports: Record<string, string> = {}
@@ -657,6 +670,27 @@ function startJob(input: unknown): Job {
     artifacts.push({ kind: 'report', path: `console/jobs/${id}.stage.json`, key: null })
     reports[`console/jobs/${id}.stage.md`] = `# Staged flow: ${world.dataDir}/${paths.committed}\n`
     reports[`console/jobs/${id}.stage.json`] = `${JSON.stringify(last, null, 2)}\n`
+  } else if (req.kind === 'drift') {
+    const f = flowRecord(req.flow)
+    const dir = checkPath(req.sessions, 'sessions')
+    const window = req.window ?? 10
+    if (!(Number.isInteger(window) && window >= 3))
+      throw new HttpError(
+        400,
+        `window ${window}: at least 3 sessions, as a change needs three of the new run`,
+      )
+    const t = req.threshold ?? 0.5
+    if (!(t > 0 && t <= 1))
+      throw new HttpError(400, `threshold ${t}: a probability above 0 and at most 1`)
+    const sessions = world.sessions.filter((s) => s.summary.path.startsWith(dir + '/'))
+    // The mock's agent changes where a session surprised the flow.
+    alarm = sessions.some((s) => s.summary.surprised)
+    const drift = driftReports(f.summary.name, sessions.length, alarm)
+    lines = [drift.line]
+    artifacts.push({ kind: 'report', path: `console/jobs/${id}.drift.json`, key: null })
+    artifacts.push({ kind: 'report', path: `console/jobs/${id}.drift.md`, key: null })
+    reports[`console/jobs/${id}.drift.json`] = drift.json
+    reports[`console/jobs/${id}.drift.md`] = drift.md
   } else if (req.kind === 'redact') {
     if (!state.options.redactSalt)
       throw new HttpError(
@@ -685,6 +719,7 @@ function startJob(input: unknown): Job {
     started_unix_ms: null,
     finished_unix_ms: null,
     exit_code: null,
+    alarm: false,
     output: '',
     artifacts: [...artifacts],
   }
@@ -709,7 +744,9 @@ function startJob(input: unknown): Job {
       clearInterval(tick)
       jobTimers.delete(id)
       job.status = fail ? 'failed' : 'succeeded'
-      job.exit_code = fail ? 1 : 0
+      // `stretto drift` exits with 1 while its alarm sounds.
+      job.exit_code = fail || alarm ? 1 : 0
+      job.alarm = !fail && alarm
       job.finished_unix_ms = Date.now()
       if (fail) job.artifacts = []
       else Object.assign(world.reports, reports)
@@ -790,6 +827,8 @@ function commandLine(req: JobRequest): string {
       return `audit --flow ${d}/${flowRecord(req.flow).summary.path} --sessions ${d}/${req.sessions}${req.decider ? ` --decider ${req.decider}` : ''} --json ${d}/console/jobs/report.json`
     case 'stage':
       return `stage --flow ${d}/${stagePaths(req.flow).committed} --sessions ${d}/${req.sessions} --window ${req.window}${req.decider ? ` --decider ${req.decider}` : ''}${req.half_life ? ` --half-life ${req.half_life}` : ''}${req.constants ? ' --constants' : ''}`
+    case 'drift':
+      return `drift --flow ${d}/${flowRecord(req.flow).summary.path} --sessions ${d}/${req.sessions} --window ${req.window} --threshold ${req.threshold}${req.decider ? ` --decider ${req.decider}` : ''} --json ${d}/console/jobs/report.json`
     case 'redact':
       return `redact --sessions ${d}/${req.sessions} --out ${d}/${req.out} --keep-shared ${req.keep_shared}${req.hash_fields?.length ? ` --hash-field ${req.hash_fields.join(',')}` : ''}`
     default:
@@ -899,6 +938,7 @@ const routes: [string, RegExp, Handler][] = [
       if (f.summary.error) throw new HttpError(400, f.summary.error)
       const detail = detailAt(f, threshold(url.searchParams.get('threshold')))
       detail.summary = flowSummaries(state.world).find((s) => s.key === f.summary.key) ?? f.summary
+      detail.drift = latestDrift(state.world, f.summary.key)
       return detail
     },
   ],

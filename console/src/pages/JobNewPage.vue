@@ -3,6 +3,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  Activity,
   BadgeCheck,
   Eraser,
   FileSearch,
@@ -54,6 +55,12 @@ const kinds: { value: JobKind; label: string; icon: typeof Sparkles; body: strin
     label: 'Stage',
     icon: GitBranch,
     body: 'Learn a flow’s next version beside it, and compare the two.',
+  },
+  {
+    value: 'drift',
+    label: 'Drift',
+    icon: Activity,
+    body: 'Watch a flow’s sessions for the agent changing under it.',
   },
   {
     value: 'redact',
@@ -110,6 +117,13 @@ const stage = reactive({
   decider: '' as '' | DeciderName,
   half_life: null as number | null,
   constants: false,
+})
+const drift = reactive({
+  flow: q('flow'),
+  sessions: '',
+  window: 10,
+  threshold: 0.5,
+  decider: '' as '' | DeciderName,
 })
 const redact = reactive({ sessions: '', out: '', keep_shared: 3, hash_fields: [] as string[] })
 const hashDraft = ref('')
@@ -180,6 +194,16 @@ function fill(p: unknown) {
         constants: p.constants === true,
       })
       break
+    case 'drift':
+      kind.value = 'drift'
+      Object.assign(drift, {
+        flow: str(p.flow),
+        sessions: str(p.sessions),
+        window: num(p.window, drift.window),
+        threshold: num(p.threshold, drift.threshold),
+        decider: str(p.decider) as '' | DeciderName,
+      })
+      break
     case 'redact':
       kind.value = 'redact'
       Object.assign(redact, {
@@ -208,6 +232,10 @@ const auditSessions = computed(
 const halfLife = computed(() => (typeof stage.half_life === 'number' ? stage.half_life : null))
 const stageSessions = computed(
   () => stage.sessions || (flowOf(stage.flow) ? `logs/${flowOf(stage.flow)!.domain}` : ''),
+)
+/** The flow's sessions as the proxy serves it: where `stretto init` records them. */
+const driftSessions = computed(
+  () => drift.sessions || (flowOf(drift.flow) ? `logs/${flowOf(drift.flow)!.domain}` : ''),
 )
 const redactOut = computed(
   () =>
@@ -244,6 +272,13 @@ const errors = computed(() => {
       e.window = 'A whole number, 1 or more.'
     if (halfLife.value !== null && !(halfLife.value > 0))
       e.half_life = 'A number of sessions, more than 0.'
+  } else if (kind.value === 'drift') {
+    if (!drift.flow) e.flow = 'Choose the flow to watch.'
+    if (!driftSessions.value) e.sessions = 'Give the directory of sessions.'
+    if (!(drift.window >= 3 && Number.isInteger(drift.window)))
+      e.window = 'A whole number of sessions, 3 or more.'
+    if (!(drift.threshold > 0 && drift.threshold <= 1))
+      e.threshold = 'A probability above 0, at most 1.'
   } else if (kind.value === 'redact') {
     if (!redact.sessions) e.sessions = 'Give the directory of sessions.'
     if (!redactOut.value) e.out = 'Give a directory to write to.'
@@ -295,6 +330,15 @@ const body = computed<JobRequest>(() => {
         decider: stage.decider || null,
         half_life: halfLife.value,
         constants: stage.constants,
+      }
+    case 'drift':
+      return {
+        kind: 'drift',
+        flow: drift.flow,
+        sessions: driftSessions.value,
+        decider: drift.decider || null,
+        window: drift.window,
+        threshold: drift.threshold,
       }
     case 'redact':
       return {
@@ -371,6 +415,22 @@ const preview = computed(() => {
         ...(b.decider ? ['--decider', b.decider] : []),
         ...(b.half_life ? ['--half-life', String(b.half_life)] : []),
         ...(b.constants ? ['--constants'] : []),
+      ])
+    case 'drift':
+      return commandText([
+        'stretto',
+        'drift',
+        '--flow',
+        flowPath(b.flow),
+        '--sessions',
+        b.sessions || '<dir>',
+        '--window',
+        String(b.window),
+        '--threshold',
+        String(b.threshold),
+        ...(b.decider ? ['--decider', b.decider] : []),
+        '--json',
+        '<report>',
       ])
     case 'redact':
       return commandText([
@@ -788,6 +848,90 @@ async function submit() {
         />
       </template>
 
+      <template v-else-if="kind === 'drift'">
+        <div class="row2">
+          <UiField
+            v-slot="{ id, describedby, invalid }"
+            label="Flow"
+            hint="The flow the sessions were served with."
+            :error="err('flow')"
+          >
+            <select
+              :id="id"
+              v-model="drift.flow"
+              class="select"
+              :aria-describedby="describedby"
+              :aria-invalid="invalid"
+              data-testid="job-flow"
+            >
+              <option value="">Choose a flow</option>
+              <option v-for="f in goodFlows" :key="f.key" :value="f.key">
+                {{ f.key }} · {{ f.domain }}
+              </option>
+            </select>
+          </UiField>
+          <UiField
+            v-slot="{ id, describedby, invalid }"
+            label="Sessions"
+            hint="Taken in the order they ran: the newest are the ones it watches."
+            :error="err('sessions')"
+          >
+            <input
+              :id="id"
+              v-model="drift.sessions"
+              class="input mono"
+              list="job-dirs"
+              :aria-describedby="describedby"
+              :aria-invalid="invalid"
+              :placeholder="driftSessions || 'logs/<domain>'"
+              spellcheck="false"
+            />
+          </UiField>
+        </div>
+        <div class="row2">
+          <UiField
+            v-slot="{ id, describedby }"
+            label="A change within the last"
+            hint="Sessions (--window): how recent a change the alarm reports. At least 3, as a change needs three sessions of the new run."
+            :error="err('window')"
+          >
+            <input
+              :id="id"
+              v-model.number="drift.window"
+              class="input num"
+              type="number"
+              min="3"
+              step="1"
+              :aria-describedby="describedby"
+              data-testid="job-window"
+            />
+          </UiField>
+          <UiField
+            v-slot="{ id, describedby }"
+            label="Sound the alarm at"
+            hint="The probability of such a change (--threshold)."
+            :error="err('threshold')"
+          >
+            <input
+              :id="id"
+              v-model.number="drift.threshold"
+              class="input num"
+              type="number"
+              min="0"
+              max="1"
+              step="0.05"
+              :aria-describedby="describedby"
+            />
+          </UiField>
+        </div>
+        <UiField v-slot="{ id }" label="Decider" optional>
+          <select :id="id" v-model="drift.decider" class="select">
+            <option value="">habit: the flow’s habit alone</option>
+            <option value="reach">reach</option>
+            <option value="arbiter">arbiter (asks the replay cache)</option>
+          </select>
+        </UiField>
+      </template>
       <template v-else-if="kind === 'redact'">
         <div class="row2">
           <UiField v-slot="{ id, describedby, invalid }" label="Sessions" :error="err('sessions')">

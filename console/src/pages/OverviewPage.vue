@@ -209,7 +209,7 @@ const problems = computed(
               <RouterLink :to="{ name: 'job', params: { id: job.id } }" class="job">
                 <span class="job-title">{{ job.title }}</span>
                 <span class="job-meta">
-                  <JobStatus :status="job.status" />
+                  <JobStatus :status="job.status" :alarm="job.alarm" />
                   <span class="caption"><UiRelTime :ms="job.created_unix_ms" /></span>
                 </span>
               </RouterLink>

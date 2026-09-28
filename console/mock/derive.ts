@@ -5,6 +5,7 @@
  */
 import type {
   DiscoveredUpstream,
+  DriftCheck,
   FlowSummary,
   HealthItem,
   HostConfig,
@@ -342,6 +343,47 @@ export function probe(world: World, entry: ServerEntry): ProbeResult {
   return result
 }
 
+/** What the console reads of `stretto drift`'s JSON report. */
+interface DriftReport {
+  sessions?: unknown[]
+  alarms?: { change?: number; probability?: number; moved?: { site?: string }[] }[]
+  unknown_tools?: Record<string, number>
+}
+
+/** The last drift job on flow `key` that ran to its end (`api::jobs::latest_drift`). */
+export function latestDrift(world: World, key: string): DriftCheck | null {
+  const job = world.jobs.find(
+    (j) =>
+      j.kind === 'drift' &&
+      j.status === 'succeeded' &&
+      (j.params as { flow?: unknown } | null)?.flow === key,
+  )
+  if (!job) return null
+  const path = job.artifacts.find((a) => a.path.endsWith('.json'))?.path
+  const report = ((): DriftReport => {
+    try {
+      return path && world.reports[path] ? (JSON.parse(world.reports[path]) as DriftReport) : {}
+    } catch {
+      return {}
+    }
+  })()
+  const sessions = report.sessions?.length ?? 0
+  const last = job.alarm ? report.alarms?.at(-1) : undefined
+  return {
+    job: job.id,
+    finished_unix_ms: job.finished_unix_ms ?? job.created_unix_ms,
+    alarm: job.alarm,
+    sessions,
+    since: typeof last?.change === 'number' ? Math.max(0, sessions - last.change) : null,
+    probability: last?.probability ?? null,
+    sites: (last?.moved ?? [])
+      .map((m) => m.site)
+      .filter((s): s is string => typeof s === 'string')
+      .slice(0, 3),
+    unknown_tools: Object.keys(report.unknown_tools ?? {}),
+  }
+}
+
 export function health(world: World, options: MockOptions): HealthItem[] {
   const items: HealthItem[] = [
     { level: 'ok', message: `${world.dataDir} exists and is writable` },
@@ -356,9 +398,16 @@ export function health(world: World, options: MockOptions): HealthItem[] {
             'TYPESAFE_API_KEY is not set: flows served with reach or the habit need none; a flow with an arbiter asks Jev and needs it',
         },
   )
-  for (const f of world.flows)
+  for (const f of world.flows) {
     if (f.summary.error)
       items.push({ level: 'error', message: `${f.summary.path} does not load: ${f.summary.error}` })
+    const drift = latestDrift(world, f.summary.key)
+    if (drift?.alarm)
+      items.push({
+        level: 'warn',
+        message: `${f.summary.path}: the agent may have changed under it: stretto drift sounded its alarm (job ${drift.job})`,
+      })
+  }
   for (const s of world.servers)
     for (const issue of serverIssues(world, s))
       items.push({ level: 'warn', message: `Server ${s.name}: ${issue}` })

@@ -58,6 +58,11 @@ describe('badges', () => {
     expect(mount(JobStatus, { props: { status: 'running' } }).text()).toBe('Running')
     expect(mount(JobStatus, { props: { status: 'queued' } }).text()).toBe('Queued')
     expect(mount(JobStatus, { props: { status: 'cancelled' } }).text()).toBe('Cancelled')
+    // stretto drift's alarm: it succeeded, and found the agent changed.
+    expect(mount(JobStatus, { props: { status: 'succeeded', alarm: true } }).text()).toBe('Alarm')
+    expect(mount(JobStatus, { props: { status: 'succeeded', alarm: false } }).text()).toBe(
+      'Succeeded',
+    )
   })
 })
 
