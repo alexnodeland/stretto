@@ -54,6 +54,7 @@ pub fn router(state: Shared) -> Router {
         .route("/api/servers/{name}/probe", post(servers::probe))
         .route("/api/jobs", get(jobs::list).post(jobs::create))
         .route("/api/jobs/{id}", get(jobs::detail))
+        .route("/api/jobs/{id}/cancel", post(jobs::cancel))
         .route("/api/jobs/{id}/artifacts/{index}", get(jobs::artifact))
         .route("/api/events", get(events::events))
         .route("/api/logout", post(auth::logout))

@@ -36,6 +36,9 @@ pub enum JobStatus {
     Running,
     Succeeded,
     Failed,
+    /// Stopped by `POST /api/jobs/:id/cancel`: before it started, or
+    /// killed while it ran.
+    Cancelled,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -219,6 +222,28 @@ pub async fn create(
         StatusCode::ACCEPTED,
         Json(state.jobs.submit(id, plan, state.now())),
     ))
+}
+
+/// `POST /api/jobs/:id/cancel`: a queued job is cancelled now, and never
+/// runs; a running one's `stretto` is killed, and the job is cancelled when
+/// it has ended (a `job` event says so). 409 for a job that has ended.
+pub async fn cancel(
+    AxumState(state): AxumState<Shared>,
+    Path(id): Path<String>,
+) -> ApiResult<Json<Job>> {
+    match state.jobs.cancel(&id, state.now()) {
+        Ok(job) => Ok(Json(job)),
+        Err(crate::jobs::CancelError::NotFound) => {
+            Err(ApiError::not_found(format!("no job {id:?}")))
+        }
+        Err(crate::jobs::CancelError::Ended(status)) => Err(ApiError::conflict(format!(
+            "job {id} has ended ({}): there is nothing to cancel",
+            serde_json::to_value(status)
+                .ok()
+                .and_then(|v| v.as_str().map(String::from))
+                .unwrap_or_default()
+        ))),
+    }
 }
 
 /// `GET /api/jobs/:id/artifacts/:index`: a report or flow the job wrote,

@@ -180,7 +180,10 @@ impl Console {
     async fn finished(&self, id: &str) -> Value {
         for _ in 0..600 {
             let job = self.get(&format!("/api/jobs/{id}")).await.json();
-            if job["status"] == "succeeded" || job["status"] == "failed" {
+            if job["status"] == "succeeded"
+                || job["status"] == "failed"
+                || job["status"] == "cancelled"
+            {
                 return job;
             }
             tokio::time::sleep(Duration::from_millis(100)).await;
@@ -1641,4 +1644,143 @@ async fn an_empty_data_directory_answers_with_empty_lists() {
         .unwrap()
         .iter()
         .any(|h| h["level"] == "error" && h["message"].as_str().unwrap().contains("servers.json")));
+}
+
+/// A `stretto` that runs `script` (after `#!/bin/sh`), so that a job runs
+/// until it is cancelled.
+#[cfg(unix)]
+fn fake_stretto(dir: &std::path::Path, script: &str) -> Binary {
+    use std::os::unix::fs::PermissionsExt;
+    let path = dir.join("fake-stretto");
+    std::fs::write(&path, format!("#!/bin/sh\n{script}")).unwrap();
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    Binary {
+        path: path.display().to_string(),
+        version: None,
+    }
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn a_job_is_cancelled_queued_or_running() {
+    let bin = std::env::temp_dir().join(format!("stretto-console-cancel-{}", std::process::id()));
+    std::fs::create_dir_all(&bin).unwrap();
+    let stretto = fake_stretto(&bin, "echo started\nexec sleep 30\n");
+    let c = console("cancel", |config| config.binaries.stretto = Some(stretto));
+    let doctor = || c.call(Method::POST, "/api/jobs", Some(json!({"kind": "doctor"})));
+    let first = doctor().await.json();
+    let second = doctor().await.json();
+    let (first, second) = (
+        first["id"].as_str().unwrap().to_string(),
+        second["id"].as_str().unwrap().to_string(),
+    );
+    // The first runs (and sleeps); the second waits behind it.
+    for _ in 0..100 {
+        let job = c.get(&format!("/api/jobs/{first}")).await.json();
+        if job["status"] == "running" && job["output"].as_str().unwrap().contains("started") {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+
+    // A queued job is cancelled at once, and never runs.
+    let answer = c
+        .call(Method::POST, &format!("/api/jobs/{second}/cancel"), None)
+        .await;
+    assert_eq!(answer.status, StatusCode::OK);
+    let queued = answer.json();
+    assert_eq!(queued["status"], "cancelled", "{queued:#}");
+    assert_eq!(queued["started_unix_ms"], Value::Null);
+    assert!(queued["output"]
+        .as_str()
+        .unwrap()
+        .contains("cancelled before it started"));
+
+    // A running job's stretto is killed, and the job ends cancelled.
+    let started = std::time::Instant::now();
+    let answer = c
+        .call(Method::POST, &format!("/api/jobs/{first}/cancel"), None)
+        .await;
+    assert_eq!(answer.status, StatusCode::OK);
+    assert_eq!(answer.json()["status"], "running");
+    let ended = c.finished(&first).await;
+    assert!(started.elapsed() < Duration::from_secs(10), "{ended:#}");
+    assert_eq!(ended["status"], "cancelled", "{ended:#}");
+    // SIGKILL, as a shell reports it.
+    assert_eq!(ended["exit_code"], 137, "{ended:#}");
+    let output = ended["output"].as_str().unwrap();
+    assert!(
+        output.contains("started") && output.ends_with("stretto-console: cancelled\n"),
+        "{output}"
+    );
+    // The second never started.
+    let never = c.get(&format!("/api/jobs/{second}")).await.json();
+    assert_eq!(never["status"], "cancelled");
+    assert_eq!(never["started_unix_ms"], Value::Null);
+
+    // An ended job, or none, is not cancelled.
+    let again = c
+        .call(Method::POST, &format!("/api/jobs/{first}/cancel"), None)
+        .await;
+    assert_eq!(again.status, StatusCode::CONFLICT);
+    assert!(again.json()["error"]
+        .as_str()
+        .unwrap()
+        .contains("has ended (cancelled)"));
+    assert_eq!(
+        c.call(Method::POST, "/api/jobs/nope/cancel", None)
+            .await
+            .status,
+        StatusCode::NOT_FOUND
+    );
+    // It is a change: the CSRF header is required, as for every POST.
+    let bare = c
+        .send(
+            Request::builder()
+                .method(Method::POST)
+                .uri(format!("/api/jobs/{second}/cancel"))
+                .header(header::AUTHORIZATION, format!("Bearer {TOKEN}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await;
+    assert_eq!(bare.status, StatusCode::FORBIDDEN);
+    std::fs::remove_dir_all(&bin).unwrap();
+}
+
+/// A process the CLI started, holding its output open after the CLI was
+/// killed, delays the end of a cancelled job for a moment only.
+#[cfg(unix)]
+#[tokio::test]
+async fn a_cancelled_job_ends_though_a_child_holds_its_output() {
+    let bin = std::env::temp_dir().join(format!("stretto-console-orphan-{}", std::process::id()));
+    std::fs::create_dir_all(&bin).unwrap();
+    let stretto = fake_stretto(&bin, "echo started\nsleep 6 &\nwait\n");
+    let c = console("orphan", |config| config.binaries.stretto = Some(stretto));
+    let job = c
+        .call(Method::POST, "/api/jobs", Some(json!({"kind": "doctor"})))
+        .await
+        .json();
+    let id = job["id"].as_str().unwrap().to_string();
+    for _ in 0..100 {
+        let job = c.get(&format!("/api/jobs/{id}")).await.json();
+        if job["output"].as_str().unwrap().contains("started") {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    let started = std::time::Instant::now();
+    let answer = c
+        .call(Method::POST, &format!("/api/jobs/{id}/cancel"), None)
+        .await;
+    assert_eq!(answer.status, StatusCode::OK);
+    let ended = c.finished(&id).await;
+    assert_eq!(ended["status"], "cancelled", "{ended:#}");
+    // The sleep holds the pipes for 6 s; the job ends after the 2 s drain.
+    assert!(
+        started.elapsed() < Duration::from_secs(5),
+        "{:?}",
+        started.elapsed()
+    );
+    std::fs::remove_dir_all(&bin).unwrap();
 }
