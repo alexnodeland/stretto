@@ -99,6 +99,61 @@ impl Served {
     }
 }
 
+/// What the proxy does besides recording and running a flow: the policy
+/// guards on the agent's calls, the confirmation judge on its writes,
+/// `stretto_commit`, and how long it keeps sessions.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Policy {
+    /// Check each of the agent's calls against the domain's policy guards,
+    /// and refuse the ones they fail (`--guards`).
+    pub guards: bool,
+    /// Put each write the guards check for a confirmation to the System-One
+    /// model too (`--confirm-judge`).
+    pub judge: Option<Judge>,
+    /// Offer `stretto_commit`, several calls in one, each checked by the
+    /// guards (`--commit`).
+    pub commit: bool,
+    /// When the proxy starts, delete the sessions it recorded, and the logs
+    /// beside them, older than this many days (`--retain-days`).
+    pub retain_days: Option<u64>,
+}
+
+/// The confirmation judge the proxy asks about writes.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Judge {
+    /// Refuse the writes it fails, rather than only log its judgments.
+    pub enforce: bool,
+    /// The file the host appends the conversation to, which the judge reads
+    /// (`--context`), as the host passes it.
+    pub context: String,
+}
+
+impl Policy {
+    /// The proxy's arguments for it.
+    fn args(&self) -> Vec<String> {
+        let mut args = Vec::new();
+        if let Some(days) = self.retain_days {
+            args.extend(["--retain-days".to_string(), days.to_string()]);
+        }
+        if self.guards {
+            args.push("--guards".to_string());
+        }
+        if let Some(judge) = &self.judge {
+            let mode = if judge.enforce { "enforce" } else { "log" };
+            args.extend([
+                "--confirm-judge".to_string(),
+                mode.to_string(),
+                "--context".to_string(),
+                judge.context.clone(),
+            ]);
+        }
+        if self.commit {
+            args.push("--commit".to_string());
+        }
+        args
+    }
+}
+
 /// A Streamable HTTP server behind the proxy (`stretto-proxy --upstream`),
 /// in place of a command.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -127,6 +182,8 @@ pub struct Setup {
     pub server: Vec<String>,
     /// A Streamable HTTP server, in place of a command.
     pub upstream: Option<Upstream>,
+    /// The guards, the judge, `stretto_commit` and retention.
+    pub policy: Policy,
 }
 
 impl Setup {
@@ -158,6 +215,7 @@ impl Setup {
                 args.push("--flow-shadow".into());
             }
         }
+        args.extend(self.policy.args());
         args.extend(self.target());
         args
     }
@@ -441,6 +499,7 @@ mod tests {
             .map(String::from)
             .to_vec(),
             upstream: None,
+            policy: Policy::default(),
         }
     }
 

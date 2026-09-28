@@ -117,7 +117,7 @@ This week's sessions, tool calls, lookups served and shadow decisions, and the t
 
 ### Servers
 
-The registry. Add or edit a server: a command or a URL, the environment variables and headers it needs (by name, never their values), its mode, flow, decider and threshold. A server's page has the configuration to paste into Claude Code, Claude Desktop, Cursor or VS Code, and the connection test. Upstreams found in recorded sessions but not in the registry can be added in one click.
+The registry. Add or edit a server: a command or a URL, the environment variables and headers it needs (by name, never their values), its mode, flow, decider and threshold. Under *Writes and retention*: the policy guards on the agent's calls (retail and airline have them), the confirmation judge on the writes they check, with the file the host appends the conversation to, `stretto_commit`, and how many days the proxy keeps the sessions it records. Each is a flag in the proxy's command line, as `stretto init` writes it. A server's page has the configuration to paste into Claude Code, Claude Desktop, Cursor or VS Code, and the connection test. Upstreams found in recorded sessions but not in the registry can be added in one click.
 
 ![A server's page: the configuration to paste into each MCP host, its setup (upstream, mode, flow, decider and threshold), the connection test, and the proxy's command line](../brand/media/console/server-light.png#gh-light-mode-only)
 ![A server's page: the configuration to paste into each MCP host, its setup (upstream, mode, flow, decider and threshold), the connection test, and the proxy's command line](../brand/media/console/server-dark.png#gh-dark-mode-only)

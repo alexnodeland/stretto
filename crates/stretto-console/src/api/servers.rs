@@ -5,7 +5,9 @@
 use super::sessions::{ToolInfo, UpstreamView};
 use super::{blocking, ApiError, ApiResult, Ok as OkBody};
 use crate::api::flows::FlowSummary;
-use crate::data::registry::{self, Registry, ServerEntry, ServerInput, ServerMode, Upstream};
+use crate::data::registry::{
+    self, JudgeMode, Registry, ServerEntry, ServerInput, ServerMode, Upstream,
+};
 use crate::data::{self, flows, paths};
 use crate::{probe, Shared, State};
 use axum::body::Bytes;
@@ -465,6 +467,15 @@ pub fn setup(state: &State, entry: &ServerEntry, host: Host) -> Setup {
         proxy: proxy_command(state, host),
         server,
         upstream,
+        policy: init::Policy {
+            guards: entry.guards,
+            judge: entry.judge.as_ref().map(|j| init::Judge {
+                enforce: j.mode == JudgeMode::Enforce,
+                context: j.context.clone(),
+            }),
+            commit: entry.commit,
+            retain_days: entry.retain_days,
+        },
     }
 }
 

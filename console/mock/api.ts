@@ -358,6 +358,10 @@ function entryOf(input: ServerInput): Omit<ServerEntry, 'created_unix_ms' | 'upd
     record_dir: input.record_dir ?? null,
     decider: input.decider ?? null,
     threshold: input.threshold ?? null,
+    guards: input.guards ?? false,
+    judge: input.judge ?? null,
+    commit: input.commit ?? false,
+    retain_days: input.retain_days ?? null,
   }
 }
 
@@ -395,6 +399,25 @@ function checkServer(input: unknown, name?: string): ServerInput {
     (typeof s.threshold !== 'number' || s.threshold < 0 || s.threshold > 1)
   )
     throw new HttpError(400, 'threshold: a number from 0 to 1')
+  // As the console checks them (`registry::validate`).
+  if (s.guards && !['retail', 'airline'].includes(s.name))
+    throw new HttpError(
+      400,
+      `guards: there are no policy guards for ${s.name}; retail and airline have them`,
+    )
+  if (s.judge && !s.guards)
+    throw new HttpError(
+      400,
+      'the confirmation judge asks about the writes the guards check: turn the guards on',
+    )
+  if (s.judge && !s.judge.context?.trim())
+    throw new HttpError(400, "the judge's context: the file the host appends the conversation to")
+  if (
+    s.retain_days !== null &&
+    s.retain_days !== undefined &&
+    (!Number.isInteger(s.retain_days) || s.retain_days < 1)
+  )
+    throw new HttpError(400, 'retain_days: at least one day')
   return {
     name: s.name,
     description: s.description || null,
@@ -407,6 +430,10 @@ function checkServer(input: unknown, name?: string): ServerInput {
     record_dir: s.record_dir || null,
     decider: s.decider ?? null,
     threshold: s.threshold ?? null,
+    guards: s.guards ?? false,
+    judge: s.judge ? { mode: s.judge.mode, context: s.judge.context.trim() } : null,
+    commit: s.commit ?? false,
+    retain_days: s.retain_days ?? null,
   }
 }
 

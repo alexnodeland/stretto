@@ -74,6 +74,27 @@ impl DeciderName {
     }
 }
 
+/// How the confirmation judge acts (`--confirm-judge`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
+#[serde(rename_all = "snake_case")]
+pub enum JudgeMode {
+    /// Record its judgments, and refuse nothing.
+    Log,
+    /// Refuse the writes it fails.
+    Enforce,
+}
+
+/// The confirmation judge on the writes the guards check.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
+pub struct Judge {
+    pub mode: JudgeMode,
+    /// The file the host appends the conversation to, as JSON lines, which
+    /// the judge reads (`--context`), as the host passes it.
+    pub context: String,
+}
+
 /// An HTTP header the proxy sends, by the variable holding its value.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS))]
@@ -125,6 +146,21 @@ pub struct ServerEntry {
     pub decider: Option<DeciderName>,
     /// The threshold to serve the flow at, in place of the proxy's 0.3.
     pub threshold: Option<f64>,
+    /// Check each of the agent's calls against the domain's policy guards,
+    /// and refuse the ones they fail (`--guards`). `retail` and `airline`
+    /// have guards.
+    #[serde(default)]
+    pub guards: bool,
+    /// The confirmation judge on the writes the guards check.
+    #[serde(default)]
+    pub judge: Option<Judge>,
+    /// Offer `stretto_commit`, several calls in one (`--commit`).
+    #[serde(default)]
+    pub commit: bool,
+    /// When the proxy starts, delete the sessions it recorded, and the logs
+    /// beside them, older than this many days (`--retain-days`).
+    #[serde(default)]
+    pub retain_days: Option<u64>,
     pub created_unix_ms: u64,
     pub updated_unix_ms: u64,
 }
@@ -151,6 +187,18 @@ pub struct ServerInput {
     #[serde(default)]
     #[cfg_attr(feature = "ts", ts(optional = nullable))]
     pub threshold: Option<f64>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(as = "Option<bool>", optional))]
+    pub guards: bool,
+    #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(optional = nullable))]
+    pub judge: Option<Judge>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(as = "Option<bool>", optional))]
+    pub commit: bool,
+    #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(optional = nullable))]
+    pub retain_days: Option<u64>,
 }
 
 impl ServerInput {
@@ -166,6 +214,13 @@ impl ServerInput {
             record_dir: blank(self.record_dir),
             decider: self.decider,
             threshold: self.threshold,
+            guards: self.guards,
+            judge: self.judge.map(|j| Judge {
+                context: j.context.trim().to_string(),
+                ..j
+            }),
+            commit: self.commit,
+            retain_days: self.retain_days,
             created_unix_ms: created,
             updated_unix_ms: now,
         }
@@ -292,6 +347,28 @@ pub fn validate(input: &ServerInput, root: &Path, home: Option<&Path>) -> Result
             return Err(format!("threshold {t}: a probability, from 0 to 1"));
         }
     }
+    if input.guards && stretto_report::guards::Guards::for_domain(name).is_none() {
+        return Err(format!(
+            "guards: there are no policy guards for {name}; retail and airline have them"
+        ));
+    }
+    if let Some(judge) = &input.judge {
+        if !input.guards {
+            return Err(
+                "the confirmation judge asks about the writes the guards check: turn the guards on"
+                    .to_string(),
+            );
+        }
+        let context = judge.context.trim();
+        if context.is_empty() || context.len() > 4096 || context.chars().any(char::is_control) {
+            return Err(
+                "the judge's context: the file the host appends the conversation to".to_string(),
+            );
+        }
+    }
+    if input.retain_days == Some(0) {
+        return Err("retain_days: at least one day".to_string());
+    }
     Ok(())
 }
 
@@ -414,6 +491,10 @@ mod tests {
             record_dir: None,
             decider: None,
             threshold: None,
+            guards: false,
+            judge: None,
+            commit: false,
+            retain_days: None,
         }
     }
 
@@ -594,6 +675,46 @@ mod tests {
     }
 
     #[test]
+    fn guards_need_a_domain_that_has_them_and_the_judge_needs_guards() {
+        let v = |i: &ServerInput| validate(i, Path::new("/data"), None);
+        let mut retail = stdio(&["x"]);
+        retail.name = "retail".to_string();
+        retail.guards = true;
+        retail.commit = true;
+        retail.retain_days = Some(30);
+        assert_eq!(v(&retail), Ok(()));
+        let mut shop = stdio(&["x"]);
+        shop.guards = true;
+        assert_eq!(
+            v(&shop).unwrap_err(),
+            "guards: there are no policy guards for shop; retail and airline have them"
+        );
+        retail.judge = Some(Judge {
+            mode: JudgeMode::Enforce,
+            context: " ~/.stretto/context/retail.jsonl ".to_string(),
+        });
+        assert_eq!(v(&retail), Ok(()));
+        let judge = retail.clone().entry(1, 2).judge.unwrap();
+        assert_eq!(judge.context, "~/.stretto/context/retail.jsonl");
+        let mut unguarded = retail.clone();
+        unguarded.guards = false;
+        assert!(v(&unguarded).unwrap_err().ends_with("turn the guards on"));
+        for context in ["", "  ", "a\nb"] {
+            let mut c = retail.clone();
+            c.judge = Some(Judge {
+                mode: JudgeMode::Log,
+                context: context.to_string(),
+            });
+            assert!(
+                v(&c).unwrap_err().starts_with("the judge's context"),
+                "{context:?}"
+            );
+        }
+        retail.retain_days = Some(0);
+        assert_eq!(v(&retail).unwrap_err(), "retain_days: at least one day");
+    }
+
+    #[test]
     fn the_fixture_registry_reads() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/home");
         let r = load(&root).unwrap();
@@ -609,6 +730,10 @@ mod tests {
                 record_dir: s.record_dir.clone(),
                 decider: s.decider,
                 threshold: s.threshold,
+                guards: s.guards,
+                judge: s.judge.clone(),
+                commit: s.commit,
+                retain_days: s.retain_days,
             };
             validate(&input, &root, None).unwrap();
         }

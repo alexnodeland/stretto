@@ -16,6 +16,11 @@ const blank: ServerModel = {
   record_dir: '',
   decider: '',
   threshold: '',
+  guards: false,
+  judge: '',
+  context: '',
+  commit: false,
+  retain_days: '',
 }
 
 const flow = {
@@ -69,6 +74,44 @@ describe('the server form', () => {
       record_dir: null,
       decider: null,
       threshold: null,
+      guards: false,
+      judge: null,
+      commit: false,
+      retain_days: null,
+    })
+  })
+
+  it('sets the guards, the judge, stretto_commit and how long sessions are kept', async () => {
+    // Only retail and airline have guards.
+    const shop = form({ name: 'shop', command: 'shop-mcp' })
+    expect(shop.find('[data-testid="server-guards"]').attributes('disabled')).toBeDefined()
+    const w = form({ name: 'retail', command: 'retail-mcp' })
+    expect(w.find('[data-testid="server-judge"]').exists()).toBe(false)
+    await w.find('[data-testid="server-guards"]').setValue(true)
+    await w.find('[data-testid="server-judge"]').setValue('enforce')
+    await w.find('form').trigger('submit')
+    expect(w.text()).toContain('Name the file the host appends the conversation to.')
+    expect(w.emitted('submit')).toBeUndefined()
+    await w.find('[data-testid="server-context"]').setValue(' ~/.stretto/context/retail.jsonl ')
+    await w.find('[data-testid="server-commit"]').setValue(true)
+    await w.find('[data-testid="server-retain"]').setValue('30')
+    await w.find('form').trigger('submit')
+    const [input] = w.emitted('submit')![0] as [ServerInput]
+    expect(input).toMatchObject({
+      guards: true,
+      judge: { mode: 'enforce', context: '~/.stretto/context/retail.jsonl' },
+      commit: true,
+      retain_days: 30,
+    })
+    expect(w.text()).toContain(
+      '--retain-days 30 --guards --confirm-judge enforce --context ~/.stretto/context/retail.jsonl --commit -- retail-mcp',
+    )
+    // The guards off take the judge with them.
+    await w.find('[data-testid="server-guards"]').setValue(false)
+    await w.find('form').trigger('submit')
+    expect((w.emitted('submit')![1] as [ServerInput])[0]).toMatchObject({
+      guards: false,
+      judge: null,
     })
   })
 

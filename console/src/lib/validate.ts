@@ -44,8 +44,23 @@ export function checkThreshold(value: number | null): string | null {
   return null
 }
 
+/** The domains the proxy has policy guards for (`stretto_report::guards`). */
+export const GUARDED_DOMAINS: readonly string[] = ['retail', 'airline']
+
 export type ServerErrors = Partial<
-  Record<'name' | 'command' | 'env' | 'url' | 'headers' | 'flow' | 'threshold', string>
+  Record<
+    | 'name'
+    | 'command'
+    | 'env'
+    | 'url'
+    | 'headers'
+    | 'flow'
+    | 'threshold'
+    | 'guards'
+    | 'context'
+    | 'retain_days',
+    string
+  >
 >
 
 /** Every problem with a server, by field. */
@@ -78,5 +93,12 @@ export function checkServer(input: ServerInput, taken: readonly string[] = []): 
   }
   const threshold = checkThreshold(input.threshold ?? null)
   if (threshold) errors.threshold = threshold
+  if (input.guards && !GUARDED_DOMAINS.includes(input.name))
+    errors.guards = `There are no policy guards for ${input.name || 'this server'}: retail and airline have them.`
+  if (input.judge && !input.judge.context.trim())
+    errors.context = 'Name the file the host appends the conversation to.'
+  const days = input.retain_days ?? null
+  if (days !== null && (!Number.isInteger(days) || days < 1))
+    errors.retain_days = 'Keep sessions for a whole number of days, at least one.'
   return errors
 }

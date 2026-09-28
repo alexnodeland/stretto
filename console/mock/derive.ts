@@ -83,6 +83,10 @@ export function proxyArgs(world: World, entry: ServerEntry): string[] {
     if (entry.threshold !== null) args.push('--flow-threshold', String(entry.threshold))
     if (entry.mode === 'shadow') args.push('--flow-shadow')
   }
+  if (entry.retain_days !== null) args.push('--retain-days', String(entry.retain_days))
+  if (entry.guards) args.push('--guards')
+  if (entry.judge) args.push('--confirm-judge', entry.judge.mode, '--context', entry.judge.context)
+  if (entry.commit) args.push('--commit')
   if (entry.upstream.kind === 'http') {
     args.push('--upstream', entry.upstream.url)
     for (const h of entry.upstream.headers) args.push('--upstream-header', `${h.name}=${h.env}`)
