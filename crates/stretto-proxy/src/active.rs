@@ -210,22 +210,26 @@ struct Committed {
     outcome: Outcome,
 }
 
+/// A flow after the agent's call, holding the server's response to it, and
+/// the flow's run. `after` is the call the next decision follows, as the
+/// session's episode names it: the agent's, then each lookup.
+struct FlowWork {
+    response: Value,
+    original: Vec<u8>,
+    looked: Vec<Looked>,
+    after: String,
+    run: Run,
+}
+
+/// A commit's calls, in order: those left, and what became of those made.
+struct CommitWork {
+    queue: VecDeque<(String, Value)>,
+    done: Vec<Committed>,
+}
+
 enum Work {
-    /// A flow after the agent's call, holding the server's response to it,
-    /// and the flow's run. `after` is the call the next decision follows,
-    /// as the session's episode names it: the agent's, then each lookup.
-    Flow {
-        response: Value,
-        original: Vec<u8>,
-        looked: Vec<Looked>,
-        after: String,
-        run: Run,
-    },
-    /// A commit's calls, in order.
-    Commit {
-        queue: VecDeque<(String, Value)>,
-        done: Vec<Committed>,
-    },
+    Flow(FlowWork),
+    Commit(CommitWork),
 }
 
 /// A flow's run as `run_async` interprets it: the program's value, and the
@@ -592,18 +596,14 @@ impl<'a, W: Write> Engine<'a, W> {
         if self.calls.remove(&k) && self.flow_may_follow(&m) {
             let after = mcp::call_id(&id);
             if let Some(run) = self.flow_run(&after) {
-                let job = Job {
-                    client_id: id,
-                    waiting: None,
-                    work: Work::Flow {
-                        response: m,
-                        original: line,
-                        looked: Vec::new(),
-                        after,
-                        run,
-                    },
+                let flow = FlowWork {
+                    response: m,
+                    original: line,
+                    looked: Vec::new(),
+                    after,
+                    run,
                 };
-                return self.drive(job);
+                return self.drive(id, flow);
             }
         }
         self.send_host(&line);
@@ -612,14 +612,14 @@ impl<'a, W: Write> Engine<'a, W> {
     fn server_ended(&mut self) {
         self.to_server = None;
         for mut job in std::mem::take(&mut self.jobs) {
-            if let (Some(w), Work::Commit { done, .. }) = (job.waiting.take(), &mut job.work) {
-                done.push(Committed {
+            if let (Some(w), Work::Commit(commit)) = (job.waiting.take(), &mut job.work) {
+                commit.done.push(Committed {
                     name: w.tool,
                     arguments: w.arguments,
                     outcome: Outcome::NoAnswer,
                 });
             }
-            self.finish(job);
+            self.finish(job.client_id, job.work);
         }
     }
 
@@ -638,14 +638,14 @@ impl<'a, W: Write> Engine<'a, W> {
                 PATIENCE.as_secs()
             );
             self.abandoned.insert(w.key);
-            if let Work::Commit { done, .. } = &mut job.work {
-                done.push(Committed {
+            if let Work::Commit(commit) = &mut job.work {
+                commit.done.push(Committed {
                     name: w.tool,
                     arguments: w.arguments,
                     outcome: Outcome::NoAnswer,
                 });
             }
-            self.finish(job);
+            self.finish(job.client_id, job.work);
         }
     }
 
@@ -656,10 +656,7 @@ impl<'a, W: Write> Engine<'a, W> {
             return false;
         };
         response.get("result").is_some()
-            && !self
-                .jobs
-                .iter()
-                .any(|j| matches!(j.work, Work::Flow { .. }))
+            && !self.jobs.iter().any(|j| matches!(j.work, Work::Flow(_)))
             && self.lookups < fc.per_session
             && self.questions < fc.max_questions
     }
@@ -680,14 +677,13 @@ impl<'a, W: Write> Engine<'a, W> {
                     .collect()
             });
         match calls {
-            Some(queue) => self.step(Job {
-                client_id: id,
-                waiting: None,
-                work: Work::Commit {
+            Some(queue) => self.step(
+                id,
+                CommitWork {
                     queue,
                     done: Vec::new(),
                 },
-            }),
+            ),
             None => self.send_own(tool_result(
                 id,
                 &format!(
@@ -720,38 +716,33 @@ impl<'a, W: Write> Engine<'a, W> {
         Some(Run::new(data, program))
     }
 
-    /// Run the job's flow until it waits on the server or ends: each
-    /// decision it asks for is made here, and each lookup it asks for is
-    /// sent, the run resuming when the server answers ([`Self::resume`]).
-    fn drive(&mut self, mut job: Job) {
+    /// Run the flow that answers the agent's request `client_id` until it
+    /// waits on the server or ends: each decision it asks for is made here,
+    /// and each lookup it asks for is sent, the run resuming when the server
+    /// answers ([`Self::resume`]).
+    fn drive(&mut self, client_id: Value, mut flow: FlowWork) {
         let mut cx = Context::from_waker(Waker::noop());
         loop {
-            let Work::Flow { run, .. } = &mut job.work else {
-                unreachable!("only flow jobs have a run")
-            };
-            if let Poll::Ready((_, trace)) = run.future.as_mut().poll(&mut cx) {
-                let entry = run_entry(&job.client_id, &run.data, &trace);
+            if let Poll::Ready((_, trace)) = flow.run.future.as_mut().poll(&mut cx) {
+                let entry = run_entry(&client_id, &flow.run.data, &trace);
                 self.log_flow(&entry);
-                return self.finish(job);
+                return self.finish(client_id, Work::Flow(flow));
             }
-            let mailbox = run.mailbox.clone();
+            let mailbox = flow.run.mailbox.clone();
             let ask = mailbox.borrow_mut().ask.take();
             match ask {
                 Some(Ask::Decide { address, site }) => {
-                    let choice = self.decide(&mut job, &address, &site);
+                    let choice = self.decide(&client_id, &mut flow, &address, &site);
                     mailbox.borrow_mut().answer = Some(Answer::Option(choice));
                 }
-                Some(Ask::LookUp) => {
-                    let Work::Flow { run, .. } = &mut job.work else {
-                        unreachable!("only flow jobs have a run")
-                    };
-                    match run.pending.take() {
-                        Some((tool, arguments)) => return self.request(job, tool, arguments),
-                        None => mailbox.borrow_mut().answer = Some(Answer::Failed(true)),
+                Some(Ask::LookUp) => match flow.run.pending.take() {
+                    Some((tool, arguments)) => {
+                        return self.request(client_id, Work::Flow(flow), tool, arguments)
                     }
-                }
+                    None => mailbox.borrow_mut().answer = Some(Answer::Failed(true)),
+                },
                 // A run that waits on nothing cannot go on.
-                None => return self.finish(job),
+                None => return self.finish(client_id, Work::Flow(flow)),
             }
         }
     }
@@ -760,16 +751,16 @@ impl<'a, W: Write> Engine<'a, W> {
     /// among `site`'s options, logged. A lookup is taken only within the
     /// session's limits, outside shadow mode, and when the server has the
     /// tool and does not mark it as a write; otherwise the flow hands back.
-    fn decide(&mut self, job: &mut Job, address: &str, site: &DecideSite) -> usize {
+    fn decide(
+        &mut self,
+        client_id: &Value,
+        flow: &mut FlowWork,
+        address: &str,
+        site: &DecideSite,
+    ) -> usize {
         let active = self.active;
         let fc = active.flow.as_ref().expect("flow jobs need a flow");
-        let Work::Flow {
-            looked, run, after, ..
-        } = &mut job.work
-        else {
-            unreachable!("only flow jobs decide")
-        };
-        if looked.len() >= fc.per_call
+        if flow.looked.len() >= fc.per_call
             || self.lookups >= fc.per_session
             || self.questions >= fc.max_questions
         {
@@ -778,7 +769,7 @@ impl<'a, W: Write> Engine<'a, W> {
         self.read_context();
         // The session as it stands after the call just returned; the rest of
         // its turn is asked for already, so no lookup repeats one.
-        let (episode, pending) = self.episode().after_call(after);
+        let (episode, pending) = self.episode().after_call(&flow.after);
         let asked = Instant::now();
         let next = match fc.flow.next_explored(
             &episode,
@@ -802,7 +793,7 @@ impl<'a, W: Write> Engine<'a, W> {
             _ => None,
         };
         let mut entry = serde_json::to_value(&next).unwrap_or(Value::Null);
-        entry["after"] = job.client_id.clone();
+        entry["after"] = client_id.clone();
         entry["address"] = json!(address);
         entry["ms"] = json!(asked.elapsed().as_millis() as u64);
         if fc.shadow {
@@ -822,45 +813,42 @@ impl<'a, W: Write> Engine<'a, W> {
                     return HAND_BACK;
                 };
                 self.lookups += 1;
-                run.pending = Some((tool, arguments));
+                flow.run.pending = Some((tool, arguments));
                 choice
             }
             _ => HAND_BACK,
         }
     }
 
-    /// Take a commit's next step: a request of the proxy's own, or its end.
-    fn step(&mut self, mut job: Job) {
-        match &mut job.work {
-            Work::Flow { .. } => self.drive(job),
-            Work::Commit { queue, done } => {
-                let Some((name, arguments)) = queue.pop_front() else {
-                    return self.finish(job);
-                };
-                if let Some(reason) = self.refusal(&name, &arguments) {
-                    done.push(Committed {
-                        name,
-                        arguments,
-                        outcome: Outcome::Refused(reason),
-                    });
-                    return self.finish(job);
-                }
-                self.request(job, name, arguments);
-            }
+    /// Take the next step of the commit that answers the agent's request
+    /// `client_id`: a request of the proxy's own, or its end.
+    fn step(&mut self, client_id: Value, mut commit: CommitWork) {
+        let Some((name, arguments)) = commit.queue.pop_front() else {
+            return self.finish(client_id, Work::Commit(commit));
+        };
+        if let Some(reason) = self.refusal(&name, &arguments) {
+            commit.done.push(Committed {
+                name,
+                arguments,
+                outcome: Outcome::Refused(reason),
+            });
+            return self.finish(client_id, Work::Commit(commit));
         }
+        self.request(client_id, Work::Commit(commit), name, arguments);
     }
 
-    /// Send the server a request of the proxy's own for `job`, and wait.
-    fn request(&mut self, mut job: Job, tool: String, arguments: Value) {
+    /// Send the server a request of the proxy's own for `work`, which
+    /// answers the agent's request `client_id`, and wait.
+    fn request(&mut self, client_id: Value, mut work: Work, tool: String, arguments: Value) {
         if self.to_server.is_none() {
-            if let Work::Commit { done, .. } = &mut job.work {
-                done.push(Committed {
+            if let Work::Commit(commit) = &mut work {
+                commit.done.push(Committed {
                     name: tool,
                     arguments,
                     outcome: Outcome::NoAnswer,
                 });
             }
-            return self.finish(job);
+            return self.finish(client_id, work);
         }
         self.next_id += 1;
         let id = json!(format!("stretto-{}", self.next_id));
@@ -873,64 +861,61 @@ impl<'a, W: Write> Engine<'a, W> {
         let line = line_of(&message);
         self.record(Peer::Proxy, &line);
         self.send_server(&line);
-        job.waiting = Some(Waiting {
+        let waiting = Waiting {
             key: key(&id),
             call: mcp::call_id(&id),
             tool,
             arguments,
             since: Instant::now(),
+        };
+        self.jobs.push(Job {
+            client_id,
+            waiting: Some(waiting),
+            work,
         });
-        self.jobs.push(job);
     }
 
     /// The server answered the job's request.
-    fn resume(&mut self, mut job: Job, response: &Value) {
-        let w = job.waiting.take().expect("resumed jobs wait");
+    fn resume(&mut self, job: Job, response: &Value) {
+        let w = job.waiting.expect("resumed jobs wait");
         let (text, error) = result_text(response);
-        match &mut job.work {
-            Work::Flow {
-                looked, run, after, ..
-            } => {
-                *after = w.call;
-                looked.push(Looked {
+        match job.work {
+            Work::Flow(mut flow) => {
+                flow.after = w.call;
+                flow.looked.push(Looked {
                     tool: w.tool,
                     arguments: w.arguments,
                     text,
                     error,
                 });
-                run.mailbox.borrow_mut().answer = Some(Answer::Failed(error));
-                self.drive(job);
+                flow.run.mailbox.borrow_mut().answer = Some(Answer::Failed(error));
+                self.drive(job.client_id, flow);
             }
-            Work::Commit { done, .. } => {
-                done.push(Committed {
+            Work::Commit(mut commit) => {
+                commit.done.push(Committed {
                     name: w.tool,
                     arguments: w.arguments,
                     outcome: Outcome::Done { text, error },
                 });
                 if error {
-                    self.finish(job);
+                    self.finish(job.client_id, Work::Commit(commit));
                 } else {
-                    self.step(job);
+                    self.step(job.client_id, commit);
                 }
             }
         }
     }
 
-    /// Answer the agent's request the job holds.
-    fn finish(&mut self, job: Job) {
-        match job.work {
-            Work::Flow {
-                response,
-                original,
-                looked,
-                ..
-            } => {
-                if looked.is_empty() {
-                    return self.send_host(&original);
+    /// Answer the agent's request `client_id` with what `work` came to.
+    fn finish(&mut self, client_id: Value, work: Work) {
+        match work {
+            Work::Flow(flow) => {
+                if flow.looked.is_empty() {
+                    return self.send_host(&flow.original);
                 }
-                self.send_own(with_appendix(response, &looked));
+                self.send_own(with_appendix(flow.response, &flow.looked));
             }
-            Work::Commit { queue, done } => {
+            Work::Commit(CommitWork { queue, done }) => {
                 let failed = done
                     .iter()
                     .any(|c| !matches!(c.outcome, Outcome::Done { error: false, .. }));
@@ -955,7 +940,7 @@ impl<'a, W: Write> Engine<'a, W> {
                         .iter()
                         .map(|(name, arguments)| format!("{name} {arguments} was not run")),
                 );
-                self.send_own(tool_result(job.client_id, &parts.join("\n\n"), failed));
+                self.send_own(tool_result(client_id, &parts.join("\n\n"), failed));
             }
         }
     }
@@ -1400,64 +1385,5 @@ fn with_commit_tool(mut response: Value) -> Value {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn appends_the_flows_lookups_in_the_pilots_format() {
-        let response = json!({"jsonrpc": "2.0", "id": 3, "result": {
-            "content": [{"type": "text", "text": "user_7"}], "isError": false}});
-        let looked = [
-            Looked {
-                tool: "get_user_details".to_string(),
-                arguments: json!({"user_id": "user_7"}),
-                text: "{\"orders\":[\"#W7a\"]}".to_string(),
-                error: false,
-            },
-            Looked {
-                tool: "get_order_details".to_string(),
-                arguments: json!({"order_id": "#W9"}),
-                text: "Order not found".to_string(),
-                error: true,
-            },
-        ];
-        let out = with_appendix(response, &looked);
-        let content = out["result"]["content"].as_array().unwrap();
-        assert_eq!(content.len(), 2);
-        assert_eq!(content[0]["text"], "user_7");
-        let text = content[1]["text"].as_str().unwrap();
-        assert!(text.starts_with(APPENDIX));
-        assert!(text
-            .contains("\n\nget_user_details {\"user_id\":\"user_7\"}:\n{\"orders\":[\"#W7a\"]}"));
-        assert!(
-            text.contains("\n\nget_order_details {\"order_id\":\"#W9\"} (error):\nOrder not found")
-        );
-    }
-
-    #[test]
-    fn tells_requests_from_responses() {
-        let request = json!({"jsonrpc": "2.0", "id": 1, "method": "tools/call"});
-        let response = json!({"jsonrpc": "2.0", "id": 1, "result": {}});
-        let notification = json!({"jsonrpc": "2.0", "method": "notifications/initialized"});
-        assert!(request_id(&request).is_some() && response_id(&request).is_none());
-        assert!(response_id(&response).is_some() && request_id(&response).is_none());
-        assert!(request_id(&notification).is_none() && response_id(&notification).is_none());
-        assert_ne!(key(&json!(1)), key(&json!("1")));
-        assert_eq!(
-            result_text(&json!({"id": 1, "error": {"code": -1, "message": "no"}})),
-            ("no".to_string(), true)
-        );
-    }
-
-    #[test]
-    fn lists_the_commit_tool_after_the_servers() {
-        let listed = with_commit_tool(json!({"id": 2, "result": {"tools": [{"name": "lookup"}]}}));
-        let names: Vec<&str> = listed["result"]["tools"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .filter_map(|t| t["name"].as_str())
-            .collect();
-        assert_eq!(names, ["lookup", COMMIT_TOOL]);
-    }
-}
+#[path = "active_tests.rs"]
+mod tests;

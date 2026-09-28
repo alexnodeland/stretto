@@ -13,6 +13,7 @@ use serde_json::{json, Map, Value};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
+use std::time::{Duration, Instant};
 use stretto_report::procedure::{Procedure, Tools, Verdict};
 
 /// Run a compiled procedure on a ticket against an MCP server (stdio), with
@@ -45,6 +46,8 @@ struct Server {
     stdin: Option<ChildStdin>,
     stdout: BufReader<ChildStdout>,
     next_id: u64,
+    /// How long it may take to exit once its input is closed.
+    patience: Duration,
 }
 
 impl Server {
@@ -74,6 +77,7 @@ impl Server {
             stdin: Some(stdin),
             stdout,
             next_id: 0,
+            patience: Duration::from_secs(5),
         };
         server.request(
             "initialize",
@@ -148,13 +152,14 @@ impl Tools for Server {
 impl Drop for Server {
     fn drop(&mut self) {
         // Closing its stdin tells a stdio server to shut down; one that has
-        // not after five seconds is stopped.
+        // not within its patience is stopped.
         drop(self.stdin.take());
-        for _ in 0..50 {
+        let asked = Instant::now();
+        while asked.elapsed() < self.patience {
             if let Ok(Some(_)) = self.child.try_wait() {
                 return;
             }
-            std::thread::sleep(std::time::Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(100));
         }
         let _ = self.child.kill();
         let _ = self.child.wait();
@@ -162,7 +167,12 @@ impl Drop for Server {
 }
 
 fn main() -> Result<()> {
-    let cli = Cli::parse();
+    run(&Cli::parse(), &mut std::io::stdout())
+}
+
+/// Run the procedure `cli` names, and write the run to `--out`, or to
+/// `stdout`.
+fn run(cli: &Cli, stdout: &mut dyn Write) -> Result<()> {
     let procedure = Procedure::load(&cli.procedure)?;
     let ticket = match (&cli.ticket, &cli.ticket_file) {
         (Some(t), _) => t.clone(),
@@ -179,33 +189,24 @@ fn main() -> Result<()> {
         Some(path) => {
             std::fs::write(path, text).with_context(|| format!("writing {}", path.display()))?
         }
-        None => print!("{text}"),
+        None => stdout.write_all(text.as_bytes())?,
     }
     eprintln!(
         "stretto-procedure: {} calls, {}",
         run.calls.len(),
-        match run.verdict {
-            Verdict::Resolved => "resolved by its own check",
-            Verdict::Transferred => "transferred to a person",
-            Verdict::HandBack => "handed back: its check failed",
-        }
+        meaning(run.verdict)
     );
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::Cli;
-    use clap::CommandFactory;
-    use stretto_report::cli_doc;
-
-    /// `docs/cli.md` documents this CLI as it is.
-    #[test]
-    fn the_cli_reference_is_current() {
-        let page = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/cli.md");
-        let section = cli_doc::markdown(&Cli::command());
-        if let Err(e) = cli_doc::check_page(&page, "stretto-procedure", &section) {
-            panic!("{e}");
-        }
+/// What a run's verdict means, in words.
+fn meaning(verdict: Verdict) -> &'static str {
+    match verdict {
+        Verdict::Resolved => "resolved by its own check",
+        Verdict::Transferred => "transferred to a person",
+        Verdict::HandBack => "handed back: its check failed",
     }
 }
+
+#[cfg(test)]
+mod tests;

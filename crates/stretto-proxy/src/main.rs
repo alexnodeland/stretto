@@ -2,6 +2,7 @@ use anyhow::{bail, Context, Result};
 use clap::{Parser, ValueEnum};
 use std::ffi::OsString;
 use std::path::PathBuf;
+use stretto_oracle::jev::JevClient;
 use stretto_proxy::{
     expand_home, prune, run, run_active, Active, Config, ConfirmConfig, FlowConfig, Upstream,
     FAILURE_EXIT_CODE,
@@ -234,19 +235,20 @@ enum SecondArg {
     Described,
 }
 
+/// What the proxy takes from the environment it runs in.
+struct Env<'a> {
+    /// Makes the Jev client, for an oracle that asks Jev.
+    jev: &'a dyn Fn() -> Result<JevClient>,
+    /// An environment variable's value, if it is set.
+    var: &'a dyn Fn(&str) -> Option<String>,
+}
+
 fn main() {
-    let cli = Cli::parse();
-    if let Some(days) = cli.retain_days {
-        retain(&cli, days);
-    }
-    let result = active(&cli).and_then(|active| {
-        let config = Config {
-            command: cli.command.clone(),
-            upstream: upstream(&cli)?,
-            record: cli.record.clone().map(expand_home),
-            domain: cli.domain.clone(),
-            agent_model: cli.agent_model.clone(),
-        };
+    let env = Env {
+        jev: &JevClient::from_env,
+        var: &|name| std::env::var(name).ok(),
+    };
+    let result = setup(&Cli::parse(), &env).and_then(|(config, active)| {
         if active.is_active() {
             run_active(&config, &active)
         } else {
@@ -260,6 +262,23 @@ fn main() {
             std::process::exit(FAILURE_EXIT_CODE);
         }
     }
+}
+
+/// What `cli` asks for: the server and its recording, and what to do
+/// besides forwarding. With `--retain-days`, old logs and answers go first.
+fn setup(cli: &Cli, env: &Env) -> Result<(Config, Active)> {
+    if let Some(days) = cli.retain_days {
+        retain(cli, days);
+    }
+    let active = active(cli, env.jev)?;
+    let config = Config {
+        command: cli.command.clone(),
+        upstream: upstream(cli, env.var)?,
+        record: cli.record.clone().map(expand_home),
+        domain: cli.domain.clone(),
+        agent_model: cli.agent_model.clone(),
+    };
+    Ok((config, active))
 }
 
 /// Delete what is older than `days` in the log directory and the answer
@@ -282,18 +301,18 @@ fn retain(cli: &Cli, days: u64) {
 }
 
 /// The Streamable HTTP server to proxy for, with its headers' values read
-/// from the environment.
-fn upstream(cli: &Cli) -> Result<Option<Upstream>> {
+/// from the environment (`var`).
+fn upstream(cli: &Cli, var: &dyn Fn(&str) -> Option<String>) -> Result<Option<Upstream>> {
     let Some(url) = &cli.upstream else {
         return Ok(None);
     };
     let mut headers = Vec::new();
     for spec in &cli.upstream_headers {
-        let Some((name, var)) = spec.split_once('=') else {
+        let Some((name, variable)) = spec.split_once('=') else {
             bail!("--upstream-header takes NAME=VAR, the header and the environment variable holding its value");
         };
-        let value = std::env::var(var).with_context(|| {
-            format!("the environment variable {var}, for the header {name}, is not set")
+        let value = var(variable).with_context(|| {
+            format!("the environment variable {variable}, for the header {name}, is not set")
         })?;
         headers.push((name.to_string(), value));
     }
@@ -303,8 +322,9 @@ fn upstream(cli: &Cli) -> Result<Option<Upstream>> {
     }))
 }
 
-/// What the flags ask the proxy to do besides forwarding.
-fn active(cli: &Cli) -> Result<Active> {
+/// What the flags ask the proxy to do besides forwarding, with `jev` making
+/// the Jev client if an oracle needs one.
+fn active(cli: &Cli, jev: &dyn Fn() -> Result<JevClient>) -> Result<Active> {
     let flow = match &cli.flow {
         Some(path) => {
             let path = expand_home(path.clone());
@@ -345,7 +365,7 @@ fn active(cli: &Cli) -> Result<Active> {
             );
             Some(FlowConfig {
                 flow,
-                oracle: sc.build()?,
+                oracle: sc.build_with(jev)?,
                 threshold: cli.flow_threshold,
                 decider,
                 per_call: cli.flow_per_call,
@@ -387,7 +407,7 @@ fn active(cli: &Cli) -> Result<Active> {
             });
             sc.cache_dir = expand_home(cli.oracle_cache.clone());
             Some(ConfirmConfig {
-                oracle: sc.build()?,
+                oracle: sc.build_with(jev)?,
                 model: sc.model.clone(),
                 second: cli.confirm_second.map(|q| match q {
                     SecondArg::Proposed => Second::Proposed,
@@ -413,18 +433,4 @@ fn active(cli: &Cli) -> Result<Active> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::Cli;
-    use clap::CommandFactory;
-    use stretto_report::cli_doc;
-
-    /// `docs/cli.md` documents this CLI as it is.
-    #[test]
-    fn the_cli_reference_is_current() {
-        let page = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/cli.md");
-        let section = cli_doc::markdown(&Cli::command());
-        if let Err(e) = cli_doc::check_page(&page, "stretto-proxy", &section) {
-            panic!("{e}");
-        }
-    }
-}
+mod cli_tests;

@@ -2,7 +2,7 @@
 
 use anyhow::{Context, Result};
 use serde::de::IgnoredAny;
-use std::fs::{self, File, OpenOptions};
+use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -63,23 +63,33 @@ impl Recorder {
     pub(crate) fn start(dir: &Path, header: &LogHeader, started: Instant) -> Result<Self> {
         fs::create_dir_all(dir).with_context(|| format!("creating {}", dir.display()))?;
         let path = dir.join(format!("{}.jsonl", header.session));
-        let mut file = OpenOptions::new()
+        let file = OpenOptions::new()
             .write(true)
             .create_new(true)
             .open(&path)
             .with_context(|| format!("creating {}", path.display()))?;
+        Self::start_on(Box::new(file), path, header, started)
+    }
+
+    /// [`Recorder::start`], writing to `log`, the file at `path`.
+    fn start_on(
+        mut log: Box<dyn Write + Send>,
+        path: PathBuf,
+        header: &LogHeader,
+        started: Instant,
+    ) -> Result<Self> {
         let mut line = serde_json::to_vec(header).expect("headers always serialize");
         line.push(b'\n');
 
         let (tx, rx) = mpsc::channel();
-        let writer = file
+        let writer = log
             .write_all(&line)
             .with_context(|| format!("writing {}", path.display()))
             .and_then(|()| {
                 let path = path.clone();
                 thread::Builder::new()
                     .name("stretto-proxy recorder".into())
-                    .spawn(move || write_entries(rx, file, &path))
+                    .spawn(move || write_entries(rx, log, &path))
                     .context("starting the recorder thread")
             });
         match writer {
@@ -131,7 +141,7 @@ impl Recorder {
 
 /// The writer thread: one log line per record, each written as soon as it
 /// arrives, until [`Record::End`].
-fn write_entries(rx: Receiver<Record>, mut file: File, path: &Path) {
+fn write_entries(rx: Receiver<Record>, mut file: Box<dyn Write + Send>, path: &Path) {
     while let Ok(Record::Line { t_ms, from, bytes }) = rx.recv() {
         if let Err(e) = file.write_all(&entry_line(t_ms, from, &bytes)) {
             eprintln!(
@@ -258,111 +268,5 @@ pub(crate) fn names_secret(name: &str) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use stretto_trace::mcp::parse_log;
-
-    const HEADER: &str = r#"{"stretto_mcp_log":1,"session":"s","started_unix_ms":0,"server_command":[],"domain":null,"agent_model":null}"#;
-
-    /// The entry `entry_line` writes for `line`, read back as the reader would.
-    fn read_back(line: &[u8]) -> LogEntry {
-        let written = String::from_utf8(entry_line(7, Peer::Server, line)).unwrap();
-        assert!(written.ends_with('\n') && written.matches('\n').count() == 1);
-        let mut log = parse_log(&format!("{HEADER}\n{written}")).unwrap();
-        assert_eq!(log.entries.len(), 1);
-        log.entries.remove(0)
-    }
-
-    #[test]
-    fn keeps_json_messages_verbatim() {
-        let line = entry_line(
-            5,
-            Peer::Client,
-            b" {\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}\r\n",
-        );
-        assert_eq!(
-            String::from_utf8(line).unwrap(),
-            "{\"t_ms\":5,\"from\":\"client\",\"message\":{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}}\n"
-        );
-        // Key order, number spelling and escapes as sent; no final newline needed.
-        let sent = r#"{"z":1.50,"a":"café","batch":[1e3]}"#;
-        let written = String::from_utf8(entry_line(0, Peer::Server, sent.as_bytes())).unwrap();
-        assert!(written.contains(&format!("\"message\":{sent}}}")));
-        assert_eq!(
-            read_back(sent.as_bytes()).message,
-            serde_json::from_str(sent).ok()
-        );
-    }
-
-    #[test]
-    fn keeps_other_lines_as_raw_text() {
-        let deep = format!("{}{}", "[".repeat(200), "]".repeat(200));
-        let cases: [(&[u8], &str); 6] = [
-            (b"Listening on stdio\n", "Listening on stdio"),
-            (b"\n", ""),
-            // Valid JSON followed by more would otherwise forge the entry.
-            (br#"1,"raw":"forged""#, r#"1,"raw":"forged""#),
-            (b"\xff\xfe not UTF-8\n", "\u{fffd}\u{fffd} not UTF-8"),
-            // JSON the reader cannot hold as a value.
-            (br#"{"text":"\ud83d"}"#, r#"{"text":"\ud83d"}"#),
-            (deep.as_bytes(), deep.as_str()),
-        ];
-        for (line, raw) in cases {
-            let entry = read_back(line);
-            assert_eq!(entry.message, None, "{raw}");
-            assert_eq!(entry.raw.as_deref(), Some(raw));
-            assert_eq!((entry.t_ms, entry.from), (7, Peer::Server));
-        }
-    }
-
-    #[test]
-    fn session_ids_are_utc_start_times() {
-        assert_eq!(session_id(0, 1), "19700101T000000.000Z-1");
-        assert_eq!(session_id(951_782_400_000, 42), "20000229T000000.000Z-42");
-        assert_eq!(session_id(1_709_251_199_999, 7), "20240229T235959.999Z-7");
-        assert_eq!(
-            session_id(1_790_198_400_123, 4242),
-            "20260923T212000.123Z-4242"
-        );
-        assert_eq!(session_id(4_107_542_399_000, 7), "21000228T235959.000Z-7");
-    }
-
-    #[test]
-    fn redacts_credentials_in_the_command() {
-        let command: Vec<String> = [
-            "npx",
-            "-y",
-            "some-mcp-server",
-            "--api-key",
-            "sk-123",
-            "--token=abc",
-            "GITHUB_TOKEN=ghp_456",
-            "--header",
-            "Authorization: Bearer xyz",
-            "--no-auth",
-            "--port",
-            "8080",
-            "https://example.com/mcp?access_token=789",
-        ]
-        .map(String::from)
-        .to_vec();
-        assert_eq!(
-            redact_command(&command),
-            [
-                "npx",
-                "-y",
-                "some-mcp-server",
-                "--api-key",
-                REDACTED,
-                "--token=<redacted>",
-                "GITHUB_TOKEN=<redacted>",
-                "--header",
-                REDACTED,
-                "--no-auth",
-                "--port",
-                "8080",
-                "https://example.com/mcp?access_token=<redacted>",
-            ]
-        );
-    }
-}
+#[path = "record_tests.rs"]
+mod tests;

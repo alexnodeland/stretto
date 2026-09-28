@@ -20,12 +20,12 @@ path = "src/main.rs"
 # A tiny MCP server for trying the proxy (and for its tests).
 [[bin]]
 name = "stretto-mcp-demo"
-path = "src/bin/stretto-mcp-demo.rs"
+path = "src/bin/stretto-mcp-demo/main.rs"
 
 # Runs a compiled procedure against an MCP server, with no model.
 [[bin]]
 name = "stretto-procedure"
-path = "src/bin/stretto-procedure.rs"
+path = "src/bin/stretto-procedure/main.rs"
 
 [dependencies]
 anyhow.workspace = true

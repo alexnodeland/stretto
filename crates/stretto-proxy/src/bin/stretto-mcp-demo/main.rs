@@ -47,6 +47,9 @@
 
 use serde_json::{json, Value};
 use std::io::{self, BufRead, Write};
+use std::net::TcpListener;
+use std::process::ExitCode;
+use std::sync::Arc;
 use std::time::Duration;
 
 /// Protocol version to offer when the client names none.
@@ -64,7 +67,11 @@ struct Listing {
     hints: Vec<(String, Option<bool>)>,
 }
 
-static LISTING: std::sync::OnceLock<Listing> = std::sync::OnceLock::new();
+/// What the server serves: its world, and how it lists the shop's tools.
+struct Demo {
+    world: World,
+    listing: Listing,
+}
 
 /// Which tools the server has.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -75,16 +82,24 @@ enum World {
     Retail,
 }
 
-fn main() -> io::Result<()> {
+fn main() -> io::Result<ExitCode> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    match args.as_slice() {
+    run(&args, &mut io::stdin().lock(), &mut io::stdout().lock())
+}
+
+/// Serve as `args` say: answer the requests on `input` on `output`, or,
+/// with `--http`, print the URL on `output` and serve over HTTP until the
+/// process ends.
+fn run(args: &[String], input: &mut dyn BufRead, output: &mut dyn Write) -> io::Result<ExitCode> {
+    match args {
         [flag] if flag == "-h" || flag == "--help" => {
-            println!("A tiny MCP server over stdio, for trying stretto-proxy.\n\n{USAGE}");
-            return Ok(());
+            let about = "A tiny MCP server over stdio, for trying stretto-proxy.";
+            writeln!(output, "{about}\n\n{USAGE}")?;
+            return Ok(ExitCode::SUCCESS);
         }
         [flag] if flag == "-V" || flag == "--version" => {
-            println!("stretto-mcp-demo {}", env!("CARGO_PKG_VERSION"));
-            return Ok(());
+            writeln!(output, "stretto-mcp-demo {}", env!("CARGO_PKG_VERSION"))?;
+            return Ok(ExitCode::SUCCESS);
         }
         _ => {}
     }
@@ -95,7 +110,7 @@ fn main() -> io::Result<()> {
         match (arg, rest.next()) {
             ("--world", Some("echo")) => world = Some(World::Echo),
             ("--world", Some("retail")) => world = Some(World::Retail),
-            ("--http", Some(addr)) => http = Some(addr.to_string()),
+            ("--http", Some(addr)) => http = Some(addr),
             ("--require-auth", Some(value)) => auth = Some(value.to_string()),
             ("--hide", Some(tool)) => listing.hidden.push(tool.to_string()),
             ("--hint", Some(spec)) => match spec.split_once('=') {
@@ -108,25 +123,26 @@ fn main() -> io::Result<()> {
     }
     let Some(world) = world else {
         eprintln!("{USAGE}");
-        std::process::exit(2);
+        return Ok(ExitCode::from(2));
     };
-    let _ = LISTING.set(listing);
+    let demo = Demo { world, listing };
     if let Some(addr) = http {
-        return http::serve(&addr, world, auth);
+        let listener = TcpListener::bind(addr)?;
+        writeln!(output, "http://{}/mcp", listener.local_addr()?)?;
+        output.flush()?;
+        return http::serve(listener, Arc::new(demo), auth);
     }
-    let mut input = io::stdin().lock();
-    let mut output = io::stdout().lock();
     let mut line = Vec::new();
     loop {
         line.clear();
         if input.read_until(b'\n', &mut line)? == 0 {
-            return Ok(());
+            return Ok(ExitCode::SUCCESS);
         }
         let text = String::from_utf8_lossy(&line);
         if text.trim().is_empty() {
             continue;
         }
-        if let Some(response) = respond(&text, world) {
+        if let Some(response) = respond(&text, &demo) {
             writeln!(output, "{response}")?;
             output.flush()?;
         }
@@ -134,7 +150,7 @@ fn main() -> io::Result<()> {
 }
 
 /// The response to one line, if it needs one.
-fn respond(line: &str, world: World) -> Option<Value> {
+fn respond(line: &str, demo: &Demo) -> Option<Value> {
     let Ok(message) = serde_json::from_str::<Value>(line) else {
         return Some(error(Value::Null, -32700, "Parse error"));
     };
@@ -159,12 +175,16 @@ fn respond(line: &str, world: World) -> Option<Value> {
             "instructions": "A demo server for stretto-proxy: two tools that echo their arguments."
         }),
         "ping" => json!({}),
-        "tools/list" if world == World::Retail => json!({"tools": retail::tools()}),
+        "tools/list" if demo.world == World::Retail => {
+            json!({"tools": retail::tools(&demo.listing)})
+        }
         "tools/list" => json!({"tools": [
             tool("lookup", "Look something up. Read-only; answers with its arguments.", true),
             tool("update", "Pretend to change something; answers with its arguments.", false),
         ]}),
-        "tools/call" if world == World::Retail => return Some(retail::call(id, params)),
+        "tools/call" if demo.world == World::Retail => {
+            return Some(retail::call(id, params, &demo.listing))
+        }
         "tools/call" => return Some(call_tool(id, params)),
         other => return Some(error(id, -32601, &format!("Method not found: {other}"))),
     };
@@ -223,11 +243,12 @@ fn error(id: Value, code: i64, message: &str) -> Value {
 
 /// Streamable HTTP: the same answers, over MCP's HTTP transport.
 mod http {
-    use super::{respond, World, DEFAULT_PROTOCOL_VERSION};
+    use super::{respond, Demo, DEFAULT_PROTOCOL_VERSION};
     use serde_json::{json, Value};
     use std::collections::HashMap;
     use std::io::{self, BufRead, BufReader, Read, Write};
     use std::net::{TcpListener, TcpStream};
+    use std::process::ExitCode;
     use std::sync::{Arc, Mutex};
     use std::time::{Duration, Instant};
 
@@ -245,19 +266,20 @@ mod http {
         body: Vec<u8>,
     }
 
-    pub(super) fn serve(addr: &str, world: World, auth: Option<String>) -> io::Result<()> {
-        let listener = TcpListener::bind(addr)?;
-        println!("http://{}/mcp", listener.local_addr()?);
-        io::stdout().flush()?;
+    /// Answer each connection to `listener` on a thread of its own, for as
+    /// long as the process runs.
+    pub(super) fn serve(
+        listener: TcpListener,
+        demo: Arc<Demo>,
+        auth: Option<String>,
+    ) -> io::Result<ExitCode> {
         let sessions = Arc::new(Mutex::new(Sessions::default()));
-        for stream in listener.incoming() {
-            let Ok(stream) = stream else { continue };
-            let (sessions, auth) = (sessions.clone(), auth.clone());
-            std::thread::spawn(move || {
-                let _ = handle(stream, world, &sessions, auth.as_deref());
-            });
+        loop {
+            // A connection that fails before it is accepted is dropped.
+            let Ok(c) = listener.accept() else { continue };
+            let (demo, sessions, auth) = (demo.clone(), sessions.clone(), auth.clone());
+            std::thread::spawn(move || handle(c.0, &demo, &sessions, auth.as_deref()));
         }
-        Ok(())
     }
 
     fn read_request(stream: &TcpStream) -> io::Result<Request> {
@@ -299,11 +321,9 @@ mod http {
         headers: &[(&str, &str)],
         body: &[u8],
     ) -> io::Result<()> {
-        write!(
-            stream,
-            "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n",
-            body.len()
-        )?;
+        let length = body.len();
+        write!(stream, "HTTP/1.1 {status}\r\nContent-Length: {length}\r\n")?;
+        write!(stream, "Connection: close\r\n")?;
         for (name, value) in headers {
             write!(stream, "{name}: {value}\r\n")?;
         }
@@ -312,11 +332,12 @@ mod http {
         stream.flush()
     }
 
+    /// The head of a response that is an event stream.
+    const EVENTS: &str = "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\n\
+                          Cache-Control: no-cache\r\nConnection: close\r\n\r\n";
+
     fn open_events(mut stream: &TcpStream) -> io::Result<()> {
-        write!(
-            stream,
-            "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n"
-        )?;
+        stream.write_all(EVENTS.as_bytes())?;
         stream.flush()
     }
 
@@ -332,7 +353,7 @@ mod http {
 
     fn handle(
         stream: TcpStream,
-        world: World,
+        demo: &Demo,
         sessions: &Mutex<Sessions>,
         auth: Option<&str>,
     ) -> io::Result<()> {
@@ -355,7 +376,7 @@ mod http {
                 let message: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
                 let method = message.get("method").and_then(Value::as_str);
                 if method == Some("initialize") {
-                    let Some(answer) = respond(&text, world) else {
+                    let Some(answer) = respond(&text, demo) else {
                         return reply(&stream, "400 Bad Request", &[], b"");
                     };
                     let version = answer["result"]["protocolVersion"]
@@ -391,7 +412,7 @@ mod http {
                 if request.headers.get("mcp-protocol-version") != Some(&version) {
                     return reply(&stream, "400 Bad Request", &[], b"");
                 }
-                match respond(&text, world) {
+                match respond(&text, demo) {
                     None => reply(&stream, "202 Accepted", &[], b""),
                     Some(answer) if method == Some("tools/call") => {
                         open_events(&stream)?;
@@ -437,7 +458,7 @@ mod http {
 
 /// The retail world.
 mod retail {
-    use super::error;
+    use super::{error, Listing};
     use serde_json::{json, Value};
 
     fn tool(name: &str, description: &str, read_only: bool, arguments: &[&str]) -> Value {
@@ -454,8 +475,7 @@ mod retail {
     }
 
     /// The shop's tools, as `--hide` and `--hint` list them.
-    pub(super) fn tools() -> Vec<Value> {
-        let listing = super::LISTING.get_or_init(Default::default);
+    pub(super) fn tools(listing: &Listing) -> Vec<Value> {
         let mut tools = all();
         tools.retain(|t| !listing.hidden.iter().any(|h| t["name"] == h.as_str()));
         for (name, hint) in &listing.hints {
@@ -506,7 +526,7 @@ mod retail {
         number(order, "#W", "a").or_else(|| number(order, "#W", "b"))
     }
 
-    fn answer(name: &str, a: &Value) -> Result<Value, String> {
+    pub(super) fn answer(name: &str, a: &Value) -> Result<Value, String> {
         let arg = |k: &str| a.get(k).and_then(Value::as_str).unwrap_or_default();
         match name {
             "find_user_id_by_email" => number(arg("email"), "c", "@example.com")
@@ -546,9 +566,9 @@ mod retail {
         }
     }
 
-    pub(super) fn call(id: Value, params: &Value) -> Value {
+    pub(super) fn call(id: Value, params: &Value, listing: &Listing) -> Value {
         let name = params.get("name").and_then(Value::as_str).unwrap_or("");
-        if !tools().iter().any(|t| t["name"] == name) {
+        if !tools(listing).iter().any(|t| t["name"] == name) {
             return error(id, -32602, &format!("Unknown tool: {name}"));
         }
         let arguments = params
@@ -569,3 +589,6 @@ mod retail {
         }})
     }
 }
+
+#[cfg(test)]
+mod tests;
