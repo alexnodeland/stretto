@@ -8,7 +8,7 @@ stretto is built on measurements, and publishes them: the paper, every round's r
 
 ## The paper
 
-**[Compile What the Environment Decides: Read-Only Speculation and Compiled Procedures for LLM Agents](./paper)** (draft, 2026-09-27).
+**[Compile What the Environment Decides: Read-Only Speculation and Compiled Procedures for LLM Agents](./paper)** (draft, 2026-09-27; [PDF](/paper/stretto.pdf)).
 
 An LLM agent pays a model turn for every decision, yet many of its decisions are fixed by what its tools returned, not by what the user said. The paper makes that precise and uses it in two regimes. While a user is present, a program learned from traces can take over only reads, speculatively, and should make each read whose probability of use before the next write exceeds $\delta/(\beta+\delta)$. Where no user speaks, a whole procedure, writes included, can be compiled once and handed to a model only when its outcome check fails.
 

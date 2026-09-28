@@ -136,6 +136,7 @@ const research: DefaultTheme.SidebarItem[] = [
     items: [
       { text: 'Overview', link: '/research/' },
       { text: 'The paper', link: '/research/paper' },
+      { text: 'The paper, as a PDF', link: '/paper/stretto.pdf', target: '_blank' },
       { text: 'Claims and evidence', link: '/research/claims' },
       { text: 'Results index', link: '/research/results' },
       { text: 'Seven benchmarks', link: '/research/benchmarks' },

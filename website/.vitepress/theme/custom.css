@@ -157,6 +157,14 @@
   height: 1px !important;
 }
 
+/* The paper's PDF, over its title. */
+.vp-doc .paper-pdf {
+  margin: 0 0 8px;
+  text-align: right;
+  font-size: 14px;
+  color: var(--vp-c-text-2);
+}
+
 /* Figures from the paper carry their own background. */
 
 .vp-doc img {

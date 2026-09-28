@@ -95,6 +95,7 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ### Documentation
 
+- The paper's PDF is linked wherever the paper is: the paper's page, the research index, the home page, the sidebar and the README ([#74](https://github.com/alexnodeland/stretto/issues/74)). The site serves it at [/paper/stretto.pdf](https://stretto.alexnodeland.com/paper/stretto.pdf), copied from `paper/latex/stretto.pdf` when it builds.
 - The documentation site is at [stretto.alexnodeland.com](https://stretto.alexnodeland.com/). Links to the old address, alexnodeland.github.io/stretto, redirect there.
 - The documentation site builds for the address GitHub Pages gives it (`SITE_URL`, from the Pages workflow), so its base, canonical links and sitemap follow a custom domain. A link from the repository's Markdown to the site itself stays on the site: the roadmap's and the changelog's links to the documentation site opened the research notebook before.
 
