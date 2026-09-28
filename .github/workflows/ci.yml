@@ -20,6 +20,26 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test --all-targets
+      # --all-targets leaves out doctests.
+      - run: cargo test --doc
+      - run: cargo doc --no-deps
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+  # The oldest Rust the workspace claims (rust-version in Cargo.toml), with the
+  # committed lockfile, so a dependency that needs a newer rustc fails here.
+  # Bump the toolchain below and rust-version together.
+  msrv:
+    name: MSRV (1.88)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.88.0
+      - uses: Swatinem/rust-cache@v2
+      - name: rust-version in Cargo.toml is the toolchain this job pins
+        run: grep -qx 'rust-version = "1.88"' Cargo.toml
+      # +1.88.0: rust-toolchain.toml would otherwise select stable.
+      - run: cargo +1.88.0 check --workspace --all-targets --locked
 
   # docs/walkthrough.md, run end to end on the official MCP filesystem server,
   # and the proxy in front of the reference Streamable HTTP server.
