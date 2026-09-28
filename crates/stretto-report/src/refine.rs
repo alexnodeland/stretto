@@ -804,4 +804,82 @@ mod tests {
         assert_eq!(cs[0].features[1].len(), 3);
         assert_eq!(cs[0].group, task_group("7"));
     }
+
+    #[test]
+    fn the_report_shows_each_candidate_round_and_site() {
+        let mut log = synthetic(200);
+        for (i, d) in log.iter_mut().enumerate() {
+            d.target = i % 5 == 0;
+        }
+        let candidates = vec![
+            predicate("signal", Favors::SameLookup),
+            predicate("noise", Favors::AnyLookup),
+            predicate("back", Favors::HandBack),
+            predicate("user", Favors::Lookup("get_user".to_string())),
+        ];
+        let r = refine(&log, &candidates, 5, None);
+        assert!(r.refined.surprise() < r.base.surprise());
+        assert!(r.refined.target_surprise() < r.base.target_surprise());
+        let md = markdown(&r, "retail");
+        for line in [
+            "# Predicate refinement: retail",
+            "The transfer targets' 40 decisions (40 scored)",
+            "| Held-out log-likelihood | Nats per decision | Agreement | Targets: log-likelihood |",
+            "Kept: `signal`.",
+            "| `signal` | the same lookup again |",
+            "| `noise` | any lookup |",
+            "| `back` | handing back |",
+            "| `user` | `get_user` |",
+            "| 1 | `signal` |",
+            "| `get_order` | 160 |",
+        ] {
+            assert!(md.contains(line), "{line}\n{md}");
+        }
+        // With no targets and no candidates, the tables are narrower.
+        let plain = refine(&synthetic(100), &[], 5, None);
+        let md = markdown(&plain, "airline");
+        assert!(md.contains("Kept: none."), "{md}");
+        assert!(md.contains("| | Held-out log-likelihood | Nats per decision | Agreement |\n"));
+        assert!(!md.contains("## Candidates"), "{md}");
+    }
+
+    #[test]
+    fn examples_show_the_weakest_decisions_one_per_task_with_their_state() {
+        let mut log = synthetic(200);
+        for (i, d) in log.iter_mut().enumerate() {
+            d.key = Some(format!("k{i}"));
+        }
+        let dump_text: String = (0..200)
+            .map(|i| {
+                format!(
+                    "{}\n",
+                    serde_json::json!({"key": format!("k{i}"), "request": {"state": {"turn": i}}})
+                )
+            })
+            .chain([
+                "\n".to_string(),
+                "{\"key\": \"no-state\", \"request\": {}}\n".to_string(),
+            ])
+            .collect();
+        let dump = read_dump(&dump_text).unwrap();
+        assert_eq!(dump.len(), 200);
+        let md = examples(&log, &dump, 5, 3, 2);
+        assert!(md.contains("The 1 sites where the arbiter"), "{md}");
+        assert!(md.contains("## `get_order`: 200 decisions"), "{md}");
+        // Two decisions, from two tasks, each with its state.
+        assert_eq!(md.matches("### Task ").count(), 2, "{md}");
+        assert_eq!(md.matches("```json").count(), 2, "{md}");
+        assert!(read_dump("not json").is_err());
+    }
+
+    #[test]
+    fn the_log_skips_blank_lines_and_other_decisions() {
+        let next = serde_json::json!({"kind": "Next", "task": "1", "actual": "respond",
+            "case": {"site": "s", "options": ["respond"], "features": [[0.0]], "pick": 0}});
+        let arg = serde_json::json!({"kind": "Arg", "task": "1",
+            "case": {"site": "s", "options": ["x"], "features": [[0.0]], "pick": 0}});
+        let log = read_log(&format!("\n{next}\n  \n{arg}\n")).unwrap();
+        assert_eq!(log.len(), 1);
+        assert!(read_log("{").is_err());
+    }
 }

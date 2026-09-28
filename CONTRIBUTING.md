@@ -23,7 +23,7 @@ The [`Makefile`](Makefile)'s Rust targets run the commands CI runs ([`.github/wo
 | `make doc` | The API docs, with rustdoc warnings as errors |
 | `make ci` | `check`, `lint`, `test`, `types` and `doc`: CI's check job |
 | `make msrv` | The workspace on Rust 1.88, Cargo.toml's `rust-version`, with the lockfile, as CI's MSRV job |
-| `make coverage` | Line coverage with cargo-llvm-cov, written to `lcov.info`; fails under the threshold in the Makefile |
+| `make coverage` | Line coverage with cargo-llvm-cov, written to `lcov.info`; fails under the threshold in the Makefile, or when a line your branch adds is not run by any test |
 | `make bless` | Regenerates `docs/cli.md` and the examples in `docs/review.md` |
 | `make quickstart`, `make walkthrough` | The quickstart and the walkthrough end to end on a debug build, as CI's walkthrough job runs them |
 | `make site` | Builds the documentation site, which fails on a dead link |

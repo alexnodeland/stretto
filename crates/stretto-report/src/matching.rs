@@ -946,4 +946,330 @@ mod tests {
         assert!(c.agent_right());
         assert_eq!(c.model_right(), Some(false));
     }
+
+    fn manifest() -> ToolManifest {
+        ToolManifest {
+            domain: "retail".to_string(),
+            tools: BTreeMap::new(),
+            docs: BTreeMap::new(),
+        }
+    }
+
+    fn gold(name: &str, arguments: Value) -> GoldAction {
+        GoldAction {
+            name: name.to_string(),
+            arguments,
+        }
+    }
+
+    fn episode_of(events: Vec<Event>) -> Episode {
+        Episode {
+            events,
+            ..episode()
+        }
+    }
+
+    /// An order of the chair (whose product was not looked up), the lamp
+    /// (red or blue) and the vase (one variant), and a record with no id.
+    fn exchange_lead() -> Vec<Event> {
+        vec![
+            Event::User {
+                text: "Swap my lamp for the blue one and the vase too.".to_string(),
+            },
+            call("a", "get_user_details", json!({"user_id": "u"})),
+            result(
+                "a",
+                "get_user_details",
+                json!({"payment_methods": {"gift_card_1": {"source": "gift_card"},
+                                           "credit_card_2": {"source": "credit_card"}}}),
+            ),
+            call("b", "get_order_details", json!({"order_id": "#W1"})),
+            result(
+                "b",
+                "get_order_details",
+                json!({"order_id": "#W1", "items": [
+                    {"item_id": "1", "name": "Chair", "product_id": "p1"},
+                    {"item_id": "2", "name": "Lamp", "product_id": "p2"},
+                    {"item_id": "5", "name": "Vase", "product_id": "p5"},
+                    {"name": "a note"},
+                ]}),
+            ),
+            call("c", "get_product_details", json!({"product_id": "p2"})),
+            result(
+                "c",
+                "get_product_details",
+                json!({"product_id": "p2", "variants": {
+                    "2": {"options": {"color": "red"}, "available": true},
+                    "3": {"options": {"color": "blue"}, "available": true}}}),
+            ),
+            call("d", "get_product_details", json!({"product_id": "p5"})),
+            result(
+                "d",
+                "get_product_details",
+                json!({"product_id": "p5", "variants": {"5": {"available": true}}}),
+            ),
+            // Neither text that parses nor a success adds a record.
+            Event::ToolResult {
+                call_id: "e".to_string(),
+                name: "get_product_details".to_string(),
+                error: false,
+                content: "not json".to_string(),
+            },
+            Event::ToolResult {
+                call_id: "f".to_string(),
+                name: "get_order_details".to_string(),
+                error: true,
+                content: "{}".to_string(),
+            },
+            result("g", "list_all_product_types", json!({"lamp": "p2"})),
+        ]
+    }
+
+    #[test]
+    fn an_exchange_asks_which_variant_each_item_becomes() {
+        let mut events = exchange_lead();
+        events.push(call(
+            "x",
+            "exchange_delivered_order_items",
+            json!({"order_id": "#W1", "item_ids": ["2", "1", "5", "9"], "new_item_ids": ["3", "4", "6", "9"],
+                   "payment_method_id": "gift_card_1"}),
+        ));
+        let expected = [gold(
+            "exchange_delivered_order_items",
+            json!({"order_id": "#W1", "item_ids": ["2", "1", "5"], "new_item_ids": ["3", "4", "6"],
+                   "payment_method_id": "gift_card_1"}),
+        )];
+        let items = choices(&episode_of(events), &expected, &manifest(), "jev-test");
+        // The chair's product and the vase's single variant give no choice.
+        assert_eq!(
+            items.iter().map(|c| c.kind).collect::<Vec<_>>(),
+            [Pick::Items, Pick::Variant, Pick::Payment]
+        );
+        assert_eq!(items[0].candidates, ["1", "2", "5"]);
+        let variant = &items[1];
+        assert_eq!(variant.candidates, ["2", "3"]);
+        assert!(variant.agent_right());
+        assert!(variant.request.state["item_being_replaced"]["name"] == "Lamp");
+    }
+
+    #[test]
+    fn a_write_the_task_does_not_expect_is_no_choice() {
+        let write = |args: Value| {
+            let mut events = exchange_lead();
+            events.push(call("x", "modify_pending_order_payment", args));
+            events
+        };
+        let expected = [gold(
+            "modify_pending_order_payment",
+            json!({"order_id": "#W1", "payment_method_id": "gift_card_1"}),
+        )];
+        let pay = json!({"order_id": "#W1", "payment_method_id": "credit_card_2"});
+        let items = choices(&episode_of(write(pay.clone())), &expected, &manifest(), "m");
+        assert_eq!(
+            items.iter().map(|c| c.kind).collect::<Vec<_>>(),
+            [Pick::Payment]
+        );
+        // No order named, another order, or no write expected on it.
+        assert!(choices(
+            &episode_of(write(json!({"payment_method_id": "x"}))),
+            &expected,
+            &manifest(),
+            "m"
+        )
+        .is_empty());
+        let other = json!({"order_id": "#W9", "payment_method_id": "credit_card_2"});
+        assert!(choices(&episode_of(write(other)), &expected, &manifest(), "m").is_empty());
+        assert!(choices(&episode_of(write(pay.clone())), &[], &manifest(), "m").is_empty());
+        // An expected write that names no method, or a customer with one.
+        let bare = [gold(
+            "modify_pending_order_payment",
+            json!({"order_id": "#W1"}),
+        )];
+        assert!(choices(&episode_of(write(pay.clone())), &bare, &manifest(), "m").is_empty());
+        let mut one_card = write(pay);
+        one_card[2] = result(
+            "a",
+            "get_user_details",
+            json!({"payment_methods": {"gift_card_1": {}}}),
+        );
+        assert!(choices(&episode_of(one_card), &expected, &manifest(), "m").is_empty());
+        // One item is no choice of items.
+        let single = vec![
+            call("b", "get_order_details", json!({"order_id": "#W1"})),
+            result(
+                "b",
+                "get_order_details",
+                json!({"order_id": "#W1", "items": [{"item_id": "1", "product_id": "p1"}]}),
+            ),
+            call(
+                "x",
+                "return_delivered_order_items",
+                json!({"order_id": "#W1", "item_ids": ["1"]}),
+            ),
+        ];
+        let expected = [gold(
+            "return_delivered_order_items",
+            json!({"order_id": "#W1", "item_ids": ["1"]}),
+        )];
+        assert!(choices(&episode_of(single), &expected, &manifest(), "m").is_empty());
+    }
+
+    #[test]
+    fn a_reservation_is_asked_among_those_the_agent_looked_up() {
+        let reservation = |id: &str| {
+            json!({"reservation_id": id, "user_id": "u", "origin": "SFO",
+                   "payment_history": [{"payment_id": "credit_card_1", "amount": 100}]})
+        };
+        let events = vec![
+            Event::User {
+                text: "Move my Tuesday flight, and pay with the gift card.".to_string(),
+            },
+            call("a", "get_user_details", json!({"user_id": "u"})),
+            result(
+                "a",
+                "get_user_details",
+                json!({"payment_methods": {"credit_card_1": {}, "gift_card_2": {}}}),
+            ),
+            call(
+                "b",
+                "get_reservation_details",
+                json!({"reservation_id": "R1"}),
+            ),
+            result("b", "get_reservation_details", reservation("R1")),
+            call(
+                "c",
+                "get_reservation_details",
+                json!({"reservation_id": "R2"}),
+            ),
+            result("c", "get_reservation_details", reservation("R2")),
+            call(
+                "x",
+                "update_reservation_flights",
+                json!({"reservation_id": "R1", "payment_id": "credit_card_1"}),
+            ),
+            // No reservation named, and a write the task does not expect.
+            call("y", "cancel_reservation", json!({})),
+            call(
+                "z",
+                "update_reservation_baggages",
+                json!({"reservation_id": "R1"}),
+            ),
+        ];
+        let expected = [
+            gold(
+                "update_reservation_flights",
+                json!({"reservation_id": "R1", "payment_id": "gift_card_2"}),
+            ),
+            gold("cancel_reservation", json!({"reservation_id": "R2"})),
+        ];
+        let items = choices(&episode_of(events), &expected, &manifest(), "m");
+        assert_eq!(
+            items.iter().map(|c| c.kind).collect::<Vec<_>>(),
+            [Pick::Reservation, Pick::Payment]
+        );
+        assert_eq!(items[0].candidates, ["R1", "R2"]);
+        assert!(items[0].agent_right());
+        assert!(!items[1].agent_right());
+        // The payments so far, for "the original one".
+        assert_eq!(
+            items[1].request.state["payments_so_far"][0]["payment_id"],
+            "credit_card_1"
+        );
+    }
+
+    #[test]
+    fn a_record_is_described_in_one_line() {
+        let record = json!({"name": "Lamp", "price": 20, "in_stock": true, "nothing": null,
+                            "options": {"color": "blue", "size": {"deep": 1}},
+                            "tags": ["new", {"kind": "sale", "off": 5}]});
+        assert_eq!(
+            describe(&record),
+            "in_stock: true; name: Lamp; options: color blue; price: 20; tags: new; sale 5"
+        );
+        assert_eq!(describe(&json!("just text")), "just text");
+        assert_eq!(describe(&json!([1, 2])), "");
+    }
+
+    #[test]
+    fn the_model_is_asked_once_per_question_and_its_picks_are_scored() {
+        let mut items = choices(
+            &episode(),
+            &[gold(
+                "return_delivered_order_items",
+                json!({"order_id": "#W1", "item_ids": ["2"], "payment_method_id": "gift_card_1"}),
+            )],
+            &manifest(),
+            "jev-test",
+        );
+        let mut config = ShadowConfig::new(shadow::OracleKind::Mock);
+        config.concurrency = 1;
+        // Yes to every item, and the first of every choice.
+        let oracle = stretto_oracle::MockOracle {
+            confidence: 0.7,
+            noul: 0.8,
+        };
+        judge(&oracle, &mut items, &config, "retail").unwrap();
+        assert_eq!(
+            items[0].model,
+            Some(BTreeSet::from(["1".to_string(), "2".to_string()]))
+        );
+        assert!((items[0].confidence.unwrap() - 0.8).abs() < 1e-9);
+        assert_eq!(items[1].model.as_ref().map(|m| m.len()), Some(1));
+        let a = audit("retail", &items, 2);
+        let all = a.rows.last().unwrap();
+        assert_eq!((all.choices, all.unanswered), (2, 0));
+        // An oracle that gives no answers leaves the picks empty.
+        struct Silent;
+        impl Oracle for Silent {
+            fn ask(&self, _: &Request) -> Result<stretto_oracle::Response> {
+                anyhow::bail!("no answer")
+            }
+        }
+        let mut unasked = items.clone();
+        for c in &mut unasked {
+            c.model = None;
+        }
+        judge(&Silent, &mut unasked, &config, "retail").unwrap();
+        assert!(unasked.iter().all(|c| c.model.is_none()));
+        let a = audit("retail", &unasked, 2);
+        assert_eq!(a.rows.last().unwrap().unanswered, 2);
+    }
+
+    #[test]
+    fn the_report_names_each_kind_and_shows_the_misses() {
+        let choice = |kind: Pick, agent: &str, model: &str, gold: &str| Choice {
+            task_id: "3".to_string(),
+            episode: "e".to_string(),
+            agent_model: "m".to_string(),
+            tool: "t".to_string(),
+            kind,
+            candidates: vec![agent.to_string(), model.to_string()],
+            agent: BTreeSet::from([agent.to_string()]),
+            gold: BTreeSet::from([gold.to_string()]),
+            model: Some(BTreeSet::from([model.to_string()])),
+            confidence: None,
+            customer: "the \"blue\" one\nplease".to_string(),
+            key: String::new(),
+            request: Request {
+                model: String::new(),
+                state: Value::Null,
+                questions: BTreeMap::new(),
+            },
+        };
+        let items = [
+            choice(Pick::Variant, "3", "2", "3"),
+            choice(Pick::Reservation, "R1", "R2", "R1"),
+        ];
+        let a = audit("airline", &items, 5);
+        assert_eq!(a.misses.len(), 2);
+        let md = markdown(&[a]);
+        for line in [
+            "| New variant | 1 |",
+            "| Reservation | 1 |",
+            "The agent right, the model wrong (up to 2):",
+            "- task 3, reservation: agent [\"R1\"], model [\"R2\"], expected [\"R1\"]; the customer last said \"the 'blue' one please\"",
+        ] {
+            assert!(md.contains(line), "{line}\n{md}");
+        }
+    }
 }
