@@ -13,3 +13,5 @@ website/.vitepress/cache/
 website/public/notebook/
 website/public/explainer/
 website/public/media/
+# make coverage
+lcov.info
