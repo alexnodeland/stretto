@@ -22,7 +22,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post, put};
 use axum::{middleware, Json, Router};
 use serde::Serialize;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 #[cfg(feature = "ts")]
 use ts_rs::TS;
 
@@ -137,12 +137,6 @@ impl ApiError {
     }
 }
 
-impl From<anyhow::Error> for ApiError {
-    fn from(e: anyhow::Error) -> Self {
-        ApiError::internal(format!("{e:#}"))
-    }
-}
-
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         (
@@ -181,10 +175,8 @@ pub fn trash(state: &State, paths: &[PathBuf]) -> ApiResult<()> {
             .strip_prefix(root)
             .map_err(|_| ApiError::forbidden("only files in the data directory go to the trash"))?;
         let to = bin.join(rel);
-        if let Some(parent) = to.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| ApiError::internal(format!("creating the trash: {e}")))?;
-        }
+        std::fs::create_dir_all(to.parent().unwrap_or(&bin))
+            .map_err(|e| ApiError::internal(format!("creating the trash: {e}")))?;
         std::fs::rename(path, &to).map_err(|e| {
             ApiError::internal(format!(
                 "moving {} to the trash: {e}",
@@ -195,12 +187,61 @@ pub fn trash(state: &State, paths: &[PathBuf]) -> ApiResult<()> {
     Ok(())
 }
 
-/// The console's own directory, created if needed.
-pub fn console_dir(root: &Path) -> std::io::Result<PathBuf> {
-    let dir = root.join(crate::data::CONSOLE_DIR);
-    std::fs::create_dir_all(&dir)?;
-    Ok(dir)
-}
-
 #[cfg(all(test, feature = "ts"))]
 mod typescript;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Config;
+
+    fn state(name: &str) -> Shared {
+        let root =
+            std::env::temp_dir().join(format!("stretto-console-api-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        let mut config = Config::new(&root, None);
+        config.now_unix_ms = Some(1);
+        State::start(config)
+    }
+
+    #[tokio::test]
+    async fn a_handler_that_panics_is_an_error() {
+        let state = state("panic");
+        let e = blocking(&state, |_| -> ApiResult<()> { panic!("no") })
+            .await
+            .unwrap_err();
+        assert_eq!(e.status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(
+            e.message.starts_with("the handler failed: "),
+            "{}",
+            e.message
+        );
+        std::fs::remove_dir_all(state.data_dir()).unwrap();
+    }
+
+    #[tokio::test]
+    async fn the_trash_takes_only_what_is_in_the_data_directory() {
+        let state = state("trash");
+        let root = state.data_dir();
+        std::fs::create_dir_all(root.join("logs")).unwrap();
+        std::fs::write(root.join("logs/a.jsonl"), "").unwrap();
+        trash(&state, &[root.join("logs/a.jsonl")]).unwrap();
+        assert!(root.join("console/trash/1/logs/a.jsonl").is_file());
+        assert!(!root.join("logs/a.jsonl").exists());
+
+        let outside = trash(&state, &[PathBuf::from("/elsewhere/x.jsonl")]).unwrap_err();
+        assert_eq!(outside.status, StatusCode::FORBIDDEN);
+        let gone = trash(&state, &[root.join("logs/a.jsonl")]).unwrap_err();
+        assert!(gone
+            .message
+            .starts_with("moving logs/a.jsonl to the trash: "));
+        // Where the trash would be, a file.
+        std::fs::remove_dir_all(root.join("console")).unwrap();
+        std::fs::write(root.join("console"), "").unwrap();
+        std::fs::write(root.join("logs/b.jsonl"), "").unwrap();
+        let blocked = trash(&state, &[root.join("logs/b.jsonl")]).unwrap_err();
+        assert!(blocked.message.starts_with("creating the trash: "));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+}

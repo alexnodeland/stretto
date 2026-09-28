@@ -25,6 +25,8 @@ pub mod watch;
 
 pub use api::router;
 
+use std::collections::BTreeSet;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -51,6 +53,45 @@ pub struct Config {
     pub home: Option<PathBuf>,
     /// A fixed "now", in milliseconds since the Unix epoch, for tests.
     pub now_unix_ms: Option<u64>,
+    /// What the console reads from its environment.
+    pub env: Environment,
+}
+
+/// The variables whose presence the console reads: the keys for TypeSafe's
+/// Jev, and the salt `stretto redact` needs.
+pub const VARIABLES: [&str; 3] = [
+    "TYPESAFE_API_KEY",
+    "TYPESAFE_API_KEY_FILE",
+    "STRETTO_REDACT_SALT",
+];
+
+/// What the console reads from its environment, once, when it starts:
+/// which of [`VARIABLES`] are set (never their values), and PATH.
+#[derive(Clone, Debug, Default)]
+pub struct Environment {
+    /// Those of [`VARIABLES`] that are set and not empty.
+    pub set: BTreeSet<String>,
+    /// PATH, where the console looks for programs.
+    pub path: OsString,
+}
+
+impl Environment {
+    /// This process's.
+    pub fn of_process() -> Self {
+        Environment {
+            set: VARIABLES
+                .into_iter()
+                .filter(|v| env_set(v))
+                .map(String::from)
+                .collect(),
+            path: std::env::var_os("PATH").unwrap_or_default(),
+        }
+    }
+
+    /// Whether `name`, one of [`VARIABLES`], is set and not empty.
+    pub fn is_set(&self, name: &str) -> bool {
+        self.set.contains(name)
+    }
 }
 
 /// stretto's binaries, as found beside the console or on PATH.
@@ -74,6 +115,7 @@ impl Config {
             binaries: Binaries::default(),
             home: home_dir(),
             now_unix_ms: None,
+            env: Environment::of_process(),
         }
     }
 }
@@ -121,14 +163,15 @@ impl State {
     /// Whether a key for TypeSafe's Jev is configured, from whether
     /// `TYPESAFE_API_KEY` or `TYPESAFE_API_KEY_FILE` is set; never its value.
     pub fn key_set(&self) -> bool {
-        env_set("TYPESAFE_API_KEY") || env_set("TYPESAFE_API_KEY_FILE")
+        let env = &self.config.env;
+        env.is_set("TYPESAFE_API_KEY") || env.is_set("TYPESAFE_API_KEY_FILE")
     }
 }
 
 /// Whether the environment variable `name` is set and not empty. Only its
 /// presence is read.
 pub fn env_set(name: &str) -> bool {
-    std::env::var_os(name).is_some_and(|v| !v.is_empty())
+    !std::env::var_os(name).unwrap_or_default().is_empty()
 }
 
 /// Now, in milliseconds since the Unix epoch.
@@ -140,8 +183,9 @@ pub fn now_unix_ms() -> u64 {
 
 /// The home directory: HOME, or USERPROFILE on Windows.
 pub fn home_dir() -> Option<PathBuf> {
-    std::env::var_os("HOME")
-        .or_else(|| std::env::var_os("USERPROFILE"))
+    ["HOME", "USERPROFILE"]
+        .into_iter()
+        .find_map(std::env::var_os)
         .filter(|h| !h.is_empty())
         .map(PathBuf::from)
 }

@@ -146,4 +146,13 @@ mod tests {
         let keys = assign(&items(&[("x~12345678", "x~12345678.jsonl")]), &[]);
         assert_eq!(keys[0], "x_12345678");
     }
+
+    #[test]
+    fn paths_whose_hashes_start_alike_get_the_whole_hash() {
+        // Found by search: both hashes start 7b083ef3.
+        let (a, b) = ("logs/124797/s.jsonl", "logs/153023/s.jsonl");
+        assert_eq!(hash(a)[..8], hash(b)[..8]);
+        let keys = assign(&items(&[("s", a), ("s", b)]), &[]);
+        assert_eq!(keys, [format!("s~{}", hash(a)), format!("s~{}", hash(b))]);
+    }
 }

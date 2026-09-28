@@ -64,22 +64,48 @@ pub async fn meta(State(state): State<Shared>) -> Json<Meta> {
     })
 }
 
-/// `name` beside the running console, else on PATH; `explicit` wins when
-/// given (`--stretto`). Its version is what `--version` prints.
-pub fn find(name: &str, explicit: Option<&Path>, beside: Option<&Path>) -> Option<Binary> {
+/// `name` beside the running console, else on `path` (PATH); `explicit`
+/// wins when given (`--stretto`). Its version is what `--version` prints.
+pub fn find(
+    name: &str,
+    explicit: Option<&Path>,
+    beside: Option<&Path>,
+    path: &std::ffi::OsStr,
+) -> Option<Binary> {
     let file = format!("{name}{}", std::env::consts::EXE_SUFFIX);
     let path: PathBuf = match explicit {
         Some(p) => p.to_path_buf(),
         None => beside
             .map(|dir| dir.join(&file))
             .filter(|p| p.is_file())
-            .or_else(|| {
-                let path = std::env::var_os("PATH").unwrap_or_default();
-                stretto_report::doctor::which(name, &path)
-            })?,
+            .or_else(|| stretto_report::doctor::which(name, path))?,
     };
     Some(Binary {
         version: stretto_report::doctor::version_of(&path),
         path: path.display().to_string(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_binary_is_found_as_given_beside_the_console_or_on_path() {
+        let dir = std::env::temp_dir().join(format!("stretto-console-find-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let tool = dir.join(format!("tool{}", std::env::consts::EXE_SUFFIX));
+        std::fs::write(&tool, "").unwrap();
+        let found = |explicit: Option<&Path>, beside: Option<&Path>, path: &str| {
+            find("tool", explicit, beside, path.as_ref()).map(|b| b.path)
+        };
+        let at = Some(tool.display().to_string());
+        let elsewhere = dir.join("elsewhere");
+        assert_eq!(found(Some(&tool), Some(&elsewhere), ""), at);
+        assert_eq!(found(None, Some(&dir), ""), at);
+        assert_eq!(found(None, Some(&elsewhere), dir.to_str().unwrap()), at);
+        assert_eq!(found(None, None, ""), None);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 }

@@ -7,7 +7,7 @@ use std::net::{IpAddr, SocketAddr};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use stretto_console::api::meta;
-use stretto_console::{auth, Binaries, Config, State};
+use stretto_console::{auth, Binaries, Config, Environment, State};
 
 /// stretto's management plane: a local web console over the sessions,
 /// flows, servers and jobs in the data directory. It prints the URL to open,
@@ -142,11 +142,13 @@ async fn serve(cli: Cli) -> Result<()> {
     let beside = std::env::current_exe()
         .ok()
         .and_then(|e| e.parent().map(Path::to_path_buf));
+    let env = Environment::of_process();
+    let find = |name, explicit| meta::find(name, explicit, beside.as_deref(), &env.path);
     let binaries = Binaries {
-        stretto: meta::find("stretto", cli.stretto.as_deref(), beside.as_deref()),
-        proxy: meta::find("stretto-proxy", None, beside.as_deref()),
-        procedure: meta::find("stretto-procedure", None, beside.as_deref()),
-        demo: meta::find("stretto-mcp-demo", None, beside.as_deref()),
+        stretto: find("stretto", cli.stretto.as_deref()),
+        proxy: find("stretto-proxy", None),
+        procedure: find("stretto-procedure", None),
+        demo: find("stretto-mcp-demo", None),
     };
     if binaries.stretto.is_none() {
         eprintln!(
@@ -166,6 +168,7 @@ async fn serve(cli: Cli) -> Result<()> {
         binaries,
         home,
         now_unix_ms: None,
+        env,
     };
     let state = State::start(config);
     stretto_console::watch::spawn(state.clone());

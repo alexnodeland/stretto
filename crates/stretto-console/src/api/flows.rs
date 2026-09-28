@@ -225,9 +225,7 @@ pub async fn raw(State(state): State<Shared>, Path(key): Path<String>) -> ApiRes
             .ok_or_else(|| ApiError::not_found(format!("no flow {key:?}")))
     })
     .await?;
-    let bytes = tokio::fs::read(&file.path)
-        .await
-        .map_err(|e| ApiError::internal(format!("reading {}: {e}", file.rel)))?;
+    let bytes = super::sessions::read(&file.path, &file.rel).await?;
     Ok(super::sessions::download(
         bytes,
         "application/json",
@@ -264,7 +262,7 @@ fn find(
     let loaded = state
         .cache
         .lock()
-        .unwrap_or_else(|e| e.into_inner())
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
         .flow(&file);
     Ok((file, loaded))
 }

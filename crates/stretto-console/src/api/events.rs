@@ -19,14 +19,12 @@ pub async fn events(
         loop {
             match rx.recv().await {
                 Ok(event) => {
-                    let sse = match &event {
-                        Event::Changed(c) => SseEvent::default().event("changed").json_data(c),
-                        Event::Job(job) => SseEvent::default().event("job").json_data(job),
+                    let (name, data) = match &event {
+                        Event::Changed(c) => ("changed", serde_json::to_string(c)),
+                        Event::Job(job) => ("job", serde_json::to_string(job)),
                     };
-                    match sse {
-                        Ok(sse) => return Some((Ok(sse), rx)),
-                        Err(_) => continue,
-                    }
+                    let sse = SseEvent::default().event(name);
+                    return Some((Ok(sse.data(data.unwrap_or_default())), rx));
                 }
                 // A slow client misses events; the next one it gets says
                 // what changed since.

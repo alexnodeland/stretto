@@ -99,14 +99,11 @@ fn build(state: &State) -> Settings {
 /// followed.
 pub fn disk(root: &Path) -> Disk {
     fn walk(root: &Path, dir: &Path, disk: &mut Disk) {
-        let Ok(entries) = std::fs::read_dir(dir) else {
-            return;
-        };
-        for entry in entries.flatten() {
+        // What cannot be read (gone since it was listed) is not counted.
+        for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
             let path = entry.path();
-            let Ok(meta) = std::fs::symlink_metadata(&path) else {
-                continue;
-            };
+            // As `symlink_metadata`: a link is not followed.
+            let Ok(meta) = entry.metadata() else { continue };
             if meta.is_dir() {
                 walk(root, &path, disk);
                 continue;
@@ -151,5 +148,33 @@ mod tests {
         );
         // servers.json
         assert!(d.other_bytes > 0);
+    }
+
+    #[test]
+    fn each_file_is_counted_once_by_what_it_is() {
+        let root =
+            std::env::temp_dir().join(format!("stretto-console-disk-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        for dir in ["logs/shop", "oracle-cache", "console/jobs"] {
+            std::fs::create_dir_all(root.join(dir)).unwrap();
+        }
+        let write = |rel: &str, n: usize| std::fs::write(root.join(rel), "x".repeat(n)).unwrap();
+        write("logs/shop/a.jsonl", 1);
+        write("shop.flow.json", 10);
+        write("oracle-cache/q.json", 100);
+        write("console/jobs/j.json", 1000);
+        write("servers.json", 10_000);
+        // A link is not followed, so what it names is counted once.
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(root.join("shop.flow.json"), root.join("alias.flow.json"))
+            .unwrap();
+        let d = disk(&root);
+        assert_eq!(
+            (d.logs_bytes, d.flows_bytes, d.cache_bytes, d.other_bytes),
+            (1, 10, 100, 11_000)
+        );
+        assert_eq!(d.total_bytes, 11_111);
+        assert_eq!(disk(&root.join("missing")), Disk::default());
+        std::fs::remove_dir_all(&root).unwrap();
     }
 }

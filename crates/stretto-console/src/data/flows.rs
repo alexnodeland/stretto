@@ -3,7 +3,7 @@
 use crate::api::flows::{FlowSummary, PromotedCounts, ToolCounts};
 use crate::api::sessions::ToolInfo;
 use crate::data::registry::{self, DeciderName, Registry};
-use crate::data::FlowFile;
+use crate::data::{paths, FlowFile};
 use crate::State;
 use serde::Deserialize;
 use std::collections::{BTreeSet, HashMap};
@@ -76,7 +76,10 @@ pub fn lookups(flow: &Flow) -> BTreeSet<String> {
 /// Every flow in the data directory, most recently changed first.
 pub fn all(state: &State) -> Vec<(FlowFile, Arc<Loaded>)> {
     let catalog = crate::data::catalog(state.data_dir());
-    let mut cache = state.cache.lock().unwrap_or_else(|e| e.into_inner());
+    let mut cache = state
+        .cache
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let mut out: Vec<(FlowFile, Arc<Loaded>)> = catalog
         .flows
         .iter()
@@ -93,7 +96,7 @@ pub fn all(state: &State) -> Vec<(FlowFile, Arc<Loaded>)> {
 
 /// The names of the servers in `registry` whose flow is `file`.
 pub fn served_by(file: &FlowFile, registry: &Registry, state: &State) -> Vec<String> {
-    let wanted = std::fs::canonicalize(&file.path).unwrap_or_else(|_| file.path.clone());
+    let wanted = paths::canonical(&file.path);
     registry
         .servers
         .iter()
@@ -339,5 +342,7 @@ mod tests {
         let w = tool_warnings(&flow, &renamed, "the server");
         assert_eq!(w.len(), 1, "{w:?}");
         assert!(w[0].contains("`get_user_details`'s input changed since the flow was learned (user_id:string! → id:string!"));
+        // A server that lists no tools is not said to lack the lookups.
+        assert!(tool_warnings(&flow, &[], "the server").is_empty());
     }
 }

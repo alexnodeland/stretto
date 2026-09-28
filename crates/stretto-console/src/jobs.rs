@@ -34,6 +34,9 @@ const CANCEL_DRAIN: Duration = Duration::from_secs(2);
 #[derive(Clone)]
 pub struct Jobs {
     inner: Arc<Inner>,
+    /// The runner's queue. The runner holds none of it, so it ends once
+    /// the last `Jobs` is gone.
+    queue: mpsc::UnboundedSender<(String, Vec<String>)>,
 }
 
 struct Inner {
@@ -50,7 +53,6 @@ struct Inner {
     /// The running job's id, and what cancels it. Taken after `jobs` when
     /// both are held.
     running: Mutex<Option<(String, oneshot::Sender<()>)>>,
-    queue: mpsc::UnboundedSender<(String, Vec<String>)>,
     events: broadcast::Sender<Event>,
 }
 
@@ -80,7 +82,6 @@ impl Jobs {
             now: config.now_unix_ms,
             jobs: Mutex::new(jobs),
             running: Mutex::new(None),
-            queue,
             events,
         });
         let runner = inner.clone();
@@ -90,7 +91,7 @@ impl Jobs {
                 runner.run(&id, args).await;
             }
         });
-        Jobs { inner }
+        Jobs { inner, queue }
     }
 
     /// Every job, newest first, with the tail of its output.
@@ -126,7 +127,11 @@ impl Jobs {
                     job.finished_unix_ms = Some(now);
                 }
                 JobStatus::Running => {
-                    let mut running = self.inner.running.lock().unwrap_or_else(|e| e.into_inner());
+                    let mut running = self
+                        .inner
+                        .running
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
                     if let Some((_, stop)) = running.take_if(|(r, _)| r == id) {
                         let _ = stop.send(());
                     }
@@ -168,14 +173,16 @@ impl Jobs {
         self.inner.lock().push(job.clone());
         self.inner.save(&job);
         self.inner.announce(&job);
-        let _ = self.inner.queue.send((id, plan.args));
+        let _ = self.queue.send((id, plan.args));
         job
     }
 }
 
 impl Inner {
     fn lock(&self) -> std::sync::MutexGuard<'_, Vec<Job>> {
-        self.jobs.lock().unwrap_or_else(|e| e.into_inner())
+        self.jobs
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     fn log(&self, id: &str) -> PathBuf {
@@ -213,10 +220,8 @@ impl Inner {
             kept.output = String::new();
             let path = self.dir.join(format!("{}.json", job.id));
             let temp = self.dir.join(format!(".{}.json.tmp", job.id));
-            std::fs::write(
-                &temp,
-                serde_json::to_vec_pretty(&kept).map_err(std::io::Error::other)?,
-            )?;
+            let text = serde_json::to_vec_pretty(&kept).map_err(std::io::Error::other)?;
+            std::fs::write(&temp, text)?;
             std::fs::rename(&temp, &path)
         };
         if let Err(e) = write() {
@@ -243,7 +248,10 @@ impl Inner {
                 Some(job) if job.status == JobStatus::Queued => {
                     job.status = JobStatus::Running;
                     job.started_unix_ms = Some(now());
-                    *self.running.lock().unwrap_or_else(|e| e.into_inner()) =
+                    *self
+                        .running
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner) =
                         Some((id.to_string(), stop));
                     Some(job.clone())
                 }
@@ -259,7 +267,7 @@ impl Inner {
         let outcome = self.execute(id, &args, &log_path, stopped).await;
         self.running
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .take();
         let (status, code) = match outcome {
             Ok(Ended::Exited(0)) => (JobStatus::Succeeded, Some(0)),
@@ -335,9 +343,8 @@ impl Inner {
             tokio::spawn(async move {
                 let mut reader = BufReader::new(out).lines();
                 while let Ok(Some(line)) = reader.next_line().await {
-                    if lines.send(line).is_err() {
-                        break;
-                    }
+                    // Until no one reads on: the job has ended.
+                    let Ok(()) = lines.send(line) else { break };
                 }
             })
         };
@@ -349,8 +356,7 @@ impl Inner {
         }
         drop(lines);
         let mut last = Instant::now();
-        // Whether `stop` can still fire, and whether it did.
-        let (mut listening, mut cancelled) = (true, false);
+        let mut cancelled = false;
         loop {
             tokio::select! {
                 line = received.recv() => {
@@ -365,13 +371,12 @@ impl Inner {
                         }
                     }
                 }
-                asked = &mut stop, if listening => {
-                    listening = false;
-                    if asked.is_ok() {
-                        cancelled = true;
-                        let _ = child.start_kill();
-                        break;
-                    }
+                // Only a cancel ends `stop`: its sender is kept, in
+                // `running`, until this returns.
+                _ = &mut stop => {
+                    cancelled = true;
+                    let _ = child.start_kill();
+                    break;
                 }
             }
         }
@@ -387,11 +392,8 @@ impl Inner {
             let _ = file.write_all(b"stretto-console: cancelled\n").await;
         }
         let _ = file.flush().await;
-        let status = child
-            .wait()
-            .await
-            .map_err(|e| format!("waiting for stretto: {e}"))?;
-        let code = exit_code(status);
+        // A child that cannot be waited for has no code to give.
+        let code = child.wait().await.map_or(-1, exit_code);
         Ok(if cancelled {
             Ended::Cancelled(code)
         } else {
@@ -549,6 +551,44 @@ mod tests {
         assert_eq!(jobs[0].status, JobStatus::Failed);
         assert!(read_output(&dir.join(format!("{}.log", job.id)), None).contains("stopped before"));
         assert!(new_id(1_790_561_041_312).starts_with("20260928T020401.312Z-"));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn jobs_are_loaded_oldest_first_and_only_unfinished_ones_fail() {
+        let dir =
+            std::env::temp_dir().join(format!("stretto-console-jobs-order-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let job = |id: &str, created: u64, status: JobStatus| Job {
+            id: id.into(),
+            kind: crate::api::jobs::JobKind::Doctor,
+            title: "Check".into(),
+            params: serde_json::json!({"kind": "doctor"}),
+            status,
+            created_unix_ms: created,
+            started_unix_ms: None,
+            finished_unix_ms: None,
+            exit_code: None,
+            output: String::new(),
+            artifacts: Vec::new(),
+        };
+        for j in [
+            job("b", 1, JobStatus::Succeeded),
+            job("a", 1, JobStatus::Queued),
+            job("c", 0, JobStatus::Failed),
+        ] {
+            let path = dir.join(format!("{}.json", j.id));
+            std::fs::write(path, serde_json::to_vec(&j).unwrap()).unwrap();
+        }
+        // Read-only: the queued job is failed, and nothing is written.
+        let jobs = load(&dir, false);
+        let ids: Vec<&str> = jobs.iter().map(|j| j.id.as_str()).collect();
+        assert_eq!(ids, ["c", "a", "b"]);
+        assert_eq!(jobs[1].status, JobStatus::Failed);
+        assert_eq!(jobs[2].status, JobStatus::Succeeded);
+        assert!(!dir.join("a.log").exists());
+        assert!(load(&dir.join("missing"), true).is_empty());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

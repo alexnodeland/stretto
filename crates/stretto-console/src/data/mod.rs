@@ -66,7 +66,7 @@ impl Catalog {
 
     /// The flow at `path`, compared as the file it is when both exist.
     pub fn flow_at(&self, path: &Path) -> Option<&FlowFile> {
-        let wanted = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+        let wanted = paths::canonical(path);
         self.flows
             .iter()
             .find(|f| f.path == path || std::fs::canonicalize(&f.path).is_ok_and(|p| p == wanted))
@@ -79,7 +79,7 @@ pub const RESERVED_FLOW_KEYS: &[&str] = &["diff"];
 
 /// Walk `root` and key what it holds.
 pub fn catalog(root: &Path) -> Catalog {
-    let canonical = std::fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
+    let canonical = paths::canonical(root);
     let found =
         stretto_report::doctor::scan_with(root, &|path| paths::keep(root, &canonical, path));
     let sessions: Vec<(String, PathBuf)> = found
@@ -294,6 +294,14 @@ mod tests {
         assert!(c.flows.is_empty());
         std::fs::remove_dir_all(&root).unwrap();
         std::fs::remove_dir_all(&outside).unwrap();
+    }
+
+    #[test]
+    fn a_directory_that_is_not_there_holds_nothing() {
+        let missing = temp("missing").join("nothing");
+        let c = catalog(&missing);
+        assert!(c.sessions.is_empty() && c.flows.is_empty());
+        assert!(c.flow_at(&missing.join("x.flow.json")).is_none());
     }
 
     #[test]

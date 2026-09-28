@@ -13,6 +13,7 @@ use axum::Router;
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+use stretto_console::api::jobs::{JobKind, JobStatus, Plan};
 use stretto_console::api::meta::Binary;
 use stretto_console::{Binaries, Config, Shared, State};
 use tower::ServiceExt;
@@ -107,6 +108,8 @@ fn console(name: &str, tweak: impl FnOnce(&mut Config)) -> Console {
         procedure: None,
         demo: None,
     };
+    // No key and no salt, whatever this process's environment holds.
+    config.env.set.clear();
     tweak(&mut config);
     let state = State::start(config);
     let app = stretto_console::router(state.clone());
@@ -400,7 +403,12 @@ async fn without_a_token_only_the_loopback_host_is_answered() {
         StatusCode::OK
     );
     assert_eq!(c.send(with_host("[::1]:7999")).await.status, StatusCode::OK);
-    for host in ["attacker.example:7999", "localhost:80", "127.0.0.1:7998"] {
+    for host in [
+        "attacker.example:7999",
+        "localhost:80",
+        "127.0.0.1:7998",
+        "[::1",
+    ] {
         let answer = c.send(with_host(host)).await;
         assert_eq!(answer.status, StatusCode::FORBIDDEN, "{host}");
         assert!(answer.json()["error"].as_str().unwrap().contains("Host"));
@@ -413,6 +421,16 @@ async fn without_a_token_only_the_loopback_host_is_answered() {
         .body(Body::from("{\"kind\":\"doctor\"}"))
         .unwrap();
     assert_eq!(c.send(write).await.status, StatusCode::FORBIDDEN);
+    // A link's token is dropped: there is none to sign in with.
+    let link = Request::builder()
+        .uri("/sessions?token=anything")
+        .header(header::HOST, "127.0.0.1:7999")
+        .body(Body::empty())
+        .unwrap();
+    let answer = c.send(link).await;
+    assert_eq!(answer.status, StatusCode::SEE_OTHER);
+    assert_eq!(answer.header(header::LOCATION), "/sessions");
+    assert!(answer.headers.get(header::SET_COOKIE).is_none());
 }
 
 #[tokio::test]
@@ -427,6 +445,9 @@ async fn unknown_paths_and_methods_and_the_ui() {
     let wrong = c.call(Method::PUT, "/api/overview", Some(json!({}))).await;
     assert_eq!(wrong.status, StatusCode::METHOD_NOT_ALLOWED);
     assert!(wrong.json()["error"].is_string());
+    let posted = c.call(Method::POST, "/sessions", Some(json!({}))).await;
+    assert_eq!(posted.status, StatusCode::METHOD_NOT_ALLOWED);
+    assert_eq!(posted.json()["error"], "the UI is read with GET");
     // A key cannot name a path.
     for uri in [
         "/api/sessions/..%2F..%2Fservers.json",
@@ -806,6 +827,17 @@ async fn flows_are_listed_and_reviewed() {
         "attachment; filename=\"shop.flow.json\""
     );
     assert_eq!(raw.json()["stretto_flow"], 1);
+
+    // A flow whose file changes is read again.
+    let path = c.dir.join("shop.flow.json");
+    let mut flow: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    flow["provenance"]["sources"] = json!(["quickstart", "again"]);
+    std::fs::write(&path, flow.to_string()).unwrap();
+    let again = c.get("/api/flows/shop").await.json();
+    assert_eq!(
+        again["provenance"]["sources"],
+        json!(["quickstart", "again"])
+    );
 }
 
 #[tokio::test]
@@ -856,6 +888,12 @@ async fn two_flows_are_compared() {
         StatusCode::BAD_REQUEST
     );
     assert_eq!(
+        c.get("/api/flows/diff?from=shop&to=shop.promoted&tolerance=-1")
+            .await
+            .status,
+        StatusCode::BAD_REQUEST
+    );
+    assert_eq!(
         c.get("/api/flows/diff?from=shop&to=none").await.status,
         StatusCode::NOT_FOUND
     );
@@ -877,6 +915,21 @@ async fn a_flow_that_does_not_load_is_listed_with_its_error() {
     assert_eq!(broken["format_version"], 7);
     let detail = c.get("/api/flows/broken").await;
     assert_eq!(detail.status, StatusCode::UNPROCESSABLE_ENTITY);
+    for (from, to) in [("broken", "shop"), ("shop", "broken")] {
+        let diff = c.get(&format!("/api/flows/diff?from={from}&to={to}")).await;
+        assert_eq!(diff.status, StatusCode::UNPROCESSABLE_ENTITY);
+        assert!(diff.json()["error"]
+            .as_str()
+            .unwrap()
+            .starts_with("broken.flow.json does not load: "));
+    }
+    for (method, uri) in [
+        (Method::GET, "/api/flows/nothing/raw"),
+        (Method::DELETE, "/api/flows/nothing"),
+    ] {
+        let answer = c.call(method, uri, None).await;
+        assert_eq!(answer.status, StatusCode::NOT_FOUND, "{uri}");
+    }
     let health = c.get("/api/overview").await.json()["health"].clone();
     assert!(health
         .as_array()
@@ -887,6 +940,82 @@ async fn a_flow_that_does_not_load_is_listed_with_its_error() {
     let deleted = c.call(Method::DELETE, "/api/flows/broken", None).await;
     assert_eq!(deleted.status, StatusCode::OK);
     assert!(!c.dir.join("broken.flow.json").exists());
+}
+
+/// A flow the file system lists but will not open (here a socket) cannot
+/// be downloaded.
+#[cfg(unix)]
+#[tokio::test]
+async fn a_flow_that_cannot_be_read_is_not_downloaded() {
+    let c = console("socket-flow", |_| {});
+    // Bound where its path is short enough for macOS, then moved in.
+    let bound = std::env::temp_dir().join(format!("stretto-{}.sock", std::process::id()));
+    let _ = std::fs::remove_file(&bound);
+    let _socket = std::os::unix::net::UnixListener::bind(&bound).unwrap();
+    std::fs::rename(&bound, c.dir.join("socket.flow.json")).unwrap();
+    let raw = c.get("/api/flows/socket/raw").await;
+    assert_eq!(raw.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(raw.json()["error"]
+        .as_str()
+        .unwrap()
+        .starts_with("reading socket.flow.json: "));
+}
+
+/// A flow with an arbiter needs a key where it is served; a flow of a
+/// domain no session recorded is checked against no server's tools.
+#[tokio::test]
+async fn a_flow_is_warned_about_what_it_needs() {
+    let c = console("flow-warnings", |_| {});
+    let docs = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/examples");
+    std::fs::copy(
+        docs.join("retail-5-sessions-shipped-arbiter.flow.json"),
+        c.dir.join("arbiter.flow.json"),
+    )
+    .unwrap();
+    let d = c.get("/api/flows/arbiter").await.json();
+    assert_eq!(d["summary"]["decider"], "arbiter");
+    assert!(
+        d["warnings"].as_array().unwrap().iter().any(|w| w
+            .as_str()
+            .unwrap()
+            .starts_with("the flow has an arbiter, which asks TypeSafe's Jev")),
+        "{}",
+        d["warnings"]
+    );
+    let mut flow: Value =
+        serde_json::from_slice(&std::fs::read(c.dir.join("shop.flow.json")).unwrap()).unwrap();
+    flow["manifest"]["domain"] = json!("elsewhere");
+    flow["manifest"]["tools"]["notes"] = json!("generic");
+    std::fs::write(c.dir.join("elsewhere.flow.json"), flow.to_string()).unwrap();
+    let d = c.get("/api/flows/elsewhere").await.json();
+    assert_eq!(d["warnings"], json!([]));
+    assert_eq!(d["summary"]["tools"]["generic"], 1);
+
+    // The newest shop session's server lists less than the flow looks up.
+    write_lines(
+        &c.dir,
+        "logs/shop/newest.jsonl",
+        &[
+            json!({"stretto_mcp_log": 2, "session": "newest", "started_unix_ms": fixture_now(),
+                   "server_command": ["x"], "domain": "shop", "agent_model": null}),
+            json!({"t_ms": 1, "from": "client",
+                   "message": {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}}),
+            json!({"t_ms": 2, "from": "server",
+                   "message": {"jsonrpc": "2.0", "id": 1,
+                               "result": {"tools": [{"name": "get_user_details"}]}}}),
+        ],
+    );
+    let health = c.get("/api/overview").await.json()["health"].clone();
+    let said = "shop.flow.json: the flow looks up `get_order_details`, which the latest \
+                recorded tools/list (session newest) does not list";
+    assert!(
+        health
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|h| h["level"] == "warn" && h["message"] == said),
+        "{health:#}"
+    );
 }
 
 // ---- servers --------------------------------------------------------------------
@@ -1142,6 +1271,160 @@ async fn host_configuration_is_what_stretto_init_prints() {
         c.get("/api/servers/nobody/config").await.status,
         StatusCode::NOT_FOUND
     );
+}
+
+/// A registry entry as `servers.json` holds it, with `extra` over a
+/// serving stdio server that has no flow.
+fn entry(name: &str, extra: Value) -> Value {
+    let mut e = json!({
+        "name": name,
+        "description": null,
+        "upstream": {"kind": "stdio", "command": ["stretto-mcp-demo"], "env": []},
+        "mode": "serve",
+        "flow": null,
+        "record_dir": null,
+        "decider": null,
+        "threshold": null,
+        "created_unix_ms": 1_790_553_600_000_u64,
+        "updated_unix_ms": 1_790_553_600_000_u64,
+    });
+    for (k, v) in extra.as_object().unwrap() {
+        e[k] = v.clone();
+    }
+    e
+}
+
+/// A registry edited by hand can hold what the API would refuse; the
+/// console says what is wrong with each server.
+#[tokio::test]
+async fn what_is_wrong_with_a_server_is_said() {
+    let c = console("server-issues", |_| {});
+    std::fs::write(c.dir.join("broken.flow.json"), "{").unwrap();
+    let mut flow: Value =
+        serde_json::from_slice(&std::fs::read(c.dir.join("shop.flow.json")).unwrap()).unwrap();
+    flow.as_object_mut().unwrap().remove("reach");
+    std::fs::write(c.dir.join("unreached.flow.json"), flow.to_string()).unwrap();
+    let servers = [
+        entry("unflowed", json!({"mode": "shadow"})),
+        entry("unserved", json!({})),
+        entry("broken", json!({"flow": "broken.flow.json"})),
+        entry(
+            "shop",
+            json!({"flow": "shop.flow.json", "decider": "arbiter"}),
+        ),
+        entry(
+            "unreached",
+            json!({"flow": "unreached.flow.json", "decider": "reach"}),
+        ),
+        entry(
+            "outside",
+            json!({"flow": "../../../../../x.flow.json", "record_dir": "../../../../../x"}),
+        ),
+        entry(
+            "nothing",
+            json!({"upstream": {"kind": "stdio", "command": [], "env": []}, "mode": "record"}),
+        ),
+    ];
+    let registry = json!({"stretto_servers": 1, "servers": servers});
+    std::fs::write(c.dir.join("servers.json"), registry.to_string()).unwrap();
+    // A session that names no domain is no server's.
+    write_lines(
+        &c.dir,
+        "logs/anon/anon.jsonl",
+        &[
+            json!({"stretto_mcp_log": 2, "session": "anon", "started_unix_ms": fixture_now(),
+                   "server_command": ["x"], "domain": null, "agent_model": null}),
+        ],
+    );
+
+    let list = c.get("/api/servers").await.json();
+    let issues = |name: &str| -> Vec<String> {
+        let item = list["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["name"] == name)
+            .unwrap();
+        item["issues"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|i| i.as_str().unwrap().to_string())
+            .collect()
+    };
+    let has = |name: &str, issue: &str| {
+        let all = issues(name);
+        assert!(all.iter().any(|i| i.starts_with(issue)), "{name}: {all:?}");
+    };
+    has("unflowed", "mode is shadow but no flow is set");
+    has("unserved", "mode is serve but no flow is set");
+    has("broken", "the flow does not load: ");
+    has("shop", "decider is arbiter, but the flow has no arbiter");
+    has(
+        "unreached",
+        "decider is reach, but the flow holds no reach counts: learn it again",
+    );
+    has(
+        "outside",
+        "the flow's path cannot be used: ../../../../../x.flow.json",
+    );
+    assert_eq!(issues("nothing"), Vec::<String>::new());
+    // A path that cannot be resolved is passed on as it was given.
+    let outside = list["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["name"] == "outside")
+        .unwrap();
+    let args = outside["proxy_args"].as_array().unwrap();
+    assert!(args.contains(&json!("../../../../../x")), "{args:?}");
+    assert!(
+        args.contains(&json!("../../../../../x.flow.json")),
+        "{args:?}"
+    );
+    let discovered = list["discovered"].as_array().unwrap();
+    assert!(discovered.iter().all(|d| d["domain"].is_string()));
+    let health = c.get("/api/overview").await.json()["health"].clone();
+    assert!(health
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|h| h["level"] == "warn"
+            && h["message"] == "server unflowed: mode is shadow but no flow is set"));
+}
+
+/// With `stretto-proxy` on the console's PATH, a host starts it by name,
+/// but Claude Desktop, which starts servers with a minimal PATH, by where
+/// it is.
+#[tokio::test]
+async fn the_proxy_is_named_as_the_host_can_find_it() {
+    let bin = std::env::temp_dir().join(format!("stretto-console-it-path-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&bin);
+    std::fs::create_dir_all(&bin).unwrap();
+    let proxy = bin.join(format!("stretto-proxy{}", std::env::consts::EXE_SUFFIX));
+    std::fs::write(&proxy, "").unwrap();
+    let path = bin.clone().into_os_string();
+    let c = console("proxy-on-path", |config| config.env.path = path);
+    let command = |host: &str| {
+        let c = &c;
+        let host = host.to_string();
+        async move {
+            let answer = c
+                .get(&format!("/api/servers/shop/config?host={host}"))
+                .await
+                .json();
+            answer["snippet"].as_str().unwrap().to_string()
+        }
+    };
+    let desktop: Value = serde_json::from_str(&command("claude-desktop").await).unwrap();
+    assert_eq!(
+        desktop["mcpServers"]["shop"]["command"],
+        proxy.display().to_string()
+    );
+    assert!(command("claude-code")
+        .await
+        .starts_with("claude mcp add shop -- stretto-proxy --record"));
+    std::fs::remove_dir_all(&bin).unwrap();
 }
 
 #[tokio::test]
@@ -1591,6 +1874,47 @@ async fn events_say_what_changed_and_carry_jobs() {
     assert!(seen.contains("\"kind\":\"doctor\""), "{seen}");
 }
 
+/// A client too slow for the events misses the oldest and reads on from
+/// there; when the console goes, the stream ends.
+#[tokio::test]
+async fn a_slow_client_misses_events_and_the_stream_ends_with_the_console() {
+    use futures_util::StreamExt;
+    use stretto_console::watch::{Changed, ChangedWhat, Event};
+    let c = console("events-lag", |_| {});
+    let response = c
+        .app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/events")
+                .header(header::AUTHORIZATION, format!("Bearer {TOKEN}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let mut stream = response.into_body().into_data_stream();
+    // More than the channel holds, before the client reads any.
+    for i in 0..300 {
+        let keys = vec![format!("f{i}")];
+        let change = Changed {
+            what: ChangedWhat::Flows,
+            keys,
+        };
+        c.state.events.send(Event::Changed(change)).unwrap();
+    }
+    drop(c);
+    let mut seen = String::new();
+    while let Some(chunk) = tokio::time::timeout(Duration::from_secs(10), stream.next())
+        .await
+        .expect("the stream ends")
+    {
+        seen.push_str(&String::from_utf8_lossy(&chunk.unwrap()));
+    }
+    assert!(!seen.contains("[\"f0\"]"), "{seen}");
+    assert!(seen.contains("[\"f299\"]"), "{seen}");
+}
+
 // ---- a first run ----------------------------------------------------------------
 
 #[tokio::test]
@@ -1665,6 +1989,108 @@ async fn an_empty_data_directory_answers_with_empty_lists() {
         .any(|h| h["level"] == "error" && h["message"].as_str().unwrap().contains("servers.json")));
 }
 
+/// A plan for a job, as the API would make it, to queue directly.
+fn doctor_plan() -> Plan {
+    Plan {
+        kind: JobKind::Doctor,
+        title: "Check".into(),
+        params: json!({"kind": "doctor"}),
+        args: vec!["doctor".into()],
+        artifacts: Vec::new(),
+    }
+}
+
+/// A job whose `stretto` cannot be started, or whose log cannot be
+/// opened, fails, and says why where it can.
+#[tokio::test]
+async fn a_job_that_cannot_start_says_why() {
+    let missing = std::env::temp_dir().join("stretto-console-no-such-dir/stretto");
+    let c = console("unstartable", |config| {
+        config.binaries.stretto = Some(Binary {
+            path: missing.display().to_string(),
+            version: None,
+        });
+        config.binaries.proxy = Some(Binary {
+            path: "/old/stretto-proxy".into(),
+            version: Some("stretto-proxy 0.0.1".into()),
+        });
+    });
+    let health = c.get("/api/overview").await.json()["health"].clone();
+    let messages: Vec<&str> = health
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| h["message"].as_str().unwrap())
+        .collect();
+    let silent = format!("stretto ({}) does not answer --version", missing.display());
+    assert!(messages.contains(&silent.as_str()), "{messages:?}");
+    assert!(
+        messages
+            .iter()
+            .any(|m| m.starts_with("stretto-proxy 0.0.1 (/old/stretto-proxy) is not stretto ")),
+        "{messages:?}"
+    );
+    let answer = c
+        .call(Method::POST, "/api/jobs", Some(json!({"kind": "doctor"})))
+        .await;
+    let id = answer.json()["id"].as_str().unwrap().to_string();
+    let job = c.finished(&id).await;
+    assert_eq!(job["status"], "failed");
+    let said = format!("stretto-console: starting {}: ", missing.display());
+    assert!(job["output"].as_str().unwrap().contains(&said), "{job:#}");
+
+    // A log that cannot be opened: the job fails with nothing to show.
+    std::fs::create_dir_all(c.dir.join("console/jobs/blocked.log")).unwrap();
+    c.state
+        .jobs
+        .submit("blocked".into(), doctor_plan(), fixture_now());
+    let job = c.finished("blocked").await;
+    assert_eq!(
+        (&job["status"], &job["exit_code"], &job["output"]),
+        (&json!("failed"), &Value::Null, &json!(""))
+    );
+}
+
+/// Where jobs cannot be kept (here `console/jobs` is a file), a job fails.
+#[tokio::test]
+async fn a_job_where_jobs_cannot_be_kept_fails() {
+    let c = console("jobs-blocked", |config| {
+        std::fs::create_dir_all(config.data_dir.join("console")).unwrap();
+        std::fs::write(config.data_dir.join("console/jobs"), "").unwrap();
+    });
+    assert_eq!(c.get("/api/jobs").await.json()["items"], json!([]));
+    let answer = c
+        .call(Method::POST, "/api/jobs", Some(json!({"kind": "doctor"})))
+        .await;
+    let id = answer.json()["id"].as_str().unwrap().to_string();
+    let job = c.finished(&id).await;
+    assert_eq!(
+        (&job["status"], &job["exit_code"]),
+        (&json!("failed"), &Value::Null)
+    );
+}
+
+/// A read-only console writes nothing for a job, even one cancelled before
+/// it ran (which only this API, not the console's routes, can queue there).
+#[tokio::test]
+async fn a_read_only_console_writes_nothing_for_a_job() {
+    let c = console("read-only-jobs", |config| config.read_only = true);
+    let job = c
+        .state
+        .jobs
+        .submit("queued".into(), doctor_plan(), fixture_now());
+    assert_eq!(job.status, JobStatus::Queued);
+    let cancelled = c.state.jobs.cancel("queued", fixture_now()).unwrap();
+    assert_eq!(cancelled.status, JobStatus::Cancelled);
+    assert!(!c.dir.join("console").exists());
+    let health = c.get("/api/overview").await.json()["health"].clone();
+    let said = format!(
+        "read-only: the console changes nothing in {}",
+        c.dir.display()
+    );
+    assert_eq!(health[0]["message"], said, "{health:#}");
+}
+
 /// A `stretto` that runs `script` (after `#!/bin/sh`), so that a job runs
 /// until it is cancelled.
 #[cfg(unix)]
@@ -1684,7 +2110,12 @@ fn fake_stretto(dir: &std::path::Path, script: &str) -> Binary {
 async fn a_job_is_cancelled_queued_or_running() {
     let bin = std::env::temp_dir().join(format!("stretto-console-cancel-{}", std::process::id()));
     std::fs::create_dir_all(&bin).unwrap();
-    let stretto = fake_stretto(&bin, "echo started\nexec sleep 30\n");
+    // What it starts outlives it: it holds the pipes open, prints once
+    // `sleep`, which keeps the FIFO open, has been killed, and then ends.
+    let stretto = fake_stretto(
+        &bin,
+        "echo started\nmkfifo gate\n(read x < gate; echo after) &\nexec 3>gate\nexec sleep 30\n",
+    );
     let c = console("cancel", |config| config.binaries.stretto = Some(stretto));
     let doctor = || c.call(Method::POST, "/api/jobs", Some(json!({"kind": "doctor"})));
     let first = doctor().await.json();
@@ -1729,7 +2160,7 @@ async fn a_job_is_cancelled_queued_or_running() {
     assert_eq!(ended["exit_code"], 137, "{ended:#}");
     let output = ended["output"].as_str().unwrap();
     assert!(
-        output.contains("started") && output.ends_with("stretto-console: cancelled\n"),
+        output.contains("started") && output.ends_with("after\nstretto-console: cancelled\n"),
         "{output}"
     );
     // The second never started.
@@ -1802,4 +2233,426 @@ async fn a_cancelled_job_ends_though_a_child_holds_its_output() {
         started.elapsed()
     );
     std::fs::remove_dir_all(&bin).unwrap();
+}
+
+// ---- planning jobs ----------------------------------------------------------------
+
+/// Post `body` as a job: the status, and the job or the error.
+async fn submit(c: &Console, body: Value) -> (StatusCode, Value) {
+    let answer = c.call(Method::POST, "/api/jobs", Some(body)).await;
+    (answer.status, answer.json())
+}
+
+#[tokio::test]
+async fn each_job_is_planned_with_its_options() {
+    let c = console("plans", |config| {
+        config.binaries.stretto = None;
+        config.env.set.insert("TYPESAFE_API_KEY".to_string());
+    });
+    // With a key, a learn job may fit an arbiter, and bind constants.
+    let (status, job) = submit(
+        &c,
+        json!({"kind": "learn", "domain": "shop", "sessions": "logs/shop",
+               "out": "flows/shop.txt", "habit_only": false, "constants": true}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::ACCEPTED, "{job}");
+    assert_eq!(
+        (&job["params"]["habit_only"], &job["params"]["constants"]),
+        (&json!(false), &json!(true))
+    );
+    // A file to write is not written over unless asked, and goes where a
+    // directory can be made.
+    std::fs::write(c.dir.join("notes"), "").unwrap();
+    let (status, answer) = submit(
+        &c,
+        json!({"kind": "learn", "domain": "shop", "sessions": "logs/shop", "out": "notes/x.flow.json"}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR, "{answer}");
+    assert!(answer["error"]
+        .as_str()
+        .unwrap()
+        .starts_with("creating notes: "));
+
+    // A promotion's defaults, and what it refuses.
+    let (status, job) = submit(
+        &c,
+        json!({"kind": "promote", "flow": "shop", "sessions": "shadow/shop",
+               "oracle_cache": "oracle-cache", "overwrite": true}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::ACCEPTED, "{job}");
+    assert_eq!(job["params"]["out"], "shop.promoted.flow.json");
+    let (status, answer) = submit(
+        &c,
+        json!({"kind": "promote", "flow": "shop", "sessions": "shadow/shop", "min_tasks": 0}),
+    )
+    .await;
+    assert_eq!(
+        (status, &answer["error"]),
+        (StatusCode::BAD_REQUEST, &json!("min_tasks: at least 1"))
+    );
+
+    // An audit may name the decider.
+    let (status, job) = submit(
+        &c,
+        json!({"kind": "audit", "flow": "shop", "sessions": "served/shop", "decider": "habit"}),
+    )
+    .await;
+    assert_eq!(
+        (status, &job["params"]["decider"]),
+        (StatusCode::ACCEPTED, &json!("habit"))
+    );
+}
+
+#[tokio::test]
+async fn a_redaction_needs_a_salt_and_a_directory_of_its_own() {
+    // A home outside the data directory.
+    let home = std::env::temp_dir().join(format!("stretto-console-home-{}", std::process::id()));
+    let c = console("redact", |config| {
+        config.binaries.stretto = None;
+        config.env.set.insert("STRETTO_REDACT_SALT".to_string());
+        config.home = Some(home.clone());
+    });
+    let redact = |more: Value| {
+        let mut body = json!({"kind": "redact", "sessions": "logs/shop", "out": "redacted"});
+        body.as_object_mut()
+            .unwrap()
+            .extend(more.as_object().unwrap().clone());
+        body
+    };
+    for (more, error) in [
+        (
+            json!({"out": "logs/shop/copy"}),
+            "out: the redacted copy goes in a directory of its own, apart from the sessions",
+        ),
+        (
+            json!({"out": "logs"}),
+            "out: the redacted copy goes in a directory of its own, apart from the sessions",
+        ),
+        (json!({"keep_shared": 0}), "keep_shared: at least 1"),
+        (
+            json!({"hash_fields": ["user id"]}),
+            "hash_fields: field names, without spaces",
+        ),
+    ] {
+        let (status, answer) = submit(&c, redact(more)).await;
+        assert_eq!(
+            (status, &answer["error"]),
+            (StatusCode::BAD_REQUEST, &json!(error))
+        );
+    }
+    // Fields may come as one list with commas; the copy may go outside the
+    // data directory.
+    let (status, job) = submit(
+        &c,
+        redact(json!({"out": "~/redacted", "hash_fields": ["user_id, email", ""]})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::ACCEPTED, "{job}");
+    assert_eq!(job["params"]["out"], "~/redacted");
+    assert_eq!(job["params"]["hash_fields"], json!(["user_id", "email"]));
+    assert_eq!(job["params"]["keep_shared"], 3);
+
+    // A directory the job wrote is not shown as a file.
+    std::fs::create_dir_all(c.dir.join("redacted")).unwrap();
+    let (_, job) = submit(&c, redact(json!({}))).await;
+    let id = job["id"].as_str().unwrap();
+    c.finished(id).await;
+    let answer = c.get(&format!("/api/jobs/{id}/artifacts/0")).await;
+    assert_eq!(answer.status, StatusCode::BAD_REQUEST);
+    assert_eq!(answer.json()["error"], "redacted is a directory");
+    let _ = std::fs::remove_dir_all(&home);
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn an_artifact_is_shown_once_it_exists() {
+    let bin =
+        std::env::temp_dir().join(format!("stretto-console-artifacts-{}", std::process::id()));
+    std::fs::create_dir_all(&bin).unwrap();
+    let stretto = fake_stretto(&bin, "echo started\nexec sleep 30\n");
+    let c = console("artifacts", |config| {
+        config.binaries.stretto = Some(stretto)
+    });
+    // The first job runs (and sleeps); the second waits, and has written
+    // nothing yet.
+    let (_, first) = submit(&c, json!({"kind": "doctor"})).await;
+    std::fs::create_dir_all(c.dir.join("flows")).unwrap();
+    std::fs::write(c.dir.join("flows/shop.txt"), "a flow, as text").unwrap();
+    let (_, text) = submit(
+        &c,
+        json!({"kind": "learn", "domain": "shop", "sessions": "logs/shop",
+               "out": "flows/shop.txt", "overwrite": true}),
+    )
+    .await;
+    let (_, waiting) = submit(
+        &c,
+        json!({"kind": "audit", "flow": "shop", "sessions": "served/shop"}),
+    )
+    .await;
+    let missing = c
+        .get(&format!(
+            "/api/jobs/{}/artifacts/0",
+            waiting["id"].as_str().unwrap()
+        ))
+        .await;
+    assert_eq!(missing.status, StatusCode::NOT_FOUND);
+    // A file that is neither JSON nor Markdown is plain text.
+    let shown = c
+        .get(&format!(
+            "/api/jobs/{}/artifacts/0",
+            text["id"].as_str().unwrap()
+        ))
+        .await;
+    assert_eq!(
+        shown.header(header::CONTENT_TYPE),
+        "text/plain; charset=utf-8"
+    );
+    assert_eq!(shown.text(), "a flow, as text");
+    assert_eq!(
+        c.get("/api/jobs/nothing/artifacts/0").await.status,
+        StatusCode::NOT_FOUND
+    );
+    for job in [&first, &text, &waiting] {
+        let id = job["id"].as_str().unwrap();
+        c.call(Method::POST, &format!("/api/jobs/{id}/cancel"), None)
+            .await;
+    }
+    std::fs::remove_dir_all(&bin).unwrap();
+}
+
+// ---- sessions unlike the fixtures -------------------------------------------------
+
+/// Write `lines`, one JSON value each, to `rel` under `dir`.
+fn write_lines(dir: &Path, rel: &str, lines: &[Value]) {
+    let path = dir.join(rel);
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    let text: String = lines.iter().map(|l| format!("{l}\n")).collect();
+    std::fs::write(path, text).unwrap();
+}
+
+#[tokio::test]
+async fn a_session_unlike_the_fixtures_is_read_in_full() {
+    let c = console("odd-session", |_| {});
+    let e =
+        |t: u64, from: &str, message: Value| json!({"t_ms": t, "from": from, "message": message});
+    write_lines(
+        &c.dir,
+        "logs/odd/odd.jsonl",
+        &[
+            json!({"stretto_mcp_log": 2, "session": "odd", "started_unix_ms": fixture_now() - 60_000,
+                   "server_command": ["odd-server"], "domain": "odd", "agent_model": null}),
+            e(
+                1,
+                "client",
+                json!({"jsonrpc": "2.0", "id": 2, "method": "tools/list"}),
+            ),
+            e(
+                2,
+                "server",
+                json!({"jsonrpc": "2.0", "id": 2, "result": {"tools": [{"name": "plain"}]}}),
+            ),
+            e(
+                3,
+                "context",
+                json!({"role": "system", "content": "Be brief."}),
+            ),
+            json!({"t_ms": 4, "from": "context", "raw": "not JSON"}),
+            // The server asks the host something, and the host answers.
+            e(
+                5,
+                "server",
+                json!({"jsonrpc": "2.0", "id": "s1", "method": "roots/list"}),
+            ),
+            e(
+                6,
+                "client",
+                json!({"jsonrpc": "2.0", "id": "s1", "result": {"roots": []}}),
+            ),
+            // A call that names no tool, and a request that is no call.
+            e(
+                7,
+                "client",
+                json!({"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {}}),
+            ),
+            e(
+                8,
+                "client",
+                json!({"jsonrpc": "2.0", "id": 4, "method": "ping"}),
+            ),
+            e(
+                9,
+                "client",
+                json!({"jsonrpc": "2.0", "id": 5, "method": "tools/call",
+                                  "params": {"name": "plain", "arguments": {}}}),
+            ),
+            e(
+                10,
+                "server",
+                json!({"jsonrpc": "2.0", "id": 5, "error": {"code": -32000}}),
+            ),
+            e(
+                11,
+                "client",
+                json!({"jsonrpc": "2.0", "id": 6, "method": "tools/call",
+                                   "params": {"name": "plain"}}),
+            ),
+            e(
+                12,
+                "server",
+                json!({"jsonrpc": "2.0", "id": 6, "result": {"structuredContent": {"a": 1}}}),
+            ),
+            // Neither a request nor a response.
+            e(13, "server", json!({"jsonrpc": "2.0", "result": {}})),
+            // A batch: a notification, and the agent's commit.
+            e(
+                14,
+                "client",
+                json!([
+                    {"jsonrpc": "2.0", "method": "notifications/progress", "params": {}},
+                    {"jsonrpc": "2.0", "id": 7, "method": "tools/call",
+                     "params": {"name": "stretto_commit", "arguments": {}}},
+                ]),
+            ),
+            // The proxy's call for the commit is the agent's, after it; its
+            // answer is longer than is kept.
+            e(
+                15,
+                "proxy",
+                json!({"jsonrpc": "2.0", "id": "stretto-1", "method": "tools/call",
+                       "params": {"name": "plain", "arguments": {"n": 1}}}),
+            ),
+            e(
+                16,
+                "server",
+                json!({"jsonrpc": "2.0", "id": "stretto-1",
+                       "result": {"content": [{"type": "text", "text": "x".repeat(70_000)}]}}),
+            ),
+            e(
+                17,
+                "proxy",
+                json!({"jsonrpc": "2.0", "id": 7, "error": {"code": -32000, "message": "refused"}}),
+            ),
+        ],
+    );
+    write_lines(
+        &c.dir,
+        "logs/odd/odd.flow.jsonl",
+        &[
+            json!({"after": 5, "action": "respond"}),
+            json!({"after": 5, "action": "hand_back", "ms": 2.5}),
+        ],
+    );
+    // Where a session log would be, something else.
+    write_lines(
+        &c.dir,
+        "logs/odd/broken.jsonl",
+        &[json!({"not": "a session"})],
+    );
+
+    let list = c.get("/api/sessions").await.json();
+    let item = list["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["session_id"] == "odd")
+        .unwrap()
+        .clone();
+    let d = c
+        .get(&format!("/api/sessions/{}", item["key"].as_str().unwrap()))
+        .await
+        .json();
+    assert_eq!(d["tools"][0]["kind"], "generic");
+    let calls = d["calls"].as_array().unwrap();
+    assert_eq!(calls.len(), 4);
+    assert_eq!(
+        (&calls[0]["ok"], &calls[0]["result_text"]),
+        (&json!(false), &json!("{\"code\":-32000}"))
+    );
+    assert_eq!(calls[1]["result_text"], "{\"a\":1}");
+    let commit = &calls[2];
+    assert_eq!(
+        (&commit["tool"], &commit["by"], &commit["ok"]),
+        (&json!("stretto_commit"), &json!("agent"), &json!(false))
+    );
+    assert_eq!(commit["result_text"], "refused");
+    let made = &calls[3];
+    assert_eq!(
+        (&made["id"], &made["by"], &made["after"]),
+        (&json!("stretto-1"), &json!("agent"), &json!("7"))
+    );
+    assert_eq!(made["result_truncated"], true);
+    assert!(made["result_json"].is_null());
+    assert_eq!(made["result_text"].as_str().unwrap().len(), 64 * 1024);
+    let events = d["events"].as_array().unwrap();
+    let shown: Vec<(&str, &str, &str)> = events
+        .iter()
+        .map(|e| {
+            (
+                e["from"].as_str().unwrap(),
+                e["kind"].as_str().unwrap(),
+                e["summary"].as_str().unwrap(),
+            )
+        })
+        .collect();
+    assert!(
+        shown.contains(&("context", "context", "system: Be brief.")),
+        "{shown:?}"
+    );
+    assert!(shown.contains(&("context", "raw", "not JSON")), "{shown:?}");
+    assert!(
+        shown.contains(&("server", "raw", "{\"jsonrpc\":\"2.0\",\"result\":{}}")),
+        "{shown:?}"
+    );
+    let answered = events
+        .iter()
+        .find(|e| e["from"] == "client" && e["id"] == "s1")
+        .unwrap();
+    assert_eq!(answered["method"], "roots/list");
+    // Only the host's own roles are the conversation.
+    assert_eq!(d["context"], json!([]));
+    assert_eq!(d["decisions"].as_array().unwrap().len(), 1);
+    assert_eq!(d["decisions"][0]["ms"], 2);
+
+    let overview = c.get("/api/overview").await.json();
+    let health: Vec<&str> = overview["health"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| h["message"].as_str().unwrap())
+        .collect();
+    assert!(
+        health
+            .iter()
+            .any(|h| h.starts_with("logs/odd/broken.jsonl is not a session log")),
+        "{health:?}"
+    );
+    assert!(
+        stretto_console::data::sessions::read_json_lines(&c.dir.join("missing.jsonl")).is_empty()
+    );
+    // Listed by its name, but not a session log.
+    let broken = c.get("/api/sessions/broken").await;
+    assert_eq!(broken.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(broken.json()["error"]
+        .as_str()
+        .unwrap()
+        .starts_with("logs/odd/broken.jsonl is not a session log stretto can read: "));
+    // A file name a header cannot carry as it is.
+    std::fs::copy(
+        c.dir.join("logs/odd/odd.jsonl"),
+        c.dir.join("logs/odd/odd copy 2.jsonl"),
+    )
+    .unwrap();
+    let raw = c.get("/api/sessions/odd_copy_2/raw").await;
+    assert_eq!(raw.status, StatusCode::OK);
+    assert_eq!(
+        raw.header(header::CONTENT_DISPOSITION),
+        "attachment; filename=\"odd_copy_2.jsonl\""
+    );
+    assert_eq!(
+        c.get("/api/sessions/nothing/raw").await.status,
+        StatusCode::NOT_FOUND
+    );
 }

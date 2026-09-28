@@ -202,8 +202,7 @@ pub fn load(root: &Path) -> Result<Registry, String> {
 
 /// Write `registry` to `root`, whole or not at all: to a temporary file
 /// beside it, flushed to disk, then renamed over it.
-pub fn save(root: &Path, registry: &Registry) -> std::io::Result<()> {
-    std::fs::create_dir_all(root)?;
+pub fn save(root: &Path, registry: &Registry) -> Result<(), String> {
     let path = root.join(FILE);
     let temp = root.join(format!(
         ".{FILE}.{}.{}.tmp",
@@ -211,6 +210,7 @@ pub fn save(root: &Path, registry: &Registry) -> std::io::Result<()> {
         crate::now_unix_ms()
     ));
     let write = || -> std::io::Result<()> {
+        std::fs::create_dir_all(root)?;
         let mut file = std::fs::File::create(&temp)?;
         let mut text = serde_json::to_string_pretty(registry).map_err(std::io::Error::other)?;
         text.push('\n');
@@ -222,7 +222,7 @@ pub fn save(root: &Path, registry: &Registry) -> std::io::Result<()> {
     if result.is_err() {
         let _ = std::fs::remove_file(&temp);
     }
-    result
+    result.map_err(|e| format!("writing {FILE}: {e}"))
 }
 
 /// Why `input` cannot go in the registry of `root`, if it cannot: a name
@@ -475,8 +475,43 @@ mod tests {
         assert!(v(&far).unwrap_err().starts_with("flow:"));
         far.flow = Some("~/.stretto/shop.flow.json".into());
         assert!(v(&far).is_ok());
+        far.threshold = Some(0.5);
+        assert!(v(&far).is_ok());
         far.threshold = Some(1.5);
         assert!(v(&far).unwrap_err().contains("threshold"));
+        let mut long = stdio(&["x"]);
+        long.description = Some("x".repeat(1001));
+        assert!(v(&long).unwrap_err().contains("longer than 1,000"));
+        let args: Vec<String> = (0..257).map(|i| i.to_string()).collect();
+        let args: Vec<&str> = args.iter().map(String::as_str).collect();
+        assert!(v(&stdio(&args))
+            .unwrap_err()
+            .contains("too many or too long"));
+    }
+
+    #[test]
+    fn a_registry_that_cannot_be_read_says_why() {
+        let root = std::env::temp_dir().join(format!(
+            "stretto-console-registry-unread-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join(FILE)).unwrap();
+        let e = load(&root).unwrap_err();
+        assert!(e.starts_with("reading servers.json: "), "{e}");
+        std::fs::remove_dir(root.join(FILE)).unwrap();
+        std::fs::write(root.join(FILE), r#"{"stretto_servers": 1, "servers": 5}"#).unwrap();
+        let e = load(&root).unwrap_err();
+        assert!(e.starts_with("servers.json: "), "{e}");
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn a_decider_is_named_as_the_flag_names_it() {
+        use stretto_report::flow::Decider;
+        for d in [Decider::Arbiter, Decider::Habit, Decider::Reach] {
+            assert_eq!(DeciderName::of(d).decider(), d);
+        }
     }
 
     #[test]
@@ -542,6 +577,9 @@ mod tests {
         assert!(load(&root).unwrap_err().contains("format 2"));
         std::fs::write(root.join(FILE), "not json").unwrap();
         assert!(load(&root).unwrap_err().contains("not a server registry"));
+        // Under a file, there is nowhere to write it.
+        let e = save(&root.join(FILE).join("data"), &registry).unwrap_err();
+        assert!(e.starts_with("writing servers.json: "), "{e}");
         std::fs::remove_dir_all(&root).unwrap();
     }
 
