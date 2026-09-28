@@ -417,6 +417,103 @@ fn learn_and_audit_read_a_host_sessions_servers_as_one_session() {
 }
 
 #[test]
+fn learn_audit_promote_and_drift_read_opentelemetry_spans() {
+    use stretto_report::flow::{Decider, Flow, Proposal};
+    let t = Scratch::new("otel");
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let spans = repo.join("docs/examples/pydantic-ai-shop.otlp.jsonl");
+    let manifest = repo
+        .join("docs/examples/shop.manifest.json")
+        .display()
+        .to_string();
+    let learn = format!("learn --domain shop --manifest {manifest} --habit-only");
+    t.run(&format!(
+        "{learn} --otel {} --out $T/spans.flow.json",
+        spans.display()
+    ))
+    .ok();
+    let flow = Flow::load(&t.at("spans.flow.json")).unwrap();
+    assert_eq!(
+        flow.provenance().conventions.as_deref(),
+        Some(stretto_trace::otel::CONVENTIONS)
+    );
+    // After a customer is found, their details, bound from what the spans
+    // say the lookup returned.
+    let after_find = |path: &Path| {
+        let mut ep = stretto_trace::otel::read_otel(path).unwrap().episodes[0].clone();
+        ep.events.truncate(3);
+        ep
+    };
+    let found = after_find(&spans);
+    let next = flow.next_with(&found, &Mute, 0.3, Decider::Reach).unwrap();
+    assert!(
+        matches!(&next.proposal, Proposal::Lookup { tool, .. } if tool == "get_user_details"),
+        "{next:?}"
+    );
+
+    // Without the tools' arguments and results, the same lookup is left to
+    // the agent: its arguments are unknown.
+    let bare: String = fs::read_to_string(&spans)
+        .unwrap()
+        .lines()
+        .map(|line| {
+            let mut export: Value = serde_json::from_str(line).unwrap();
+            for resource in export["resourceSpans"].as_array_mut().unwrap() {
+                for scope in resource["scopeSpans"].as_array_mut().unwrap() {
+                    for span in scope["spans"].as_array_mut().unwrap() {
+                        span["attributes"].as_array_mut().unwrap().retain(|a| {
+                            !["gen_ai.tool.call.arguments", "gen_ai.tool.call.result"]
+                                .contains(&a["key"].as_str().unwrap())
+                        });
+                    }
+                }
+            }
+            format!("{export}\n")
+        })
+        .collect();
+    t.put("bare.jsonl", &bare);
+    t.run(&format!(
+        "{learn} --otel $T/bare.jsonl --out $T/bare.flow.json"
+    ))
+    .ok();
+    let bare = Flow::load(&t.at("bare.flow.json")).unwrap();
+    let next = bare
+        .next_with(&after_find(&t.at("bare.jsonl")), &Mute, 0.3, Decider::Reach)
+        .unwrap();
+    assert!(
+        matches!(&next.proposal, Proposal::HandBack { reason } if reason.contains("arguments are unknown")),
+        "{next:?}"
+    );
+
+    // Measured on the spans, as on sessions.
+    let otel = format!("--otel {}", spans.display());
+    let md = t
+        .run(&format!("audit --flow $T/spans.flow.json {otel}"))
+        .ok();
+    assert!(md.contains("# Flow audit"), "{md}");
+    let md = t
+        .run(&format!(
+            "promote --flow $T/spans.flow.json {otel} --out $T/p.flow.json"
+        ))
+        .ok();
+    assert!(md.contains("find_user_id_by_email"), "{md}");
+    t.run(&format!("drift --flow $T/spans.flow.json {otel}"))
+        .exits(0);
+    // Spans it cannot read are an error, not a drift.
+    t.put("notes.jsonl", "not spans\n");
+    t.run("drift --flow $T/spans.flow.json --otel $T/notes.jsonl")
+        .exits(2);
+    assert_eq!(
+        parse_error("learn --domain shop --otel x --out y"),
+        Some(ErrorKind::MissingRequiredArgument)
+    );
+    assert_eq!(
+        parse_error("audit --flow f --sessions s --otel x"),
+        Some(ErrorKind::ArgumentConflict)
+    );
+}
+
+#[test]
 fn learn_counts_the_customers_tools_as_the_agents_in_a_solo_run() {
     let t = Scratch::new("solo");
     common::write_checkout(&t.0);

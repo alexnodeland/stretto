@@ -40,6 +40,15 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 - With `--commit`, the proxy tells the agent when to use `stretto_commit`: a sentence after the server's own `instructions` in its answer to `initialize`, which hosts such as Claude Code put in the system prompt ([#37](https://github.com/alexnodeland/stretto/issues/37)).
 
+### OpenTelemetry spans
+
+- stretto learns from the OpenTelemetry GenAI spans an agent framework exports, with no proxy recording its sessions ([#23](https://github.com/alexnodeland/stretto/issues/23), [OpenTelemetry spans](website/integrations/opentelemetry.md)).
+  - `stretto_trace::otel` reads OTLP JSON exports, as the Collector's file exporter writes them, and makes an episode of each trace. Each inference span is one LLM turn with its token usage, and the `execute_tool` spans after it are that turn's calls and results, several at once being parallel calls. The user's messages and the assistant's text come from the opt-in message content.
+  - It reads the names of the GenAI conventions of semantic-conventions 1.38.0, the first to define a tool call's arguments and result; a flow learned from spans records the version in its provenance (`conventions`).
+  - `stretto learn --otel FILE --manifest M` learns a flow from them, with the tool kinds from the manifest, since spans do not carry them. A call whose arguments the spans did not capture has `null` arguments: the flow learns which lookups follow which calls but leaves those lookups to the agent, and `learn` says so.
+  - `audit`, `promote` and `drift` take `--otel` in place of `--sessions`.
+- `docs/examples/pydantic-ai-shop.otlp.jsonl` is a Pydantic AI agent's export for eight customers of the demo shop, with content capture on, recorded by `scripts/otel_fixture.py` with a scripted model; `docs/examples/shop.manifest.json` gives its tools' kinds.
+
 ### Several servers
 
 - An agent with several MCP servers leaves one log per server in each session; stretto now learns from them as one session ([#22](https://github.com/alexnodeland/stretto/issues/22), [several servers](crates/stretto-proxy/README.md#several-servers)).

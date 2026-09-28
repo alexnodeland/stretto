@@ -105,6 +105,7 @@ impl Arbiter {
                 compiled_unix_ms: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .map_or(0, |d| d.as_millis() as u64),
+                conventions: None,
             },
             predicates,
             weighed,
@@ -582,6 +583,13 @@ impl Flow {
     /// server listed it when the flow's sessions were recorded.
     pub fn with_contracts(mut self, contracts: BTreeMap<String, String>) -> Self {
         self.contracts = contracts;
+        self
+    }
+
+    /// The flow noting `conventions` in its provenance
+    /// ([`Provenance::conventions`]).
+    pub fn with_conventions(mut self, conventions: Option<String>) -> Self {
+        self.provenance.conventions = conventions;
         self
     }
 
@@ -1218,6 +1226,11 @@ pub struct Provenance {
     pub arbiter_cases: usize,
     /// When it was compiled, in milliseconds since the Unix epoch.
     pub compiled_unix_ms: u64,
+    /// For a flow learned from OpenTelemetry spans (`learn --otel`), the
+    /// version of the GenAI semantic conventions they were read by
+    /// ([`stretto_trace::otel::CONVENTIONS`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conventions: Option<String>,
 }
 
 /// Where each lookup's arguments came from in training, and how often

@@ -102,7 +102,8 @@ const integrations: DefaultTheme.SidebarItem[] = [
       { text: 'Claude Code', link: '/integrations/claude-code' },
       { text: 'Claude Desktop', link: '/integrations/claude-desktop' },
       { text: 'Cursor and VS Code', link: '/integrations/cursor-vscode' },
-      { text: 'Streamable HTTP servers', link: '/integrations/streamable-http' }
+      { text: 'Streamable HTTP servers', link: '/integrations/streamable-http' },
+      { text: 'OpenTelemetry spans', link: '/integrations/opentelemetry' }
     ]
   }
 ]

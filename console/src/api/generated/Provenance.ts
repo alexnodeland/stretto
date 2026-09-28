@@ -23,4 +23,10 @@ arbiter_cases: number,
 /**
  * When it was compiled, in milliseconds since the Unix epoch.
  */
-compiled_unix_ms: number, };
+compiled_unix_ms: number, 
+/**
+ * For a flow learned from OpenTelemetry spans (`learn --otel`), the
+ * version of the GenAI semantic conventions they were read by
+ * ([`stretto_trace::otel::CONVENTIONS`]).
+ */
+conventions?: string | null, };

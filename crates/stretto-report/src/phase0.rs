@@ -1322,6 +1322,7 @@ fn featured(
                     compiled_unix_ms: std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
                         .map_or(0, |d| d.as_millis() as u64),
+                    conventions: None,
                 },
                 vocab: vocab.clone(),
                 manifest: manifest.clone(),

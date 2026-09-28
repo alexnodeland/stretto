@@ -4,9 +4,11 @@
 //! tools, flattened into [`Event`]s in the order they happened. Everything
 //! downstream (abstraction, world model, reports) reads episodes, never a
 //! benchmark's native format; the [`tau2`] module converts τ²-bench results,
-//! and the [`mcp`] module converts logs recorded by `stretto-proxy`.
+//! the [`mcp`] module converts logs recorded by `stretto-proxy`, and the
+//! [`otel`] module converts OpenTelemetry GenAI spans.
 
 pub mod mcp;
+pub mod otel;
 pub mod redact;
 pub mod tau2;
 

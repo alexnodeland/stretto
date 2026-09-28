@@ -46,7 +46,7 @@ flowchart LR
     learn -- "flow.json" --> proxy
 ```
 
-1. **Record.** Run your MCP server behind `stretto-proxy`. It forwards every message and records each session.
+1. **Record.** Run your MCP server behind `stretto-proxy`. It forwards every message and records each session. An agent framework that exports OpenTelemetry GenAI spans can learn from those instead ([OpenTelemetry spans](https://stretto.alexnodeland.com/integrations/opentelemetry)).
 2. **Learn.** `stretto learn` counts which reads follow which calls, and where each argument came from: an earlier result, or a constant. It writes a flow.
 3. **Review.** `stretto flow-show` lists the tools the flow may call, the lookups it may make and how their arguments are bound. Run the flow in shadow first, where it decides and logs but looks nothing up. `stretto promote` then keeps the sites where its lookups were the agent's own.
 4. **Serve.** After each of the agent's calls, the flow makes the lookups whose chance of use clears the threshold. Their results ride in the same tool result, so the agent already has what it would have asked for next.
@@ -150,7 +150,7 @@ stretto is pre-release.
 | `stretto-report` | `stretto`, the CLI: `init`, `doctor`, `learn`, `flow-show`, `flow-diff`, `promote`, `audit`, `redact`, and the research commands |
 | `stretto-console` | `stretto-console`, the console: an HTTP API over `~/.stretto`, and the web app in `console/`, built into the binary ([README](crates/stretto-console/README.md)) |
 | `stretto-model` | The habit (a hierarchical Dirichlet back-off model), argument provenance and bindings, policy checks |
-| `stretto-trace` | The episode schema, and ingest of τ²-bench results and the proxy's session logs |
+| `stretto-trace` | The episode schema, and ingest of τ²-bench results, the proxy's session logs and OpenTelemetry GenAI spans |
 | `stretto-oracle` | The System-One client (TypeSafe's Jev), with an on-disk replay cache |
 
 ## Contributing

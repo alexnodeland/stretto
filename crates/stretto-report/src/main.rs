@@ -119,17 +119,32 @@ enum Command {
     /// The logs one host session left with several servers are one session,
     /// each tool named after its server (`server::tool`).
     /// With `--results`, the sessions are τ²-bench episodes on a checkout's
-    /// training tasks instead, as if a deployment had recorded them.
+    /// training tasks instead, as if a deployment had recorded them; with
+    /// `--otel`, the traces of an agent framework's OpenTelemetry spans.
     Learn {
-        /// Directory of session logs (`*.jsonl`); needed unless `--results` is
-        /// given.
+        /// Directory of session logs (`*.jsonl`); needed unless `--results`
+        /// or `--otel` is given.
         #[arg(
             help_heading = "Inputs",
             value_name = "DIR",
             long,
-            required_unless_present = "results"
+            required_unless_present_any = ["results", "otel"]
         )]
         sessions: Option<PathBuf>,
+        /// OpenTelemetry GenAI spans to learn from in place of `--sessions`:
+        /// an OTLP JSON export, as the Collector's file exporter writes it,
+        /// each trace one session. Spans do not say which tools only read,
+        /// so `--manifest` gives the kinds. Without the tools' arguments and
+        /// results, which the conventions capture only on request, the flow
+        /// learns which lookups follow which calls but binds no arguments.
+        #[arg(
+            help_heading = "Inputs",
+            value_name = "FILE",
+            long,
+            conflicts_with_all = ["sessions", "results"],
+            requires = "manifest"
+        )]
+        otel: Option<PathBuf>,
         /// τ²-bench results to learn from in place of `--sessions`
         /// (repeatable): their episodes on the training tasks of the
         /// `--tau2` checkout's split, with their rewards. The tools come
@@ -450,6 +465,15 @@ enum Command {
         /// Sessions recorded by stretto-proxy (a directory of `*.jsonl`).
         #[arg(help_heading = "Inputs", value_name = "DIR", long)]
         sessions: Option<PathBuf>,
+        /// OpenTelemetry GenAI spans in place of --sessions: an OTLP JSON
+        /// export, each trace a session (`learn --otel`).
+        #[arg(
+            help_heading = "Inputs",
+            value_name = "FILE",
+            long,
+            conflicts_with = "sessions"
+        )]
+        otel: Option<PathBuf>,
         /// τ²-bench results files (repeatable); files for other domains are
         /// skipped.
         #[arg(help_heading = "Inputs", value_name = "FILE", long = "results")]
@@ -499,6 +523,15 @@ enum Command {
         /// taken in the order they started.
         #[arg(help_heading = "Inputs", value_name = "DIR", long)]
         sessions: Option<PathBuf>,
+        /// OpenTelemetry GenAI spans in place of --sessions: an OTLP JSON
+        /// export, each trace a session (taken in the order they started).
+        #[arg(
+            help_heading = "Inputs",
+            value_name = "FILE",
+            long,
+            conflicts_with = "sessions"
+        )]
+        otel: Option<PathBuf>,
         /// τ²-bench results files, their episodes taken in the order listed
         /// and before any --sessions, as a flow compiled from benchmark runs
         /// serves a deployment later; files for other domains are skipped.
@@ -742,6 +775,15 @@ enum Command {
         /// each counts as its own task.
         #[arg(help_heading = "Inputs", value_name = "DIR", long)]
         sessions: Option<PathBuf>,
+        /// OpenTelemetry GenAI spans in place of --sessions: an OTLP JSON
+        /// export, each trace a session (each its own task).
+        #[arg(
+            help_heading = "Inputs",
+            value_name = "FILE",
+            long,
+            conflicts_with = "sessions"
+        )]
+        otel: Option<PathBuf>,
         /// τ²-bench results files (repeatable); files for other domains are
         /// skipped.
         #[arg(help_heading = "Inputs", value_name = "FILE", long = "results")]
@@ -1441,6 +1483,7 @@ fn run(cli: Cli, env: &mut Env) -> Result<i32> {
         }
         Command::Learn {
             sessions,
+            otel,
             results,
             tau2,
             train_fraction,
@@ -1464,37 +1507,38 @@ fn run(cli: Cli, env: &mut Env) -> Result<i32> {
             if !(train_fraction > 0.0 && train_fraction <= 1.0) {
                 anyhow::bail!("--train-fraction must be in (0, 1]");
             }
-            let (episodes, manifest, contracts) = match sessions {
-                Some(sessions) => {
-                    if train_fraction < 1.0 || !train_tasks.is_empty() || !trials.is_empty() {
-                        anyhow::bail!(
-                            "--train-fraction, --train-tasks and --trials apply to --results"
-                        );
-                    }
-                    let rewards: BTreeMap<String, f64> = match rewards {
-                        Some(path) => serde_json::from_str(
-                            &std::fs::read_to_string(&path)
-                                .with_context(|| format!("reading {}", path.display()))?,
-                        )?,
-                        None => BTreeMap::new(),
-                    };
+            let conventions = otel
+                .is_some()
+                .then(|| stretto_trace::otel::CONVENTIONS.to_string());
+            // Sessions or spans, which clap allows only without --results.
+            let recorded = results.is_empty();
+            if recorded && (train_fraction < 1.0 || !train_tasks.is_empty() || !trials.is_empty()) {
+                anyhow::bail!("--train-fraction, --train-tasks and --trials apply to --results");
+            }
+            let rewards: BTreeMap<String, f64> = match rewards {
+                Some(path) => serde_json::from_str(
+                    &std::fs::read_to_string(&path)
+                        .with_context(|| format!("reading {}", path.display()))?,
+                )?,
+                None => BTreeMap::new(),
+            };
+            let manifest: Option<stretto_trace::ToolManifest> = match manifest {
+                Some(path) => Some(serde_json::from_str(&std::fs::read_to_string(&path)?)?),
+                None => None,
+            };
+            let (mut episodes, manifest, contracts) = match (sessions, otel) {
+                (Some(sessions), _) => {
                     let logs = sessions_in(&sessions)?;
-                    let manifest = match manifest {
-                        Some(path) => serde_json::from_str(&std::fs::read_to_string(&path)?)?,
-                        None => stretto_trace::mcp::manifest_of(&logs, &domain),
-                    };
-                    let episodes: Vec<stretto_trace::Episode> = logs
-                        .iter()
-                        .map(|log| {
-                            let mut ep = stretto_trace::mcp::episode(log);
-                            ep.domain = domain.clone();
-                            ep.reward = rewards.get(&ep.id).copied().unwrap_or(1.0);
-                            ep
-                        })
-                        .collect();
+                    let manifest =
+                        manifest.unwrap_or_else(|| stretto_trace::mcp::manifest_of(&logs, &domain));
+                    let episodes = logs.iter().map(stretto_trace::mcp::episode).collect();
                     (episodes, manifest, stretto_trace::mcp::contracts_of(&logs))
                 }
-                None => {
+                (None, Some(otel)) => {
+                    let manifest = manifest.context("--otel needs --manifest")?;
+                    (spans_in(&otel)?, manifest, BTreeMap::new())
+                }
+                (None, None) => {
                     let tau2 = tau2.context("--results needs --tau2")?;
                     let (episodes, manifest) = tau2_sessions(
                         &tau2,
@@ -1507,6 +1551,12 @@ fn run(cli: Cli, env: &mut Env) -> Result<i32> {
                     (episodes, manifest, BTreeMap::new())
                 }
             };
+            if recorded {
+                for ep in &mut episodes {
+                    ep.domain = domain.clone();
+                    ep.reward = rewards.get(&ep.id).copied().unwrap_or(1.0);
+                }
+            }
             let mut config = phase0::Config::new(PathBuf::new());
             config.domains = vec![domain.clone()];
             config.refit_habit = refit_habit;
@@ -1543,7 +1593,7 @@ fn run(cli: Cli, env: &mut Env) -> Result<i32> {
                 config.shadow = Some(sc);
                 phase0::compile_flow_from_episodes(&config, &episodes, &manifest, oracle.as_ref())?
             };
-            let flow = flow.with_contracts(contracts);
+            let flow = flow.with_contracts(contracts).with_conventions(conventions);
             flow.save(&out)?;
             eprintln!(
                 "stretto: learned the {domain} flow from {} sessions ({} tools) and wrote {}",
@@ -1740,6 +1790,7 @@ fn run(cli: Cli, env: &mut Env) -> Result<i32> {
         Command::Audit {
             flow,
             sessions,
+            otel,
             results,
             tau2,
             oracle,
@@ -1750,13 +1801,20 @@ fn run(cli: Cli, env: &mut Env) -> Result<i32> {
         } => {
             let flow = stretto_report::flow::Flow::load(&flow)?;
             let domain = flow.domain().to_string();
-            let episodes: Vec<stretto_trace::Episode> =
-                recorded(&domain, sessions.as_deref(), &results, tau2.as_deref(), &[])?
-                    .into_iter()
-                    .map(|r| r.episode)
-                    .collect();
+            let episodes: Vec<stretto_trace::Episode> = recorded(
+                &domain,
+                (sessions.as_deref(), otel.as_deref()),
+                &results,
+                tau2.as_deref(),
+                &[],
+            )?
+            .into_iter()
+            .map(|r| r.episode)
+            .collect();
             if episodes.is_empty() {
-                anyhow::bail!("no episodes to audit: pass --sessions or --results for {domain}");
+                anyhow::bail!(
+                    "no episodes to audit: pass --sessions, --otel or --results for {domain}"
+                );
             }
             let mut sc = ShadowConfig::new(oracle_kind(oracle));
             sc.cache_dir = oracle_cache;
@@ -1790,6 +1848,7 @@ fn run(cli: Cli, env: &mut Env) -> Result<i32> {
         Command::Drift {
             flow,
             sessions,
+            otel,
             results,
             tau2,
             decider,
@@ -1807,9 +1866,15 @@ fn run(cli: Cli, env: &mut Env) -> Result<i32> {
                 // Benchmark runs first, as a flow is compiled from them before
                 // it serves a deployment's sessions.
                 let episodes: Vec<stretto_trace::Episode> =
-                    recorded(&domain, None, &results, tau2.as_deref(), &[])?
+                    recorded(&domain, (None, None), &results, tau2.as_deref(), &[])?
                         .into_iter()
-                        .chain(recorded(&domain, sessions.as_deref(), &[], None, &[])?)
+                        .chain(recorded(
+                            &domain,
+                            (sessions.as_deref(), otel.as_deref()),
+                            &[],
+                            None,
+                            &[],
+                        )?)
                         .map(|r| r.episode)
                         .collect();
                 let decider = Decider::from(decider);
@@ -2112,6 +2177,7 @@ fn run(cli: Cli, env: &mut Env) -> Result<i32> {
         Command::Promote {
             flow,
             sessions,
+            otel,
             results,
             tau2,
             task_ids,
@@ -2130,13 +2196,15 @@ fn run(cli: Cli, env: &mut Env) -> Result<i32> {
             let domain = flow.domain().to_string();
             let episodes = recorded(
                 &domain,
-                sessions.as_deref(),
+                (sessions.as_deref(), otel.as_deref()),
                 &results,
                 tau2.as_deref(),
                 &task_ids,
             )?;
             if episodes.is_empty() {
-                anyhow::bail!("no episodes to score: pass --sessions or --results for {domain}");
+                anyhow::bail!(
+                    "no episodes to score: pass --sessions, --otel or --results for {domain}"
+                );
             }
             let mut sc = ShadowConfig::new(oracle_kind(oracle));
             sc.cache_dir = oracle_cache;
@@ -2859,13 +2927,30 @@ fn sessions_in(dir: &Path) -> Result<Vec<stretto_trace::mcp::McpLog>> {
     Ok(sessions.logs)
 }
 
+/// The traces of an OTLP JSON export of OpenTelemetry GenAI spans
+/// ([`stretto_trace::otel`]), as episodes, saying on stderr when the spans
+/// lack the tools' arguments or results, which bind a lookup's arguments.
+fn spans_in(path: &Path) -> Result<Vec<stretto_trace::Episode>> {
+    let run = stretto_trace::otel::read_otel(path)?;
+    let [calls, arguments, results] = run.content;
+    if arguments < calls || results < calls {
+        eprintln!(
+            "stretto: of the spans' {calls} tool calls, {arguments} carry their arguments and \
+             {results} their results, which OpenTelemetry's conventions capture only on request; \
+             the flow binds no argument it did not see"
+        );
+    }
+    Ok(run.episodes)
+}
+
 /// Recorded episodes for a flow of `domain`: the proxy's sessions in
-/// `sessions` (each its own task), and the episodes of `results` for the
+/// `sessions`, or the traces of the OpenTelemetry spans in `otel` (each its
+/// own task), and the episodes of `results` for the
 /// domain, only the test split of `tau2` if given, and only `task_ids` if
 /// any are.
 fn recorded(
     domain: &str,
-    sessions: Option<&Path>,
+    (sessions, otel): (Option<&Path>, Option<&Path>),
     results: &[PathBuf],
     tau2: Option<&Path>,
     task_ids: &[String],
@@ -2879,6 +2964,12 @@ fn recorded(
                 episode,
                 sent_after,
             });
+        }
+    }
+    if let Some(path) = otel {
+        for mut episode in spans_in(path)? {
+            episode.task_id = episode.id.clone();
+            episodes.push(stretto_report::promote::Recorded::from(episode));
         }
     }
     let test = match tau2 {

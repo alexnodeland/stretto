@@ -44,10 +44,11 @@ A flow makes read-only calls on the agent's behalf, so a review asks what it may
 ### `provenance`
 
 - `stretto`: the version of stretto that wrote the flow.
-- `sources`: the training sources, by label. For `compile` these are τ²-bench's agent models. For `learn` it is the agent model the session logs name: the proxy's `--agent-model`, or else the name the host gave in `initialize`. A flow serving an arbiter from elsewhere also lists that arbiter's sources, as `arbiter (<domain>): <source>` when the arbiter came from a file and `arbiter: <source>` when it came from another flow.
+- `sources`: the training sources, by label. For `compile` these are τ²-bench's agent models. For `learn` it is the agent model the session logs name: the proxy's `--agent-model`, or else the name the host gave in `initialize`; from spans (`learn --otel`), the model the inference spans name. A flow serving an arbiter from elsewhere also lists that arbiter's sources, as `arbiter (<domain>): <source>` when the arbiter came from a file and `arbiter: <source>` when it came from another flow.
 - `habit_episodes`: the successful training episodes the habit learned from.
 - `arbiter_cases`: the held-out decisions the arbiter was fitted on; 0 for a flow with no arbiter. A flow serving a shipped arbiter carries that arbiter's count.
 - `compiled_unix_ms`: when the flow was written, in milliseconds since the Unix epoch.
+- `conventions` (written only by `learn --otel`): the version of OpenTelemetry's GenAI semantic conventions the spans were read by, such as `OpenTelemetry GenAI semantic conventions 1.38.0`. The conventions are still in development, so a flow says which names it read.
 
 ### `vocab`
 
