@@ -91,6 +91,11 @@ export function proxyArgs(world: World, entry: ServerEntry): string[] {
       entry.decider ?? (flow?.has_arbiter ? null : flow?.has_reach === false ? 'habit' : 'reach')
     if (decider) args.push('--flow-decider', decider)
     if (entry.threshold !== null) args.push('--flow-threshold', String(entry.threshold))
+    if (entry.surprise)
+      args.push(
+        '--flow-surprise',
+        entry.surprise.kind === 'off' ? 'off' : String(entry.surprise.nats),
+      )
     if (entry.mode === 'shadow') args.push('--flow-shadow')
   }
   args.push(...policyArgs(entry))

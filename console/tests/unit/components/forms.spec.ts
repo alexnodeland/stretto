@@ -21,6 +21,8 @@ const blank: ServerModel = {
   context: '',
   commit: false,
   retain_days: '',
+  surprise: '',
+  surprise_nats: '',
 }
 
 const flow = {
@@ -74,6 +76,7 @@ describe('the server form', () => {
       record_dir: null,
       decider: null,
       threshold: null,
+      surprise: null,
       guards: false,
       judge: null,
       commit: false,
@@ -113,6 +116,46 @@ describe('the server form', () => {
       guards: false,
       judge: null,
     })
+  })
+
+  it('serves the flow with its surprise gate, without it, or at another threshold', async () => {
+    const gated = {
+      ...flow,
+      key: 'gated',
+      path: 'gated.flow.json',
+      surprise: { window: 3, threshold: 2.5, quantile: 0.95 },
+    } as FlowSummary
+    const w = mount(ServerForm, {
+      props: {
+        initial: { ...blank, name: 'orders', command: 'orders-mcp', mode: 'serve' },
+        editing: false,
+        taken: [],
+        flows: [flow, gated],
+        dataDir: '/home/me/.stretto',
+        saving: false,
+        serverError: null,
+      },
+    })
+    const select = w.find('select[data-testid="server-flow"]')
+    await select.setValue('~/.stretto/orders.flow.json')
+    expect(w.text()).toContain('The flow has no gate')
+    await select.setValue('~/.stretto/gated.flow.json')
+    expect(w.text()).toContain(
+      'The flow hands back once 3 of the agent’s steps in a row average more than 2.50 nats of surprise (learned at the 0.95 quantile).',
+    )
+    await w.find('[data-testid="server-surprise"]').setValue('threshold')
+    await w.find('form').trigger('submit')
+    expect(w.text()).toContain('Give the threshold in nats, above 0.')
+    expect(w.emitted('submit')).toBeUndefined()
+    await w.find('[data-testid="server-surprise-nats"]').setValue('4')
+    await w.find('form').trigger('submit')
+    const [input] = w.emitted('submit')![0] as [ServerInput]
+    expect(input.surprise).toEqual({ kind: 'threshold', nats: 4 })
+    expect(w.text()).toContain('--flow ~/.stretto/gated.flow.json --flow-surprise 4 -- orders-mcp')
+    await w.find('[data-testid="server-surprise"]').setValue('off')
+    await w.find('form').trigger('submit')
+    expect((w.emitted('submit')![1] as [ServerInput])[0].surprise).toEqual({ kind: 'off' })
+    expect(w.text()).toContain('--flow-surprise off')
   })
 
   it('refuses a taken name and an unclosed quote', async () => {

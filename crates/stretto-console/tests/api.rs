@@ -1604,6 +1604,57 @@ async fn servers_are_created_changed_and_removed() {
 }
 
 #[tokio::test]
+async fn a_servers_surprise_gate_reaches_the_proxy() {
+    let c = console("server-surprise", |_| {});
+    let args = |v: &Value| -> Vec<String> {
+        v["proxy_args"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|a| a.as_str().unwrap().to_string())
+            .collect()
+    };
+    let flag = |v: &Value| {
+        let a = args(v);
+        let i = a.iter().position(|w| w == "--flow-surprise")?;
+        a.get(i + 1).cloned()
+    };
+    let mut body = shop_server("shop-gated");
+    let plain = c
+        .call(Method::POST, "/api/servers", Some(body.clone()))
+        .await;
+    assert_eq!(plain.status, StatusCode::OK, "{}", plain.text());
+    // Served as the flow stores its gate, which the flow's summary shows.
+    assert_eq!(flag(&plain.json()), None);
+    assert!(plain.json()["flow_summary"]["surprise"].is_null());
+    body["surprise"] = json!({"kind": "threshold", "nats": 2.5});
+    let at = c
+        .call(Method::PUT, "/api/servers/shop-gated", Some(body.clone()))
+        .await;
+    assert_eq!(at.status, StatusCode::OK, "{}", at.text());
+    assert_eq!(at.json()["surprise"]["nats"], 2.5);
+    assert_eq!(flag(&at.json()).as_deref(), Some("2.5"));
+    body["surprise"] = json!({"kind": "off"});
+    let off = c
+        .call(Method::PUT, "/api/servers/shop-gated", Some(body.clone()))
+        .await;
+    assert_eq!(flag(&off.json()).as_deref(), Some("off"));
+    // Before the server's command, where the proxy reads its options.
+    let a = args(&off.json());
+    let dash = a.iter().position(|w| w == "--").unwrap();
+    assert!(a.iter().position(|w| w == "--flow-surprise").unwrap() < dash);
+    body["surprise"] = json!({"kind": "threshold", "nats": 0});
+    let refused = c
+        .call(Method::PUT, "/api/servers/shop-gated", Some(body))
+        .await;
+    assert_eq!(refused.status, StatusCode::BAD_REQUEST);
+    assert!(refused.json()["error"]
+        .as_str()
+        .unwrap()
+        .starts_with("surprise 0: a threshold in nats"));
+}
+
+#[tokio::test]
 async fn a_servers_guards_judge_commit_and_retention_reach_the_proxy() {
     let c = console("server-policy", |_| {});
     let body = json!({

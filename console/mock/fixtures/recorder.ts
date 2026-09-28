@@ -19,6 +19,9 @@ import type {
   UpstreamView,
 } from '../../src/api/types.ts'
 
+/** How a hand-back for surprise begins its reason (`stretto_report::surprise::SURPRISED`). */
+export const SURPRISED = 'the session surprised the flow'
+
 export interface ToolDef {
   name: string
   description: string
@@ -558,6 +561,7 @@ export class Recorder {
       flow_lookups: flowCalls.length,
       hand_backs: this.decisions.filter((d) => d.action === 'hand_back').length,
       shadow_lookups: this.decisions.filter((d) => d.action === 'lookup' && d.shadow).length,
+      surprised: this.decisions.some((d) => d.reason?.startsWith(SURPRISED)),
       writes: agent.filter((c) => c.kind === 'write').length,
       upstream: this.spec.upstream,
       size_bytes: new TextEncoder().encode(raw).length,

@@ -129,6 +129,7 @@ pub fn summary(file: &FlowFile, loaded: &Loaded, served_by: Vec<String>) -> Flow
         sites: 0,
         lookups: 0,
         promoted: None,
+        surprise: None,
         served_by,
         stage: None,
         error: None,
@@ -163,6 +164,7 @@ pub fn summary(file: &FlowFile, loaded: &Loaded, served_by: Vec<String>) -> Flow
         sites_promoted: p.sites.values().filter(|r| r.promoted).count(),
         sites_scored: p.sites.len(),
     });
+    s.surprise = flow.surprise().copied();
     s
 }
 
@@ -302,13 +304,33 @@ mod tests {
         assert_eq!((s.sites, s.lookups), (3, 2));
         assert_eq!(s.habit_episodes, 6);
         assert_eq!(s.sources, ["quickstart"]);
-        assert!(s.promoted.is_none() && s.error.is_none());
+        assert!(s.promoted.is_none() && s.error.is_none() && s.surprise.is_none());
         assert_eq!(s.served_by, ["shop"]);
 
         let promoted = catalog.flow("shop.promoted").unwrap();
         let s = summary(promoted, &load(&promoted.path), Vec::new());
         let p = s.promoted.unwrap();
         assert_eq!((p.sites_promoted, p.sites_scored), (3, 4));
+    }
+
+    #[test]
+    fn a_flow_with_a_surprise_gate_says_so() {
+        let dir =
+            std::env::temp_dir().join(format!("stretto-console-flows-gate-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let gate = stretto_report::surprise::SurpriseGate {
+            window: 3,
+            threshold: 2.5,
+            quantile: Some(0.95),
+        };
+        let gated = Flow::clone(&fixture_flow("shop.flow.json")).with_surprise(Some(gate));
+        gated.save(&dir.join("shop.flow.json")).unwrap();
+        let catalog = crate::data::catalog(&dir);
+        let file = catalog.flow("shop").unwrap();
+        let s = summary(file, &load(&file.path), Vec::new());
+        assert_eq!((s.format_version, s.surprise), (2, Some(gate)));
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

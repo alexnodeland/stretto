@@ -95,6 +95,19 @@ pub struct Judge {
     pub context: String,
 }
 
+/// A server's surprise gate, in place of the one its flow stores
+/// (`--flow-surprise`).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum Surprise {
+    /// Serve the flow without a gate.
+    Off,
+    /// Hand back once the agent's steps average more than this many nats
+    /// of surprise, over the flow's window, or five steps if it has none.
+    Threshold { nats: f64 },
+}
+
 /// An HTTP header the proxy sends, by the variable holding its value.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS))]
@@ -146,6 +159,10 @@ pub struct ServerEntry {
     pub decider: Option<DeciderName>,
     /// The threshold to serve the flow at, in place of the proxy's 0.3.
     pub threshold: Option<f64>,
+    /// The flow's surprise gate, off or at another threshold, in place of
+    /// the one the flow stores.
+    #[serde(default)]
+    pub surprise: Option<Surprise>,
     /// Check each of the agent's calls against the domain's policy guards,
     /// and refuse the ones they fail (`--guards`). `retail` and `airline`
     /// have guards.
@@ -189,6 +206,9 @@ pub struct ServerInput {
     #[cfg_attr(feature = "ts", ts(optional = nullable))]
     pub threshold: Option<f64>,
     #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(optional = nullable))]
+    pub surprise: Option<Surprise>,
+    #[serde(default)]
     #[cfg_attr(feature = "ts", ts(as = "Option<bool>", optional))]
     pub guards: bool,
     #[serde(default)]
@@ -215,6 +235,7 @@ impl ServerInput {
             record_dir: blank(self.record_dir),
             decider: self.decider,
             threshold: self.threshold,
+            surprise: self.surprise,
             guards: self.guards,
             judge: self.judge.map(|j| Judge {
                 context: j.context.trim().to_string(),
@@ -346,6 +367,11 @@ pub fn validate(input: &ServerInput, root: &Path, home: Option<&Path>) -> Result
     if let Some(t) = input.threshold {
         if !t.is_finite() || !(0.0..=1.0).contains(&t) {
             return Err(format!("threshold {t}: a probability, from 0 to 1"));
+        }
+    }
+    if let Some(Surprise::Threshold { nats }) = input.surprise {
+        if !nats.is_finite() || nats <= 0.0 {
+            return Err(format!("surprise {nats}: a threshold in nats, above 0"));
         }
     }
     if input.guards && stretto_report::guards::Guards::for_domain(name).is_none() {
@@ -492,6 +518,7 @@ mod tests {
             record_dir: None,
             decider: None,
             threshold: None,
+            surprise: None,
             guards: false,
             judge: None,
             commit: false,
@@ -561,6 +588,19 @@ mod tests {
         assert!(v(&far).is_ok());
         far.threshold = Some(1.5);
         assert!(v(&far).unwrap_err().contains("threshold"));
+        far.threshold = None;
+        for (surprise, ok) in [
+            (Surprise::Off, true),
+            (Surprise::Threshold { nats: 2.5 }, true),
+            (Surprise::Threshold { nats: 0.0 }, false),
+            (Surprise::Threshold { nats: f64::NAN }, false),
+        ] {
+            far.surprise = Some(surprise);
+            assert_eq!(v(&far).is_ok(), ok, "{surprise:?}");
+        }
+        assert!(v(&far)
+            .unwrap_err()
+            .starts_with("surprise NaN: a threshold in nats"));
         let mut long = stdio(&["x"]);
         long.description = Some("x".repeat(1001));
         assert!(v(&long).unwrap_err().contains("longer than 1,000"));
@@ -731,6 +771,7 @@ mod tests {
                 record_dir: s.record_dir.clone(),
                 decider: s.decider,
                 threshold: s.threshold,
+                surprise: s.surprise,
                 guards: s.guards,
                 judge: s.judge.clone(),
                 commit: s.commit,

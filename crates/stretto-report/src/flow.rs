@@ -880,8 +880,10 @@ impl Flow {
             if let Some((site, _)) = self.habit_at(episode) {
                 if let Some(mean) = crate::surprise::tripped(self, episode, gate) {
                     let mut next = Next::handing_back(format!(
-                        "the session surprised the flow: {} of the agent's steps in a row averaged {mean:.2} nats, above {:.2}",
-                        gate.window, gate.threshold
+                        "{}: {} of the agent's steps in a row averaged {mean:.2} nats, above {:.2}",
+                        crate::surprise::SURPRISED,
+                        gate.window,
+                        gate.threshold
                     ));
                     next.site = Some(site);
                     return Ok(next);

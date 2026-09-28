@@ -31,6 +31,9 @@ export interface ServerModel {
   decider: '' | DeciderName
   /** As typed: a number input's v-model gives a number, an empty one a string. */
   threshold: string | number
+  /** The flow's surprise gate: as the flow stores it, off, or at `surprise_nats`. */
+  surprise: '' | 'off' | 'threshold'
+  surprise_nats: string | number
   guards: boolean
   /** The confirmation judge on guarded writes: off, or how it acts. */
   judge: '' | JudgeMode
@@ -80,10 +83,23 @@ const flowIsOther = ref(!!m.flow && !flowOptions.value.some((o) => o.value === m
 
 const guarded = computed(() => GUARDED_DOMAINS.includes(m.name.trim()))
 
+/** What the chosen flow's own surprise gate does, if the form knows the flow. */
+const gateHint = computed(() => {
+  const flow = props.flows.find((f) => flowPath(f) === m.flow)
+  if (!flow)
+    return 'Hand back for the rest of a session that surprises the flow (stretto learn --surprise).'
+  const g = flow.surprise
+  if (!g)
+    return 'The flow has no gate: it never hands back for surprise. A threshold gives it one over five steps.'
+  const learned = g.quantile == null ? 'set by hand' : `learned at the ${g.quantile} quantile`
+  return `The flow hands back once ${g.window} of the agent’s steps in a row average more than ${g.threshold.toFixed(2)} nats of surprise (${learned}).`
+})
+
 function toInput(): ServerInput {
   const typed = String(m.threshold ?? '').trim()
   const threshold = typed === '' ? null : Number(typed)
   const days = String(m.retain_days ?? '').trim()
+  const nats = String(m.surprise_nats ?? '').trim()
   return {
     name: m.name.trim(),
     description: m.description.trim() || null,
@@ -102,6 +118,12 @@ function toInput(): ServerInput {
     record_dir: m.record_dir.trim() || null,
     decider: m.mode === 'record' ? null : m.decider || null,
     threshold: m.mode === 'record' ? null : threshold,
+    surprise:
+      m.mode === 'record' || !m.surprise
+        ? null
+        : m.surprise === 'off'
+          ? { kind: 'off' }
+          : { kind: 'threshold', nats: nats === '' ? NaN : Number(nats) },
     guards: m.guards,
     judge: m.guards && m.judge ? { mode: m.judge, context: m.context.trim() } : null,
     commit: m.commit,
@@ -146,6 +168,9 @@ const preview = computed(() => {
     if (i.decider) args.push('--flow-decider', i.decider)
     if (i.threshold !== null && !Number.isNaN(i.threshold))
       args.push('--flow-threshold', String(i.threshold))
+    if (i.surprise?.kind === 'off') args.push('--flow-surprise', 'off')
+    else if (i.surprise && !Number.isNaN(i.surprise.nats))
+      args.push('--flow-surprise', String(i.surprise.nats))
     if (i.mode === 'shadow') args.push('--flow-shadow')
   }
   if (i.retain_days !== null && i.retain_days !== undefined && !Number.isNaN(i.retain_days))
@@ -466,6 +491,41 @@ const modes: { value: ServerMode; title: string; body: string }[] = [
               class="input mono"
               :placeholder="defaultRecord"
               spellcheck="false"
+            />
+          </UiField>
+        </div>
+        <div class="sf-row">
+          <UiField v-slot="{ id, describedby }" label="Surprise gate" optional :hint="gateHint">
+            <select
+              :id="id"
+              v-model="m.surprise"
+              class="select"
+              :aria-describedby="describedby"
+              data-testid="server-surprise"
+            >
+              <option value="">As the flow stores it</option>
+              <option value="off">Off: never hand back for surprise</option>
+              <option value="threshold">Another threshold</option>
+            </select>
+          </UiField>
+          <UiField
+            v-if="m.surprise === 'threshold'"
+            v-slot="{ id, describedby, invalid }"
+            label="Threshold, in nats"
+            :error="shown('surprise')"
+          >
+            <input
+              :id="id"
+              v-model="m.surprise_nats"
+              class="input num"
+              type="number"
+              min="0"
+              step="0.1"
+              :aria-describedby="describedby"
+              :aria-invalid="invalid"
+              placeholder="3.0"
+              data-testid="server-surprise-nats"
+              @blur="touched.add('surprise')"
             />
           </UiField>
         </div>

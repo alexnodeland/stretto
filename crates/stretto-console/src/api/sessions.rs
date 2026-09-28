@@ -79,6 +79,9 @@ pub struct SessionSummary {
     pub hand_backs: usize,
     /// Lookups the flow would have made, in shadow.
     pub shadow_lookups: usize,
+    /// Whether the flow handed back in it, served or in shadow, because the
+    /// session surprised it: its surprise gate tripped.
+    pub surprised: bool,
     /// The agent's calls to tools the session's `tools/list` marks
     /// `readOnlyHint: false`.
     pub writes: usize,

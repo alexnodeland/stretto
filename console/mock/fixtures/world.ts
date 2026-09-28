@@ -7,7 +7,7 @@
  * never registered; and the jobs that did it.
  */
 import type { Job, ServerEntry, SessionSummary, SessionDetail } from '../../src/api/types.ts'
-import { Recorder, type SessionSpec, type ToolDef } from './recorder.ts'
+import { Recorder, SURPRISED, type SessionSpec, type ToolDef } from './recorder.ts'
 import { FS_TOOLS, SHOP_TOOLS, TICKET_TOOLS, shop } from './tools.ts'
 import { buildFlows, type FlowRecord } from './flows.ts'
 import { shopStage, type StageRecord } from './stage.ts'
@@ -126,11 +126,11 @@ export function shopSpec(
 export function servedShopSession(
   spec: SessionSpec,
   n: number,
-  kind: 'cancel' | 'status' | 'typo',
+  kind: 'cancel' | 'status' | 'typo' | 'surprise',
   between: (a: number, b: number) => number,
 ): Recorder {
   const rec = new Recorder(spec)
-  rec.say('user', opening(n, kind === 'typo' ? 'status' : kind), between(900, 1600))
+  rec.say('user', opening(n, kind === 'cancel' ? 'cancel' : 'status'), between(900, 1600))
   if (kind === 'typo') {
     rec.call(
       'find_user_id_by_email',
@@ -172,6 +172,25 @@ export function servedShopSession(
     rec.say('assistant', `Order #W${n}a is cancelled.`, between(1800, 2600))
   } else {
     rec.say('assistant', `Your orders #W${n}a and #W${n}b are both pending.`, between(2400, 3400))
+  }
+  if (kind === 'surprise') {
+    // Reads the flow never saw again after the first: its gate, set on the
+    // server at 3.1 nats, trips, and the flow hands back from there.
+    rec.say(
+      'user',
+      'That can’t be right. Could you look at each of them again?',
+      between(6000, 9000),
+    )
+    for (const [i, which] of (['a', 'b'] as const).entries()) {
+      rec.call('get_order_details', { order_id: `#W${n}${which}` }, shop.order(n, which), {
+        think: between(2200, 3200),
+        handBack: {
+          reason: `${SURPRISED}: 5 of the agent's steps in a row averaged ${(3.42 + 0.31 * i).toFixed(2)} nats, above 3.10`,
+          prob: null,
+        },
+      })
+    }
+    rec.say('assistant', 'I checked both again: they are still pending.', between(2000, 2800))
   }
   rec.end()
   return rec
@@ -304,7 +323,7 @@ export function buildWorld(
 
   // 3. Served since the promotion: after the agent finds the customer, the
   // flow reads their details and both orders into the same result.
-  const served: [number, number, number, 'cancel' | 'status' | 'typo'][] = [
+  const served: [number, number, number, 'cancel' | 'status' | 'typo' | 'surprise'][] = [
     [7, 9, 41, 'cancel'],
     [7, 15, 42, 'status'],
     [6, 10, 43, 'status'],
@@ -322,7 +341,7 @@ export function buildWorld(
     [1, 10, 59, 'status'],
     [1, 14, 60, 'cancel'],
     [0, 9, 61, 'cancel'],
-    [0, 11, 62, 'status'],
+    [0, 11, 62, 'surprise'],
   ]
   for (const [daysAgo, hour, n, kind] of served) {
     add(
@@ -561,6 +580,8 @@ export function buildWorld(
       judge: null,
       commit: false,
       retain_days: null,
+      // A gate set by hand: the flow stores none.
+      surprise: { kind: 'threshold', nats: 3.1 },
       created_unix_ms: localDay(now, 13, 9, 40),
       updated_unix_ms: promotedCompiled + 12 * 60_000,
     },
@@ -581,6 +602,7 @@ export function buildWorld(
       judge: null,
       commit: false,
       retain_days: null,
+      surprise: null,
       created_unix_ms: localDay(now, 9, 15, 20),
       updated_unix_ms: localDay(now, 9, 15, 20),
     },
@@ -601,6 +623,7 @@ export function buildWorld(
       judge: null,
       commit: false,
       retain_days: null,
+      surprise: null,
       created_unix_ms: localDay(now, 2, 17, 5),
       updated_unix_ms: localDay(now, 2, 17, 5),
     },

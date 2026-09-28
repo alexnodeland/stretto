@@ -6,7 +6,7 @@ use super::sessions::{ToolInfo, UpstreamView};
 use super::{blocking, ApiError, ApiResult, Ok as OkBody};
 use crate::api::flows::FlowSummary;
 use crate::data::registry::{
-    self, JudgeMode, Registry, ServerEntry, ServerInput, ServerMode, Upstream,
+    self, JudgeMode, Registry, ServerEntry, ServerInput, ServerMode, Surprise, Upstream,
 };
 use crate::data::{self, flows, paths};
 use crate::{probe, Shared, State};
@@ -16,6 +16,7 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use stretto_report::init::{self, Host, Served, Setup};
+use stretto_report::surprise::Override;
 #[cfg(feature = "ts")]
 use ts_rs::TS;
 
@@ -443,6 +444,10 @@ pub fn setup(state: &State, entry: &ServerEntry, host: Host) -> Setup {
                 shadow,
                 decide_with: entry.decider.map(|d| d.decider()),
                 threshold: entry.threshold,
+                surprise: entry.surprise.map(|s| match s {
+                    Surprise::Off => Override::Off,
+                    Surprise::Threshold { nats } => Override::Threshold(nats),
+                }),
             })
         }
         _ => None,

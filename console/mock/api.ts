@@ -358,6 +358,7 @@ function entryOf(input: ServerInput): Omit<ServerEntry, 'created_unix_ms' | 'upd
     record_dir: input.record_dir ?? null,
     decider: input.decider ?? null,
     threshold: input.threshold ?? null,
+    surprise: input.surprise ?? null,
     guards: input.guards ?? false,
     judge: input.judge ?? null,
     commit: input.commit ?? false,
@@ -400,6 +401,15 @@ function checkServer(input: unknown, name?: string): ServerInput {
   )
     throw new HttpError(400, 'threshold: a number from 0 to 1')
   // As the console checks them (`registry::validate`).
+  if (
+    s.surprise?.kind === 'threshold' &&
+    !(
+      typeof s.surprise.nats === 'number' &&
+      Number.isFinite(s.surprise.nats) &&
+      s.surprise.nats > 0
+    )
+  )
+    throw new HttpError(400, `surprise ${s.surprise.nats}: a threshold in nats, above 0`)
   if (s.guards && !['retail', 'airline'].includes(s.name))
     throw new HttpError(
       400,
@@ -430,6 +440,7 @@ function checkServer(input: unknown, name?: string): ServerInput {
     record_dir: s.record_dir || null,
     decider: s.decider ?? null,
     threshold: s.threshold ?? null,
+    surprise: s.surprise ?? null,
     guards: s.guards ?? false,
     judge: s.judge ? { mode: s.judge.mode, context: s.judge.context.trim() } : null,
     commit: s.commit ?? false,

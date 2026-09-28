@@ -69,6 +69,21 @@ test('a retail server takes the guards, the judge, stretto_commit and retention'
   )
 })
 
+test('a served server sets its flow’s surprise gate, and the proxy gets it', async ({ page }) => {
+  await page.goto('/servers/shop')
+  await expect(page.getByTestId('server-surprise')).toHaveText('3.1 nats, in place of the flow’s')
+  await expect(page.getByTestId('host-snippet')).toContainText('--flow-surprise 3.1')
+  await page.goto('/servers/shop/edit')
+  await expect(page.getByTestId('server-surprise')).toHaveValue('threshold')
+  await expect(page.getByTestId('server-surprise-nats')).toHaveValue('3.1')
+  await page.getByTestId('server-surprise').selectOption('off')
+  await expect(page.getByText('--flow-surprise off')).toBeVisible()
+  await page.getByTestId('server-save').click()
+  await expect(page).toHaveURL(/\/servers\/shop$/)
+  await expect(page.getByTestId('server-surprise')).toHaveText('off')
+  await expect(page.getByTestId('host-snippet')).toContainText('--flow-surprise off')
+})
+
 test('testing the connection lists the tools and their kinds', async ({ page }) => {
   await page.goto('/servers/shop')
   await page.getByTestId('probe').click()

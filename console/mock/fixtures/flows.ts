@@ -451,6 +451,7 @@ function summary(
     sites: 0,
     lookups: 0,
     promoted: null,
+    surprise: null,
     served_by: [],
     stage: null,
     error: null,

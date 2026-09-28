@@ -46,6 +46,11 @@ hand_backs: number,
  */
 shadow_lookups: number, 
 /**
+ * Whether the flow handed back in it, served or in shadow, because the
+ * session surprised it: its surprise gate tripped.
+ */
+surprised: boolean, 
+/**
  * The agent's calls to tools the session's `tools/list` marks
  * `readOnlyHint: false`.
  */

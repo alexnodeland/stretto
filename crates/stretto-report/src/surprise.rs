@@ -41,8 +41,12 @@ const FLOOR: f64 = 1e-6;
 /// the flow has no gate.
 pub const DEFAULT_WINDOW: usize = 5;
 
+/// How the reason of a hand-back for surprise begins.
+pub const SURPRISED: &str = "the session surprised the flow";
+
 /// When a flow hands back for the rest of a session that surprises it.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct SurpriseGate {
     /// How many of the agent's steps in a row the mean is over.
     pub window: usize,
@@ -220,6 +224,16 @@ impl FromStr for Override {
             _ if s == "off" => Ok(Self::Off),
             Ok(t) if t.is_finite() && t > 0.0 => Ok(Self::Threshold(t)),
             _ => Err(format!("`off`, or a threshold in nats above 0, not `{s}`")),
+        }
+    }
+}
+
+/// As [`Override::from_str`] reads it: `off`, or the threshold.
+impl std::fmt::Display for Override {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Off => f.write_str("off"),
+            Self::Threshold(t) => write!(f, "{t}"),
         }
     }
 }
@@ -531,6 +545,15 @@ mod tests {
     fn a_threshold_or_off_overrides_the_gate() {
         assert_eq!("off".parse::<Override>(), Ok(Override::Off));
         assert_eq!("1.5".parse::<Override>(), Ok(Override::Threshold(1.5)));
+        // As the proxy's command line carries it.
+        for over in [
+            Override::Off,
+            Override::Threshold(1.5),
+            Override::Threshold(3.0),
+        ] {
+            assert_eq!(over.to_string().parse::<Override>(), Ok(over));
+        }
+        assert_eq!(Override::Threshold(3.0).to_string(), "3");
         for bad in ["0", "-1", "inf", "NaN", "never"] {
             let err = bad.parse::<Override>().unwrap_err();
             assert_eq!(

@@ -89,6 +89,16 @@ describe('the server form’s checks', () => {
     }
   })
 
+  it('checks a surprise threshold set by hand', () => {
+    expect(checkServer({ ...base, surprise: { kind: 'off' } })).toEqual({})
+    expect(checkServer({ ...base, surprise: { kind: 'threshold', nats: 2.5 } })).toEqual({})
+    for (const nats of [0, -1, NaN]) {
+      expect(checkServer({ ...base, surprise: { kind: 'threshold', nats } }).surprise).toMatch(
+        /in nats, above 0/,
+      )
+    }
+  })
+
   it('accepts a good server and names every problem by field', () => {
     expect(checkServer(base)).toEqual({})
     expect(checkServer(base, ['orders']).name).toMatch(/exists/)

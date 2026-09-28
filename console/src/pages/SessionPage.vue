@@ -2,7 +2,7 @@
 /** One session: who and where, the numbers, then the timeline, the flow's decisions, the raw log and the tools. */
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Bot, Download, FileText, Scale, ScrollText, Trash, Wrench } from '@lucide/vue'
+import { Bot, Download, FileText, Scale, ScrollText, Trash, Wrench, Zap } from '@lucide/vue'
 import UiPageHeader from '@/components/ui/UiPageHeader.vue'
 import UiButton from '@/components/ui/UiButton.vue'
 import UiTabs from '@/components/ui/UiTabs.vue'
@@ -27,6 +27,7 @@ import {
   formatDuration,
   upstreamText,
 } from '@/lib/format'
+import { surprisedAt } from '@/lib/timeline'
 
 const route = useRoute()
 const router = useRouter()
@@ -39,6 +40,7 @@ const session = useResource((o) => api.session(key.value, o), {
 const servers = useResource((o) => api.servers(o), { events: ['servers'] })
 const detail = session.data
 const summary = computed(() => detail.value?.summary ?? null)
+const surprised = computed(() => (detail.value ? surprisedAt(detail.value.decisions) : null))
 
 useTitle(() => summary.value?.session_id ?? 'Session')
 
@@ -177,6 +179,15 @@ async function remove() {
         Server: <span class="mono">{{ upstreamText(summary.upstream) }}</span> ·
         <span class="mono">{{ summary.path }}</span>
       </p>
+
+      <div v-if="surprised" class="notice warn" role="status" data-testid="surprised-notice">
+        <Zap :size="16" :stroke-width="2" aria-hidden="true" />
+        <span
+          >The session surprised the flow after call <span class="mono">{{ surprised.after }}</span
+          ><template v-if="surprised.measured">: {{ surprised.measured }}</template
+          >. From there the flow handed back after every call.</span
+        >
+      </div>
 
       <section class="stats card" aria-label="Numbers for this session">
         <template v-if="summary">

@@ -76,6 +76,8 @@ export type * from "./SiteView";
 export type * from "./SourceView";
 export type * from "./StageLink";
 export type * from "./StageView";
+export type * from "./Surprise";
+export type * from "./SurpriseGate";
 export type * from "./TimelineEvent";
 export type * from "./ToolCounts";
 export type * from "./ToolInfo";
