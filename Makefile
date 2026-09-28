@@ -9,7 +9,7 @@
 # Line coverage under which `make coverage`, and the Coverage workflow that
 # runs it, fails (cargo-llvm-cov 0.9.1, Rust 1.98.1). It rises with each
 # change that covers more, up to 100: the floor, not a target.
-COVERAGE_MIN := 89
+COVERAGE_MIN := 94
 
 # `make coverage` also fails when a line added since the merge base with this
 # ref is not run by any test (scripts/patch_coverage.py).

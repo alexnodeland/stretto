@@ -1,117 +1,13 @@
 //! Phase 0 end to end on a miniature τ²-bench checkout, so CI needs no data.
 
 use std::fs;
-use std::path::Path;
 use stretto_model::projection::Scenario;
 use stretto_report::shadow::{OracleKind, QuestionSet, ShadowConfig};
 use stretto_report::{phase0, render};
 
-const TOOLS_PY: &str = r#"
-    @is_tool(ToolType.READ)
-    def find_user(self, email: str) -> str:
-        ...
-    @is_tool(ToolType.READ)
-    def get_order(self, order_id: str) -> Order:
-        ...
-    @is_tool(ToolType.WRITE)
-    def cancel_order(self, order_id: str, reason: str) -> Order:
-        ...
-"#;
+mod common;
 
-/// One simulation: find the user, look up the order, confirm, cancel.
-fn simulation(id: usize, task: usize, confirm: &str) -> serde_json::Value {
-    let order = format!("#W{task:04}");
-    serde_json::json!({
-        "id": format!("s{id}"), "task_id": task.to_string(), "trial": id % 2,
-        "reward_info": {"reward": if id.is_multiple_of(5) { 0.0 } else { 1.0 }},
-        "messages": [
-            {"role": "assistant", "content": "Hi! How can I help you today?", "cost": 0.0},
-            {"role": "user", "content": format!("Cancel {order}, I am a@b.com")},
-            {"role": "assistant", "cost": 0.01, "usage": usage(1000), "tool_calls": [
-                {"id": format!("{id}a"), "name": "find_user", "arguments": {"email": "a@b.com"},
-                 "requestor": "assistant"}]},
-            {"role": "tool", "id": format!("{id}a"), "content": "\"u_1\"", "error": false},
-            {"role": "assistant", "cost": 0.01, "usage": usage(1110), "tool_calls": [
-                {"id": format!("{id}b"), "name": "get_order", "arguments": {"order_id": order},
-                 "requestor": "assistant"}]},
-            {"role": "tool", "id": format!("{id}b"),
-             "content": format!("{{\"order_id\": \"{order}\", \"status\": \"pending\"}}"),
-             "error": false},
-            {"role": "assistant", "content": "Cancel it? (yes/no)", "cost": 0.01,
-             "usage": usage(1220)},
-            {"role": "user", "content": confirm},
-            {"role": "assistant", "cost": 0.01, "usage": usage(1330), "tool_calls": [
-                {"id": format!("{id}c"), "name": "cancel_order",
-                 "arguments": {"order_id": order, "reason": "no longer needed"},
-                 "requestor": "assistant"}]},
-            {"role": "tool", "id": format!("{id}c"), "content": "{\"status\": \"cancelled\"}",
-             "error": false},
-            {"role": "assistant", "content": "Done.", "cost": 0.01, "usage": usage(1440)}
-        ]
-    })
-}
-
-fn usage(prompt_tokens: u64) -> serde_json::Value {
-    serde_json::json!({"prompt_tokens": prompt_tokens, "completion_tokens": 10})
-}
-
-/// A results file for `model` in `domain`.
-fn results_file(model: &str, domain: &str, user: &str) -> serde_json::Value {
-    let sims: Vec<_> = (0..16)
-        .map(|i| {
-            simulation(
-                i,
-                i / 2,
-                if i.is_multiple_of(3) {
-                    "go ahead"
-                } else {
-                    "yes"
-                },
-            )
-        })
-        .collect();
-    serde_json::json!({
-        "info": {
-            "agent_info": {"llm": model},
-            "user_info": {"llm": user},
-            "environment_info": {"domain_name": domain, "policy": "p", "tool_defs": null}
-        },
-        "tasks": [],
-        "simulations": sims
-    })
-}
-
-fn write_checkout(root: &Path) {
-    let domain_src = root.join("src/tau2/domains/retail");
-    let domain_data = root.join("data/tau2/domains/retail");
-    let results = root.join("data/tau2/results/final");
-    for d in [&domain_src, &domain_data, &results] {
-        fs::create_dir_all(d).unwrap();
-    }
-    fs::write(domain_src.join("tools.py"), TOOLS_PY).unwrap();
-    fs::write(
-        domain_data.join("split_tasks.json"),
-        r#"{"train": ["0", "1", "2", "3", "4", "5"], "test": ["6", "7"], "base": []}"#,
-    )
-    .unwrap();
-    for model in ["model-a", "model-b"] {
-        fs::write(
-            results.join(format!("{model}_retail_default_user-sim_2trials.json")),
-            serde_json::to_vec(&results_file(model, "retail", "user-sim")).unwrap(),
-        )
-        .unwrap();
-    }
-    // Transfer targets outside the checkout: one for this domain, one not.
-    let targets = root.join("targets");
-    fs::create_dir_all(&targets).unwrap();
-    for domain in ["retail", "airline"] {
-        fs::write(
-            targets.join(format!("model-t_{domain}.json")),
-            serde_json::to_vec(&results_file("vendor/model-t", domain, "other-sim")).unwrap(),
-        )
-        .unwrap();
-    }
-}
+use common::write_checkout;
 
 #[test]
 fn phase0_runs_end_to_end() {

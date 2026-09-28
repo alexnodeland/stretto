@@ -22,98 +22,9 @@ fn habit(per_call: usize) -> Serving {
 use stretto_report::shadow::{OracleKind, QuestionSet, ShadowConfig};
 use stretto_trace::{Episode, Event, ToolCall, ToolKind, ToolManifest};
 
-pub fn manifest() -> ToolManifest {
-    ToolManifest {
-        domain: "shop".to_string(),
-        tools: BTreeMap::from([
-            ("find_account".to_string(), ToolKind::Read),
-            ("get_account".to_string(), ToolKind::Read),
-            ("get_order".to_string(), ToolKind::Read),
-            ("close_order".to_string(), ToolKind::Write),
-        ]),
-        docs: BTreeMap::new(),
-    }
-}
+mod common;
 
-fn call(id: &str, name: &str, arguments: Value) -> Event {
-    Event::Assistant {
-        text: None,
-        calls: vec![ToolCall {
-            id: id.to_string(),
-            name: name.to_string(),
-            arguments,
-        }],
-        usage: None,
-    }
-}
-
-fn result(id: &str, name: &str, content: &str) -> Event {
-    Event::ToolResult {
-        call_id: id.to_string(),
-        name: name.to_string(),
-        error: false,
-        content: content.to_string(),
-    }
-}
-
-fn say(text: &str) -> Event {
-    Event::Assistant {
-        text: Some(text.to_string()),
-        calls: Vec::new(),
-        usage: None,
-    }
-}
-
-/// Customer `i` finds their account, the agent reads it and each of its
-/// orders, then closes the first once the customer agrees.
-fn session(i: usize) -> Episode {
-    let account = format!("acct_{i}");
-    let orders = [format!("o{i}a"), format!("o{i}b")];
-    Episode {
-        id: format!("session-{i}"),
-        task_id: String::new(),
-        trial: 0,
-        domain: "shop".to_string(),
-        agent_model: "agent".to_string(),
-        reward: 1.0,
-        events: vec![
-            Event::User {
-                text: format!("Hi, I'm c{i}@example.com and I want to close an order."),
-            },
-            call(
-                "1",
-                "find_account",
-                json!({"email": format!("c{i}@example.com")}),
-            ),
-            result("1", "find_account", &account),
-            call("2", "get_account", json!({"account_id": account})),
-            result(
-                "2",
-                "get_account",
-                &json!({"account_id": account, "orders": orders}).to_string(),
-            ),
-            call("3", "get_order", json!({"order_id": orders[0]})),
-            result(
-                "3",
-                "get_order",
-                &json!({"order_id": orders[0], "status": "open"}).to_string(),
-            ),
-            call("4", "get_order", json!({"order_id": orders[1]})),
-            result(
-                "4",
-                "get_order",
-                &json!({"order_id": orders[1], "status": "open"}).to_string(),
-            ),
-            say("You have two open orders. Close the first?"),
-            Event::User {
-                text: "Yes, please.".to_string(),
-            },
-            call("5", "close_order", json!({"order_id": orders[0]})),
-            result("5", "close_order", "closed"),
-            say("Done."),
-        ],
-    }
-}
+use common::{manifest, say, session, session_with_rewards, write_sessions};
 
 fn mock_config() -> Config {
     let mut config = Config::new(PathBuf::new());
@@ -491,25 +402,6 @@ fn a_flow_never_proposes_a_tool_outside_its_compiled_set() {
 }
 
 // Reviewing flows as code (`stretto flow-show`, `stretto flow-diff`).
-
-/// Session `i`, where the agent also reads the account's rewards before
-/// its orders.
-fn session_with_rewards(i: usize) -> Episode {
-    let mut ep = session(i);
-    let account = format!("acct_{i}");
-    ep.events.splice(
-        5..5,
-        [
-            call("r", "get_rewards", json!({"account_id": account})),
-            result(
-                "r",
-                "get_rewards",
-                &json!({"account_id": account, "points": 10}).to_string(),
-            ),
-        ],
-    );
-    ep
-}
 
 fn habit_flow(episodes: &[Episode], manifest: &ToolManifest) -> stretto_report::flow::Flow {
     let mut config = Config::new(PathBuf::new());
@@ -903,58 +795,6 @@ fn a_flow_is_served_with_its_arbiter_else_reach_else_its_habit() {
 }
 
 // Drift alarms (`stretto drift`) and forgetting (`learn --half-life`).
-
-/// `episode` as the session log stretto-proxy would write, named to sort
-/// `n`th: each call a second after the last answer, an LLM turn of its own.
-fn session_log(episode: &Episode, n: usize) -> (String, String) {
-    let session = format!("20260928T{n:06}.000Z-{}", episode.id);
-    let header = json!({"stretto_mcp_log": 2, "session": session,
-        "started_unix_ms": 1_790_000_000_000u64 + n as u64 * 60_000,
-        "server_command": ["shop"], "domain": null, "agent_model": null});
-    let mut lines = vec![header.to_string()];
-    let (mut t, mut ids) = (0, BTreeMap::new());
-    for e in &episode.events {
-        match e {
-            Event::Assistant { calls, .. } => {
-                for c in calls {
-                    t += 1000;
-                    let id = ids.len() + 1;
-                    ids.insert(c.id.clone(), id);
-                    lines.push(
-                        json!({"t_ms": t, "from": "client", "message": {"jsonrpc": "2.0",
-                            "id": id, "method": "tools/call",
-                            "params": {"name": c.name, "arguments": c.arguments}}})
-                        .to_string(),
-                    );
-                }
-            }
-            Event::ToolResult {
-                call_id,
-                content,
-                error,
-                ..
-            } => {
-                t += 10;
-                lines.push(
-                    json!({"t_ms": t, "from": "server", "message": {"jsonrpc": "2.0",
-                        "id": ids[call_id],
-                        "result": {"content": [{"type": "text", "text": content}], "isError": error}}})
-                    .to_string(),
-                );
-            }
-            _ => {}
-        }
-    }
-    (format!("{session}.jsonl"), lines.join("\n") + "\n")
-}
-
-fn write_sessions(dir: &std::path::Path, episodes: &[Episode]) {
-    std::fs::create_dir_all(dir).unwrap();
-    for (n, ep) in episodes.iter().enumerate() {
-        let (name, text) = session_log(ep, n);
-        std::fs::write(dir.join(name), text).unwrap();
-    }
-}
 
 #[test]
 fn drift_sounds_when_another_agent_takes_over_and_a_half_life_follows_it() {

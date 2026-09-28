@@ -35,7 +35,7 @@ make ci     # the formatting check, clippy, the tests and doctests, and the API 
 make console   # build the console's UI and run the console on ~/.stretto
 ```
 
-`make test` runs the unit tests, and Phase 0 on a miniature fixture checkout. CI runs what `make ci` runs, checks that the workspace builds with Rust 1.88, the oldest it supports (`make msrv`), and measures line coverage, failing under a threshold (`make coverage`). Then it runs:
+`make test` runs the unit tests, and every `stretto` command in the tests' own process, on a miniature τ²-bench checkout and a shop's recorded sessions (`crates/stretto-report/src/cli_tests.rs`). CI runs what `make ci` runs, checks that the workspace builds with Rust 1.88, the oldest it supports (`make msrv`), and measures line coverage (`make coverage`). It fails under a threshold, and when a pull request adds a line no test runs. Then it runs:
 
 - [the quick start's demo](/guide/quick-start#2-see-the-whole-loop-with-no-key), with no key and no network (`sh examples/quickstart/run.sh --bin target/debug`);
 - `install.sh` against a local release of stand-in binaries (`sh packaging/test-install.sh`), and shellcheck on the shell scripts;
