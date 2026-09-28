@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use std::collections::{BTreeMap, HashSet};
+use std::ffi::OsString;
 use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -1306,20 +1307,68 @@ impl From<DeciderArg> for Decider {
     }
 }
 
-/// The CLI runs on a thread with an 8 MB stack, Linux's default for the main
-/// thread. Windows gives its main thread 1 MB, which parsing this CLI's many
-/// subcommands overflows in a debug build.
-fn main() -> Result<()> {
-    std::thread::Builder::new()
-        .name("stretto".to_string())
-        .stack_size(8 << 20)
-        .spawn(run)?
-        .join()
-        .unwrap_or_else(|panic| std::panic::resume_unwind(panic))
+/// What a command reads and writes besides its arguments and files: the
+/// process's own, or in tests a test's, so that every command runs in
+/// process.
+struct Env<'a> {
+    /// What `import-answers` reads.
+    stdin: &'a mut dyn BufRead,
+    /// Where reports go without `--out`.
+    stdout: &'a mut dyn Write,
+    /// HOME, or USERPROFILE on Windows.
+    home: Option<PathBuf>,
+    /// PATH, where `init` and `doctor` look for the other binaries.
+    path: OsString,
+    /// This binary, which they may be next to.
+    exe: Option<PathBuf>,
+    /// Whether TYPESAFE_API_KEY and TYPESAFE_API_KEY_FILE are set, never
+    /// what they hold.
+    key: [bool; 2],
+    /// Ask Jev one question: `jev-check`, and `doctor --network`.
+    jev: fn() -> Result<String>,
 }
 
-fn run() -> Result<()> {
-    match Cli::parse().command {
+impl<'a> Env<'a> {
+    /// The process's own.
+    fn process(stdin: &'a mut dyn BufRead, stdout: &'a mut dyn Write) -> Self {
+        let set = |var: &str| std::env::var_os(var).is_some_and(|v| !v.is_empty());
+        Env {
+            stdin,
+            stdout,
+            home: home_dir(),
+            path: std::env::var_os("PATH").unwrap_or_default(),
+            exe: std::env::current_exe().ok(),
+            key: [set("TYPESAFE_API_KEY"), set("TYPESAFE_API_KEY_FILE")],
+            jev: jev_check,
+        }
+    }
+}
+
+/// The CLI runs on a thread with an 8 MB stack, Linux's default for the main
+/// thread. Windows gives its main thread 1 MB, which parsing this CLI's many
+/// subcommands overflows in a debug build. A panic there panics here too,
+/// as the scope ends.
+fn main() -> Result<()> {
+    let mut code = Ok(0);
+    let spawned = std::thread::scope(|scope| {
+        std::thread::Builder::new()
+            .name("stretto".to_string())
+            .stack_size(8 << 20)
+            .spawn_scoped(scope, || {
+                let (mut stdin, mut stdout) = (std::io::stdin().lock(), std::io::stdout());
+                code = run(Cli::parse(), &mut Env::process(&mut stdin, &mut stdout));
+            })
+            .map(drop)
+    });
+    std::process::exit(spawned.map_err(anyhow::Error::from).and(code)?)
+}
+
+/// Run a command, and return the exit code: 0, or 1 when `flow-diff`,
+/// `drift` or `doctor` have something to report, or 2 when `flow-diff` or
+/// `drift` fail. Other failures are the error.
+fn run(cli: Cli, env: &mut Env) -> Result<i32> {
+    let mut code = 0;
+    let done = match cli.command {
         Command::Phase0 { data, out, json } => {
             if data.pooled_arbiter {
                 anyhow::bail!(
@@ -1334,7 +1383,7 @@ fn run() -> Result<()> {
             let md = render::markdown(&report);
             match out {
                 Some(path) => write(&path, md.as_bytes())?,
-                None => print!("{md}"),
+                None => write!(env.stdout, "{md}")?,
             }
             if let Some(path) = json {
                 write(&path, &serde_json::to_vec_pretty(&report)?)?;
@@ -1377,9 +1426,7 @@ fn run() -> Result<()> {
             };
             let config = phase0_config(data)?;
             let flow = compile(&config, domain)?;
-            if let Some(parent) = out.parent().filter(|p| !p.as_os_str().is_empty()) {
-                std::fs::create_dir_all(parent)?;
-            }
+            make_parent(&out)?;
             flow.save(&out)?;
             eprintln!(
                 "stretto: wrote the {} flow to {} ({} KB)",
@@ -1565,7 +1612,7 @@ fn run() -> Result<()> {
             let md = stretto_report::guards::markdown(&audits);
             match out {
                 Some(path) => write(&path, md.as_bytes())?,
-                None => print!("{md}"),
+                None => write!(env.stdout, "{md}")?,
             }
             if let Some(path) = json {
                 write(&path, &serde_json::to_vec_pretty(&audits)?)?;
@@ -1623,7 +1670,7 @@ fn run() -> Result<()> {
             let md = stretto_report::confirm::markdown(&audits);
             match out {
                 Some(path) => write(&path, md.as_bytes())?,
-                None => print!("{md}"),
+                None => write!(env.stdout, "{md}")?,
             }
             if let Some(path) = json {
                 let all = serde_json::json!({"audits": audits, "writes": judged});
@@ -1679,7 +1726,7 @@ fn run() -> Result<()> {
             let md = matching::markdown(&audits);
             match out {
                 Some(path) => write(&path, md.as_bytes())?,
-                None => print!("{md}"),
+                None => write!(env.stdout, "{md}")?,
             }
             if let Some(path) = json {
                 let doc = serde_json::json!({"audits": audits, "choices": all});
@@ -1730,7 +1777,7 @@ fn run() -> Result<()> {
             let md = stretto_report::audit::markdown(&audit);
             match out {
                 Some(path) => write(&path, md.as_bytes())?,
-                None => print!("{md}"),
+                None => write!(env.stdout, "{md}")?,
             }
             if let Some(path) = json {
                 write(&path, &serde_json::to_vec_pretty(&audit)?)?;
@@ -1787,7 +1834,7 @@ fn run() -> Result<()> {
                 let md = stretto_report::drift::markdown(&d);
                 match out {
                     Some(path) => write(&path, md.as_bytes())?,
-                    None => print!("{md}"),
+                    None => write!(env.stdout, "{md}")?,
                 }
                 if let Some(path) = json {
                     write(&path, &serde_json::to_vec_pretty(&d)?)?;
@@ -1797,14 +1844,14 @@ fn run() -> Result<()> {
                 }
                 Ok(d.sounding)
             };
-            match run() {
-                Ok(false) => Ok(()),
-                Ok(true) => std::process::exit(1),
+            code = match run() {
+                Ok(found) => i32::from(found),
                 Err(e) => {
                     eprintln!("stretto: {e:#}");
-                    std::process::exit(2)
+                    2
                 }
-            }
+            };
+            Ok(())
         }
         Command::FlowShow {
             flow,
@@ -1815,10 +1862,7 @@ fn run() -> Result<()> {
             let md = stretto_report::review::show(&flow, threshold);
             match out {
                 Some(path) => write(&path, md.as_bytes()),
-                None => {
-                    print!("{md}");
-                    Ok(())
-                }
+                None => Ok(write!(env.stdout, "{md}")?),
             }
         }
         Command::FlowDiff {
@@ -1837,21 +1881,21 @@ fn run() -> Result<()> {
                 let d = stretto_report::review::diff(&a, &b, tolerance, threshold);
                 match out {
                     Some(path) => write(&path, d.markdown.as_bytes())?,
-                    None => print!("{}", d.markdown),
+                    None => write!(env.stdout, "{}", d.markdown)?,
                 }
                 if !d.needs_review.is_empty() {
                     eprintln!("stretto: {} change(s) need review", d.needs_review.len());
                 }
                 Ok(!d.needs_review.is_empty())
             };
-            match run() {
-                Ok(false) => Ok(()),
-                Ok(true) => std::process::exit(1),
+            code = match run() {
+                Ok(found) => i32::from(found),
                 Err(e) => {
                     eprintln!("stretto: {e:#}");
-                    std::process::exit(2)
+                    2
                 }
-            }
+            };
+            Ok(())
         }
         Command::Search {
             flow,
@@ -1926,7 +1970,7 @@ fn run() -> Result<()> {
             };
             match out {
                 Some(path) => write(&path, md.as_bytes())?,
-                None => print!("{md}"),
+                None => write!(env.stdout, "{md}")?,
             }
             if let Some(path) = json {
                 write(&path, &serde_json::to_vec_pretty(&value)?)?;
@@ -1995,7 +2039,7 @@ fn run() -> Result<()> {
             let md = refine::markdown(&refined, &domain);
             match out {
                 Some(path) => write(&path, md.as_bytes())?,
-                None => print!("{md}"),
+                None => write!(env.stdout, "{md}")?,
             }
             if let Some(path) = json {
                 write(&path, &serde_json::to_vec_pretty(&refined)?)?;
@@ -2055,7 +2099,7 @@ fn run() -> Result<()> {
             let md = markdown(&evaluations, min_ess);
             match out {
                 Some(path) => write(&path, md.as_bytes())?,
-                None => print!("{md}"),
+                None => write!(env.stdout, "{md}")?,
             }
             if let Some(path) = json {
                 write(&path, &serde_json::to_vec_pretty(&evaluations)?)?;
@@ -2138,10 +2182,7 @@ fn run() -> Result<()> {
             flow.with_promotion(Some(promotion)).save(&out)?;
             match report {
                 Some(path) => write(&path, md.as_bytes()),
-                None => {
-                    print!("{md}");
-                    Ok(())
-                }
+                None => Ok(write!(env.stdout, "{md}")?),
             }
         }
         Command::Redact {
@@ -2201,10 +2242,7 @@ fn run() -> Result<()> {
             );
             Ok(())
         }
-        Command::JevCheck => {
-            println!("{}", jev_check()?);
-            Ok(())
-        }
+        Command::JevCheck => Ok(writeln!(env.stdout, "{}", (env.jev)()?)?),
         Command::ExportArbiter { flow, out } => {
             let arbiter = stretto_report::flow::Flow::load(&flow)?.arbiter()?;
             arbiter.save(&out)?;
@@ -2251,10 +2289,8 @@ fn run() -> Result<()> {
                         );
                     }
                     let target = d["target"].as_bool().unwrap_or(false);
-                    if !target {
-                        if let Some(m) = d["model"].as_str() {
-                            sources.insert(m.to_string());
-                        }
+                    if let (false, Some(m)) = (target, d["model"].as_str()) {
+                        sources.insert(m.to_string());
                     }
                     let actual = d["actual"].as_str().unwrap_or_default();
                     cases.push(stretto_report::arbitrate::Case {
@@ -2288,15 +2324,12 @@ fn run() -> Result<()> {
         }
         Command::ExportAnswers { oracle_cache } => {
             let cache: ReplayCache<MockOracle> = ReplayCache::new(oracle_cache, None);
-            let mut out = std::io::stdout().lock();
+            let mut lines = String::new();
             for (key, response) in cache.entries()? {
-                serde_json::to_writer(
-                    &mut out,
-                    &serde_json::json!({"key": key, "response": response}),
-                )?;
-                writeln!(out)?;
+                lines += &serde_json::json!({"key": key, "response": response}).to_string();
+                lines.push('\n');
             }
-            Ok(())
+            Ok(env.stdout.write_all(lines.as_bytes())?)
         }
         Command::Ask {
             requests,
@@ -2316,7 +2349,7 @@ fn run() -> Result<()> {
         Command::ImportAnswers { oracle_cache } => {
             let cache: ReplayCache<MockOracle> = ReplayCache::new(oracle_cache, None);
             let mut n = 0;
-            for line in std::io::stdin().lock().lines() {
+            for line in (&mut *env.stdin).lines() {
                 let line = line?;
                 if line.trim().is_empty() {
                     continue;
@@ -2328,36 +2361,41 @@ fn run() -> Result<()> {
             eprintln!("stretto: imported {n} answers");
             Ok(())
         }
-        Command::Init(args) => init(args),
-        Command::Doctor { network, data } => doctor(network, data),
+        Command::Init(args) => init(args, env),
+        Command::Doctor { network, data } => doctor(network, data, env).map(|problems| {
+            code = i32::from(problems);
+        }),
         Command::Completions { shell } => {
             // Generated whole first: clap_complete panics on a failed write.
             let mut script = Vec::new();
             clap_complete::generate(shell, &mut Cli::command(), "stretto", &mut script);
-            std::io::stdout().write_all(&script)?;
+            env.stdout.write_all(&script)?;
             Ok(())
         }
-    }
+    };
+    done.map(|()| code)
 }
 
 /// `stretto init`: the host's configuration, printed or written, then the
 /// next steps.
-fn init(args: InitArgs) -> Result<()> {
+fn init(args: InitArgs, env: &mut Env) -> Result<()> {
     use stretto_report::init::{self, Served, Setup};
-    let home = home_dir();
     let flow = match &args.flow {
         Some(path) => {
             let path = host_path(path)?;
             let loaded =
-                stretto_report::flow::Flow::load(&init::expand_home(&path, home.as_deref()))?;
+                stretto_report::flow::Flow::load(&init::expand_home(&path, env.home.as_deref()))?;
             Some((path, loaded))
         }
         None => None,
     };
-    let domain = match (args.domain, &flow) {
-        (Some(domain), _) => domain,
-        (None, Some((_, loaded))) => loaded.domain().to_string(),
-        (None, None) => unreachable!("clap requires --domain or --flow"),
+    // clap requires one or the other.
+    let domain = match args.domain {
+        Some(domain) => domain,
+        None => flow
+            .as_ref()
+            .map(|(_, loaded)| loaded.domain().to_string())
+            .context("pass --domain or --flow")?,
     };
     init::check_domain(&domain)?;
     let record = match &args.record {
@@ -2408,7 +2446,7 @@ fn init(args: InitArgs) -> Result<()> {
         }),
         domain,
         record,
-        proxy: proxy_command(host),
+        proxy: proxy_command(host, env),
         server,
         upstream,
     };
@@ -2418,8 +2456,8 @@ fn init(args: InitArgs) -> Result<()> {
             eprintln!("stretto: wrote {}", path.display());
         }
         None => {
-            print!("{}", init::snippet(host, &setup));
-            std::io::stdout().flush()?;
+            write!(env.stdout, "{}", init::snippet(host, &setup))?;
+            env.stdout.flush()?;
             eprintln!("\n{}", host.placement());
         }
     }
@@ -2436,16 +2474,15 @@ fn init(args: InitArgs) -> Result<()> {
 /// except for Claude Desktop, which starts servers with a minimal PATH and
 /// so gets its full path, as does every host when the proxy is only next
 /// to this binary.
-fn proxy_command(host: Host) -> String {
+fn proxy_command(host: Host, env: &Env) -> String {
     let name = "stretto-proxy";
-    let path = std::env::var_os("PATH").unwrap_or_default();
-    if let Some(found) = stretto_report::doctor::which(name, &path) {
+    if let Some(found) = stretto_report::doctor::which(name, &env.path) {
         if host == Host::ClaudeDesktop {
             return found.display().to_string();
         }
         return name.to_string();
     }
-    let beside = std::env::current_exe().ok().and_then(|exe| {
+    let beside = env.exe.as_ref().and_then(|exe| {
         let beside = exe
             .parent()?
             .join(format!("{name}{}", std::env::consts::EXE_SUFFIX));
@@ -2490,53 +2527,46 @@ fn home_dir() -> Option<PathBuf> {
 }
 
 /// `stretto doctor`: the report on `data` (default: ~/.stretto), then, with
-/// `network`, Jev's answer.
-fn doctor(network: bool, data: Option<PathBuf>) -> Result<()> {
+/// `network`, Jev's answer. Whether it found a problem.
+fn doctor(network: bool, data: Option<PathBuf>, env: &mut Env) -> Result<bool> {
     use stretto_report::doctor::{self, Report};
     let version = env!("CARGO_PKG_VERSION");
-    let exe = std::env::current_exe().ok();
-    match &exe {
-        Some(exe) => println!("stretto {version} ({})\n", exe.display()),
-        None => println!("stretto {version}\n"),
-    }
+    let exe = env.exe.as_ref();
+    let at = exe.map(|exe| format!(" ({})", exe.display()));
+    writeln!(env.stdout, "stretto {version}{}\n", at.unwrap_or_default())?;
     let mut report = Report::default();
-    let path = std::env::var_os("PATH").unwrap_or_default();
     doctor::check_binaries(
         &mut report,
         version,
-        &path,
-        exe.as_deref().and_then(Path::parent),
+        &env.path,
+        exe.and_then(|exe| exe.parent()),
     );
-    let home = home_dir();
-    let dir = data.or_else(|| home.as_ref().map(|h| h.join(".stretto")));
+    let dir = data.or_else(|| env.home.as_ref().map(|h| h.join(".stretto")));
     match &dir {
         Some(dir) => doctor::check_dir(&mut report, dir),
         None => report
             .problem("neither HOME nor USERPROFILE is set, so there is no ~/.stretto: pass --data"),
     }
-    // Whether the variables are set, never what they hold.
-    let set = |var: &str| std::env::var_os(var).is_some_and(|v| !v.is_empty());
-    let (key, key_file) = (set("TYPESAFE_API_KEY"), set("TYPESAFE_API_KEY_FILE"));
+    let [key, key_file] = env.key;
     doctor::check_key(&mut report, key, key_file);
     if let Some(dir) = &dir {
-        doctor::check_files(&mut report, dir, home.as_deref());
+        doctor::check_files(&mut report, dir, env.home.as_deref());
     }
     if network {
         if !(key || key_file) {
             report.note("--network: no key is set, so Jev was not asked");
         } else {
-            match jev_check() {
+            match (env.jev)() {
                 Ok(answer) => report.ok(answer),
                 Err(e) => report.problem(format!("Jev did not answer: {e:#}")),
             }
         }
     }
-    print!("{}", report.render());
+    write!(env.stdout, "{}", report.render())?;
     if report.problems() > 0 {
         eprintln!("stretto: {} problem(s) to fix", report.problems());
-        std::process::exit(1);
     }
-    Ok(())
+    Ok(report.problems() > 0)
 }
 
 /// τ²-bench episodes from `results`, as a deployment's sessions for
@@ -2784,13 +2814,13 @@ fn ask(
     });
     let (mut lines, mut failed) = (String::new(), 0);
     for ((key, _), slot) in todo.iter().zip(slots) {
-        let line = match slot.into_inner().expect("no thread panics holding a slot") {
-            Some(Ok(response)) => serde_json::json!({"key": key, "response": response}),
-            Some(Err(e)) => {
+        let answer = slot.into_inner().expect("no thread panics holding a slot");
+        let line = match answer.expect("every request is asked") {
+            Ok(response) => serde_json::json!({"key": key, "response": response}),
+            Err(e) => {
                 failed += 1;
                 serde_json::json!({"key": key, "error": format!("{e:#}")})
             }
-            None => unreachable!("every request is asked"),
         };
         lines.push_str(&line.to_string());
         lines.push('\n');
@@ -2914,13 +2944,21 @@ fn compile(config: &phase0::Config, domain: &str) -> Result<stretto_report::flow
         flow.domain(),
         start.elapsed().as_secs_f64()
     );
+    eprint!("{}", agreement(&flow));
+    Ok(flow)
+}
+
+/// How often each lookup's binding picked the agent's own arguments in
+/// training, a line per lookup.
+fn agreement(flow: &stretto_report::flow::Flow) -> String {
+    let mut lines = String::new();
     for (tool, [not, named]) in flow.binding_agreement() {
-        eprintln!(
-            "stretto: binding {tool}: agreed {}/{} unmentioned, {}/{} mentioned",
+        lines += &format!(
+            "stretto: binding {tool}: agreed {}/{} unmentioned, {}/{} mentioned\n",
             not.0, not.1, named.0, named.1
         );
     }
-    Ok(flow)
+    lines
 }
 
 /// How a served flow acts on its probabilities.
@@ -2968,8 +3006,8 @@ fn serve(
         None => None,
     };
     let mut asked = 0;
-    for stream in listener.incoming() {
-        let mut stream = stream?;
+    loop {
+        let (mut stream, _) = listener.accept()?;
         let mut line = String::new();
         std::io::BufReader::new(&stream).read_line(&mut line)?;
         let started = Instant::now();
@@ -2983,7 +3021,6 @@ fn serve(
             writeln!(f, "{entry}")?;
         }
     }
-    Ok(())
 }
 
 /// The answer to one query to `flow-serve`, `line`: the flow's next step
@@ -3052,7 +3089,11 @@ struct AnswerLine {
 
 /// Ask Jev one small question, uncached, and say how it answered.
 fn jev_check() -> Result<String> {
-    let client = stretto_oracle::jev::JevClient::from_env()?;
+    ask_jev(&stretto_oracle::jev::JevClient::from_env()?)
+}
+
+/// Ask `jev` [`jev_check`]'s question, and say how it answered.
+fn ask_jev(jev: &dyn Oracle) -> Result<String> {
     let request = Request {
         model: stretto_oracle::jev::JevClient::default_model(),
         state: serde_json::json!(
@@ -3070,7 +3111,7 @@ fn jev_check() -> Result<String> {
         )]),
     };
     let start = Instant::now();
-    let response = client.ask(&request)?;
+    let response = jev.ask(&request)?;
     let elapsed = start.elapsed();
     let answer = match response.answers.get("cancel") {
         Some(Answer::Noul { noul }) => format!("P(yes) = {noul:.3}"),
@@ -3085,11 +3126,20 @@ fn jev_check() -> Result<String> {
 }
 
 fn write(path: &PathBuf, bytes: &[u8]) -> Result<()> {
+    make_parent(path)?;
+    std::fs::write(path, bytes).with_context(|| format!("writing {}", path.display()))
+}
+
+/// Create the directory `path` is in, unless it is the current one.
+fn make_parent(path: &Path) -> Result<()> {
     if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
         std::fs::create_dir_all(parent)?;
     }
-    std::fs::write(path, bytes).with_context(|| format!("writing {}", path.display()))
+    Ok(())
 }
+
+#[cfg(test)]
+mod cli_tests;
 
 #[cfg(test)]
 mod tests {
@@ -3102,9 +3152,8 @@ mod tests {
     fn the_cli_reference_is_current() {
         let page = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/cli.md");
         let section = cli_doc::markdown(&Cli::command());
-        if let Err(e) = cli_doc::check_page(&page, "stretto", &section) {
-            panic!("{e}");
-        }
+        let checked = cli_doc::check_page(&page, "stretto", &section);
+        assert!(checked.is_ok(), "{}", checked.unwrap_err());
     }
 
     fn parse(args: &str) -> Result<Cli, clap::Error> {

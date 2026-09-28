@@ -34,6 +34,8 @@ The [`Makefile`](Makefile)'s Rust targets run the commands CI runs ([`.github/wo
 
 `docs/cli.md` is generated from the CLI's own help, and each binary's tests fail when its section is stale. After changing a command or an option, regenerate it with `make bless` (`STRETTO_BLESS=1 cargo test`) and commit the result. A test also checks that `docs/formats.md` names every field a flow or an arbiter file holds.
 
+Each `stretto` command's tests run it in the test's own process, in [`crates/stretto-report/src/cli_tests.rs`](crates/stretto-report/src/cli_tests.rs): `run` takes the parsed command line and an `Env` (stdin, stdout, HOME, PATH, whether a key is set, and Jev), so a test sets what the command sees and reads what it wrote. [`tests/common/mod.rs`](crates/stretto-report/tests/common/mod.rs) builds a miniature τ²-bench checkout and a shop's recorded sessions to run them on. A test of a new command or option goes there, with one for each way it fails.
+
 The documentation site lives in [`website/`](website/) (VitePress). `make site` builds it; `cd website && npm run dev` serves it with hot reload while you edit.
 
 ### Dev container and editor
