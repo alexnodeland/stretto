@@ -11,10 +11,11 @@ description: Cut a stretto release as docs/releasing.md describes, covering the 
 
 - **`release.yml`**, on a `v*` tag or by hand from the Actions tab:
   - `notes` checks that the tag is `v` plus the version in Cargo.toml, and takes the notes from CHANGELOG.md's `## X.Y.Z ` section, rewriting relative links to the tag. It fails before any build if either is wrong.
-  - `build` makes a `--locked --release` build of the four binaries (`stretto`, `stretto-proxy`, `stretto-procedure`, `stretto-mcp-demo`) for five targets, runs each binary's `--version` where the runner can, and packs an archive with LICENSE and README.md.
+  - `ui` builds the console's UI (`console/dist`) once.
+  - `build` makes a `--locked --release` build of the five binaries (`stretto`, `stretto-proxy`, `stretto-procedure`, `stretto-mcp-demo`, and `stretto-console` with the UI built in; it fails without `console/dist`) for five targets, runs each binary's `--version` where the runner can, and packs an archive with LICENSE and README.md.
   - `release` writes `SHA256SUMS`, copies `install.sh` and `install.ps1`, fills the Homebrew formula (`packaging/homebrew/fill.sh`), and creates the GitHub release once every build has passed. A tag with a hyphen (`v0.2.0-rc.1`) makes a pre-release.
   - Run by hand with `dry_run` checked (the default), it builds and packages everything, uploads it as the artifact `release`, and publishes nothing. Unchecked, it tags the commit `v<version>` itself and then starts `container.yml` on the tag.
-- **`container.yml`**, on the same tag, publishes `ghcr.io/alexnodeland/stretto` for linux/amd64 and linux/arm64, tagged `X.Y.Z`, `X.Y` and `latest`. The arm64 image, built under QEMU, is the slowest step.
+- **`container.yml`**, on the same tag, publishes two images for linux/amd64 and linux/arm64, tagged `X.Y.Z`, `X.Y` and `latest`: `ghcr.io/alexnodeland/stretto`, the CLI, and `ghcr.io/alexnodeland/stretto-console`, the console (the Dockerfile's `console` target). The arm64 builds, under QEMU, are the slowest steps.
 - Nothing goes to crates.io (docs/releasing.md, "crates.io", says why). Never run `cargo publish`.
 
 ## Prepare a release
@@ -40,7 +41,8 @@ The project settings ask before `git push` of a tag and before `gh release`.
 
 - The release page lists five archives, `SHA256SUMS`, `install.sh`, `install.ps1` and `stretto.rb`.
 - `curl -fsSL https://github.com/alexnodeland/stretto/releases/latest/download/install.sh | sh -s -- --prefix /tmp/stretto-check`, then `/tmp/stretto-check/bin/stretto doctor`.
-- `docker run --rm ghcr.io/alexnodeland/stretto:X.Y.Z --version`.
+- `docker run --rm ghcr.io/alexnodeland/stretto:X.Y.Z --version`, and the same for `ghcr.io/alexnodeland/stretto-console:X.Y.Z`.
+- The console from the archive serves its UI: start `/tmp/stretto-check/bin/stretto-console`, and the URL it prints shows the app, not the page saying how to build one.
 - The Homebrew tap, if it exists: copy the release's `stretto.rb` to `Formula/stretto.rb` there (docs/releasing.md, "Homebrew").
 
 **When a build fails:** fix it on main, delete the tag (`git push --delete origin vX.Y.Z`, `git tag -d vX.Y.Z`) and tag the fixed commit. The next image publish replaces the tags an earlier one wrote.
