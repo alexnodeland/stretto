@@ -62,6 +62,10 @@ The address it listens on (`--listen`). Default `127.0.0.1:7878`; the container 
 
 The token the API requires (`--token`). A token given this way is never printed, and keeps the console's URL the same across restarts. Default: a new token at each start, printed in the URL to open.
 
+### `BROWSER`
+
+The program `--open` opens the console's URL with. Default: the system's (`xdg-open`; `open` on macOS; `start` on Windows).
+
 ### `STRETTO_UID`, `STRETTO_GID`
 
 For [`compose.yaml`](https://github.com/alexnodeland/stretto/blob/main/compose.yaml) only: the user and group the console's container runs as, so that the files it writes in your `~/.stretto` are yours.

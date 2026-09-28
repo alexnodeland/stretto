@@ -130,6 +130,8 @@ pub struct State {
     pub jobs: jobs::Jobs,
     /// Live updates for `/api/events`.
     pub events: broadcast::Sender<watch::Event>,
+    /// Set when the console stops: the event streams end on it.
+    pub stopping: tokio::sync::watch::Sender<bool>,
 }
 
 /// The state, shared.
@@ -147,7 +149,14 @@ impl State {
             registry_lock: tokio::sync::Mutex::new(()),
             jobs,
             events,
+            stopping: tokio::sync::watch::Sender::new(false),
         })
+    }
+
+    /// Stop: end the event streams, which a server stopping would
+    /// otherwise wait for.
+    pub fn stop(&self) {
+        self.stopping.send_replace(true);
     }
 
     /// The data directory.
