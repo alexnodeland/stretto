@@ -1,7 +1,7 @@
 blank_issues_enabled: true
 contact_links:
   - name: Documentation
-    url: https://alexnodeland.github.io/stretto/
+    url: https://stretto.alexnodeland.com/
     about: Guides, the CLI reference, and the research behind stretto
   - name: Report a vulnerability
     url: https://github.com/alexnodeland/stretto/security/advisories/new

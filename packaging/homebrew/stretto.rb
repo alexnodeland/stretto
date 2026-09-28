@@ -6,7 +6,7 @@
 # repository does not exist yet (docs/releasing.md).
 class Stretto < Formula
   desc "Learn an LLM agent's next reads from its tool calls and serve them over MCP"
-  homepage "https://alexnodeland.github.io/stretto/"
+  homepage "https://stretto.alexnodeland.com/"
   version "@VERSION@"
   license "MIT"
 

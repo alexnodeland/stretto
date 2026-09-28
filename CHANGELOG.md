@@ -23,6 +23,7 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ### Documentation
 
+- The documentation site is at [stretto.alexnodeland.com](https://stretto.alexnodeland.com/). Links to the old address, alexnodeland.github.io/stretto, redirect there.
 - The documentation site builds for the address GitHub Pages gives it (`SITE_URL`, from the Pages workflow), so its base, canonical links and sitemap follow a custom domain. A link from the repository's Markdown to the site itself stays on the site: the roadmap's and the changelog's links to the documentation site opened the research notebook before.
 
 ### Development
@@ -108,8 +109,8 @@ The first release: [RFC-001](docs/rfc/001-habit-compiler.md)'s design, built and
 - [Reviewing flows](docs/review.md), with example diffs of real flows that a test keeps current.
 - [Privacy](docs/privacy.md): what each file holds, what is sent to the System-One model, retention and redaction.
 - [The file formats](docs/formats.md), [the CLI reference](docs/cli.md) (generated from the code, kept current by CI), [the design](docs/design.md) and [the roadmap](docs/roadmap.md).
-- The working paper, published at [alexnodeland.github.io/stretto](https://alexnodeland.github.io/stretto/notebook/) (now the research notebook; the site there is the documentation).
-- [The documentation site](https://alexnodeland.github.io/stretto/) (`website/`, VitePress): a guide, integrations, the reference, the research and the community pages.
+- The working paper, published as the research notebook at [stretto.alexnodeland.com/notebook](https://stretto.alexnodeland.com/notebook/).
+- [The documentation site](https://stretto.alexnodeland.com/) (`website/`, VitePress): a guide, integrations, the reference, the research and the community pages.
 - [The brand kit](brand/README.md): the mark, color tokens, an interactive explainer, and the explainer and walkthrough videos, narrated and captioned.
 - The working paper as an arXiv-ready LaTeX manuscript ([`paper/latex/`](paper/latex/README.md)), built from the Markdown.
 - `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CITATION.cff`, and issue and pull request templates.

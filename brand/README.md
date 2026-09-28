@@ -63,7 +63,7 @@ Both are under the [SIL Open Font License 1.1](fonts/LICENSE-Inter.txt) ([JetBra
 `social/og-card.png` is 1200 × 630: the lockup, the tagline, a schematic of the turns a flow saves, and the live result with its scope. It is rendered from `social/og-card.html` (`node brand/tools/render_assets.mjs og`).
 
 ```html
-<meta property="og:image" content="https://alexnodeland.github.io/stretto/og.png">
+<meta property="og:image" content="https://stretto.alexnodeland.com/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="stretto: Read ahead of your agent. Live on 28 τ²-bench retail and airline tasks, Claude Sonnet 5, Claude Haiku 4.5 and GLM-5.3 took 20–28% fewer LLM turns.">
@@ -80,10 +80,10 @@ Both are under the [SIL Open Font License 1.1](fonts/LICENSE-Inter.txt) ([JetBra
 - **Themes:** light and dark follow `prefers-color-scheme`; `?theme=light|dark` or a message forces one. It fits a 390 px screen with no horizontal scroll.
 - **Deep links:** `?step=4` opens on a step without playing; `?autoplay=0` waits for Play.
 
-Embed it at `/stretto/explainer/`:
+Embed it at `/explainer/`:
 
 ```html
-<iframe src="/stretto/explainer/" title="How stretto works" loading="lazy"
+<iframe src="/explainer/" title="How stretto works" loading="lazy"
         style="width: 100%; height: 780px; border: 0;"></iframe>
 <script>
   // Optional: size the frame to its content, and pass the site's theme.
@@ -115,9 +115,9 @@ It is 760 px tall at 1000 px wide and 876 px at 720 px, the same for every step;
 **The walkthrough** is a real terminal session, with the release binaries on the official MCP filesystem server, a scripted agent standing in for the LLM, and no key: `stretto doctor`, then `stretto init` printing Claude Code's configuration, then the loop `docs/walkthrough.md` runs (record, learn, review, audit, serve, learn again). `video/walkthrough/script.sh` is the command list; `capture.py` runs it in a pseudo-terminal, with a small allowlisted environment and the working directory as `HOME` (the binaries copied into its `.cargo/bin`, where `cargo install` puts them), and records every byte of output with its timing to `walkthrough.cast` (asciicast v2, with markers for steps, captions and commands); `render.mjs` draws the cast as a terminal, with a title card per step, and pipes the frames to ffmpeg. The only change to the output is the working directory's path, shown as `/home/me` as in the docs. The voice says the intro, each caption as it appears (`video/walkthrough/narration.json` gives a spoken form where the text on screen has paths or flags), and the outro; `term.js` holds each caption until its line has finished.
 
 ```html
-<video controls preload="none" poster="/stretto/media/explainer-poster.png" width="1920" height="1080" style="width: 100%; height: auto;">
-  <source src="/stretto/media/explainer.mp4" type="video/mp4">
-  <track kind="captions" src="/stretto/media/explainer.vtt" srclang="en" label="English">
+<video controls preload="none" poster="/media/explainer-poster.png" width="1920" height="1080" style="width: 100%; height: auto;">
+  <source src="/media/explainer.mp4" type="video/mp4">
+  <track kind="captions" src="/media/explainer.vtt" srclang="en" label="English">
 </video>
 ```
 
@@ -165,12 +165,12 @@ Frames are piped straight into ffmpeg; nothing is written to disk but the output
 
 ## For the docs site and the README
 
-Copy into `website/public/` (served at `/stretto/`):
+Copy into `website/public/` (served at the site's root):
 
 | From `brand/` | To `website/public/` |
 |---|---|
 | `logo/favicon.ico`, `logo/favicon.svg`, `logo/apple-touch-icon.png`, `logo/icon-512.png` | the same names, at the root |
-| `social/og-card.png` | `og-card.png` |
+| `social/og-card.png` | `og.png` |
 | `explainer/index.html` | `explainer/index.html` |
 | `logo/stretto-lockup.svg`, `logo/stretto-lockup-dark.svg`, `logo/stretto-mark.svg` | `logo/` (for the header) |
 | `explainer/audio/step-1.mp3` … `step-7.mp3` | `explainer/audio/` |
@@ -180,15 +180,15 @@ Copy into `website/public/` (served at `/stretto/`):
 In the site's `<head>`:
 
 ```html
-<link rel="icon" href="/stretto/favicon.ico" sizes="48x48">
-<link rel="icon" href="/stretto/favicon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="/stretto/apple-touch-icon.png">
-<link rel="manifest" href="/stretto/site.webmanifest">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#f8fbfb" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0b0f11" media="(prefers-color-scheme: dark)">
 ```
 
-with `site.webmanifest`: `{"name": "stretto", "short_name": "stretto", "icons": [{"src": "/stretto/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}], "background_color": "#0b0f11", "theme_color": "#0b0f11", "display": "browser"}`.
+with `site.webmanifest`: `{"name": "stretto", "short_name": "stretto", "icons": [{"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}], "background_color": "#0b0f11", "theme_color": "#0b0f11", "display": "browser"}`.
 
 In the repository's `README.md`, the lockup (switching with the reader's theme) and the teaser:
 

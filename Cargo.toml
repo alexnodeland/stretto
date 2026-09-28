@@ -9,7 +9,7 @@ rust-version = "1.88"
 license = "MIT"
 repository = "https://github.com/alexnodeland/stretto"
 authors = ["Alex Nodeland"]
-homepage = "https://alexnodeland.github.io/stretto/"
+homepage = "https://stretto.alexnodeland.com/"
 readme = "README.md"
 keywords = ["mcp", "llm", "agents", "bayesian", "speculation"]
 
