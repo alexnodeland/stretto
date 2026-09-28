@@ -277,9 +277,10 @@ where
         .spawn(move || {
             // Dropping `to_server` when the host's input ends closes the
             // server's stdin, which tells it to shut down.
+            let mut to_server = to_server;
             pump(
-                BufReader::new(host_in),
-                to_server,
+                &mut BufReader::new(host_in),
+                &mut to_server,
                 Peer::Client,
                 tap.as_ref(),
             );
@@ -289,7 +290,7 @@ where
     // Server to host, until the server closes its stdout.
     let tap = recorder.as_ref().map(Recorder::tap);
     pump(
-        BufReader::new(from_server),
+        &mut BufReader::new(from_server),
         &mut host_out,
         Peer::Server,
         tap.as_ref(),
@@ -329,8 +330,7 @@ pub fn prune(dir: &std::path::Path, days: u64) -> Result<usize> {
                 )
                 && entry.metadata()?.modified()? < cutoff
             {
-                std::fs::remove_file(&path)
-                    .with_context(|| format!("deleting {}", path.display()))?;
+                std::fs::remove_file(&path).context(format!("deleting {}", path.display()))?;
                 deleted += 1;
             }
         }
@@ -342,7 +342,9 @@ pub fn prune(dir: &std::path::Path, days: u64) -> Result<usize> {
 /// do. MCP hosts start servers without a shell, so without this,
 /// `--record ~/.stretto/logs` would create a directory named `~`.
 pub fn expand_home(path: PathBuf) -> PathBuf {
-    let home = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"));
+    let home = ["HOME", "USERPROFILE"]
+        .into_iter()
+        .find_map(std::env::var_os);
     expand_home_with(path, home)
 }
 
@@ -382,7 +384,7 @@ fn header(config: &Config) -> LogHeader {
 /// Each line goes to `tap` first, so it is in the log before the other side
 /// can answer it. If `output` fails, lines are still read and recorded, so
 /// the sender never blocks on a full pipe.
-fn pump(mut input: impl BufRead, mut output: impl Write, from: Peer, tap: Option<&Tap>) {
+fn pump(input: &mut dyn BufRead, output: &mut dyn Write, from: Peer, tap: Option<&Tap>) {
     let (sender, receiver) = match from {
         Peer::Server => ("server", "client"),
         _ => ("client", "server"),
@@ -424,115 +426,5 @@ fn exit_code(status: ExitStatus) -> i32 {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn prunes_what_is_older_than_the_retention() {
-        let dir = std::env::temp_dir().join(format!("stretto-prune-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(dir.join("ab")).unwrap();
-        let old = SystemTime::now() - std::time::Duration::from_secs(10 * 86_400);
-        for (name, age) in [
-            ("s1.jsonl", Some(old)),
-            ("s1.flow.jsonl", Some(old)),
-            ("ab/key.json", Some(old)),
-            ("s2.jsonl", None),
-            ("notes.txt", Some(old)),
-        ] {
-            let file = std::fs::File::create(dir.join(name)).unwrap();
-            if let Some(t) = age {
-                file.set_modified(t).unwrap();
-            }
-        }
-        assert_eq!(prune(&dir, 7).unwrap(), 3);
-        let left: Vec<bool> = ["s2.jsonl", "notes.txt", "s1.jsonl", "ab/key.json"]
-            .iter()
-            .map(|n| dir.join(n).exists())
-            .collect();
-        assert_eq!(left, [true, true, false, false]);
-        assert_eq!(prune(&dir.join("missing"), 7).unwrap(), 0);
-        std::fs::remove_dir_all(&dir).unwrap();
-    }
-
-    #[test]
-    fn expands_a_leading_tilde() {
-        let home = || Some(OsString::from("/home/a"));
-        let expand = |path: &str, home| expand_home_with(PathBuf::from(path), home);
-        assert_eq!(
-            expand("~/.stretto/logs", home()),
-            PathBuf::from("/home/a/.stretto/logs")
-        );
-        assert_eq!(expand("~", home()), PathBuf::from("/home/a"));
-        assert_eq!(expand("logs/~", home()), PathBuf::from("logs/~"));
-        assert_eq!(expand("~other/logs", home()), PathBuf::from("~other/logs"));
-        assert_eq!(expand("~/logs", None), PathBuf::from("~/logs"));
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn exit_codes_follow_the_shell() {
-        use std::os::unix::process::ExitStatusExt;
-        assert_eq!(exit_code(ExitStatus::from_raw(3 << 8)), 3);
-        assert_eq!(exit_code(ExitStatus::from_raw(9)), 128 + 9);
-    }
-
-    /// With `cat` as the server, whatever the host sends comes straight back.
-    #[cfg(unix)]
-    #[test]
-    fn forwards_every_line_unchanged_and_records_it() {
-        use stretto_trace::mcp::read_log;
-
-        let input: &[u8] = b"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}\n\
-            not json\r\n\
-            \xff\xfe not UTF-8\n\
-            [{\"jsonrpc\":\"2.0\",\"method\":\"a\"},{\"jsonrpc\":\"2.0\",\"method\":\"b\"}]\n\
-            {\"no\":\"final newline\"}";
-        let dir = std::env::temp_dir().join(format!("stretto-proxy-unit-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        let mut config = Config::new(["cat"]);
-        config.record = Some(dir.join("logs"));
-        config.domain = Some("echo".into());
-
-        let mut output = Vec::new();
-        let code = run_with(&config, io::Cursor::new(input.to_vec()), &mut output).unwrap();
-        assert_eq!(code, 0);
-        assert_eq!(output, input);
-
-        let logs: Vec<PathBuf> = std::fs::read_dir(dir.join("logs"))
-            .unwrap()
-            .map(|e| e.unwrap().path())
-            .collect();
-        assert_eq!(logs.len(), 1);
-        let log = read_log(&logs[0]).unwrap();
-        std::fs::remove_dir_all(&dir).unwrap();
-
-        assert_eq!(log.header.server_command, ["cat"]);
-        assert_eq!(log.header.domain.as_deref(), Some("echo"));
-        let lines = |from| {
-            log.entries
-                .iter()
-                .enumerate()
-                .filter(move |(_, e)| e.from == from)
-        };
-        let raw: Vec<Option<&str>> = lines(Peer::Client).map(|(_, e)| e.raw.as_deref()).collect();
-        assert_eq!(
-            raw,
-            [
-                None,
-                Some("not json"),
-                Some("\u{fffd}\u{fffd} not UTF-8"),
-                None,
-                None
-            ]
-        );
-        // Each echo is logged after the line it echoes, and times never
-        // decrease.
-        let sent: Vec<usize> = lines(Peer::Client).map(|(i, _)| i).collect();
-        let echoed: Vec<usize> = lines(Peer::Server).map(|(i, _)| i).collect();
-        assert_eq!(echoed.len(), sent.len());
-        assert!(sent.iter().zip(&echoed).all(|(s, e)| s < e));
-        assert!(log.entries.windows(2).all(|w| w[0].t_ms <= w[1].t_ms));
-        assert_eq!(log.messages().count(), 8);
-    }
-}
+#[path = "lib_tests.rs"]
+mod tests;

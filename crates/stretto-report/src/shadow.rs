@@ -249,8 +249,9 @@ impl ShadowConfig {
         self.build_with(&stretto_oracle::jev::JevClient::from_env)
     }
 
-    /// [`ShadowConfig::build`], with `jev` making the Jev client.
-    fn build_with(
+    /// [`ShadowConfig::build`], with `jev` making the Jev client when the
+    /// oracle needs one.
+    pub fn build_with(
         &self,
         jev: &dyn Fn() -> Result<stretto_oracle::jev::JevClient>,
     ) -> Result<Box<dyn Oracle + Sync>> {

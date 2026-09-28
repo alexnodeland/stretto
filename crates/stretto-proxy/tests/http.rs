@@ -424,3 +424,147 @@ fn headers_come_from_the_environment_and_stay_out_of_the_log() {
     assert!(String::from_utf8_lossy(&unset.stderr).contains("STRETTO_TEST_UNSET"));
     let _ = fs::remove_dir_all(&dir);
 }
+
+/// Read one HTTP request: its head (lowercase) and body.
+fn read_request(stream: &mut std::net::TcpStream) -> (String, String) {
+    let mut reader = BufReader::new(stream);
+    let mut head = String::new();
+    loop {
+        let mut line = String::new();
+        if reader.read_line(&mut line).unwrap_or(0) == 0 || line == "\r\n" {
+            break;
+        }
+        head.push_str(&line.to_ascii_lowercase());
+    }
+    let length = head
+        .lines()
+        .find_map(|l| l.strip_prefix("content-length: "))
+        .map_or(0, |n| n.trim().parse().unwrap());
+    let mut body = vec![0; length];
+    std::io::Read::read_exact(&mut reader, &mut body).unwrap();
+    (head, String::from_utf8(body).unwrap())
+}
+
+/// A Streamable HTTP server that misbehaves as scripted. It ends the
+/// session when asked to call `gone`, cuts off its answer to `cut`, answers
+/// `text` with a line that is not JSON, sends two events on its GET stream
+/// and then ends it, refuses the stream when it is resumed, and hangs up on
+/// the DELETE. Its URL, and each request's first line as it arrives (with
+/// the event id a GET resumes from).
+fn misbehaving_server() -> (String, Receiver<String>) {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let url = format!("http://{}/mcp", listener.local_addr().unwrap());
+    let (seen, requests) = mpsc::channel();
+    thread::spawn(move || {
+        for stream in listener.incoming() {
+            let (mut stream, seen) = (stream.unwrap(), seen.clone());
+            thread::spawn(move || {
+                let (head, body) = read_request(&mut stream);
+                let first = head.lines().next().unwrap_or_default().to_string();
+                let resumed = head
+                    .lines()
+                    .find_map(|l| l.strip_prefix("last-event-id: "))
+                    .map(str::to_string);
+                let _ = seen.send(format!("{first} {}", resumed.clone().unwrap_or_default()));
+                let json = |status: &str, headers: &str, body: &str| {
+                    format!(
+                        "HTTP/1.1 {status}\r\nContent-Type: application/json\r\n{headers}\
+                         Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                        body.len()
+                    )
+                };
+                let reply = if first.starts_with("delete") {
+                    return;
+                } else if first.starts_with("get") {
+                    match resumed {
+                        Some(_) => "HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".to_string(),
+                        None => "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\n\
+                                 id: e1\ndata: {\"jsonrpc\":\"2.0\",\"method\":\"notifications/message\",\"params\":{\"data\":\"one\"}}\n\n\
+                                 id: e2\ndata: not JSON either\n\n".to_string(),
+                    }
+                } else if body.contains("\"initialize\"") {
+                    json(
+                        "200 OK",
+                        "Mcp-Session-Id: s1\r\n",
+                        r#"{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabilities":{},"serverInfo":{"name":"stub","version":"0"}}}"#,
+                    )
+                } else if body.contains("\"gone\"") {
+                    json("404 Not Found", "", "")
+                } else if body.contains("\"cut\"") {
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 100\r\nConnection: close\r\n\r\n{\"jsonrpc\"".to_string()
+                } else if body.contains("\"text\"") {
+                    json("200 OK", "", "not JSON")
+                } else {
+                    json("202 Accepted", "", "")
+                };
+                let _ = stream.write_all(reply.as_bytes());
+            });
+        }
+    });
+    (url, requests)
+}
+
+#[test]
+fn what_the_server_gets_wrong_reaches_the_host_as_an_error_or_a_line() {
+    let (url, requests) = misbehaving_server();
+    let mut proxy = Command::new(PROXY)
+        .args(["--upstream", &url])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut stdin = proxy.stdin.take().unwrap();
+    let (tx, lines) = mpsc::channel();
+    let stdout = BufReader::new(proxy.stdout.take().unwrap());
+    thread::spawn(move || {
+        for line in stdout.lines() {
+            let _ = tx.send(line.unwrap());
+        }
+    });
+    let call = |id: u64, name: &str| {
+        json!({"jsonrpc": "2.0", "id": id, "method": "tools/call",
+               "params": {"name": name, "arguments": {}}})
+    };
+    let initialized = json!({"jsonrpc": "2.0", "method": "notifications/initialized"});
+    let initialize = json!({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                            "params": {"protocolVersion": "2025-06-18", "capabilities": {},
+                                       "clientInfo": {"name": "stretto-test-host", "version": "0"}}});
+    writeln!(stdin, "{initialize}").unwrap();
+    let first = lines.recv_timeout(PATIENCE).unwrap();
+    assert!(
+        first.contains("\"protocolVersion\":\"2025-06-18\""),
+        "{first}"
+    );
+    // A blank line is skipped, and a second `initialized` opens no second
+    // stream.
+    writeln!(stdin, "{initialized}\n\n{initialized}").unwrap();
+    for (id, name) in [(2, "gone"), (3, "cut"), (4, "text")] {
+        writeln!(stdin, "{}", call(id, name)).unwrap();
+    }
+    stdin.flush().unwrap();
+    let expected = [
+        "the server has ended the session",
+        "the server's answer was cut off",
+        "not JSON",
+        "\"data\":\"one\"",
+        "not JSON either",
+    ];
+    let mut got: Vec<String> = Vec::new();
+    while !expected.iter().all(|e| got.iter().any(|l| l.contains(e))) {
+        got.push(lines.recv_timeout(PATIENCE).expect("every line arrives"));
+    }
+    // The stream ended, so it is opened again from the last event, and
+    // refused.
+    let resumed = std::iter::from_fn(|| requests.recv_timeout(PATIENCE).ok())
+        .find(|r| r.starts_with("get") && r.ends_with(" e2"));
+    assert!(resumed.is_some());
+    drop(stdin);
+    let out = proxy.wait_with_output().unwrap();
+    assert_eq!(out.status.code(), Some(0));
+    let said = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        said.contains("stretto-proxy: ending the HTTP session: "),
+        "{said}"
+    );
+}

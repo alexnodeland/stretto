@@ -437,6 +437,7 @@ mod tests {
     #[test]
     fn reads_server_sent_events() {
         let stream = b": a comment\n\
+            retry\n\
             event: message\nid: 7\ndata: {\"a\":1}\n\n\
             data: {\"b\":\ndata: 2}\n\n\
             data: cut off";
@@ -465,5 +466,40 @@ mod tests {
             "http://127.0.0.1:9/mcp"
         );
         assert_eq!(redact_url("https://example.com"), "https://example.com");
+        assert_eq!(
+            redact_url("example.com/mcp?api_key=1"),
+            "example.com/mcp?api_key=<redacted>"
+        );
+    }
+
+    #[test]
+    fn hands_the_proxy_whole_lines_until_told_to_close() {
+        let (reader, writer) = std::io::pipe().unwrap();
+        let (tx, rx) = mpsc::channel();
+        for out in [
+            Out::Line(b"a".to_vec()),
+            Out::Line(b"b\n".to_vec()),
+            Out::Close,
+        ] {
+            tx.send(out).unwrap();
+        }
+        tx.send(Out::Line(b"after the close".to_vec())).unwrap();
+        write_lines(writer, rx);
+        let mut text = String::new();
+        BufReader::new(reader).read_to_string(&mut text).unwrap();
+        assert_eq!(text, "a\nb\n");
+
+        // Once the proxy's end is gone, nothing more is written.
+        let (reader, writer) = std::io::pipe().unwrap();
+        drop(reader);
+        let (tx, rx) = mpsc::channel();
+        tx.send(Out::Line(b"lost".to_vec())).unwrap();
+        tx.send(Out::Line(b"lost too".to_vec())).unwrap();
+        write_lines(writer, rx);
+        // And a sender that goes away is an end too.
+        let (_, writer) = std::io::pipe().unwrap();
+        let (tx, rx) = mpsc::channel::<Out>();
+        drop(tx);
+        write_lines(writer, rx);
     }
 }
