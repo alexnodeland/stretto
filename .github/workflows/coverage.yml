@@ -1,9 +1,11 @@
 name: Coverage
 
 # Line coverage of the workspace's tests, measured with cargo-llvm-cov by
-# `make coverage`, which fails under the Makefile's COVERAGE_MIN. The LCOV
-# report is the run's artifact `lcov`. With a CODECOV_TOKEN repository
-# secret it also goes to Codecov; without one, that step is skipped.
+# `make coverage`. It fails under the Makefile's COVERAGE_MIN, and when a
+# line the change adds is not run by any test (scripts/patch_coverage.py,
+# against the merge base with main, hence the full history). The LCOV report
+# is the run's artifact `lcov`. With a CODECOV_TOKEN repository secret it
+# also goes to Codecov; without one, that step is skipped.
 on:
   push:
     branches: [main]
@@ -21,6 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: llvm-tools-preview

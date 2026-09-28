@@ -47,7 +47,7 @@ A change to a type the API serves needs `make types` first, and the TypeScript i
 ## 4. When it applies
 
 - **Dependencies, `Cargo.lock` or a newer std API:** `make msrv` checks the workspace on Rust 1.88 with the lockfile (it installs that toolchain, about 550 MB).
-- **Tests removed, or much new code:** `make coverage` fails under `COVERAGE_MIN` in the Makefile. The instrumented build needs about 4 GB of disk.
+- **Any change to `crates/`:** `make coverage` fails under `COVERAGE_MIN` in the Makefile, and when a line the branch adds since its merge base with `origin/main` is not run by any test (`git fetch origin main` first). The instrumented build needs about 4 GB of disk.
 - **`website/`, `docs/`, `paper/`, `site/`, `brand/` or `CHANGELOG.md`:** `make site`, which fails on a dead link. CI does not build the site before the merge.
 - **Platform-specific code:** the `platforms` job builds on macOS and Windows, which cannot be run here. Keep Unix-only APIs behind `#[cfg(unix)]`.
 - **The Dockerfile or what goes into the image:** `make docker`, then the checks in container.yml's `build` job.
@@ -64,6 +64,7 @@ A change to a type the API serves needs `make types` first, and the TypeScript i
 | A rustdoc error such as `links to private item` or an unresolved link | The public docs link to what they cannot reach | Fix the path, or make a private item a code span |
 | MSRV: `rustc 1.88 is not supported by the following packages` | A locked dependency needs a newer Rust | Pin that dependency to a release that supports 1.88 (`cargo update -p NAME --precise VERSION`), or raise `rust-version` in Cargo.toml and the msrv job's toolchain together, with a CHANGELOG line |
 | Coverage under the threshold | Tests cover less than `COVERAGE_MIN` | Add tests. Lower the threshold only with a reason in the commit |
+| `path:line: added, and no test runs it` | A line the branch adds is not run by any test | Add a test that runs it, or remove the line. A branch that cannot happen is better removed than tested |
 | `quickstart: FAILED: ...` | The loop no longer does what `examples/quickstart/README.md` says | The message names the step. Fix the code, or the README and the script together |
 | `scripts/walkthrough.py` fails | The code and `docs/walkthrough.md` disagree | Change them together: CI exists so they cannot drift |
 | `npx` cannot fetch a server | No network here | Report it as unverified; CI runs it |

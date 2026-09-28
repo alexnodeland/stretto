@@ -1393,4 +1393,623 @@ mod tests {
         assert!(!within_a_day("2024-05-14T14:00:00", AIRLINE_NOW));
         assert!(within_a_day("2024-04-30T23:00:00", "2024-05-01T10:00:00"));
     }
+
+    /// Rule `rule`'s verdict on the write `name(arguments)` after `events`.
+    fn verdict(
+        domain: &str,
+        events: Vec<Event>,
+        name: &str,
+        arguments: Value,
+        rule: &str,
+    ) -> Verdict {
+        let call = ToolCall {
+            id: "w".to_string(),
+            name: name.to_string(),
+            arguments,
+        };
+        Guards::for_domain(domain)
+            .unwrap()
+            .check(&episode(events), &call)
+            .into_iter()
+            .find(|(id, _)| *id == rule)
+            .map(|(_, v)| v)
+            .unwrap_or_else(|| panic!("{rule} does not check {name}"))
+    }
+
+    fn fails(v: &Verdict, why: &str) -> bool {
+        matches!(v, Verdict::Fail(r) if r.contains(why))
+    }
+
+    fn unknown(v: &Verdict, why: &str) -> bool {
+        matches!(v, Verdict::Unknown(r) if r.contains(why))
+    }
+
+    /// A lookup of `name` that returned `content`.
+    fn looked_up(id: &str, name: &str, content: Value) -> Vec<Event> {
+        vec![call(id, name, json!({})), result(id, name, content)]
+    }
+
+    #[test]
+    fn only_retail_and_airline_have_guards() {
+        let g = Guards::for_domain("airline").unwrap();
+        assert_eq!(g.domain(), "airline");
+        assert!(g.rules().iter().any(|r| r.id == "airline.keep_bags"));
+        assert!(Guards::for_domain("telecom").is_none());
+    }
+
+    #[test]
+    fn retail_rules_say_what_they_cannot_tell_and_what_fails() {
+        let ann = || looked_up("a", "find_user_id_by_email", json!("ann_1"));
+        let order_of = |owner: Option<&str>, status: Option<&str>| {
+            let mut o = json!({"order_id": "#W1", "items": [{"item_id": "i1", "product_id": "p1"}],
+                               "payment_history": [{"payment_method_id": "credit_card_1"}]});
+            if let Some(owner) = owner {
+                o["user_id"] = json!(owner);
+            }
+            if let Some(status) = status {
+                o["status"] = json!(status);
+            }
+            looked_up("o", "get_order_details", o)
+        };
+        let with = |parts: Vec<Vec<Event>>| parts.concat();
+        let cancel = json!({"order_id": "#W1", "reason": "no longer needed"});
+        // Whose order it is.
+        let v = verdict(
+            "retail",
+            order_of(Some("bob_2"), Some("pending")),
+            "cancel_pending_order",
+            cancel.clone(),
+            "retail.own_order",
+        );
+        assert!(unknown(&v, "order of bob_2; nobody authenticated"), "{v:?}");
+        let v = verdict(
+            "retail",
+            with(vec![ann(), order_of(Some("bob_2"), Some("pending"))]),
+            "cancel_pending_order",
+            cancel.clone(),
+            "retail.own_order",
+        );
+        assert!(fails(&v, "belongs to bob_2"), "{v:?}");
+        let v = verdict(
+            "retail",
+            with(vec![ann(), order_of(None, Some("pending"))]),
+            "cancel_pending_order",
+            cancel.clone(),
+            "retail.own_order",
+        );
+        assert!(unknown(&v, "the order has no user"), "{v:?}");
+        // Its status.
+        let v = verdict(
+            "retail",
+            ann(),
+            "cancel_pending_order",
+            json!({"reason": "no longer needed"}),
+            "retail.status_checked",
+        );
+        assert!(unknown(&v, "no order id"), "{v:?}");
+        let v = verdict(
+            "retail",
+            with(vec![ann(), order_of(Some("ann_1"), None)]),
+            "cancel_pending_order",
+            cancel.clone(),
+            "retail.pending",
+        );
+        assert!(unknown(&v, "the order has no status"), "{v:?}");
+        let address = json!({"order_id": "#W1", "address1": "1 Main St"});
+        let v = verdict(
+            "retail",
+            ann(),
+            "modify_pending_order_address",
+            address.clone(),
+            "retail.pending",
+        );
+        assert!(unknown(&v, "the order was not looked up"), "{v:?}");
+        let v = verdict(
+            "retail",
+            with(vec![ann(), order_of(Some("ann_1"), Some("delivered"))]),
+            "modify_pending_order_address",
+            address.clone(),
+            "retail.pending",
+        );
+        assert!(fails(&v, "the order is delivered, not pending"), "{v:?}");
+        let v = verdict(
+            "retail",
+            with(vec![ann(), order_of(Some("ann_1"), None)]),
+            "modify_pending_order_address",
+            address,
+            "retail.pending",
+        );
+        assert!(unknown(&v, "the order has no status"), "{v:?}");
+        // The reason.
+        let v = verdict(
+            "retail",
+            ann(),
+            "cancel_pending_order",
+            json!({"order_id": "#W1"}),
+            "retail.cancel_reason",
+        );
+        assert!(fails(&v, "no reason given"), "{v:?}");
+        // The items.
+        let exchange = |old: &[&str], new: &[&str]| json!({"order_id": "#W1", "item_ids": old, "new_item_ids": new, "payment_method_id": "credit_card_1"});
+        let v = verdict(
+            "retail",
+            ann(),
+            "exchange_delivered_order_items",
+            exchange(&["i1"], &["i2"]),
+            "retail.items_in_order",
+        );
+        assert!(unknown(&v, "the order was not looked up"), "{v:?}");
+        let delivered = || with(vec![ann(), order_of(Some("ann_1"), Some("delivered"))]);
+        let v = verdict(
+            "retail",
+            delivered(),
+            "exchange_delivered_order_items",
+            exchange(&["i9"], &["i2"]),
+            "retail.items_in_order",
+        );
+        assert!(fails(&v, "item i9 is not in the order"), "{v:?}");
+        let v = verdict(
+            "retail",
+            ann(),
+            "exchange_delivered_order_items",
+            exchange(&["i1"], &["i2"]),
+            "retail.same_product",
+        );
+        assert!(unknown(&v, "the order was not looked up"), "{v:?}");
+        let v = verdict(
+            "retail",
+            delivered(),
+            "exchange_delivered_order_items",
+            exchange(&["i1"], &[]),
+            "retail.same_product",
+        );
+        assert!(fails(&v, "differ in length"), "{v:?}");
+        let v = verdict(
+            "retail",
+            delivered(),
+            "exchange_delivered_order_items",
+            exchange(&["i9"], &["i2"]),
+            "retail.same_product",
+        );
+        assert!(unknown(&v, "item i9 is not in the order"), "{v:?}");
+        let v = verdict(
+            "retail",
+            delivered(),
+            "exchange_delivered_order_items",
+            exchange(&["i1"], &["i2"]),
+            "retail.same_product",
+        );
+        assert!(unknown(&v, "product p1 was not looked up"), "{v:?}");
+        let product = looked_up(
+            "p",
+            "get_product_details",
+            json!({"product_id": "p1",
+            "variants": {"i1": {"available": true}, "i2": {"available": true}}}),
+        );
+        let v = verdict(
+            "retail",
+            with(vec![delivered(), product]),
+            "exchange_delivered_order_items",
+            exchange(&["i1"], &["i1"]),
+            "retail.same_product",
+        );
+        assert!(fails(&v, "item i1 is the item it replaces"), "{v:?}");
+        // The payment method.
+        let v = verdict(
+            "retail",
+            delivered(),
+            "exchange_delivered_order_items",
+            json!({"order_id": "#W1"}),
+            "retail.own_payment",
+        );
+        assert!(unknown(&v, "no payment method"), "{v:?}");
+        let v = verdict(
+            "retail",
+            delivered(),
+            "exchange_delivered_order_items",
+            exchange(&["i1"], &["i2"]),
+            "retail.own_payment",
+        );
+        assert!(
+            unknown(&v, "the user's details were not looked up"),
+            "{v:?}"
+        );
+        let details = looked_up(
+            "u",
+            "get_user_details",
+            json!({"user_id": "ann_1",
+            "payment_methods": {"credit_card_1": {}}}),
+        );
+        let v = verdict(
+            "retail",
+            with(vec![delivered(), details]),
+            "exchange_delivered_order_items",
+            json!({"order_id": "#W1", "payment_method_id": "paypal_9"}),
+            "retail.own_payment",
+        );
+        assert!(
+            fails(&v, "paypal_9 is not one of the user's payment methods"),
+            "{v:?}"
+        );
+        // Where a refund goes.
+        let refund = |method: &str| json!({"order_id": "#W1", "item_ids": ["i1"], "payment_method_id": method});
+        let v = verdict(
+            "retail",
+            ann(),
+            "return_delivered_order_items",
+            refund("credit_card_1"),
+            "retail.refund_method",
+        );
+        assert!(unknown(&v, "the order or the method is unknown"), "{v:?}");
+        for method in ["credit_card_1", "gift_card_7"] {
+            let v = verdict(
+                "retail",
+                delivered(),
+                "return_delivered_order_items",
+                refund(method),
+                "retail.refund_method",
+            );
+            assert_eq!(v, Verdict::Pass, "{method}");
+        }
+        let v = verdict(
+            "retail",
+            delivered(),
+            "return_delivered_order_items",
+            refund("paypal_9"),
+            "retail.refund_method",
+        );
+        assert!(
+            fails(&v, "neither the original payment method nor a gift card"),
+            "{v:?}"
+        );
+        // Nothing said yet: nothing confirmed.
+        let v = verdict(
+            "retail",
+            ann(),
+            "cancel_pending_order",
+            cancel,
+            "retail.confirmed",
+        );
+        assert!(fails(&v, "has not confirmed anything yet"), "{v:?}");
+    }
+
+    #[test]
+    fn airline_rules_say_what_they_cannot_tell_and_what_fails() {
+        let reservation = |r: Value| looked_up("r", "get_reservation_details", r);
+        let user = |u: Value| looked_up("u", "get_user_details", u);
+        let r1 = |extra: Value| {
+            let mut r = json!({"reservation_id": "R1", "user_id": "u1", "cabin": "economy",
+                               "flights": [{"flight_number": "HAT1", "date": "2024-05-20"}],
+                               "passengers": [{"first_name": "Ann"}], "total_baggages": 2});
+            for (k, v) in extra.as_object().unwrap() {
+                r[k] = v.clone();
+            }
+            r
+        };
+        let flown = || json!({"flights": [{"flight_number": "HAT1", "date": "2024-05-01"}]});
+        let with = |parts: Vec<Vec<Event>>| parts.concat();
+        let id = json!({"reservation_id": "R1"});
+        // Whose reservation it is.
+        for (rule, tool) in [
+            ("airline.own_reservation", "cancel_reservation"),
+            ("airline.cancel_allowed", "cancel_reservation"),
+            (
+                "airline.basic_economy_flights",
+                "update_reservation_flights",
+            ),
+            ("airline.not_flown", "update_reservation_flights"),
+            ("airline.keep_bags", "update_reservation_baggages"),
+            (
+                "airline.same_passenger_count",
+                "update_reservation_passengers",
+            ),
+        ] {
+            let v = verdict("airline", Vec::new(), tool, id.clone(), rule);
+            assert!(
+                unknown(&v, "the reservation was not looked up"),
+                "{rule}: {v:?}"
+            );
+        }
+        let v = verdict(
+            "airline",
+            reservation(r1(json!({}))),
+            "cancel_reservation",
+            id.clone(),
+            "airline.own_reservation",
+        );
+        assert!(unknown(&v, "reservation of u1; no user looked up"), "{v:?}");
+        let v = verdict(
+            "airline",
+            with(vec![
+                user(json!({"user_id": "u2"})),
+                reservation(r1(json!({}))),
+            ]),
+            "cancel_reservation",
+            id.clone(),
+            "airline.own_reservation",
+        );
+        assert!(fails(&v, "belongs to u1"), "{v:?}");
+        let v = verdict(
+            "airline",
+            with(vec![
+                user(json!({"user_id": "u2"})),
+                reservation(json!({"reservation_id": "R1"})),
+            ]),
+            "cancel_reservation",
+            id.clone(),
+            "airline.own_reservation",
+        );
+        assert!(unknown(&v, "the reservation has no user"), "{v:?}");
+        // Flown flights.
+        let v = verdict(
+            "airline",
+            reservation(r1(flown())),
+            "cancel_reservation",
+            id.clone(),
+            "airline.cancel_allowed",
+        );
+        assert!(fails(&v, "already flown"), "{v:?}");
+        let v = verdict(
+            "airline",
+            reservation(r1(flown())),
+            "update_reservation_flights",
+            json!({"reservation_id": "R1", "cabin": "business"}),
+            "airline.not_flown",
+        );
+        assert!(fails(&v, "the cabin cannot change"), "{v:?}");
+        // A flight the airline cancelled lets the reservation go.
+        let status = vec![
+            call(
+                "s",
+                "get_flight_status",
+                json!({"flight_number": "HAT1", "date": "2024-05-20"}),
+            ),
+            result("s", "get_flight_status", json!("cancelled")),
+        ];
+        let old = r1(json!({"created_at": "2024-05-01T09:00:00"}));
+        let v = verdict(
+            "airline",
+            with(vec![reservation(old), status]),
+            "cancel_reservation",
+            id.clone(),
+            "airline.cancel_allowed",
+        );
+        assert_eq!(v, Verdict::Pass);
+        // Bags and passengers.
+        let bags = |n: i64| json!({"reservation_id": "R1", "total_baggages": n});
+        let v = verdict(
+            "airline",
+            reservation(r1(json!({}))),
+            "update_reservation_baggages",
+            bags(1),
+            "airline.keep_bags",
+        );
+        assert!(fails(&v, "that removes bags (2 to 1)"), "{v:?}");
+        let v = verdict(
+            "airline",
+            reservation(r1(json!({}))),
+            "update_reservation_baggages",
+            bags(3),
+            "airline.keep_bags",
+        );
+        assert_eq!(v, Verdict::Pass);
+        let v = verdict(
+            "airline",
+            reservation(r1(json!({}))),
+            "update_reservation_baggages",
+            id.clone(),
+            "airline.keep_bags",
+        );
+        assert!(unknown(&v, "bag counts unknown"), "{v:?}");
+        let people = |n: usize| json!({"reservation_id": "R1", "passengers": vec![json!({"first_name": "A"}); n]});
+        let v = verdict(
+            "airline",
+            reservation(r1(json!({}))),
+            "update_reservation_passengers",
+            people(2),
+            "airline.same_passenger_count",
+        );
+        assert!(fails(&v, "(1 to 2)"), "{v:?}");
+        let v = verdict(
+            "airline",
+            reservation(r1(json!({}))),
+            "update_reservation_passengers",
+            people(1),
+            "airline.same_passenger_count",
+        );
+        assert_eq!(v, Verdict::Pass);
+        let v = verdict(
+            "airline",
+            reservation(r1(json!({}))),
+            "update_reservation_passengers",
+            id.clone(),
+            "airline.same_passenger_count",
+        );
+        assert!(unknown(&v, "passenger counts unknown"), "{v:?}");
+        // What one booking may hold.
+        let booking = |passengers: usize, payments: &[&str]| {
+            json!({"passengers": vec![json!({"first_name": "A"}); passengers],
+                   "payment_methods": payments.iter().map(|p| json!({"payment_id": p})).collect::<Vec<_>>()})
+        };
+        let v = verdict(
+            "airline",
+            Vec::new(),
+            "book_reservation",
+            booking(6, &[]),
+            "airline.booking_limits",
+        );
+        assert!(fails(&v, "6 passengers is more than five"), "{v:?}");
+        let v = verdict(
+            "airline",
+            Vec::new(),
+            "book_reservation",
+            booking(1, &["credit_card_1", "credit_card_2"]),
+            "airline.booking_limits",
+        );
+        assert!(fails(&v, "more than 1 credit card payment(s)"), "{v:?}");
+        let v = verdict(
+            "airline",
+            Vec::new(),
+            "book_reservation",
+            booking(
+                1,
+                &["certificate_1", "gift_card_1", "gift_card_2", "paypal_1"],
+            ),
+            "airline.booking_limits",
+        );
+        assert_eq!(v, Verdict::Pass);
+        // Paying with the user's own methods.
+        let v = verdict(
+            "airline",
+            Vec::new(),
+            "book_reservation",
+            booking(1, &[]),
+            "airline.own_payment",
+        );
+        assert!(unknown(&v, "no payment method"), "{v:?}");
+        let v = verdict(
+            "airline",
+            Vec::new(),
+            "book_reservation",
+            booking(1, &["credit_card_1"]),
+            "airline.own_payment",
+        );
+        assert!(
+            unknown(&v, "the user's details were not looked up"),
+            "{v:?}"
+        );
+        let v = verdict(
+            "airline",
+            user(json!({"user_id": "u1", "payment_methods": {"credit_card_1": {}}})),
+            "update_reservation_baggages",
+            json!({"reservation_id": "R1", "payment_id": "gift_card_9"}),
+            "airline.own_payment",
+        );
+        assert!(
+            fails(&v, "gift_card_9 is not in the user's profile"),
+            "{v:?}"
+        );
+        // Compensation.
+        let send = json!({"user_id": "u1", "amount": 100});
+        let v = verdict(
+            "airline",
+            Vec::new(),
+            "send_certificate",
+            send.clone(),
+            "airline.compensation",
+        );
+        assert!(unknown(&v, "the user was not looked up"), "{v:?}");
+        let regular = || user(json!({"user_id": "u1", "membership": "regular"}));
+        let v = verdict(
+            "airline",
+            user(json!({"user_id": "u1", "membership": "gold"})),
+            "send_certificate",
+            send.clone(),
+            "airline.compensation",
+        );
+        assert_eq!(v, Verdict::Pass);
+        let v = verdict(
+            "airline",
+            regular(),
+            "send_certificate",
+            send.clone(),
+            "airline.compensation",
+        );
+        assert!(unknown(&v, "no reservation looked up"), "{v:?}");
+        let v = verdict(
+            "airline",
+            with(vec![
+                regular(),
+                reservation(r1(json!({"insurance": "yes"}))),
+            ]),
+            "send_certificate",
+            send.clone(),
+            "airline.compensation",
+        );
+        assert_eq!(v, Verdict::Pass);
+        let v = verdict(
+            "airline",
+            with(vec![regular(), reservation(r1(json!({"insurance": "no"})))]),
+            "send_certificate",
+            send,
+            "airline.compensation",
+        );
+        assert!(fails(&v, "not compensated"), "{v:?}");
+        // A time that is not one is not within a day.
+        assert!(!within_a_day("soon", AIRLINE_NOW));
+    }
+
+    #[test]
+    fn a_result_of_no_known_call_changes_nothing() {
+        let f = Facts::of(&[result(
+            "9",
+            "cancel_pending_order",
+            json!({"order_id": "#W1"}),
+        )]);
+        assert!(f.writes.is_empty());
+        assert!(f.orders.contains_key("#W1"));
+    }
+
+    #[test]
+    fn the_audit_sorts_each_write_by_the_tool_and_by_the_episode() {
+        let g = Guards::for_domain("retail").unwrap();
+        let with_cancel = |id: &str, reason: &str, refused: bool, reward: f64| Episode {
+            id: id.to_string(),
+            reward,
+            ..episode(vec![
+                Event::User {
+                    text: "Cancel #W1, I'm ann@x.com".to_string(),
+                },
+                call("1", "find_user_id_by_email", json!({"email": "ann@x.com"})),
+                result("1", "find_user_id_by_email", json!("ann_1")),
+                call("2", "get_order_details", json!({"order_id": "#W1"})),
+                result("2", "get_order_details", order("pending")),
+                Event::User {
+                    text: "Yes, please cancel it.".to_string(),
+                },
+                call(
+                    "3",
+                    "cancel_pending_order",
+                    json!({"order_id": "#W1", "reason": reason}),
+                ),
+                Event::ToolResult {
+                    call_id: "3".to_string(),
+                    name: "cancel_pending_order".to_string(),
+                    error: refused,
+                    content: "{}".to_string(),
+                },
+            ])
+        };
+        let passed = with_cancel("a", "no longer needed", false, 1.0);
+        // A reason the policy refuses, in an episode that passed anyway.
+        let alarm = with_cancel("b", "found it cheaper", false, 1.0);
+        let failed = with_cancel("c", "found it cheaper", false, 0.0);
+        // The tool refused it too.
+        let refused = with_cancel("d", "found it cheaper", true, 0.0);
+        let a = audit(&g, &[&passed, &alarm, &failed, &refused]);
+        assert_eq!(a.domain, "retail");
+        assert_eq!((a.episodes, a.writes, a.refused), ([2, 2], [3, 1], [1, 1]));
+        let reason = a
+            .rules
+            .iter()
+            .find(|r| r.rule == "retail.cancel_reason")
+            .unwrap();
+        assert!(reason.enforced);
+        assert_eq!(reason.successful, [1, 1, 0]);
+        assert_eq!(reason.failed, [0, 1, 0]);
+        assert_eq!(reason.refused_by_tool, [0, 1, 0]);
+        assert_eq!(reason.episodes_failed, [1, 1]);
+        assert_eq!(reason.false_alarms.len(), 1);
+        assert_eq!(a.tasks["1"], [2, 2, 1, 1]);
+        let md = markdown(&[a]);
+        for line in [
+            "## retail",
+            "4 episodes (2 successful, 2 failed); 3 writes the tool accepted and 1 it refused.",
+            "| `retail.cancel_reason` | yes | 1 / 1 / 0 | 0 / 1 / 0 | 0 / 1 / 0 | 1 / 1 |",
+            "| `retail.confirmed` | logged |",
+            "- `retail.cancel_reason`, task 1 (b): 'found it cheaper' is not an accepted reason",
+        ] {
+            assert!(md.contains(line), "{line}\n{md}");
+        }
+    }
 }

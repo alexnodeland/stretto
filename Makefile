@@ -7,9 +7,13 @@
 .DEFAULT_GOAL := help
 
 # Line coverage under which `make coverage`, and the Coverage workflow that
-# runs it, fails: four points below the 82.05% measured on 2026-09-28
-# (cargo-llvm-cov 0.9.1, Rust 1.98.1). Raise it as coverage grows.
-COVERAGE_MIN := 78
+# runs it, fails (cargo-llvm-cov 0.9.1, Rust 1.98.1). It rises with each
+# change that covers more, up to 100: the floor, not a target.
+COVERAGE_MIN := 88
+
+# `make coverage` also fails when a line added since the merge base with this
+# ref is not run by any test (scripts/patch_coverage.py).
+COVERAGE_BASE ?= origin/main
 
 # The rust-version Cargo.toml claims, as a rustup toolchain (1.88 -> 1.88.0).
 MSRV := $(shell sed -n 's/^rust-version = "\([0-9]*\.[0-9]*\)"$$/\1.0/p' Cargo.toml)
@@ -61,11 +65,12 @@ msrv: ## Check the workspace on Cargo.toml's rust-version, with the lockfile
 
 # `clean --workspace` first: --no-report keeps the profiles and test binaries
 # of earlier runs (CI's cache restores them), and the report would count them.
-coverage: ## Line coverage with cargo-llvm-cov: writes lcov.info, fails under COVERAGE_MIN
+coverage: ## Line coverage with cargo-llvm-cov: writes lcov.info; fails under COVERAGE_MIN, or on an added line no test runs
 	cargo llvm-cov clean --workspace
 	cargo llvm-cov --workspace --all-targets --no-report
 	cargo llvm-cov report --lcov --output-path lcov.info
 	cargo llvm-cov report --fail-under-lines $(COVERAGE_MIN)
+	python3 scripts/patch_coverage.py lcov.info $(COVERAGE_BASE)
 
 bless: ## Regenerate docs/cli.md and the review examples from the code
 	STRETTO_BLESS=1 cargo test

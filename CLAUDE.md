@@ -18,7 +18,7 @@ AGENTS.md, imported above, is the project context every coding agent shares: wha
 | `make doc` | `cargo doc --no-deps`, with rustdoc warnings as errors |
 | `make ci` | check, lint, test, types and doc: CI's check job. Run it before every push |
 | `make msrv` | `cargo check` on Rust 1.88, Cargo.toml's `rust-version`, with the lockfile |
-| `make coverage` | cargo-llvm-cov: writes `lcov.info`, fails under `COVERAGE_MIN` in the Makefile |
+| `make coverage` | cargo-llvm-cov: writes `lcov.info`; fails under `COVERAGE_MIN` in the Makefile, or when a line the branch adds is not run by any test (`scripts/patch_coverage.py`, against `origin/main`: fetch it first) |
 | `make bless` | `STRETTO_BLESS=1 cargo test`: regenerates `docs/cli.md` and `docs/review.md`'s examples |
 | `make quickstart`, `make walkthrough` | the quickstart and the walkthrough, as CI's walkthrough job runs them, on a debug build |
 | `make site` | the documentation site, which fails on a dead link |

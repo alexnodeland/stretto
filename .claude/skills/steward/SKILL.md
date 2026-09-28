@@ -14,7 +14,7 @@ description: Drive a stretto pull request to green and ready to merge, covering 
 | ci.yml `msrv` | every PR and push to main | `cargo +1.88.0 check --workspace --all-targets --locked`, and that Cargo.toml's `rust-version` is still 1.88 | `make msrv` |
 | ci.yml `walkthrough` | every PR and push to main | the quickstart, `packaging/test-install.sh`, shellcheck, `scripts/walkthrough.py`, `scripts/http_check.py`, the scripts' doctests and the benchmark tables' fixture | the `check` skill, step 2 |
 | ci.yml `platforms` | every PR and push to main | a `--locked` build on macOS 14 and Windows, and each binary's `--version` | not locally: read the log |
-| coverage.yml | every PR and push to main | `make coverage`: line coverage at or above `COVERAGE_MIN`. The LCOV report is the run's artifact | `make coverage` |
+| coverage.yml | every PR and push to main | `make coverage`: line coverage at or above `COVERAGE_MIN`, and every line the PR adds run by a test. The LCOV report is the run's artifact | `make coverage` |
 | container.yml `build` | PRs and pushes to main that change the Dockerfile, `.dockerignore`, `crates/`, `console/`, the brand files the UI imports, the manifests, the quickstart or `compose.yaml` | both images build. In the CLI's, each binary, `stretto doctor` and the quickstart run. The console's starts healthy as the runner's user, refuses a request without its token, serves the built UI, and runs a `doctor` job | `make docker`, `make docker-console` |
 | pages.yml | pushes to main only | the site builds with no dead link | `make site`, before merging |
 
