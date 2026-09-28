@@ -274,7 +274,8 @@ mod tests {
         let above = "../".repeat(40);
         for bad in ["/../x".to_string(), above] {
             let e = r(&bad).unwrap_err();
-            assert!(e.ends_with(".. climbs out of the root"), "{e}");
+            // Out of the root, or on Windows out of the data directory.
+            assert!(e.contains(".. climbs out of "), "{e}");
         }
         // A home that does not exist yet is taken as it is.
         let missing = root.join("no-home");

@@ -948,7 +948,11 @@ async fn a_flow_that_does_not_load_is_listed_with_its_error() {
 #[tokio::test]
 async fn a_flow_that_cannot_be_read_is_not_downloaded() {
     let c = console("socket-flow", |_| {});
-    let _socket = std::os::unix::net::UnixListener::bind(c.dir.join("socket.flow.json")).unwrap();
+    // Bound where its path is short enough for macOS, then moved in.
+    let bound = std::env::temp_dir().join(format!("stretto-{}.sock", std::process::id()));
+    let _ = std::fs::remove_file(&bound);
+    let _socket = std::os::unix::net::UnixListener::bind(&bound).unwrap();
+    std::fs::rename(&bound, c.dir.join("socket.flow.json")).unwrap();
     let raw = c.get("/api/flows/socket/raw").await;
     assert_eq!(raw.status, StatusCode::INTERNAL_SERVER_ERROR);
     assert!(raw.json()["error"]
