@@ -1,8 +1,8 @@
 # stretto-proxy
 
-A stdio [MCP](https://modelcontextprotocol.io) proxy that records what an agent does with a server's tools, and can act on it: run a stretto flow behind the agent's calls, check its writes against policy guards, and add a commit tool.
+An [MCP](https://modelcontextprotocol.io) proxy that records what an agent does with a server's tools, and can act on it: run a stretto flow behind the agent's calls, check its writes against policy guards, and add a commit tool.
 
-`stretto-proxy` starts the real MCP server as a child process, or connects to it over Streamable HTTP (`--upstream`), and sits between it and the MCP host (a desktop app, an IDE, an agent framework). The host always runs the proxy as a stdio server. It forwards every line in both directions byte for byte and, with `--record`, also writes each line to a session log. `stretto_trace::mcp` turns logs into stretto's canonical `Episode`, so recorded sessions feed the same models as τ²-bench trajectories.
+`stretto-proxy` starts the real MCP server as a child process, or connects to it over Streamable HTTP (`--upstream`), and sits between it and the MCP host (a desktop app, an IDE, an agent framework). The host runs the proxy as a stdio server, or connects to it over Streamable HTTP ([`--listen`](#hosts-over-http)). It forwards every line in both directions byte for byte and, with `--record`, also writes each line to a session log. `stretto_trace::mcp` turns logs into stretto's canonical `Episode`, so recorded sessions feed the same models as τ²-bench trajectories.
 
 ## Usage
 
@@ -12,6 +12,7 @@ stretto-proxy [--record <DIR>] [--domain <NAME>] [--agent-model <MODEL>]
               [--guards [--confirm-judge log|enforce [--confirm-second proposed] ...]]
               [--commit] [--context <FILE>] -- <SERVER_COMMAND>...
 stretto-proxy [the same options] --upstream <URL> [--upstream-header NAME=VAR]...
+stretto-proxy [the same options] --listen <ADDR> [--listen-token-file <FILE>] [--listen-idle <MINUTES>] ...
 ```
 
 Install it with `cargo install --path crates/stretto-proxy`, which also installs `stretto-mcp-demo` and `stretto-procedure`, which runs a compiled procedure against an MCP server with no model ([formats](../../docs/formats.md#the-procedure-ir-stretto_procedure-1), [CLI](../../docs/cli.md)). In the host's configuration, replace the server's command with `stretto-proxy` and put the original command after `--`:
@@ -82,6 +83,24 @@ Then `stretto learn --sessions ~/.stretto/logs/support --domain support --out su
 - Once a directory holds a host session of several servers, the tools of every other log in it are named after their server too, so that a tool has one name across the sessions.
 
 **Serving.** Give every proxy the same flow. Each proxy looks up only its own server's tools, calling them by their own names: the proxies share no connection, so a lookup on another server is left to the agent. Each also decides from its own server's calls alone, since it sees no other, while the flow learned from whole sessions. A proxy whose server's name is none of the flow's says so, and looks nothing up.
+
+## Hosts over HTTP
+
+With `--listen ADDR`, the proxy serves hosts over MCP's Streamable HTTP transport (revision 2025-11-25) instead of stdio: for hosts that connect to servers by URL, remote agents, and agents in another container. Start it once, and give hosts the URL it prints:
+
+```bash
+stretto-proxy --listen 127.0.0.1:8931 --record ~/.stretto/logs --domain orders -- npx -y some-mcp-server
+# http://127.0.0.1:8931/mcp
+claude mcp add --transport http orders http://127.0.0.1:8931/mcp
+```
+
+VS Code takes it as `{"type": "http", "url": "http://127.0.0.1:8931/mcp"}`, and Cursor as `{"url": "http://127.0.0.1:8931/mcp"}`.
+
+- **Sessions.** Each MCP session (`Mcp-Session-Id`, assigned on `initialize`) gets a server of its own (the command, or its own session of `--upstream`), its own log (`<start>-<pid>-<n>.jsonl`), and its own run of the flow, the guards and the judge, as one stdio proxy has. A DELETE ends the session and closes its server's input, as a stdio host does when it exits. So does the server's exiting, and `--listen-idle` minutes (240 by default) with no request and no open stream; the host then gets 404 and starts another. SIGTERM or Ctrl-C ends every session and waits up to 10 seconds for their logs to close.
+- **Streams.** A request is answered on an event stream, which carries what the server sends while the request waits, then the answer. A host that accepts only `application/json` gets the answer as one body. The server's own messages go on the host's GET stream when one is open, else on a waiting request's stream, else wait for one (1,000 at most). The proxy keeps no history of events, so a stream that drops is not resumed.
+- **The host session.** The `Stretto-Session` header on `initialize` names it, as `STRETTO_SESSION` does over stdio, so that `stretto learn` merges the logs of one host session ([several servers](#several-servers)). `{session}` in `--context`, `--flow-log` and `--confirm-log` stands for it, else for the session's own id: a conversation file per session.
+- **Who may connect.** Without `--listen-token-file`, the proxy listens only on a loopback address, answers only requests whose Host header names that address and port, and refuses pages on other sites by their Origin (403), which keeps DNS rebinding out. With it, every request needs `Authorization: Bearer <token>` (401 otherwise), and the proxy may listen on any address; put TLS in front of it on a network. The token is read from the file, so it is not in the process list.
+- `--retain-days` prunes as each session starts, since the proxy outlives its sessions. At most 64 sessions are open at once (503 beyond that), and a message is at most 4 MiB.
 
 ## Try it
 
@@ -193,8 +212,8 @@ Each `tools/call` becomes a `ToolCall`, and each response to one becomes a `Tool
 
 ## Limits
 
-- The host side is stdio only: the proxy does not serve Streamable HTTP to a host. The server side can be either.
-- Over HTTP, a session the server ends (a 404 on its id) is not started again: each request after it fails with a JSON-RPC error until the host restarts the proxy.
+- With `--listen`, the proxy keeps no history of events: an event stream that drops is not resumed (`Last-Event-ID`), and what it would have carried is lost.
+- With `--upstream`, a session the server ends (a 404 on its id) is not started again: each request after it fails with a JSON-RPC error until the host restarts the proxy, or, with `--listen`, starts another session.
 - The proxy does not forward signals. If the host kills the proxy, the server's stdin closes, which is how MCP tells a stdio server to exit; a server that ignores that keeps running.
 
 ## Privacy

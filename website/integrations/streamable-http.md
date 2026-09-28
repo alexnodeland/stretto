@@ -42,9 +42,20 @@ Recording, flows and everything else work as they do with a command:
 
 CI runs the proxy in front of the reference server, `@modelcontextprotocol/server-everything`, and the tests run it in front of `stretto-mcp-demo --http`, which insists on the session id and version.
 
+## Hosts that connect by URL
+
+The host's side can be HTTP too. `stretto-proxy --listen 127.0.0.1:8931` serves hosts at `http://127.0.0.1:8931/mcp` in place of stdio, and gives each MCP session a server, a log and a flow of its own; with `--upstream`, each gets its own session of the server. Start the proxy once, and give hosts its URL:
+
+```bash
+stretto-proxy --listen 127.0.0.1:8931 --record ~/.stretto/logs/orders --domain orders \
+  --upstream https://example.com/mcp --upstream-header Authorization=ORDERS_AUTH
+claude mcp add --transport http orders http://127.0.0.1:8931/mcp
+```
+
+Without `--listen-token-file`, the proxy serves loopback only. The [proxy's reference](/reference/proxy#hosts-over-http) has the rest.
+
 ## Limits
 
-- **The host side is stdio only.** The proxy does not serve Streamable HTTP to a host; only the server side can be HTTP.
-- **A session the server ends is not started again.** After the server answers 404 for the session's id, each request fails with a JSON-RPC error until the host restarts the proxy.
+- **A session the server ends is not started again.** After the server answers 404 for the session's id, each request fails with a JSON-RPC error until the host restarts the proxy, or, over `--listen`, starts another session.
 
 The [proxy's reference](/reference/proxy#usage) has the rest.

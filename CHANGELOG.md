@@ -75,6 +75,12 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 ### `stretto-proxy`
 
 - With `--commit`, the proxy tells the agent when to use `stretto_commit`: a sentence after the server's own `instructions` in its answer to `initialize`, which hosts such as Claude Code put in the system prompt ([#37](https://github.com/alexnodeland/stretto/issues/37)).
+- `stretto-proxy --listen ADDR` serves hosts over MCP's Streamable HTTP transport (revision 2025-11-25) in place of stdio, for hosts that connect to servers by URL ([#80](https://github.com/alexnodeland/stretto/issues/80)). The endpoint is `/mcp`, and the proxy prints its URL.
+  - Each MCP session gets a server of its own, with its own log and its own run of the flow, the guards and the judge, as one stdio proxy has. The `Stretto-Session` header on `initialize` names its host session.
+  - A request is answered on an event stream, or as one JSON body; the server's own messages go on the host's GET stream. DELETE ends a session, and so do its server's exiting and `--listen-idle` minutes of quiet.
+  - Without `--listen-token-file`, only loopback, checked by the Host header, and pages on other sites are refused by their Origin. With it, every request needs `Authorization: Bearer <token>`.
+- `{session}` in `--context`, `--flow-log` and `--confirm-log` stands for the host session, else the session's own id: a file per session.
+- In the library: `listen`, `listen_on` and `Listen`; `retain` and `session_path`.
 
 ### OpenTelemetry spans
 

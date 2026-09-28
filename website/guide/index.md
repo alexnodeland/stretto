@@ -46,7 +46,7 @@ stretto is a Rust workspace of five programs:
 | Program | What it does |
 |---|---|
 | `stretto` | Prints your MCP host's configuration (`init`) and checks the installation (`doctor`). Learns flows from recorded sessions (`learn`), shows and compares them (`flow-show`, `flow-diff`), audits them on new sessions (`audit`), promotes them from shadow mode (`promote`), pseudonymizes sessions (`redact`), and measures how compressible an agent's behavior is on τ²-bench's published trajectories (`phase0`). |
-| `stretto-proxy` | Wraps any MCP server, run as a command or reached over Streamable HTTP, and runs as a stdio server for the host. It records sessions and serves flows. |
+| `stretto-proxy` | Wraps any MCP server, run as a command or reached over Streamable HTTP, and serves the host over stdio, or over Streamable HTTP with `--listen`. It records sessions and serves flows. |
 | `stretto-procedure` | Runs a compiled procedure against an MCP server with no model, for work where no user speaks. See [procedures](./concepts/procedures). |
 | `stretto-mcp-demo` | A tiny MCP server for trying the proxy. |
 | `stretto-console` | A web app on your machine, over the files the others write. It has the servers stretto fronts, with each host's configuration and a connection test, and every session as a timeline of the agent's calls and the flow's lookups. It shows each flow's graph and review, and runs the CLI's jobs from the page. See [the console](./console). |

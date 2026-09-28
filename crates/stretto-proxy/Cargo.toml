@@ -1,6 +1,6 @@
 [package]
 name = "stretto-proxy"
-description = "A stdio MCP proxy that records sessions as stretto episodes, and can serve flows, guards and a commit tool."
+description = "An MCP proxy, over stdio or Streamable HTTP, that records sessions as stretto episodes, and can serve flows, guards and a commit tool."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
