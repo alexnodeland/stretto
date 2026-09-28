@@ -15,3 +15,9 @@ website/public/explainer/
 website/public/media/
 # make coverage
 lcov.info
+# Claude Code: the team's setup in .claude/ is committed; per-user settings,
+# local memory and worktrees are not
+.claude/settings.local.json
+.claude/worktrees/
+.claude/agent-memory-local/
+CLAUDE.local.md
