@@ -160,6 +160,17 @@ pub enum OracleKind {
     Replay,
 }
 
+impl OracleKind {
+    /// Its name in reports, as `--oracle` takes it.
+    pub fn name(self) -> &'static str {
+        match self {
+            OracleKind::Mock => "mock",
+            OracleKind::Jev => "jev",
+            OracleKind::Replay => "replay",
+        }
+    }
+}
+
 /// How to run Phase 0b.
 #[derive(Clone, Debug)]
 pub struct ShadowConfig {
@@ -869,6 +880,15 @@ pub fn live_request(
         failed,
         request,
     })
+}
+
+/// The options of `request`'s next-step question: handing back and the
+/// site's lookups, as [`live_request`] offers them.
+pub fn next_options(request: &Request) -> Vec<String> {
+    match request.questions.get("next") {
+        Some(Question::Choice { criteria, .. }) => criteria.keys().cloned().collect(),
+        _ => Vec::new(),
+    }
 }
 
 /// Answers to [`decisions`], by request key; failures counted, not fatal.
@@ -1626,6 +1646,28 @@ fn clip(s: &str, max: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn each_oracle_is_named_as_the_command_line_takes_it() {
+        let names = [OracleKind::Mock, OracleKind::Jev, OracleKind::Replay].map(OracleKind::name);
+        assert_eq!(names, ["mock", "jev", "replay"]);
+    }
+
+    #[test]
+    fn a_request_without_a_next_step_question_offers_nothing() {
+        let request = Request {
+            model: "m".to_string(),
+            state: Value::Null,
+            questions: BTreeMap::from([(
+                "next".to_string(),
+                Question::Noul {
+                    instructions: "Go on?".to_string(),
+                    criteria: None,
+                },
+            )]),
+        };
+        assert!(next_options(&request).is_empty());
+    }
     use stretto_model::projection::arg_needs;
     use stretto_model::provenance::call_sources;
     use stretto_model::steps;

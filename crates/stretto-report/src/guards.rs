@@ -1407,13 +1407,13 @@ mod tests {
             name: name.to_string(),
             arguments,
         };
-        Guards::for_domain(domain)
+        let verdict = Guards::for_domain(domain)
             .unwrap()
             .check(&episode(events), &call)
             .into_iter()
-            .find(|(id, _)| *id == rule)
-            .map(|(_, v)| v)
-            .unwrap_or_else(|| panic!("{rule} does not check {name}"))
+            .find(|(id, _)| *id == rule);
+        assert!(verdict.is_some(), "{rule} does not check {name}");
+        verdict.unwrap().1
     }
 
     fn fails(v: &Verdict, why: &str) -> bool {
@@ -1941,13 +1941,39 @@ mod tests {
 
     #[test]
     fn a_result_of_no_known_call_changes_nothing() {
-        let f = Facts::of(&[result(
-            "9",
-            "cancel_pending_order",
-            json!({"order_id": "#W1"}),
-        )]);
-        assert!(f.writes.is_empty());
-        assert!(f.orders.contains_key("#W1"));
+        let f = Facts::of(&[
+            result("9", "cancel_pending_order", json!({"order_id": "#W1"})),
+            result("8", "get_flight_status", json!("available")),
+            // A lookup that failed shows nothing.
+            Event::ToolResult {
+                call_id: "7".to_string(),
+                name: "get_order_details".to_string(),
+                error: true,
+                content: json!({"order_id": "#W2"}).to_string(),
+            },
+        ]);
+        assert!(f.writes.is_empty() && f.flights.is_empty());
+        assert!(f.orders.contains_key("#W1") && !f.orders.contains_key("#W2"));
+    }
+
+    /// What a rule cannot tell is counted apart, and an audit without a
+    /// failure lists none.
+    #[test]
+    fn the_audit_counts_what_the_rules_cannot_tell() {
+        let g = Guards::for_domain("retail").unwrap();
+        let blind = episode(vec![
+            call(
+                "1",
+                "cancel_pending_order",
+                json!({"order_id": "#W1", "reason": "no longer needed"}),
+            ),
+            result("1", "cancel_pending_order", json!({})),
+        ]);
+        let a = audit(&g, &[&blind]);
+        let pending = a.rules.iter().find(|r| r.rule == "retail.pending").unwrap();
+        assert_eq!(pending.successful, [0, 0, 1]);
+        let md = markdown(&[audit(&g, &[])]);
+        assert!(!md.contains("Failures on accepted writes"), "{md}");
     }
 
     #[test]

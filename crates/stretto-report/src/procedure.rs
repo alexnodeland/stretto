@@ -1023,6 +1023,81 @@ mod tests {
     }
 
     #[test]
+    fn a_hand_off_ends_the_run_and_a_bad_action_stops_it() {
+        let mut p = procedure();
+        let start = |action: &str| Node::Leaf {
+            calls: vec![(action.to_string(), 1)],
+        };
+        p.trees
+            .insert("start".into(), start("transfer_to_human_agents"));
+        let mut phone = Phone {
+            airplane: false,
+            log: Vec::new(),
+        };
+        let run = p.run("No service.", &mut phone).unwrap();
+        assert_eq!(run.verdict, Verdict::Transferred);
+        assert!(run.check.is_none() && run.calls[0].failed);
+        p.trees
+            .insert("start".into(), start("check_status_bar{oops"));
+        let e = p.run("No service.", &mut phone).unwrap_err().to_string();
+        assert!(e.starts_with("action check_status_bar{oops: "), "{e}");
+    }
+
+    /// The record the ticket names stays in the state when another of its
+    /// kind is read after it, unless the procedure holds no symbols.
+    #[test]
+    fn the_record_the_ticket_names_is_kept() {
+        let mut p = procedure();
+        let line = |id: &str, status: &str| json!({"line_id": id, "status": status}).to_string();
+        for symbolic in [true, false] {
+            p.symbolic = symbolic;
+            let mut state = State::new(&p, "Line L7001 has no service.");
+            state.result("get_details_by_id", &line("L7001", "Active"), false);
+            state.result("get_details_by_id", &line("L7002", "Suspended"), false);
+            let kept = state.features().contains("get_details_by_id:status=active");
+            assert_eq!(kept, symbolic);
+            state.result("get_details_by_id", "", true);
+            assert_eq!(state.site, "get_details_by_id!");
+        }
+    }
+
+    #[test]
+    fn results_are_read_whatever_their_shape() {
+        assert_eq!(parse(r#""{\"a\": 1}""#), json!({"a": 1}));
+        assert_eq!(parse(r#""plain""#), json!("plain"));
+        assert_eq!(parse("not json"), json!("not json"));
+        let two = result_features(false, &json!({"items": [1, 2]}));
+        assert_eq!(two["len(items)"], Feature::Is("2+".into()));
+        let list = result_features(false, &json!([]));
+        assert_eq!(list["len($)"], Feature::Is("0".into()));
+        assert_eq!(result_features(false, &json!(7)).len(), 1);
+        let text = text_features("Signal: good\n\n  \nNo SIM");
+        assert_eq!(text.len(), 2);
+        let mut leaves = Vec::new();
+        scalar_leaves(&json!([15.0, 3, 2.5, true, null, "x"]), &mut leaves);
+        assert_eq!(leaves, ["15.0", "3", "2.5", "x"]);
+    }
+
+    #[test]
+    fn paths_and_shapes_find_only_what_is_there() {
+        assert!(steps("$x").is_empty());
+        assert!(select(&json!({"a": 1}), "$[*]").is_empty());
+        assert!(select(&json!([1]), "$.a").is_empty());
+        assert!(members(&json!({"a": "b"}), "$.a").is_empty());
+        assert_eq!(find_shape(r"A\d", "xA1").as_deref(), Some("A1"));
+        assert_eq!(find_shape("\\", "x"), None);
+    }
+
+    #[test]
+    fn a_procedure_is_read_only_from_a_procedure_file() {
+        let e = Procedure::from_json("{}").unwrap_err().to_string();
+        assert!(e.starts_with("not a stretto procedure"), "{e}");
+        let missing = std::path::Path::new("/nonexistent/p.json");
+        let e = Procedure::load(missing).unwrap_err().to_string();
+        assert!(e.starts_with("reading /nonexistent/p.json"), "{e}");
+    }
+
+    #[test]
     fn a_procedure_survives_its_ir_and_names_its_version() {
         let p = procedure();
         let text = serde_json::to_string(&p).unwrap();

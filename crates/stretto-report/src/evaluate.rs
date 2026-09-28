@@ -575,6 +575,38 @@ mod tests {
         assert_eq!((t.name.as_str(), t.habit), ("arbiter@0.3", false));
         assert!(Target::parse("oracle@0.3").is_err());
         assert!(Target::parse("habit").is_err());
+        assert_eq!(
+            Target::parse("C=habit@x").unwrap_err(),
+            "C=habit@x: bad threshold x"
+        );
+    }
+
+    /// A lookup a site never took is predicted from the sites that took it,
+    /// and one no site took as made and a detour.
+    #[test]
+    fn a_lookup_is_predicted_from_where_it_was_taken() {
+        let record = |site: &str, action: &str| Record {
+            action: action.to_string(),
+            tool: (action == "lookup").then(|| "get_a".to_string()),
+            site: Some(site.to_string()),
+            policy: view(vec![option("get_a", 0.6, 0.6, Some(1.0))]),
+            labels: vec![Label {
+                used: true,
+                detour: false,
+                turn: 0.5,
+            }],
+            episode: String::new(),
+        };
+        let model = Model::fit(&[record("s", "lookup"), record("t", "hand_back")]);
+        assert_eq!(
+            model.predict(&record("t", "hand_back"), Some(0)),
+            [1.0, 1.0, 0.0, 0.5]
+        );
+        let never = Model::fit(&[record("t", "hand_back")]);
+        assert_eq!(
+            never.predict(&record("t", "hand_back"), Some(0)),
+            [1.0, 0.0, 1.0, 0.0]
+        );
     }
 
     /// Synthetic logs whose truth is known: three lookups per decision, with
@@ -717,6 +749,12 @@ mod tests {
         let tiny = evaluate(&records[..6], &Target::parse("habit@0.3").unwrap(), 10.0);
         assert!(tiny.total.ips.is_none() && tiny.total.snips.is_none() && tiny.total.dr.is_none());
         assert!(tiny.sites.values().all(|s| s.ess < 10.0));
+        let md = markdown(&[same, tiny], 10.0);
+        assert!(md.contains(" ± "), "{md}");
+        assert!(
+            md.contains("| used | ") && md.contains("| refused | refused | refused |"),
+            "{md}"
+        );
     }
 
     #[test]

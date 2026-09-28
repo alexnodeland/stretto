@@ -476,6 +476,9 @@ mod tests {
         assert!(made(&other, "get_order", &order).is_none());
         assert!(made(&one(&[("get_user", order.clone())]), "get_order", &order).is_none());
         assert!(made(&[reply], "get_order", &order).is_none());
+        // Numbers and the strings that spell them are the same.
+        let numbered = one(&[("get_order", json!({"n": 5}))]);
+        assert!(made(&numbered, "get_order", &json!({"n": "5"})).is_some());
     }
 
     #[test]
@@ -521,10 +524,7 @@ mod tests {
             .collect();
         assert_eq!(promoted, ["broad"]);
         assert!(p.allows("broad") && !p.allows("narrow") && !p.allows("never scored"));
-        assert!(
-            markdown(&p).contains("| `broad` | 41 | 40 | 36 (90%) |"),
-            "{}",
-            markdown(&p)
-        );
+        let md = markdown(&p);
+        assert!(md.contains("| `broad` | 41 | 40 | 36 (90%) |"), "{md}");
     }
 }

@@ -1117,7 +1117,54 @@ fn pct1(x: f64) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::short_model;
+    use super::*;
+
+    #[test]
+    fn scenarios_gates_and_sources_have_names() {
+        let names: Vec<(String, String)> = [
+            Scenario::HabitOnly,
+            Scenario::HabitThenPerfectOracle,
+            Scenario::HabitThenOracle(0.5),
+            Scenario::TwoKeys(0.7),
+            Scenario::Arbitrated(0.9),
+            Scenario::LookupFirst(0.3),
+        ]
+        .into_iter()
+        .map(|s| (who(s), column(s)))
+        .collect();
+        assert_eq!(names[0], ("pause for the LLM".to_string(), "–".to_string()));
+        assert_eq!(names[1].0, "ask a perfect System-One model");
+        assert_eq!(names[2].1, "p ≥ 0.5");
+        assert!(names[3].0.ends_with("when the habit agrees") && names[3].1 == "two keys, p ≥ 0.7");
+        assert!(
+            names[4].0.starts_with("combine the System-One model")
+                && names[4].1 == "combined, p ≥ 0.9"
+        );
+        assert!(names[5].0.ends_with("lookup at p ≥ 0.3") && names[5].1 == "lookup first, p ≥ 0.3");
+        assert_eq!(gate(&GateKind::Threshold(0.9)), "top option ≥ 0.9");
+        assert_eq!(gate(&GateKind::Validated(1)), "in 1 validated context");
+        assert_eq!(gate(&GateKind::Validated(3)), "in 3 validated contexts");
+        let settings = |baselines, sources: &[&str]| Settings {
+            orders: vec![1, 2],
+            order: 2,
+            thresholds: vec![0.9],
+            min_evidence: 5.0,
+            position_threshold: 0.9,
+            validated_min_n: 5,
+            validated_min_tasks: 3,
+            validated_min_agreement: 0.9,
+            baselines,
+            sources: sources.iter().map(|s| s.to_string()).collect(),
+        };
+        let baseline = "τ²-bench's published baseline trajectories";
+        assert_eq!(sources(&settings(true, &[])), baseline);
+        let plus = format!("{baseline}, plus leaderboard runs of gpt-4.1");
+        assert_eq!(sources(&settings(true, &["gpt-4.1-2025-04-14"])), plus);
+        assert_eq!(
+            sources(&settings(false, &["o4-mini"])),
+            "leaderboard runs of o4-mini"
+        );
+    }
 
     #[test]
     fn strips_date_suffixes() {

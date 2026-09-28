@@ -842,6 +842,65 @@ mod tests {
     use super::*;
     use stretto_trace::ToolCall;
 
+    #[test]
+    fn the_judge_asks_each_write_and_the_second_question_too() {
+        let guards = Guards::for_domain("retail").unwrap();
+        let ep = episode("Yes, please.");
+        let oracle = stretto_oracle::MockOracle {
+            confidence: 0.6,
+            noul: 0.25,
+        };
+        let config = ShadowConfig::new(crate::shadow::OracleKind::Mock);
+        for (second, id) in [
+            (Second::Described, "described"),
+            (Second::Proposed, "proposed"),
+        ] {
+            let mut items = writes(&guards, &[&ep], "m");
+            judge(&oracle, &mut items, &config, "retail", Some(second)).unwrap();
+            let j = &items[0];
+            assert_eq!((j.p_yes, j.p_second), (Some(0.25), Some(0.25)));
+            assert!(j.second_key.is_some() && j.fails(0.5));
+            assert_eq!(second.id(), id);
+        }
+        let mut items = writes(&guards, &[&ep], "m");
+        judge(&oracle, &mut items, &config, "retail", None).unwrap();
+        assert!(items[0].p_second.is_none() && !items[0].fails(0.2));
+        // A question answered some other way has no yes.
+        let response = Response {
+            model: "m".to_string(),
+            answers: BTreeMap::from([(
+                QUESTION.to_string(),
+                Answer::Choice {
+                    choice: "yes".to_string(),
+                    probabilities: BTreeMap::new(),
+                    confidence: 1.0,
+                },
+            )]),
+            usage: Default::default(),
+        };
+        assert_eq!(yes(&response, QUESTION), None);
+        assert_eq!(yes(&response, "other"), None);
+        let noul = Response {
+            answers: BTreeMap::from([(QUESTION.to_string(), Answer::Noul { noul: 0.3 })]),
+            ..response
+        };
+        assert_eq!(yes(&noul, QUESTION), Some(0.3));
+        // An oracle that answers, but none of the questions, leaves no yes.
+        struct Mute;
+        impl stretto_oracle::Oracle for Mute {
+            fn ask(&self, _: &Request) -> anyhow::Result<Response> {
+                Ok(Response {
+                    model: "mute".to_string(),
+                    answers: BTreeMap::new(),
+                    usage: Default::default(),
+                })
+            }
+        }
+        let mut items = writes(&guards, &[&ep], "m");
+        judge(&Mute, &mut items, &config, "retail", Some(Second::Proposed)).unwrap();
+        assert!(items[0].p_yes.is_none() && items[0].p_second.is_none());
+    }
+
     fn episode(customer_last: &str) -> Episode {
         let call = |id: &str, name: &str, args: serde_json::Value| Event::Assistant {
             text: None,
@@ -1003,5 +1062,99 @@ mod tests {
         assert!(said("credit_card_4196779", "the card 4196779 please"));
         assert!(!said("2732", "card 27320"));
         assert!(said("20.50", "about 20.5 dollars"));
+    }
+
+    #[test]
+    fn the_audit_sorts_every_kind_of_write() {
+        let guards = Guards::for_domain("retail").unwrap();
+        let ok = episode("Yes, please.");
+        let mut failed = episode("hmm, why not the other one?");
+        (failed.id, failed.reward) = ("e2".to_string(), 0.0);
+        let mut refused = episode("Yes, please.");
+        refused.id = "e3".to_string();
+        if let Some(Event::ToolResult { error, .. }) = refused.events.last_mut() {
+            *error = true;
+        }
+        let mut items = writes(&guards, &[&ok, &failed, &refused], "m");
+        // The judge fails a write the word list passes, and passes one it
+        // fails.
+        items[0].p_yes = Some(0.1);
+        items[1].p_yes = Some(0.9);
+        items[2].p_yes = Some(0.5);
+        let a = audit("retail", &items, [2, 1], 0.5, 3, Some(Second::Described));
+        assert_eq!(
+            a.groups.iter().map(|g| g.writes).collect::<Vec<_>>(),
+            [1, 1, 1]
+        );
+        assert_eq!((a.judge_only.len(), a.word_list_only.len()), (1, 1));
+        let md = markdown(&[a]);
+        assert!(
+            md.contains("whether the agent's message before the reply described this exact change"),
+            "{md}"
+        );
+        assert!(!md.contains("P(described)"), "{md}");
+    }
+
+    #[test]
+    fn records_are_found_in_lists_of_any_shape() {
+        let mut groups = Vec::new();
+        record_lists(
+            &json!([["A1", 20], {"x": [{"id": "B1"}, {"id": "B2"}]}, true]),
+            &mut groups,
+        );
+        // The outer list, the pair, and the list of objects.
+        assert_eq!(groups.len(), 3, "{}", groups.len());
+        let mut values = Vec::new();
+        scalars(&json!([true, null, 5.0, 2.5, {"a": "X "}]), &mut values);
+        assert_eq!(values, ["5", "2.5", "x"]);
+        assert!(said("", "anything"));
+        // A call without an object of arguments passes nothing; a value
+        // with no digit names no record.
+        let ep = episode("Yes, the order #W1.");
+        let call = |arguments| ToolCall {
+            id: "w".to_string(),
+            name: "cancel_pending_order".to_string(),
+            arguments,
+        };
+        assert!(contradicted(&ep, &call(json!("W1"))).is_empty());
+        assert!(contradicted(&ep, &call(json!({"reason": "no longer needed"}))).is_empty());
+    }
+
+    #[test]
+    fn a_record_the_agent_offered_alone_is_the_one_chosen() {
+        let orders =
+            r##"[{"order_id": "#W1111", "item": "lamp"}, {"order_id": "#W2222", "item": "desk"}]"##;
+        let ep = Episode {
+            id: "e".to_string(),
+            task_id: "1".to_string(),
+            trial: 0,
+            domain: "retail".to_string(),
+            agent_model: "m".to_string(),
+            reward: 1.0,
+            events: vec![
+                Event::ToolResult {
+                    call_id: "a".to_string(),
+                    name: "get_orders".to_string(),
+                    error: false,
+                    content: orders.to_string(),
+                },
+                Event::Assistant {
+                    text: Some("Shall I cancel order #W1111, the lamp?".to_string()),
+                    calls: vec![],
+                    usage: None,
+                },
+                Event::User {
+                    text: "Yes.".to_string(),
+                },
+            ],
+        };
+        let cancel = |order: &str| ToolCall {
+            id: "w".to_string(),
+            name: "cancel_pending_order".to_string(),
+            arguments: json!({"order_id": order}),
+        };
+        assert!(contradicted(&ep, &cancel("#W1111")).is_empty());
+        let other = contradicted(&ep, &cancel("#W2222"));
+        assert_eq!(other, vec![("order_id".to_string(), "#w2222".to_string())]);
     }
 }

@@ -32,7 +32,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use stretto_model::features::{step_outputs, FeatureMap, FOLDS};
 use stretto_model::world::{BackoffModel, Predictor};
 use stretto_model::{steps, Action, EncodedEpisode, GroupedModel, Vocab};
-use stretto_oracle::{request_key, Oracle, Question};
+use stretto_oracle::{request_key, Oracle};
 use stretto_trace::{Episode, Event, ToolCall, ToolKind, ToolManifest};
 
 /// A share of a lookup argument's training values a source must account for
@@ -858,13 +858,9 @@ impl Flow {
                 .with_group(self.group);
         let predicted = self.habit.predict_at(&encoded, st.len());
         if decider != Decider::Arbiter {
-            let Some(Question::Choice { criteria, .. }) = request.questions.get("next") else {
-                return hand_back(next, "the site offers no options".to_string());
-            };
-            let options: Vec<String> = criteria.keys().cloned().collect();
-            let Some(prior) = habit_prior(&options, &predicted, &self.vocab) else {
-                return hand_back(next, "handing back was not an option".to_string());
-            };
+            let options = shadow::next_options(&request);
+            let prior = habit_prior(&options, &predicted, &self.vocab)
+                .expect("a live request offers handing back");
             let probs = match (decider, &self.reach) {
                 (Decider::Reach, Some(reach)) => {
                     let before = reach.predict(&encoded.symbols[..st.len()]);
@@ -929,7 +925,8 @@ impl Flow {
         next.oracle = one.probs.clone();
         next.predicates = shadow::predicate_answers(&decision, &asked);
         let group = task_group(&episode.task_id);
-        let Some((case, options)) = case_of(
+        // The answer's options are the request's, which offer handing back.
+        let (case, options) = case_of(
             &one,
             &two,
             &next.predicates,
@@ -939,12 +936,11 @@ impl Flow {
             live.failed,
             group,
             &self.vocab,
-        ) else {
-            return hand_back(next, "handing back was not an option".to_string());
-        };
+        )
+        .expect("a live request offers handing back");
         let judged = self.folds[(group % FOLDS) as usize].judge(&case);
         let habit = habit_prior(&options, &predicted, &self.vocab)
-            .unwrap_or_else(|| vec![0.0; options.len()]);
+            .expect("case_of found handing back among the options");
         let chosen = Chosen {
             options: &options,
             probs: &judged.probs,
@@ -3402,5 +3398,338 @@ pub(crate) mod tests {
             .map(|(_, a)| a.as_str())
             .collect();
         assert_eq!(args, vec!["page_size"]);
+        // Nor a value an earlier result gave, though every call passed it.
+        let mut given = training.clone();
+        for ep in &mut given {
+            for e in &mut ep.events {
+                if let Event::Assistant { calls, .. } = e {
+                    if calls[0].name == "get_order_details" {
+                        calls[0].arguments["order_id"] = json!("#W1");
+                    }
+                }
+            }
+        }
+        let learned = Bindings::learn_with(&given, &manifest(), true);
+        assert!(learned.constants().keys().all(|(_, a)| a == "page_size"));
+    }
+
+    /// The shop's flows as this build learns them from 30 sessions: the
+    /// habit alone, and with an arbiter fitted on the mock oracle's answers.
+    fn shop() -> (Flow, Flow) {
+        use crate::shadow::{OracleKind, QuestionSet, ShadowConfig};
+        let episodes: Vec<Episode> = (0..30).map(crate::testing::session).collect();
+        let manifest = crate::testing::manifest();
+        let mut config = crate::phase0::Config::new(std::path::PathBuf::new());
+        config.alpha_samples = 0;
+        let habit =
+            crate::phase0::compile_habit_flow_from_episodes(&config, &episodes, &manifest).unwrap();
+        let mut sc = ShadowConfig::new(OracleKind::Mock);
+        sc.questions = QuestionSet::V2;
+        config.shadow = Some(sc);
+        let oracle = stretto_oracle::MockOracle {
+            confidence: 0.6,
+            noul: 0.5,
+        };
+        let arbiter =
+            crate::phase0::compile_flow_from_episodes(&config, &episodes, &manifest, &oracle)
+                .unwrap();
+        (habit, arbiter)
+    }
+
+    #[test]
+    fn a_file_that_cannot_be_written_or_read_says_which() {
+        let (habit, arbiter) = shop();
+        let missing = std::env::temp_dir().join("stretto-no-such-dir/x/file.json");
+        let arbiter = arbiter.arbiter().unwrap();
+        let error = |e: anyhow::Error| format!("{e:#}");
+        assert!(error(arbiter.save(&missing).unwrap_err()).starts_with("creating "));
+        assert!(error(Arbiter::load(&missing).unwrap_err()).starts_with("reading "));
+        let not = error(Arbiter::from_json("[]").unwrap_err());
+        assert!(not.starts_with("not a stretto arbiter"), "{not}");
+        assert!(error(habit.save(&missing).unwrap_err()).starts_with("creating "));
+        // A flow of the first format holds none of the second's bindings.
+        let mut v = serde_json::to_value(&habit).unwrap();
+        v["stretto_flow"] = json!(FLOW_VERSION);
+        v["bindings"]["named_other"] = json!({"get_account": [1, 2]});
+        let old = error(Flow::from_json(&v.to_string()).unwrap_err());
+        assert!(old.contains("is format 2"), "{old}");
+    }
+
+    #[test]
+    fn a_flow_that_takes_an_arbiter_offering_every_read_offers_every_read() {
+        let (habit, mut arbiter) = shop();
+        arbiter.sites.offer_every_read();
+        let taken = habit.with_arbiter_of(arbiter).unwrap();
+        assert!(taken.sites.offers_every_read() && taken.has_arbiter());
+    }
+
+    fn option(tool: &str, p: f64, binding: Option<f64>) -> OptionView {
+        OptionView {
+            tool: tool.to_string(),
+            p,
+            habit: p,
+            binding,
+            arguments: binding.map(|_| json!({})),
+            unbound: None,
+        }
+    }
+
+    fn policy(decider: &str, options: Vec<OptionView>) -> PolicyView {
+        PolicyView {
+            decider: decider.to_string(),
+            threshold: 0.3,
+            epsilon: 0.0,
+            explored: false,
+            greedy: None,
+            propensity: 1.0,
+            task_id: "t".to_string(),
+            events: 0,
+            options,
+        }
+    }
+
+    #[test]
+    fn reach_takes_the_best_lookup_by_its_chance_times_its_binding() {
+        let v = policy(
+            "reach",
+            vec![
+                option("a", 0.9, None),
+                option("b", 0.6, Some(0.5)),
+                option("c", 0.5, Some(0.9)),
+                option("d", 0.2, Some(1.0)),
+            ],
+        );
+        // `a` binds nothing and `d` is below the bar: of the rest, `c`'s
+        // 0.45 beats `b`'s 0.30.
+        assert_eq!(v.rule(false, 0.3), Some(2));
+        assert_eq!(v.rule(false, 0.5), None);
+        // The first of equals.
+        let tie = policy(
+            "reach",
+            vec![option("a", 0.5, Some(1.0)), option("b", 0.5, Some(1.0))],
+        );
+        assert_eq!(tie.rule(false, 0.3), Some(0));
+        assert_eq!(policy("reach", vec![]).rule(false, 0.3), None);
+        assert_eq!(policy("habit", vec![]).rule(true, 0.3), None);
+    }
+
+    #[test]
+    fn a_binding_by_name_or_by_pick_handles_what_training_never_showed() {
+        let training: Vec<Episode> = (0..3)
+            .map(|_| {
+                episode(vec![
+                    call("a", "get_user_details", json!({"user_id": "ann_1"})),
+                    result("a", "get_user_details", user(&["#W1", "#W2"])),
+                    call("b", "get_order_details", json!({"order_id": "#W1"})),
+                    result("b", "get_order_details", json!({"order_id": "#W1"})),
+                ])
+            })
+            .collect();
+        let mut b = Bindings::learn(&training, &manifest());
+        let failed = Event::ToolResult {
+            call_id: "x".to_string(),
+            name: "get_user_details".to_string(),
+            error: true,
+            content: "no such user".to_string(),
+        };
+        let odd = |name: &str| ToolCall {
+            id: "y".to_string(),
+            name: name.to_string(),
+            arguments: json!("not an object"),
+        };
+        let live = episode(vec![
+            call("a", "get_user_details", json!({"user_id": "bob_2"})),
+            failed.clone(),
+            result("a", "get_user_details", user(&["#W7"])),
+            Event::Assistant {
+                text: None,
+                calls: vec![odd("get_order_details"), odd("list_offers")],
+                usage: None,
+            },
+        ]);
+        // By name: a lookup without arguments is made once.
+        let none = BTreeMap::new();
+        assert_eq!(
+            b.bind_by_name("list_offers", &none, &live, &[]),
+            Err("already looked up".to_string())
+        );
+        let fresh = episode(vec![failed]);
+        assert_eq!(
+            b.bind_by_name("list_offers", &none, &fresh, &[]),
+            Ok((json!({}), 1.0))
+        );
+        // By pick: a tool training never called, and one called oddly.
+        assert_eq!(
+            b.bind("get_rewards", &live),
+            Err("never called in training".to_string())
+        );
+        assert_eq!(
+            b.bind("get_order_details", &live).map(|(v, _)| v),
+            Ok(json!({"order_id": "#W7"}))
+        );
+        // A list with no source to take it from.
+        b.lists.insert(
+            ("get_order_details".to_string(), "order_id".to_string()),
+            Traced::default(),
+        );
+        let error = b.bind("get_order_details", &live).unwrap_err();
+        assert!(
+            error.contains("no source for the list `order_id`"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn a_path_finds_nothing_where_the_output_has_another_shape() {
+        let found = |v: Value, path: &str| at_path(&v, path);
+        assert!(found(json!({"a": 1}), "$.a").is_empty());
+        assert!(found(json!({"a": "x"}), "$.a[*]").is_empty());
+        assert!(found(json!({"a": "x"}), "$.b").is_empty());
+        assert!(found(json!("x"), "$.a").is_empty());
+        assert_eq!(found(json!({"a": ["x"]}), "$.a[*]")[0].0, "x");
+        assert!(found(json!({"a": "x"}), "a").is_empty());
+        let mut seen = Vec::new();
+        scalars(&json!([true, null, 2, "A", {"k": "B"}]), &mut |v| {
+            seen.push(v)
+        });
+        assert_eq!(seen, vec!["2", "a", "b"]);
+    }
+
+    fn blank() -> Next {
+        Next {
+            proposal: Proposal::HandBack {
+                reason: String::new(),
+            },
+            site: None,
+            probs: BTreeMap::new(),
+            prob: None,
+            binding: None,
+            oracle: BTreeMap::new(),
+            predicates: BTreeMap::new(),
+            key: None,
+            policy: None,
+        }
+    }
+
+    fn reason(next: &Next) -> &str {
+        match &next.proposal {
+            Proposal::HandBack { reason } => reason,
+            Proposal::Lookup { .. } => "a lookup",
+        }
+    }
+
+    #[test]
+    fn the_rules_say_why_they_hand_back() {
+        let (habit, _) = shop();
+        let live = crate::testing::session(999);
+        let mut found = live.clone();
+        found.events.truncate(3);
+        let seen = (&found, &[][..]);
+        let names = |o: &[&str]| o.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        // With the habit: nothing but handing back; the first of equals;
+        // a lookup it cannot bind.
+        let only = names(&[RESPOND]);
+        let next = habit.rule(blank(), seen, &only, &[1.0], 0.3);
+        assert_eq!(reason(&next), "no lookup to make");
+        let two = names(&["get_account", "get_order"]);
+        let next = habit.rule(blank(), seen, &two, &[0.5, 0.5], 0.3);
+        assert_eq!(reason(&next), "a lookup", "{next:?}");
+        let odd = names(&["get_rewards"]);
+        let next = habit.rule(blank(), seen, &odd, &[0.9], 0.3);
+        assert!(
+            reason(&next).starts_with("get_rewards: never called in training"),
+            "{next:?}"
+        );
+        // With reach: nothing to make, one below the bar and one unbound,
+        // one bound too weakly, and the best of two.
+        let next = habit.rule_set(blank(), seen, &only, &[1.0], 0.3);
+        assert_eq!(reason(&next), "no lookup to make");
+        let three = names(&["get_order", "get_account", "get_rewards", RESPOND]);
+        let next = habit.rule_set(blank(), seen, &three, &[0.1, 0.2, 0.9, 0.0], 0.3);
+        assert!(reason(&next).starts_with("get_rewards:"), "{next:?}");
+        let next = habit.rule_set(blank(), seen, &three[..2], &[0.1, 0.2], 0.3);
+        assert_eq!(reason(&next), "get_account at 0.20, below 0.3");
+        let next = habit.rule_set(blank(), seen, &three[..2], &[0.91, 0.92], 0.9);
+        assert!(reason(&next).contains("arguments, below 0.9"), "{next:?}");
+        let next = habit.rule_set(blank(), seen, &three[..2], &[0.9, 0.95], 0.3);
+        assert_eq!(reason(&next), "a lookup");
+        // Two that bind: once the agent has read another account than the
+        // one it found, the found one and the other's first order.
+        let mut read = live.clone();
+        read.events.truncate(5);
+        let other = json!({"account_id": "acct_5", "orders": ["o5a"]}).to_string();
+        read.events[3] = crate::testing::call("2", "get_account", json!({"account_id": "acct_5"}));
+        read.events[4] = crate::testing::result("2", "get_account", &other);
+        let both = names(&["get_account", "get_order"]);
+        let bound: Vec<_> = both
+            .iter()
+            .map(|t| habit.bind_lookup(t, &read, &[]))
+            .collect();
+        assert!(bound.iter().all(Result::is_ok), "{bound:?}");
+        let next = habit.rule_set(blank(), (&read, &[][..]), &both, &[0.9, 0.95], 0.3);
+        assert_eq!(reason(&next), "a lookup");
+        // Served on reach, the flow decides by it.
+        let mock = stretto_oracle::MockOracle {
+            confidence: 0.6,
+            noul: 0.5,
+        };
+        let next = habit
+            .next_explored(&found, &[], &mock, 0.3, Decider::Reach, None)
+            .unwrap();
+        assert_eq!(reason(&next), "a lookup", "{next:?}");
+    }
+
+    #[test]
+    fn a_pick_after_the_described_record_is_scored_by_what_came_after() {
+        let manifest = ToolManifest {
+            domain: "telecom".to_string(),
+            tools: BTreeMap::from([
+                ("get_customer_by_phone".to_string(), ToolKind::Read),
+                ("get_details_by_id".to_string(), ToolKind::Read),
+                ("get_bill".to_string(), ToolKind::Read),
+                ("suspend_line".to_string(), ToolKind::Write),
+            ]),
+            docs: BTreeMap::new(),
+        };
+        let detail = |id: &str, line: &str, number: &str| {
+            let content = json!({"line_id": line, "phone_number": number});
+            result(id, "get_details_by_id", content)
+        };
+        // The agent reads the customer's lines until the one with the number,
+        // reads the bill, and suspends that line, reading the first again.
+        let lines = |number: &str| {
+            episode(vec![
+                call(
+                    "a",
+                    "get_customer_by_phone",
+                    json!({"phone_number": number}),
+                ),
+                result(
+                    "a",
+                    "get_customer_by_phone",
+                    json!({"customer_id": "C1", "phone_number": number, "line_ids": ["L1", "L2", "L3"]}),
+                ),
+                call("b", "get_details_by_id", json!({"id": "L1"})),
+                detail("b", "L1", "555-0101"),
+                call("c", "get_details_by_id", json!({"id": "L2"})),
+                detail("c", "L2", "555-0102"),
+                call("d", "get_bill", json!({"customer_id": "C1"})),
+                result("d", "get_bill", json!({"amount": 10})),
+                call("e", "get_details_by_id", json!({"id": "L1"})),
+                call("f", "suspend_line", json!({"line_id": "L2"})),
+            ])
+        };
+        // A read passed no arguments object is not counted.
+        let odd = episode(vec![call("x", "get_bill", json!("C1"))]);
+        let mut training: Vec<Episode> = (0..4).map(|_| lines("555-0102")).collect();
+        training.push(odd);
+        let mut b = Bindings::learn(&training, &manifest);
+        // L3 was never read, in any episode.
+        assert_eq!(b.described_read.get("get_details_by_id"), Some(&(0, 4)));
+        // Without the count, such a pick has the unmentioned chance.
+        b.described_read.clear();
+        let (args, chance) = b.bind("get_details_by_id", &lines("555-0102")).unwrap();
+        assert_eq!(args, json!({"id": "L3"}));
+        assert!(chance > 0.5, "{chance}");
     }
 }

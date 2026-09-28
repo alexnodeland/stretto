@@ -936,6 +936,32 @@ fn domain(
     Ok((report, flow))
 }
 
+/// An action's name, or `?` for an id the vocabulary does not hold.
+fn action_name(vocab: &Vocab, id: u32) -> String {
+    vocab
+        .action(id)
+        .map_or_else(|| "?".to_string(), Action::to_string)
+}
+
+/// What came back from a step, by its outcome's index.
+fn outcome_name(index: u32) -> &'static str {
+    match Outcome::from_index(index) {
+        Some(Outcome::Ok) => "ok",
+        Some(Outcome::Err) => "error",
+        Some(Outcome::Reply) => "user replied",
+        Some(Outcome::End) => "ended",
+        None => "?",
+    }
+}
+
+/// The tool a step called, and whether the call failed.
+fn called(step: &Step) -> Option<(&str, bool)> {
+    match &step.action {
+        Action::Tool(tool) => Some((tool, step.outcome == Outcome::Err)),
+        Action::Respond => None,
+    }
+}
+
 struct Prepared<'a> {
     ep: &'a Episode,
     /// How much it counts in the habit (see [`Config::half_life`]).
@@ -1465,23 +1491,14 @@ fn featured(
     let describe = |symbol: Symbol| match decode(symbol) {
         None => "start".to_string(),
         Some((a, o, f)) => {
-            let action = vocab.action(a);
-            let outcome = match Outcome::from_index(o) {
-                Some(Outcome::Ok) => "ok",
-                Some(Outcome::Err) => "error",
-                Some(Outcome::Reply) => "user replied",
-                Some(Outcome::End) => "ended",
-                None => "?",
-            };
-            let feature = match action {
+            let feature = match vocab.action(a) {
                 Some(Action::Tool(t)) if f > 0 => map
                     .describe(t, f)
                     .map(|d| format!("; {d}"))
                     .unwrap_or_default(),
                 _ => String::new(),
             };
-            let name = action.map_or_else(|| "?".to_string(), Action::to_string);
-            format!("{name} ({outcome}{feature})")
+            format!("{} ({}{feature})", action_name(vocab, a), outcome_name(o))
         }
     };
     let validated_list = validated
@@ -1491,9 +1508,7 @@ fn featured(
             let (test_n, test_agreed) = held_out.get(context).copied().unwrap_or_default();
             ValidatedContext {
                 context: context.iter().map(|&s| describe(s)).collect(),
-                action: vocab
-                    .action(r.action)
-                    .map_or_else(|| "?".to_string(), Action::to_string),
+                action: action_name(vocab, r.action),
                 cv_n: r.n,
                 cv_tasks: r.tasks,
                 cv_agreed: r.agreed,
@@ -1681,16 +1696,17 @@ fn shadow_run(
             .zip(&decisions)
             .map(|(s, d)| {
                 let s = s.as_ref()?;
-                if d.kind != Kind::Next || d.request.is_none() {
-                    return Some(s.clone());
-                }
-                let best = s.probs.iter().filter(|(o, _)| o.as_str() != RESPOND).fold(
-                    None::<(&String, f64)>,
-                    |best, (o, &p)| match best {
+                // An asked next step takes its likeliest lookup, the first
+                // of equals; any other decision stays as it is.
+                let asked = d.kind == Kind::Next && d.request.is_some();
+                let best = s
+                    .probs
+                    .iter()
+                    .filter(|(o, _)| asked && o.as_str() != RESPOND)
+                    .fold(None::<(&String, f64)>, |best, (o, &p)| match best {
                         Some((_, q)) if q >= p => best,
                         _ => Some((o, p)),
-                    },
-                );
+                    });
                 Some(match best {
                     Some((o, _)) => Scored::of(s.probs.clone(), o.clone(), &d.actual),
                     None => s.clone(),
@@ -1818,12 +1834,7 @@ fn shadow_run(
     versions.sort();
     versions.dedup();
     let report = ShadowReport {
-        oracle: match sc.oracle {
-            shadow::OracleKind::Mock => "mock",
-            shadow::OracleKind::Jev => "jev",
-            shadow::OracleKind::Replay => "replay",
-        }
-        .to_string(),
+        oracle: sc.oracle.name().to_string(),
         versions,
         decisions: decisions.len(),
         distinct: asked.distinct,
@@ -1899,27 +1910,21 @@ fn combine(
             continue;
         };
         let (p, enc) = replayed[d.episode];
-        let Step {
-            action: Action::Tool(prev),
-            outcome,
-        } = &p.steps[d.step - 1]
-        else {
-            continue;
-        };
+        let (prev, failed) =
+            called(&p.steps[d.step - 1]).expect("an asked decision follows a call");
         let predicted = habit.predict_at(enc, d.step);
-        let Some((mut case, options)) = case_of(
+        let (mut case, options) = case_of(
             one,
             two,
             &predicates[i],
             weighed,
             &predicted,
             prev,
-            *outcome == Outcome::Err,
+            failed,
             p.group,
             vocab,
-        ) else {
-            continue;
-        };
+        )
+        .expect("an asked request offers handing back");
         case.actual = options.iter().position(|o| *o == d.actual);
         case.fit = !p.target;
         logged[i] = Some(serde_json::json!({
@@ -2220,8 +2225,25 @@ fn provenance(episodes: &[&Episode], manifest: &ToolManifest) -> Vec<ProvenanceR
 
 #[cfg(test)]
 mod tests {
-    use super::{learn_split, sample_tasks, task_group, training_tasks, Target, FOLDS};
+    use super::{
+        action_name, called, learn_split, outcome_name, sample_tasks, task_group, training_tasks,
+        Target, FOLDS,
+    };
     use std::collections::HashSet;
+    use stretto_model::{Action, Outcome, Step, Vocab};
+
+    #[test]
+    fn steps_are_named_in_words() {
+        let names: Vec<&str> = (0..5).map(outcome_name).collect();
+        assert_eq!(names, ["ok", "error", "user replied", "ended", "?"]);
+        let get = Action::Tool("get".to_string());
+        let vocab = Vocab::build(std::iter::empty(), ["get"]);
+        assert_eq!(action_name(&vocab, vocab.id(&get)), "get");
+        assert_eq!(action_name(&vocab, 999), "?");
+        let step = |action, outcome| Step { action, outcome };
+        assert_eq!(called(&step(get, Outcome::Err)), Some(("get", true)));
+        assert_eq!(called(&step(Action::Respond, Outcome::Reply)), None);
+    }
 
     #[test]
     fn a_learn_split_holds_out_a_share_and_keeps_both_sides() {

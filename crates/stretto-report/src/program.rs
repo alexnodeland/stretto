@@ -525,6 +525,7 @@ mod tests {
         let back = Flow::from_json(&serde_json::to_string(&flow).unwrap()).unwrap();
         assert_ne!(*back.program(), standard());
         let program = FlowProgram::new(&back).unwrap();
+        assert_eq!(program.program(), back.program());
         let mut stopped = 0;
         for seed in 0..200 {
             let mut rng = StdRng::seed_from_u64(seed);
@@ -564,5 +565,13 @@ mod tests {
             Program::parse(&PROGRAM.replace("Decide(prev, failed)", "Decide(prev)")).unwrap();
         let e = FlowProgram::new(&flow).unwrap_err().to_string();
         assert!(e.contains("Decide"), "{e}");
+    }
+
+    #[test]
+    fn a_program_names_only_the_tools_it_knows() {
+        let names = vec!["a".to_string(), "b".to_string()];
+        assert_eq!(tool(&names, &Value::from(1usize)), Ok("b"));
+        let unknown = tool(&names, &Value::from(7usize)).unwrap_err();
+        assert!(unknown.starts_with("no tool has the id"), "{unknown}");
     }
 }
