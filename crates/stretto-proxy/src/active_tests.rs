@@ -1135,6 +1135,50 @@ fn tells_requests_from_responses() {
     );
 }
 
+/// The agent is told when to use the commit tool, in the instructions the
+/// host puts in its prompt; without the tool, the server's answer is its
+/// own.
+#[test]
+fn the_commit_tool_is_explained_in_the_servers_instructions() {
+    let active = Active {
+        commit: true,
+        ..Default::default()
+    };
+    let mut h = harness(&active);
+    h.client(json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}));
+    assert_eq!(h.server.take()[0]["method"], "initialize");
+    h.server_says(json!({"jsonrpc": "2.0", "id": 1,
+                         "result": {"protocolVersion": "2025-06-18", "instructions": "Be kind.\n"}}));
+    let answered = h.host.take();
+    assert_eq!(
+        answered[0]["result"]["instructions"],
+        format!("Be kind.\n\n{COMMIT_NOTE}")
+    );
+    assert_eq!(answered[0]["result"]["protocolVersion"], "2025-06-18");
+
+    let plain = Active::default();
+    let mut h = harness(&plain);
+    h.client(json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}));
+    let theirs = json!({"jsonrpc": "2.0", "id": 1, "result": {"instructions": "Be kind."}});
+    h.server_says(theirs.clone());
+    assert_eq!(h.host.take(), [theirs]);
+}
+
+#[test]
+fn the_note_follows_the_servers_instructions_or_stands_alone() {
+    let noted = |result: Value| with_commit_note(json!({"id": 1, "result": result}));
+    let instructions = |result: Value| noted(result)["result"]["instructions"].clone();
+    assert_eq!(instructions(json!({})), COMMIT_NOTE);
+    assert_eq!(instructions(json!({"instructions": "  "})), COMMIT_NOTE);
+    assert_eq!(
+        instructions(json!({"instructions": "Be kind."})),
+        format!("Be kind.\n\n{COMMIT_NOTE}")
+    );
+    // An error is not an answer to add to.
+    let refused = json!({"id": 1, "error": {"code": -32600, "message": "no"}});
+    assert_eq!(with_commit_note(refused.clone()), refused);
+}
+
 #[test]
 fn lists_the_commit_tool_after_the_servers() {
     let listed = with_commit_tool(json!({"id": 2, "result": {"tools": [{"name": "lookup"}]}}));

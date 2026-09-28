@@ -746,7 +746,7 @@ Usage: stretto-proxy [OPTIONS] [-- <SERVER_COMMAND>...]
 - `--confirm-threshold <P>` (default `0.5`): A write fails when an answer's probability of a yes is below this.
 - `--confirm-questions <N>` (default `100`): The judge's questions per session, at most.
 - `--confirm-log <FILE>`: Append the judgments here (default: next to the session log).
-- `--commit`: Add `stretto_commit`, which makes several calls in one, in order, each checked by the guards.
+- `--commit`: Add `stretto_commit`, which makes several calls in one, in order, each checked by the guards, and a sentence on when to use it to the server's instructions.
 
 **The conversation**
 

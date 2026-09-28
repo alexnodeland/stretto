@@ -28,7 +28,9 @@
 //!   judge that cannot answer refuses nothing.
 //! - **Commit.** [`COMMIT_TOOL`] is added to the tools the server lists. It
 //!   makes several calls in one, in order, each checked by the guards first,
-//!   and stops at the first that is refused or fails.
+//!   and stops at the first that is refused or fails. [`COMMIT_NOTE`] is
+//!   added to the server's instructions, which hosts put in the system
+//!   prompt: a tool alone does not tell the agent when to use it.
 //! - **Context.** MCP never carries the conversation, so the host can append
 //!   it to a file as JSON lines, `{"role": "user" | "assistant", "content":
 //!   text}`. The proxy reads new lines before each decision and logs them as
@@ -66,6 +68,12 @@ use stretto_trace::{Episode, ToolCall, ToolKind};
 
 /// The commit tool's name.
 pub const COMMIT_TOOL: &str = "stretto_commit";
+
+/// What the agent is told of [`COMMIT_TOOL`], after the server's own
+/// instructions.
+pub const COMMIT_NOTE: &str = "When the user has confirmed several changes, make them in one call \
+    to stretto_commit rather than one call each: it makes them in order, and stops at the first \
+    that is refused or fails.";
 
 /// The first line of the flow's results, appended to the agent's own.
 pub const APPENDIX: &str =
@@ -422,6 +430,9 @@ pub(crate) struct Engine<'a, W: Write> {
     calls: HashSet<String>,
     /// The agent's `tools/list` requests awaiting the server, by id.
     lists: HashSet<String>,
+    /// The host's `initialize` requests awaiting the server, by id, when
+    /// the commit tool's note goes in the answer.
+    inits: HashSet<String>,
     /// The server's tools and their `readOnlyHint`, once listed.
     server_tools: HashMap<String, Option<bool>>,
     /// The server's tools' input contracts, once listed
@@ -477,6 +488,7 @@ impl<'a, W: Write> Engine<'a, W> {
             host_ok: true,
             calls: HashSet::new(),
             lists: HashSet::new(),
+            inits: HashSet::new(),
             server_tools: HashMap::new(),
             jobs: Vec::new(),
             abandoned: HashSet::new(),
@@ -527,6 +539,11 @@ impl<'a, W: Write> Engine<'a, W> {
         match (message.as_ref().and_then(method), id) {
             (Some("tools/list"), Some(id)) => {
                 self.lists.insert(key(&id));
+                self.record(Peer::Client, &line);
+                self.send_server(&line);
+            }
+            (Some("initialize"), Some(id)) if self.active.commit => {
+                self.inits.insert(key(&id));
                 self.record(Peer::Client, &line);
                 self.send_server(&line);
             }
@@ -592,6 +609,9 @@ impl<'a, W: Write> Engine<'a, W> {
                 return self.send_own(with_commit_tool(m));
             }
             return self.send_host(&line);
+        }
+        if self.inits.remove(&k) {
+            return self.send_own(with_commit_note(m));
         }
         if self.calls.remove(&k) && self.flow_may_follow(&m) {
             let after = mcp::call_id(&id);
@@ -1350,6 +1370,22 @@ fn with_appendix(mut response: Value, looked: &[Looked]) -> Value {
         Some(Value::Array(content)) => content.push(item),
         _ => response["result"]["content"] = json!([item]),
     }
+    response
+}
+
+/// An `initialize` response with [`COMMIT_NOTE`] after the server's
+/// instructions. An error is left as it is.
+fn with_commit_note(mut response: Value) -> Value {
+    let Some(result) = response.get_mut("result").and_then(Value::as_object_mut) else {
+        return response;
+    };
+    let note = match result.get("instructions").and_then(Value::as_str) {
+        Some(theirs) if !theirs.trim().is_empty() => {
+            format!("{}\n\n{COMMIT_NOTE}", theirs.trim_end())
+        }
+        _ => COMMIT_NOTE.to_string(),
+    };
+    result.insert("instructions".to_string(), Value::String(note));
     response
 }
 

@@ -6,7 +6,7 @@ description: Answers to common questions about stretto - keys, safety, hosts, mo
 
 ## Does stretto change my agent's prompt or tools?
 
-No. A flow's lookups arrive inside the results of calls the agent made, as one more text item. The agent's prompt and its tool list are unchanged. The one option that adds a tool, `--commit` (`stretto_commit`, for confirmed writes in one call), is off unless you ask for it.
+No. A flow's lookups arrive inside the results of calls the agent made, as one more text item. The agent's prompt and its tool list are unchanged. The one option that adds a tool, `--commit` (`stretto_commit`, for confirmed writes in one call), also adds a sentence on it to the server's instructions, which hosts put in the prompt. It is off unless you ask for it.
 
 ## Do I need an API key?
 
