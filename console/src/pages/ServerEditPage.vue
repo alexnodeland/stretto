@@ -46,6 +46,9 @@ function blank(): ServerModel {
     context: '',
     commit: false,
     retain_days: '',
+    listen: false,
+    listen_addr: '127.0.0.1:8931',
+    listen_token: '',
   }
 }
 
@@ -72,6 +75,9 @@ function fromView(s: ServerView): ServerModel {
     context: s.judge?.context ?? '',
     commit: s.commit,
     retain_days: s.retain_days === null ? '' : String(s.retain_days),
+    listen: s.listen !== null,
+    listen_addr: s.listen?.addr ?? '127.0.0.1:8931',
+    listen_token: s.listen?.token_file ?? '',
   }
 }
 

@@ -21,6 +21,7 @@ import { useTitle } from '@/composables/useTitle'
 import { readOnly } from '@/stores/auth'
 import { toast } from '@/stores/toasts'
 import { commandText, formatCount, formatDateTime, plural, upstreamText } from '@/lib/format'
+import { listenUrl } from '@/lib/validate'
 
 const route = useRoute()
 const router = useRouter()
@@ -232,6 +233,18 @@ async function remove() {
                   plural(server.retain_days, 'day')
                 }}</template>
                 <span v-else class="subtle">all</span>
+              </dd>
+              <dt>Hosts connect</dt>
+              <dd data-testid="server-listen">
+                <template v-if="server.listen"
+                  >by URL, to one proxy at
+                  <span class="mono small">{{ listenUrl(server.listen.addr) }}</span
+                  ><template v-if="server.listen.token_file"
+                    >, with the token in
+                    <span class="mono small">{{ server.listen.token_file }}</span></template
+                  ></template
+                >
+                <span v-else class="subtle">each starts its own proxy, over stdio</span>
               </dd>
               <dt>Sessions</dt>
               <dd>

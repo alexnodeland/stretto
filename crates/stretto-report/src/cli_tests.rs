@@ -1514,6 +1514,16 @@ fn init_prints_or_writes_each_hosts_configuration() {
         .ok();
     let token = here.join("rel/token").display().to_string();
     assert!(said.contains(&format!("$(cat {token})")), "{said}");
+    // Written, Claude Code's configuration reads the token from a variable.
+    t.run(&format!(
+        "init --host claude-code {listen} --write $T/listen/.mcp.json -- server"
+    ))
+    .ok();
+    let written = fs::read_to_string(t.at("listen/.mcp.json")).unwrap();
+    assert!(
+        written.contains("\"Authorization\": \"Bearer ${STRETTO_PROXY_TOKEN}\""),
+        "{written}"
+    );
     let said = t
         .run("init --host claude-code --domain notes --listen 127.0.0.1:8931 -- server")
         .ok();
@@ -1524,6 +1534,10 @@ fn init_prints_or_writes_each_hosts_configuration() {
     t.fails(
         "init --host cursor --domain notes --listen 0.0.0.0:8931 -- server",
         "without --listen-token-file",
+    );
+    t.fails(
+        "init --host cursor --domain notes --listen 127.0.0.1:0 -- server",
+        "not 0",
     );
 }
 

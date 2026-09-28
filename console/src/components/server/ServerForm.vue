@@ -45,6 +45,11 @@ export interface ServerModel {
   commit: boolean
   /** Days to keep sessions, as typed. */
   retain_days: string | number
+  /** Whether hosts connect by URL to one proxy that listens at `listen_addr`. */
+  listen: boolean
+  listen_addr: string
+  /** The file with the token hosts send, as typed; empty for none. */
+  listen_token: string
 }
 
 const props = defineProps<{
@@ -149,6 +154,9 @@ function toInput(): ServerInput {
     judge: m.guards && m.judge ? { mode: m.judge, context: m.context.trim() } : null,
     commit: m.commit,
     retain_days: days === '' ? null : Number(days),
+    listen: m.listen
+      ? { addr: m.listen_addr.trim(), token_file: m.listen_token.trim() || null }
+      : null,
   }
 }
 
@@ -202,6 +210,10 @@ const preview = computed(() => {
   if (i.guards) args.push('--guards')
   if (i.judge) args.push('--confirm-judge', i.judge.mode, '--context', i.judge.context || '<file>')
   if (i.commit) args.push('--commit')
+  if (i.listen) {
+    args.push('--listen', i.listen.addr || '<address>')
+    if (i.listen.token_file) args.push('--listen-token-file', i.listen.token_file)
+  }
   if (i.upstream.kind === 'http') {
     args.push('--upstream', i.upstream.url || '<url>')
     for (const h of i.upstream.headers) args.push('--upstream-header', `${h.name}=${h.env}`)
@@ -700,6 +712,65 @@ const modes: { value: ServerMode; title: string; body: string }[] = [
           @blur="touched.add('retain_days')"
         />
       </UiField>
+    </section>
+
+    <section class="sf-section">
+      <h2 class="sf-h">How hosts connect</h2>
+      <label class="check">
+        <input
+          v-model="m.listen"
+          type="checkbox"
+          data-testid="server-listen"
+          @change="touched.add('listen')"
+        />
+        <span class="check-text">
+          <span class="check-title">By URL, to one proxy</span>
+          <span class="caption"
+            >Run one proxy that listens for hosts over Streamable HTTP (<span class="mono"
+              >--listen</span
+            >), rather than each host starting its own over stdio. Each host’s configuration names
+            its URL; Claude Desktop, which starts its servers as commands, still starts its
+            own.</span
+          >
+        </span>
+      </label>
+      <div v-if="m.listen" class="sf-row">
+        <UiField
+          v-slot="{ id, describedby, invalid }"
+          label="Address"
+          hint="An address and a port. Without a token file, a loopback address only."
+          :error="shown('listen')"
+        >
+          <input
+            :id="id"
+            v-model="m.listen_addr"
+            class="input mono"
+            :aria-describedby="describedby"
+            :aria-invalid="invalid"
+            placeholder="127.0.0.1:8931"
+            spellcheck="false"
+            data-testid="server-listen-addr"
+            @blur="touched.add('listen')"
+          />
+        </UiField>
+        <UiField
+          v-slot="{ id, describedby }"
+          label="Token file"
+          optional
+          hint="The file that holds the token hosts send as Authorization: Bearer (--listen-token-file). Needed beyond loopback."
+        >
+          <input
+            :id="id"
+            v-model="m.listen_token"
+            class="input mono"
+            :aria-describedby="describedby"
+            placeholder="~/.stretto/proxy-token"
+            spellcheck="false"
+            data-testid="server-listen-token"
+            @blur="touched.add('listen')"
+          />
+        </UiField>
+      </div>
     </section>
 
     <section class="sf-section">

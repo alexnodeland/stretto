@@ -2,6 +2,7 @@
 import type { DeciderName } from "./DeciderName";
 import type { FlowSummary } from "./FlowSummary";
 import type { Judge } from "./Judge";
+import type { Listening } from "./Listening";
 import type { ServerMode } from "./ServerMode";
 import type { Surprise } from "./Surprise";
 import type { Upstream } from "./Upstream";
@@ -79,4 +80,8 @@ commit: boolean,
  * sessions it recorded, with the logs beside them, and its cached
  * answers (`--retain-days`).
  */
-retain_days: number | null, created_unix_ms: number, updated_unix_ms: number, };
+retain_days: number | null, 
+/**
+ * Hosts connect to one proxy by URL, which listens here.
+ */
+listen: Listening | null, created_unix_ms: number, updated_unix_ms: number, };

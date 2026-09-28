@@ -29,6 +29,7 @@ import {
   splitReport,
   type World,
 } from './fixtures/world.ts'
+import { loopback } from '../src/lib/validate.ts'
 import { detailAt, diffFlows, type FlowRecord } from './fixtures/flows.ts'
 import { comparison, counts, stageView, type StageRecord } from './fixtures/stage.ts'
 import {
@@ -366,6 +367,7 @@ function entryOf(input: ServerInput): Omit<ServerEntry, 'created_unix_ms' | 'upd
     judge: input.judge ?? null,
     commit: input.commit ?? false,
     retain_days: input.retain_days ?? null,
+    listen: input.listen ?? null,
   }
 }
 
@@ -436,6 +438,23 @@ function checkServer(input: unknown, name?: string): ServerInput {
     (!Number.isInteger(s.retain_days) || s.retain_days < 1)
   )
     throw new HttpError(400, 'retain_days: at least one day')
+  if (s.listen) {
+    const addr = s.listen.addr.trim()
+    const at = /^(\d{1,3}(?:\.\d{1,3}){3}|\[[0-9a-fA-F:.]+\]):(\d{1,5})$/.exec(addr)
+    const octets = at?.[1]?.startsWith('[') ? [] : (at?.[1]?.split('.') ?? [])
+    if (!at || octets.some((n) => Number(n) > 255) || Number(at[2]) > 65535)
+      throw new HttpError(
+        400,
+        `listen ${JSON.stringify(s.listen.addr)}: an address and a port, such as 127.0.0.1:8931`,
+      )
+    if (Number(at[2]) === 0)
+      throw new HttpError(400, `listen ${addr}: hosts need the port the proxy listens on, not 0`)
+    if (!s.listen.token_file?.trim() && !loopback(at[1] ?? ''))
+      throw new HttpError(
+        400,
+        `listen ${addr}: without a token file, the proxy listens only on a loopback address, such as 127.0.0.1:8931`,
+      )
+  }
   return {
     name: s.name,
     description: s.description || null,
@@ -454,6 +473,9 @@ function checkServer(input: unknown, name?: string): ServerInput {
     judge: s.judge ? { mode: s.judge.mode, context: s.judge.context.trim() } : null,
     commit: s.commit ?? false,
     retain_days: s.retain_days ?? null,
+    listen: s.listen
+      ? { addr: s.listen.addr.trim(), token_file: s.listen.token_file?.trim() || null }
+      : null,
   }
 }
 

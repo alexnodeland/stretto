@@ -195,6 +195,13 @@ pub struct Listening {
 }
 
 impl Listening {
+    /// Whether it listens on every address (`0.0.0.0` or `[::]`).
+    pub fn everywhere(&self) -> bool {
+        self.addr
+            .parse::<SocketAddr>()
+            .is_ok_and(|addr| addr.ip().is_unspecified())
+    }
+
     /// The proxy's MCP endpoint, with loopback named for an unspecified
     /// address, as the proxy prints it.
     pub fn url(&self) -> String {
@@ -452,26 +459,47 @@ pub fn snippet(host: Host, setup: &Setup) -> String {
 }
 
 /// Where `host`'s configuration goes ([`Host::placement`]), and with
-/// [`Setup::listen`], what else the host needs: the token's variable, or for
-/// Claude Desktop, why it starts a proxy of its own.
+/// [`Setup::listen`], what else the host needs ([`listen_note`]).
 pub fn placement(host: Host, setup: &Setup) -> String {
     let mut text = host.placement().to_string();
-    let Some(listen) = &setup.listen else {
-        return text;
-    };
+    if let Some(note) = listen_note(host, setup, false) {
+        text.push(' ');
+        text.push_str(&note);
+    }
+    text
+}
+
+/// With [`Setup::listen`], what else `host` needs: the token's variable,
+/// when its configuration reads the token from there, and this machine's
+/// name, for a proxy on every address; or for Claude Desktop, why it starts
+/// a proxy of its own. `written`: the configuration file ([`config_text`]),
+/// which reads the token from the variable for Claude Code too, rather than
+/// [`snippet`]'s command, which reads its file.
+pub fn listen_note(host: Host, setup: &Setup, written: bool) -> Option<String> {
+    let listen = setup.listen.as_ref()?;
     if host == Host::ClaudeDesktop {
-        text.push_str(&format!(
-            " Claude Desktop starts its servers as commands, so it runs a proxy of its own, over \
+        return Some(format!(
+            "Claude Desktop starts its servers as commands, so it runs a proxy of its own, over \
              stdio, rather than connecting to the one at {}.",
             listen.url()
         ));
-    } else if let (Some(file), false) = (&listen.token_file, host == Host::ClaudeCode) {
-        text.push_str(&format!(
-            " The host sends the token from {TOKEN_VAR}: set it, in the environment the host \
-             starts in, to the token in {file}."
-        ));
     }
-    text
+    let mut notes = Vec::new();
+    match &listen.token_file {
+        Some(file) if written || host != Host::ClaudeCode => notes.push(format!(
+            "The host sends the token from {TOKEN_VAR}: set it, in the environment the host \
+             starts in, to the token in {file}."
+        )),
+        _ => {}
+    }
+    if listen.everywhere() {
+        notes.push(
+            "The proxy listens on every address: a host on another machine puts this one's name \
+             in the URL."
+                .to_string(),
+        );
+    }
+    (!notes.is_empty()).then(|| notes.join(" "))
 }
 
 /// `word` as a POSIX shell reads it back: bare when it is plain, else in
@@ -1102,12 +1130,26 @@ mod tests {
         );
         assert!(placement(Host::ClaudeDesktop, &s)
             .ends_with("rather than connecting to the one at http://127.0.0.1:8931/mcp."));
-        assert!(placement(Host::Cursor, &s)
-            .ends_with("set it, in the environment the host starts in, to the token in ~/.stretto/proxy-token."));
+        // Beyond this machine, a host names it in the URL.
+        let everywhere = " The proxy listens on every address: a host on another machine puts \
+                          this one's name in the URL.";
+        assert_eq!(
+            placement(Host::Cursor, &s),
+            format!(
+                "{} The host sends the token from STRETTO_PROXY_TOKEN: set it, in the environment \
+                 the host starts in, to the token in ~/.stretto/proxy-token.{everywhere}",
+                Host::Cursor.placement()
+            )
+        );
         assert_eq!(
             placement(Host::ClaudeCode, &s),
-            Host::ClaudeCode.placement()
+            format!("{}{everywhere}", Host::ClaudeCode.placement())
         );
+        // Written, Claude Code's configuration reads the token from the
+        // variable too.
+        assert!(listen_note(Host::ClaudeCode, &s, true)
+            .unwrap()
+            .starts_with("The host sends the token from STRETTO_PROXY_TOKEN"));
         // The steps start the proxy, then restart it with each change.
         let steps = next_steps(Host::Cursor, &s, INIT);
         assert!(
@@ -1142,6 +1184,7 @@ mod tests {
             .get("headers")
             .is_none());
         assert_eq!(placement(Host::Cursor, &s), Host::Cursor.placement());
+        assert_eq!(listen_note(Host::VsCode, &s, true), None);
         let url = |addr: &str| {
             Listening {
                 addr: addr.into(),

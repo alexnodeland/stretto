@@ -432,6 +432,11 @@ pub fn validate(input: &ServerInput, root: &Path, home: Option<&Path>) -> Result
                 listen.addr
             )
         })?;
+        if addr.port() == 0 {
+            return Err(format!(
+                "listen {addr}: hosts need the port the proxy listens on, not 0"
+            ));
+        }
         match listen.token_file.as_deref().map(str::trim) {
             Some(file) if !file.is_empty() => {
                 paths::resolve(root, home, file).map_err(|e| format!("listen: {e}"))?;
@@ -710,6 +715,11 @@ mod tests {
                 "localhost",
                 None,
                 "listen \"localhost\": an address and a port",
+            ),
+            (
+                "127.0.0.1:0",
+                None,
+                "listen 127.0.0.1:0: hosts need the port",
             ),
             (
                 "0.0.0.0:8931",

@@ -763,6 +763,8 @@ Usage: stretto init [OPTIONS] --host <HOST> [-- <SERVER_COMMAND>...]
 - `--context <FILE>`: The file the host appends the conversation to, as JSON lines, which the confirmation judge reads (`stretto-proxy --context`).
 - `--commit`: Offer `stretto_commit`: several calls in one, in order, each checked by the guards (`stretto-proxy --commit`).
 - `--retain-days <DAYS>`: When the proxy starts, delete what is older than this many days: the sessions it recorded, with the logs beside them, and its cached answers (`stretto-proxy --retain-days`).
+- `--listen <ADDR>`: Serve every host from one proxy that listens at this address, such as `127.0.0.1:8931`, and that hosts connect to by URL (`stretto-proxy --listen`), rather than each starting its own over stdio. The configuration names the URL, and the next steps start the proxy. Claude Desktop, which starts its servers as commands, still starts its own.
+- `--listen-token-file <FILE>`: With --listen: the file that holds the token hosts send (`stretto-proxy --listen-token-file`). Needed to listen beyond loopback.
 - `--upstream <URL>`: A Streamable HTTP server, such as `https://example.com/mcp`, in place of a server command: the proxy connects to it (`stretto-proxy --upstream`).
 - `--upstream-header <NAME=VAR>` (repeatable): With --upstream: send header NAME with the value of environment variable VAR, which the host gives the proxy in its `env` (`stretto-proxy --upstream-header`). The value is not written.
 

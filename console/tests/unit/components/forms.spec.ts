@@ -25,6 +25,9 @@ const blank: ServerModel = {
   surprise_nats: '',
   flow_tools_only: false,
   flow_tools: [],
+  listen: false,
+  listen_addr: '127.0.0.1:8931',
+  listen_token: '',
 }
 
 const flow = {
@@ -84,6 +87,7 @@ describe('the server form', () => {
       judge: null,
       commit: false,
       retain_days: null,
+      listen: null,
     })
   })
 
@@ -201,6 +205,28 @@ describe('the server form', () => {
     await typed.find('[data-testid="server-flow-tools-text"]').setValue('get_a, get_b')
     await typed.find('form').trigger('submit')
     expect((typed.emitted('submit')![0] as [ServerInput])[0].flow_tools).toEqual(['get_a', 'get_b'])
+  })
+
+  it('lets hosts connect by URL to one proxy, with a token beyond loopback', async () => {
+    const w = form({ name: 'orders', command: 'orders-mcp' })
+    expect(w.find('[data-testid="server-listen-addr"]').exists()).toBe(false)
+    await w.find('[data-testid="server-listen"]').setValue(true)
+    await w.find('[data-testid="server-listen-addr"]').setValue('0.0.0.0:8931')
+    await w.find('form').trigger('submit')
+    expect(w.text()).toContain(
+      'Without a token file, the proxy listens only on a loopback address.',
+    )
+    expect(w.emitted('submit')).toBeUndefined()
+    await w.find('[data-testid="server-listen-addr"]').setValue('localhost')
+    expect(w.text()).toContain('An address and a port, such as 127.0.0.1:8931.')
+    await w.find('[data-testid="server-listen-addr"]').setValue('0.0.0.0:8931')
+    await w.find('[data-testid="server-listen-token"]').setValue('~/.stretto/proxy-token')
+    await w.find('form').trigger('submit')
+    const [input] = w.emitted('submit')![0] as [ServerInput]
+    expect(input.listen).toEqual({ addr: '0.0.0.0:8931', token_file: '~/.stretto/proxy-token' })
+    expect(w.text()).toContain(
+      '--listen 0.0.0.0:8931 --listen-token-file ~/.stretto/proxy-token -- orders-mcp',
+    )
   })
 
   it('refuses a taken name and an unclosed quote', async () => {

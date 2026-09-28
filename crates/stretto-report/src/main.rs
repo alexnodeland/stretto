@@ -2680,6 +2680,9 @@ fn init(args: InitArgs, env: &mut Env) -> Result<()> {
     };
     let listen = match args.listen {
         Some(addr) => {
+            if addr.port() == 0 {
+                anyhow::bail!("--listen {addr}: hosts need the port the proxy listens on, not 0");
+            }
             if args.listen_token_file.is_none() && !addr.ip().is_loopback() {
                 anyhow::bail!(
                     "--listen {addr}: without --listen-token-file, the proxy listens only on a \
@@ -2726,6 +2729,9 @@ fn init(args: InitArgs, env: &mut Env) -> Result<()> {
         Some(path) => {
             init::write_new(path, &init::config_text(host, &setup), args.force)?;
             eprintln!("stretto: wrote {}", path.display());
+            if let Some(note) = init::listen_note(host, &setup, true) {
+                eprintln!("\n{note}");
+            }
         }
         None => {
             write!(env.stdout, "{}", init::snippet(host, &setup))?;
