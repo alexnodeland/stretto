@@ -385,12 +385,12 @@ code,
 }
 
 /*
- * On a phone, a .table.stack becomes a list: each row a block, each cell on a
+ * On a phone, a table with .table-stack becomes a list: each row a block, each cell on a
  * line of its own after its column's name (data-label), and cells marked
  * .inline side by side. The table keeps its markup for screen readers.
  */
 @media (max-width: 640px) {
-  .table.stack thead {
+  .table.table-stack thead {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -399,13 +399,13 @@ code,
     white-space: nowrap;
   }
 
-  .table.stack,
-  .table.stack tbody {
+  .table.table-stack,
+  .table.table-stack tbody {
     display: block;
     width: 100%;
   }
 
-  .table.stack tr {
+  .table.table-stack tr {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -414,12 +414,12 @@ code,
     border-bottom: 1px solid var(--stretto-border);
   }
 
-  .table.stack tbody:last-child tr:last-child {
+  .table.table-stack tbody:last-child tr:last-child {
     border-bottom: 0;
   }
 
-  .table.stack td,
-  .table.stack tbody th {
+  .table.table-stack td,
+  .table.table-stack tbody th {
     display: block;
     flex: 1 1 100%;
     min-width: 0;
@@ -430,15 +430,15 @@ code,
     background: none;
   }
 
-  .table.stack td.inline {
+  .table.table-stack td.inline {
     flex: 0 1 auto;
   }
 
-  .table.stack td.stack-hide {
+  .table.table-stack td.stack-hide {
     display: none;
   }
 
-  .table.stack td[data-label]::before {
+  .table.table-stack td[data-label]::before {
     content: attr(data-label);
     display: block;
     margin-bottom: 3px;
@@ -449,7 +449,7 @@ code,
     color: var(--stretto-text-subtle);
   }
 
-  .table.stack td.inline[data-label]::before {
+  .table.table-stack td.inline[data-label]::before {
     display: inline;
     margin: 0 6px 0 0;
   }

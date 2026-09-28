@@ -14,7 +14,7 @@ function hints(t: ToolInfo): string {
 
 <template>
   <div class="table-wrap">
-    <table class="table stack tt">
+    <table class="table table-stack tt">
       <thead>
         <tr>
           <th scope="col">Tool</th>

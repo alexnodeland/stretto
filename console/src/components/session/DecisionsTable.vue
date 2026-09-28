@@ -34,7 +34,7 @@ const groups = computed<Group[]>(() => {
 
 <template>
   <div class="table-wrap">
-    <table class="table stack dt">
+    <table class="table table-stack dt">
       <thead>
         <tr>
           <th scope="col">Site</th>

@@ -15,7 +15,7 @@ const sorted = computed(() =>
 
 <template>
   <div class="table-wrap">
-    <table class="table stack ft">
+    <table class="table table-stack ft">
       <thead>
         <tr>
           <th scope="col">Tool</th>

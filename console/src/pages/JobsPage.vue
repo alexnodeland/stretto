@@ -76,7 +76,7 @@ const icons = { flow: Workflow, report: FileText, dir: FolderOpen }
         </template>
       </UiEmpty>
       <div v-else class="table-wrap">
-        <table class="table stack">
+        <table class="table table-stack">
           <thead>
             <tr>
               <th scope="col">Job</th>
@@ -150,8 +150,10 @@ const icons = { flow: Workflow, report: FileText, dir: FolderOpen }
 }
 
 .job-id {
-  margin-left: 8px;
+  display: block;
+  margin-top: 2px;
   font-size: 11px;
+  white-space: nowrap;
 }
 
 .arts {

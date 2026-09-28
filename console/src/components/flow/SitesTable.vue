@@ -12,7 +12,7 @@ const rows = computed(() => props.previews)
 
 <template>
   <div class="table-wrap">
-    <table class="table stack sites">
+    <table class="table table-stack sites">
       <thead>
         <tr>
           <th scope="col">After</th>

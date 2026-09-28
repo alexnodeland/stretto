@@ -149,7 +149,7 @@ const unregistered = computed(() => discovered.value.filter((d) => !d.registered
         flush
       >
         <div v-if="discovered.length" class="table-wrap">
-          <table class="table stack">
+          <table class="table table-stack">
             <thead>
               <tr>
                 <th scope="col">Domain</th>

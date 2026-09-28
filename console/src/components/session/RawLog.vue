@@ -89,7 +89,7 @@ const tones: Record<string, 'neutral' | 'accent' | 'outline' | 'dashed'> = {
     </div>
 
     <div v-if="view === 'events'" class="table-wrap">
-      <table class="table table-compact stack ev">
+      <table class="table table-compact table-stack ev">
         <thead>
           <tr>
             <th scope="col" class="num">Time</th>
