@@ -618,6 +618,42 @@ mod tests {
     }
 
     #[test]
+    fn a_setting_is_named_by_its_thresholds() {
+        let off = Setting::uniform(&sites(), OFF, Decider::Habit);
+        assert_eq!(off.label(), "habit, every site off");
+        let d0 = Setting::uniform(&sites(), 0.3, Decider::Arbiter);
+        assert_eq!(d0.label(), "arbiter at 0.30");
+        let mixed = Setting {
+            thresholds: BTreeMap::from([("a".to_string(), 0.1), ("b".to_string(), OFF)]),
+            decider: Decider::Habit,
+        };
+        assert_eq!(mixed.label(), "habit:0.10,off");
+        // A row without a name is numbered; a site the setting leaves alone
+        // is marked.
+        let scored = [Scored {
+            setting: mixed,
+            totals: Totals::default(),
+        }];
+        let columns = ["a".to_string(), "b".to_string(), "z".to_string()];
+        let md = table(&scored, &columns, &[]);
+        assert!(md.contains("| 1 | habit |"), "{md}");
+        assert!(md.contains(" 0.10 | off | — |"), "{md}");
+    }
+
+    #[test]
+    fn the_search_minimizes_two_objectives() {
+        let (flow, sites) = (crate::flow::tests::toy_flow(), sites());
+        let fitness = Fitness {
+            flow: &flow,
+            sites: &sites,
+            replay: &Toy,
+            memo: Mutex::default(),
+            error: Mutex::default(),
+        };
+        assert_eq!(fitness.num_objectives(), 2);
+    }
+
+    #[test]
     fn the_search_finds_the_front_and_keeps_the_seeds() {
         let flow = crate::flow::tests::toy_flow();
         let seeds = vec![Setting::uniform(&sites(), 0.3, Decider::Arbiter)];

@@ -1175,6 +1175,49 @@ mod tests {
             items[1].request.state["payments_so_far"][0]["payment_id"],
             "credit_card_1"
         );
+        // The write described by its documentation; one reservation looked up
+        // is no choice, and neither is a payment the task expects on another.
+        let mut documented = manifest();
+        documented.docs.insert(
+            "update_reservation_flights".to_string(),
+            stretto_trace::ToolDoc {
+                summary: "Update the flights of a reservation.".to_string(),
+                args: BTreeMap::new(),
+            },
+        );
+        let lone = episode_of(vec![
+            call("a", "get_user_details", json!({"user_id": "u"})),
+            result(
+                "a",
+                "get_user_details",
+                json!({"payment_methods": {"credit_card_1": {}, "gift_card_2": {}}}),
+            ),
+            call(
+                "b",
+                "get_reservation_details",
+                json!({"reservation_id": "R1"}),
+            ),
+            result("b", "get_reservation_details", reservation("R1")),
+            call(
+                "x",
+                "update_reservation_flights",
+                json!({"reservation_id": "R1", "payment_id": "credit_card_1"}),
+            ),
+        ]);
+        let items = choices(&lone, &expected, &documented, "m");
+        assert_eq!(
+            items.iter().map(|c| c.kind).collect::<Vec<_>>(),
+            [Pick::Payment]
+        );
+        assert_eq!(
+            items[0].request.state["the_agent_is_about_to"]["write"],
+            "Update the flights of a reservation."
+        );
+        let elsewhere = [gold(
+            "update_reservation_flights",
+            json!({"reservation_id": "R2", "payment_id": "gift_card_2"}),
+        )];
+        assert!(choices(&lone, &elsewhere, &documented, "m").is_empty());
     }
 
     #[test]
@@ -1188,6 +1231,7 @@ mod tests {
         );
         assert_eq!(describe(&json!("just text")), "just text");
         assert_eq!(describe(&json!([1, 2])), "");
+        assert_eq!(strip(&json!("just text"), &["name"]), json!("just text"));
     }
 
     #[test]
@@ -1230,6 +1274,19 @@ mod tests {
             c.model = None;
         }
         judge(&Silent, &mut unasked, &config, "retail").unwrap();
+        assert!(unasked.iter().all(|c| c.model.is_none()));
+        // So does one that answers, but none of the questions.
+        struct Mute;
+        impl Oracle for Mute {
+            fn ask(&self, _: &Request) -> Result<stretto_oracle::Response> {
+                Ok(stretto_oracle::Response {
+                    model: "mute".to_string(),
+                    answers: BTreeMap::new(),
+                    usage: Default::default(),
+                })
+            }
+        }
+        judge(&Mute, &mut unasked, &config, "retail").unwrap();
         assert!(unasked.iter().all(|c| c.model.is_none()));
         let a = audit("retail", &unasked, 2);
         assert_eq!(a.rows.last().unwrap().unanswered, 2);

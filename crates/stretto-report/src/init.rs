@@ -719,4 +719,30 @@ mod tests {
         assert_eq!(expand_home("~/f", None), Path::new("~/f"));
         assert_eq!(expand_home("/abs/f", Some(home)), Path::new("/abs/f"));
     }
+
+    #[test]
+    fn a_file_that_cannot_be_made_says_why() {
+        let dir = std::env::temp_dir().join(format!("stretto-init-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("taken");
+        std::fs::write(&file, "x").unwrap();
+        let error = |e: anyhow::Error| format!("{e:#}");
+        let under = error(write_new(&file.join("mcp.json"), "{}", false).unwrap_err());
+        assert!(under.starts_with("creating "), "{under}");
+        // No directory to make, and no file to write in its place.
+        let root = error(write_new(Path::new("/"), "{}", true).unwrap_err());
+        assert!(root.starts_with("writing /"), "{root}");
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn a_file_that_takes_no_bytes_says_so() {
+        let full = format!(
+            "{:#}",
+            write_new(Path::new("/dev/full"), "{}", true).unwrap_err()
+        );
+        assert!(full.starts_with("writing /dev/full"), "{full}");
+    }
 }

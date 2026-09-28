@@ -48,3 +48,8 @@ pub mod render;
 pub mod review;
 pub mod search;
 pub mod shadow;
+
+/// The integration tests' fixtures, which the unit tests share.
+#[cfg(test)]
+#[path = "../tests/common/mod.rs"]
+pub(crate) mod testing;

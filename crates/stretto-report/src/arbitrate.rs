@@ -257,9 +257,8 @@ pub fn fit(data: &[(Vec<Vec<f64>>, usize)], dims: usize) -> Vec<f64> {
             g[j] -= RIDGE * w[j];
             h[j][j] += RIDGE;
         }
-        let Some(d) = solve(h, g) else {
-            break;
-        };
+        // The ridge keeps the Hessian positive definite.
+        let Some(d) = solve(h, g) else { break };
         let mut step = 1.0;
         let gained = loop {
             let candidate: Vec<f64> = w.iter().zip(&d).map(|(a, b)| a + step * b).collect();
@@ -410,5 +409,13 @@ mod tests {
         let (out, _) = cross_fit(&cases, 5);
         assert_eq!(out[0].top, 1);
         assert!(out[0].prob < 0.55 && out[0].prob > 0.4, "{:?}", out[0]);
+    }
+
+    #[test]
+    fn a_singular_system_has_no_solution() {
+        let zero = vec![vec![0.0, 0.0], vec![0.0, 0.0]];
+        assert_eq!(solve(zero, vec![1.0, 1.0]), None);
+        let one = vec![vec![2.0, 0.0], vec![0.0, 4.0]];
+        assert_eq!(solve(one, vec![2.0, 2.0]), Some(vec![1.0, 0.5]));
     }
 }

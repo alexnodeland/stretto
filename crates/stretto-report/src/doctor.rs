@@ -365,7 +365,20 @@ mod tests {
         );
         assert!(text.contains("--tag v0.1.0 stretto-proxy"), "{text}");
         assert_eq!(report.problems(), 1);
+        // Beside the running stretto, where the installers put them.
+        let beside = temp("beside");
+        let proxy = beside.join(format!("stretto-proxy{}", std::env::consts::EXE_SUFFIX));
+        std::fs::write(&proxy, "").unwrap();
+        let mut report = Report::default();
+        check_binaries(&mut report, "0.1.0", empty.as_os_str(), Some(&beside));
+        let text = report.render();
+        let at = format!(
+            "stretto-proxy is at {}, which is not on PATH",
+            proxy.display()
+        );
+        assert!(text.contains(&at), "{text}");
         std::fs::remove_dir_all(&empty).unwrap();
+        std::fs::remove_dir_all(&beside).unwrap();
     }
 
     #[cfg(unix)]
@@ -373,13 +386,13 @@ mod tests {
     fn binaries_on_path_are_found_and_their_versions_compared() {
         use std::os::unix::fs::PermissionsExt;
         let dir = temp("bin");
-        for (name, version) in [
-            ("stretto-proxy", "0.2.0"),
-            ("stretto-procedure", "0.1.0"),
-            ("stretto-mcp-demo", "0.2.0"),
+        for (name, script) in [
+            ("stretto-proxy", "echo 'stretto-proxy 0.2.0'"),
+            ("stretto-procedure", "echo 'stretto-procedure 0.1.0'"),
+            ("stretto-mcp-demo", "exit 1"),
         ] {
             let path = dir.join(name);
-            std::fs::write(&path, format!("#!/bin/sh\necho '{name} {version}'\n")).unwrap();
+            std::fs::write(&path, format!("#!/bin/sh\n{script}\n")).unwrap();
             std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
         }
         let path = std::env::join_paths([Path::new("/nonexistent"), &dir]).unwrap();
@@ -397,7 +410,9 @@ mod tests {
                 && text.contains("install them together"),
             "{text}"
         );
-        assert_eq!(report.problems(), 1);
+        assert!(text.contains("problem  stretto-mcp-demo ("), "{text}");
+        assert!(text.contains("does not answer `--version`"), "{text}");
+        assert_eq!(report.problems(), 2);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
@@ -416,8 +431,14 @@ mod tests {
         std::fs::write(logs.join("b.confirm.jsonl"), "{}\n").unwrap();
         std::fs::write(root.join("oracle-cache").join("x.jsonl"), header("x")).unwrap();
         std::fs::write(root.join("notes.flow.json"), "{}").unwrap();
+        crate::flow::tests::toy_flow()
+            .save(&root.join("good.flow.json"))
+            .unwrap();
         let found = scan(&root);
-        assert_eq!(found.flows, [root.join("notes.flow.json")]);
+        assert_eq!(
+            found.flows,
+            [root.join("good.flow.json"), root.join("notes.flow.json")]
+        );
         assert_eq!(
             found.sessions,
             BTreeMap::from([(logs.clone(), (2, BTreeSet::from(["notes".to_string()])))])
@@ -425,9 +446,10 @@ mod tests {
         assert_eq!(found.logs, [logs.join("a.jsonl"), logs.join("b.jsonl")]);
         // What `keep` refuses is neither entered nor taken.
         let without = scan_with(&root, &|p| {
-            !p.ends_with("logs") && !p.ends_with("notes.flow.json")
+            !p.ends_with("logs") && !p.to_string_lossy().ends_with(".flow.json")
         });
         assert_eq!(without, Found::default());
+        assert_eq!(scan(&root.join("missing")), Found::default());
         // A file that is not a flow is listed as one this stretto cannot read.
         let mut report = Report::default();
         check_files(&mut report, &root, Some(&root));
@@ -440,7 +462,38 @@ mod tests {
             text.contains("~/logs/notes: 2 sessions, domain notes"),
             "{text}"
         );
+        assert!(text.contains("~/good.flow.json: domain retail"), "{text}");
+        // Nothing yet, shown in full outside the home directory.
+        let empty = root.join("logs").join("empty");
+        std::fs::create_dir_all(&empty).unwrap();
+        let mut report = Report::default();
+        check_files(&mut report, &empty, None);
+        let text = report.render();
+        let shown = empty.display();
+        assert!(text.contains(&format!("no flows in {shown} yet")), "{text}");
+        assert!(
+            text.contains(&format!("no recorded sessions in {shown} yet")),
+            "{text}"
+        );
         std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn a_flow_is_described_by_how_it_decides() {
+        let flow = crate::flow::tests::toy_flow();
+        let said = describe(&flow);
+        assert!(
+            said.starts_with("domain retail, from 0 sessions, decides with an arbiter"),
+            "{said}"
+        );
+        let mut habit = flow.with_promotion(Some(crate::flow::Promotion {
+            bar: Default::default(),
+            sites: BTreeMap::new(),
+        }));
+        habit.folds.clear();
+        let said = describe(&habit);
+        assert!(said.contains("decides on its habit alone"), "{said}");
+        assert!(said.ends_with(", promoted"), "{said}");
     }
 
     #[test]
@@ -454,6 +507,17 @@ mod tests {
         assert!(text.contains("does not exist yet"), "{text}");
         assert!(text.contains("exists and is writable"), "{text}");
         assert_eq!(std::fs::read_dir(root.join(".stretto")).unwrap().count(), 0);
+        std::fs::write(root.join("file"), "").unwrap();
+        let mut report = Report::default();
+        check_dir(&mut report, &root.join("file"));
+        assert!(report.render().contains("file is not a directory"));
+        // Nobody may make a file in /proc, not even root.
+        #[cfg(target_os = "linux")]
+        {
+            let mut report = Report::default();
+            check_dir(&mut report, Path::new("/proc"));
+            assert!(report.render().contains("/proc is not writable"));
+        }
         std::fs::remove_dir_all(&root).unwrap();
     }
 }

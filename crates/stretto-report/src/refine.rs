@@ -841,6 +841,25 @@ mod tests {
         assert!(md.contains("Kept: none."), "{md}");
         assert!(md.contains("| | Held-out log-likelihood | Nats per decision | Agreement |\n"));
         assert!(!md.contains("## Candidates"), "{md}");
+        // Without targets their columns are empty; sites, most decisions first.
+        let log = two_sites();
+        let r = refine(&log, &[predicate("signal", Favors::SameLookup)], 5, None);
+        let md = markdown(&r, "retail");
+        assert_eq!(md.matches("|  | yes |").count(), 2, "{md}");
+        let at = |row: &str| md.find(row).unwrap_or(usize::MAX);
+        assert!(
+            at("| `get_order` | 66 |") < at("| `get_user` | 34 |"),
+            "{md}"
+        );
+    }
+
+    /// [`synthetic`] with a third of its decisions at another site.
+    fn two_sites() -> Vec<Logged> {
+        let mut log = synthetic(100);
+        for d in log.iter_mut().step_by(3) {
+            d.site = "get_user".to_string();
+        }
+        log
     }
 
     #[test]
@@ -870,6 +889,8 @@ mod tests {
         assert_eq!(md.matches("### Task ").count(), 2, "{md}");
         assert_eq!(md.matches("```json").count(), 2, "{md}");
         assert!(read_dump("not json").is_err());
+        let md = examples(&two_sites(), &HashMap::new(), 5, 3, 1);
+        assert!(md.contains("The 2 sites where the arbiter"), "{md}");
     }
 
     #[test]
@@ -881,5 +902,13 @@ mod tests {
         let log = read_log(&format!("\n{next}\n  \n{arg}\n")).unwrap();
         assert_eq!(log.len(), 1);
         assert!(read_log("{").is_err());
+        let error = |case: serde_json::Value| {
+            let line = serde_json::json!({"kind": "Next", "case": case});
+            format!("{:#}", read_log(&line.to_string()).unwrap_err())
+        };
+        let options = error(serde_json::json!({"options": 5, "features": [[0.0]]}));
+        assert!(options.starts_with("log line 1: options"), "{options}");
+        let features = error(serde_json::json!({"options": ["x"], "features": "x"}));
+        assert!(features.starts_with("log line 1: features"), "{features}");
     }
 }

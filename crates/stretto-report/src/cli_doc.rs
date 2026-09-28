@@ -103,12 +103,10 @@ fn item(cmd: &Command, a: &Arg) -> String {
     let form = if a.is_positional() {
         value()
     } else {
-        let mut f = match (a.get_short(), a.get_long()) {
-            (Some(s), Some(l)) => format!("-{s}, --{l}"),
-            (Some(s), None) => format!("-{s}"),
-            (None, Some(l)) => format!("--{l}"),
-            (None, None) => a.get_id().to_string(),
-        };
+        // Not positional, so it has a short form, a long one, or both.
+        let short = a.get_short().map(|s| format!("-{s}"));
+        let long = a.get_long().map(|l| format!("--{l}"));
+        let mut f = short.into_iter().chain(long).collect::<Vec<_>>().join(", ");
         if takes_value {
             f = format!("{f} {}", value());
         }
@@ -197,7 +195,13 @@ fn first_sentence(text: &str) -> String {
 /// `<!-- begin NAME -->` and `<!-- end NAME -->`. With [`BLESS`] set, write
 /// it there instead. `docs/review.md`'s examples are checked the same way.
 pub fn check_page(path: &Path, name: &str, section: &str) -> Result<(), String> {
-    let page = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    check_page_with(path, name, section, std::env::var_os(BLESS).is_some())
+}
+
+/// [`check_page`], writing a stale section there when `bless` is set.
+pub fn check_page_with(path: &Path, name: &str, section: &str, bless: bool) -> Result<(), String> {
+    let failed = |e: std::io::Error| format!("{}: {e}", path.display());
+    let page = std::fs::read_to_string(path).map_err(failed)?;
     let (begin, end) = (
         format!("<!-- begin {name} -->\n"),
         format!("<!-- end {name} -->"),
@@ -210,9 +214,9 @@ pub fn check_page(path: &Path, name: &str, section: &str) -> Result<(), String> 
     if page[start..stop] == body {
         return Ok(());
     }
-    if std::env::var_os(BLESS).is_some() {
+    if bless {
         let page = format!("{}{body}{}", &page[..start], &page[stop..]);
-        return std::fs::write(path, page).map_err(|e| format!("{}: {e}", path.display()));
+        return std::fs::write(path, page).map_err(failed);
     }
     Err(format!(
         "{} is out of date for `{name}`: run `{BLESS}=1 cargo test` and commit it",

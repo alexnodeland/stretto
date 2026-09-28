@@ -155,6 +155,24 @@ fn a_flow_learns_from_three_sessions_but_not_from_one() {
     let err =
         compile_flow_from_episodes(&mock_config(), &[session(0)], &manifest(), &MOCK).unwrap_err();
     assert!(format!("{err:#}").contains("too few"), "{err:#}");
+    // Sessions that all failed teach no habit.
+    let failed: Vec<Episode> = (0..10)
+        .map(|i| Episode {
+            reward: 0.0,
+            ..session(i)
+        })
+        .collect();
+    let err = compile_flow_from_episodes(&mock_config(), &failed, &manifest(), &MOCK).unwrap_err();
+    assert!(
+        format!("{err:#}").starts_with("no successful training episodes"),
+        "{err:#}"
+    );
+    // A decision log that cannot be written stops it.
+    let mut config = mock_config();
+    let dir = std::env::temp_dir().join(format!("stretto-no-dir-{}", std::process::id()));
+    config.shadow.as_mut().unwrap().log = Some(dir.join("log.jsonl"));
+    let err = compile_flow_from_episodes(&config, &three, &manifest(), &MOCK).unwrap_err();
+    assert!(format!("{err:#}").starts_with("writing "), "{err:#}");
 }
 
 #[test]
@@ -890,4 +908,111 @@ fn drift_sounds_when_another_agent_takes_over_and_a_half_life_follows_it() {
     assert!(surprise(&recent) < surprise(&all));
     assert_eq!(learn(&["--half-life", "0"], &recent).status.code(), Some(2));
     std::fs::remove_dir_all(&dir).ok();
+}
+
+/// An oracle that answers no question.
+struct Mute;
+
+impl stretto_oracle::Oracle for Mute {
+    fn ask(&self, _: &stretto_oracle::Request) -> anyhow::Result<stretto_oracle::Response> {
+        Ok(stretto_oracle::Response {
+            model: "mute".to_string(),
+            answers: BTreeMap::new(),
+            usage: Default::default(),
+        })
+    }
+}
+
+#[test]
+fn a_flow_hands_back_where_it_cannot_or_may_not_decide() {
+    let flow = learned_flow();
+    let reason = |next: stretto_report::flow::Next| match next.proposal {
+        Proposal::HandBack { reason } => reason,
+        other => panic!("{other:?}"),
+    };
+    // After the agent replies there is no call to decide after.
+    let mut spoken = new_customer();
+    spoken.events.push(say("One moment."));
+    let next = flow.next(&spoken, &MOCK, 0.3).unwrap();
+    assert_eq!(reason(next), "the last step is not a tool call");
+    // A site a search switched off, and one it set a threshold for.
+    let site = |t: f64| BTreeMap::from([("find_account".to_string(), t)]);
+    let off = flow.clone().with_thresholds(site(2.0));
+    let next = off.next(&new_customer(), &MOCK, 0.3).unwrap();
+    assert_eq!(reason(next), "the site is switched off");
+    let low = flow.clone().with_thresholds(site(0.01));
+    let next = low.next(&new_customer(), &MOCK, 0.9).unwrap();
+    assert!(matches!(next.proposal, Proposal::Lookup { .. }), "{next:?}");
+    // An answer without the question's answers.
+    let next = flow.next(&new_customer(), &Mute, 0.3).unwrap();
+    assert_eq!(reason(next), "the System-One answer was incomplete");
+}
+
+/// What an audit cannot score it leaves out: the first of two results in a
+/// row (the calls of one turn), a question the oracle left unanswered, and
+/// every decision of a flow asked to decide as it cannot. A read the flow
+/// does not offer is the agent's step all the same, as `other`.
+#[test]
+fn an_audit_leaves_out_what_it_cannot_score() {
+    use stretto_report::audit::{audit, audit_with, decisions, OTHER};
+    let flow = learned_flow();
+    // After finding the account the agent reads an order, which the flow
+    // does not offer there.
+    let mut odd = session(300);
+    odd.events.drain(3..5);
+    let (ds, _) = decisions(&flow, &odd, &MOCK);
+    assert!(ds.iter().any(|d| d.options[d.actual] == OTHER), "{ds:?}");
+    // The flow decides after the last of two results in a row.
+    let mut both = session(301);
+    both.events.insert(3, both.events[2].clone());
+    let (ds, _) = decisions(&flow, &both, &MOCK);
+    assert_eq!(ds, decisions(&flow, &session(301), &MOCK).0);
+    let mute = audit(&flow, &[session(302)], &Mute);
+    assert!(mute.unanswered > 0 && mute.decisions == 0, "{mute:?}");
+    // A flow without an arbiter cannot decide with one, but it can by reach.
+    let episodes: Vec<Episode> = (0..60).map(session).collect();
+    let mut config = Config::new(PathBuf::new());
+    config.alpha_samples = 0;
+    let habit = compile_habit_flow_from_episodes(&config, &episodes, &manifest()).unwrap();
+    let new = [session(303)];
+    let a = audit_with(&habit, &new, &MOCK, Decider::Arbiter);
+    assert!(a.unanswered > 0 && a.decisions == 0, "{a:?}");
+    let a = audit_with(&habit, &new, &MOCK, Decider::Reach);
+    assert_eq!(a.decider, "reach");
+    assert!(a.decisions > 0, "{a:?}");
+}
+
+/// What scoring for promotion cannot decide it leaves out, as the proxy
+/// would: a question the oracle left unanswered, every decision of a flow
+/// asked to decide as it cannot, and a result that came after a reply.
+#[test]
+fn promotion_leaves_out_what_the_flow_cannot_decide() {
+    use stretto_report::promote::score;
+    let flow = learned_flow();
+    let arbiter = Serving {
+        decider: Decider::Arbiter,
+        threshold: 0.3,
+        per_call: PER_CALL,
+    };
+    let sessions: Vec<Recorded> = (400..403).map(|i| session(i).into()).collect();
+    assert!(score(&flow, &sessions, &Mute, arbiter, None).unanswered > 0);
+    let episodes: Vec<Episode> = (0..60).map(session).collect();
+    let mut config = Config::new(PathBuf::new());
+    config.alpha_samples = 0;
+    let habit_flow = compile_habit_flow_from_episodes(&config, &episodes, &manifest()).unwrap();
+    let s = score(&habit_flow, &sessions, &MOCK, arbiter, None);
+    // Only where no lookup followed in training is there nothing to ask.
+    assert!(
+        s.unanswered > 0 && s.sites.keys().eq(["close_order"]),
+        "{s:?}"
+    );
+    // The first result comes after the agent's reply: nothing to decide.
+    let decisions = |s: stretto_report::promote::Scored| -> usize {
+        s.sites.values().map(|t| t.decisions).sum()
+    };
+    let full = score(&flow, &[session(403).into()], &MOCK, habit(PER_CALL), None);
+    let mut replied = session(403);
+    replied.events.insert(2, say("One moment."));
+    let s = score(&flow, &[replied.into()], &MOCK, habit(PER_CALL), None);
+    assert!(decisions(s) < decisions(full));
 }

@@ -644,13 +644,16 @@ fn search_scores_settings_with_a_replay_command_and_rescores_a_front() {
     t.shop(30);
     let habit = t.habit_flow();
     let totals = r#"{"turns": 10, "turns_saved": 2, "detours": 1, "episodes_with_detour": 1, "episodes": 5}"#;
-    t.put("replay.sh", &format!("echo 'CHECK {totals}'\n"));
+    // Each setting's replay hands back one decision for want of an answer.
+    let log = "echo 'the System-One model failed' > \"$6/flow.jsonl\"";
+    t.put("replay.sh", &format!("{log}\necho 'CHECK {totals}'\n"));
     t.put("bad.json", "not json");
     let search = format!("search --flow {habit} --population 4 --generations 1");
     let replay = "-- sh $T/replay.sh";
     let args = format!("{search} --site find_account --dir $T/runs --json $T/s.json {replay}");
     let md = t.run(&args).ok();
     assert!(md.contains("find_account"), "{md}");
+    assert!(md.contains("for want of an answer"), "{md}");
     let args = format!("{search} --dir $T/runs2 --out $T/search.md {replay}");
     t.run(&args).ok();
     assert!(t.at("search.md").exists());
@@ -670,6 +673,14 @@ fn search_scores_settings_with_a_replay_command_and_rescores_a_front() {
             "expected",
         ),
         (format!("{search} --dir $T/x -- false"), "false exited with"),
+        (
+            format!("{search} --dir $T/x -- true"),
+            "no CHECK line from true",
+        ),
+        (
+            format!("{search} --dir $T/x -- $T/no-such-replay"),
+            "no-such-replay",
+        ),
         (
             format!("{search} --site nosuch --dir $T/x {replay}"),
             "no lookup after nosuch",

@@ -1610,10 +1610,11 @@ mod tests {
             );
             for site in &v.sites {
                 // Each site's row in the review ends with the view's verdict.
-                let row = md
-                    .lines()
-                    .find(|l| l.starts_with(&format!("| {} |", site_name(&site.tool, site.failed))))
-                    .unwrap_or_else(|| panic!("{name}: no row for {}\n{md}", site.name));
+                let row = md.lines().find(|l| {
+                    l.starts_with(&format!("| {} |", site_name(&site.tool, site.failed)))
+                });
+                assert!(row.is_some(), "{name}: no row for {}\n{md}", site.name);
+                let row = row.unwrap();
                 assert!(row.ends_with(&format!("| {} |", site.verdict)), "{row}");
                 let acting: Vec<&LookupView> = site.lookups.iter().filter(|l| l.acts).collect();
                 match &site.choice {
@@ -1747,5 +1748,351 @@ mod tests {
             .markdown
             .contains("- no longer runs `for i in 0..max_lookups {`"));
         assert!(show(&new, 0.3).contains("**This is not the standard run.**"));
+    }
+
+    /// The shop's flows as this build learns them from 30 sessions: the habit
+    /// alone, with `reach`, and with an arbiter that weighs one predicate.
+    fn shop() -> (Flow, Flow) {
+        use crate::phase0::{compile_flow_from_episodes, compile_habit_flow_from_episodes};
+        use crate::shadow::{OracleKind, QuestionSet, ShadowConfig};
+        let episodes: Vec<_> = (0..30).map(crate::testing::session).collect();
+        let manifest = crate::testing::manifest();
+        let mut config = crate::phase0::Config::new(std::path::PathBuf::new());
+        config.alpha_samples = 0;
+        let habit = compile_habit_flow_from_episodes(&config, &episodes, &manifest).unwrap();
+        let mut sc = ShadowConfig::new(OracleKind::Mock);
+        sc.questions = QuestionSet::V2;
+        sc.predicates = vec![predicate("p1", "Look it up?")];
+        config.shadow = Some(sc);
+        let oracle = stretto_oracle::MockOracle {
+            confidence: 0.6,
+            noul: 0.5,
+        };
+        let arbiter = compile_flow_from_episodes(&config, &episodes, &manifest, &oracle).unwrap();
+        (habit, arbiter)
+    }
+
+    fn predicate(id: &str, question: &str) -> Predicate {
+        serde_json::from_value(serde_json::json!({
+            "id": id, "favors": "any_lookup", "question": question, "yes": "Yes.", "no": "No."
+        }))
+        .unwrap()
+    }
+
+    /// `flow`, with its file changed by `change`, in the format that holds
+    /// every field.
+    fn edit(flow: &Flow, change: impl FnOnce(&mut Value)) -> Flow {
+        let mut v = serde_json::to_value(flow).unwrap();
+        change(&mut v);
+        v["stretto_flow"] = serde_json::json!(crate::flow::FLOW_THRESHOLDS_VERSION);
+        Flow::from_json(&v.to_string()).unwrap()
+    }
+
+    /// A promotion that scored `site` alone, and did not promote it.
+    fn not_promoted(site: &str) -> crate::flow::Promotion {
+        crate::flow::Promotion {
+            bar: Bar {
+                threshold: 0.3,
+                min_used: 0.7,
+                min_lower: 0.5,
+                min_tasks: 3,
+            },
+            sites: BTreeMap::from([(
+                site.to_string(),
+                SiteRecord {
+                    decisions: 4,
+                    lookups: 3,
+                    used: 1,
+                    tasks: 3,
+                    lower: 0.1,
+                    promoted: false,
+                },
+            )]),
+        }
+    }
+
+    #[test]
+    fn show_says_how_each_kind_of_flow_decides() {
+        let (habit, arbiter) = shop();
+        let md = show(&habit, 0.3);
+        assert!(
+            md.contains("it decides by how often each lookup came before"),
+            "{md}"
+        );
+        assert!(md.contains("share of the times the agent made it before its next write"));
+        let md = show(&arbiter, 0.3);
+        assert!(md.contains("which `--flow-decider reach` serves"), "{md}");
+        assert!(md.contains("One fit, which judges every session."));
+        assert!(md.contains("- `p1` (weighed): Look it up?"), "{md}");
+        // Asked but not weighed, folds fitted apart, and no predicates.
+        let apart = edit(&arbiter, |v| {
+            v["weighed"] = serde_json::json!([]);
+            v["folds"][1]["weights"][0] = serde_json::json!(5.0);
+        });
+        let md = show(&apart, 0.3);
+        assert!(
+            md.contains("- `p1` (asked, not weighed): Look it up?"),
+            "{md}"
+        );
+        assert!(md.contains("Folds fitted apart"), "{md}");
+        let plain = edit(&arbiter, |v| {
+            v["predicates"] = serde_json::json!([]);
+            v["weighed"] = serde_json::json!([]);
+        });
+        assert!(!show(&plain, 0.3).contains("The predicates it asks"));
+    }
+
+    #[test]
+    fn show_lists_what_a_flow_holds_beyond_its_sites() {
+        let (habit, _) = shop();
+        let rich = edit(&habit, |v| {
+            v["provenance"]["sources"] = serde_json::json!([]);
+            v["sites"]["every_read"] = serde_json::json!(true);
+            v["contracts"] = serde_json::json!({"get_account": "{account_id: string}"});
+            v["map"]["fields"] = serde_json::json!({"get_order": [{"Scalar": "status"}]});
+            let b = &mut v["bindings"];
+            b["named_other"] = serde_json::json!({"get_account": [3, 4]});
+            b["described_read"] = serde_json::json!({"get_order": [1, 2]});
+            // A lookup made with no arguments.
+            b["args"]["list_offers"] = serde_json::json!([5, {}]);
+            // A source counted without the values it took.
+            b["sources"][1][1]["values"] = serde_json::json!(0);
+        })
+        .with_promotion(Some(not_promoted("find_account")));
+        let md = show(&rich, 0.3);
+        for part in [
+            "from no named source",
+            "Every read tool is offered after every call",
+            "## Promotion",
+            "Where the customer had named another value",
+            "Where the record the customer described had been read",
+            " Another named (used/passed) | The described record read (used/passed) |",
+            "| `list_offers` | none | made once |",
+            "## Pinned inputs",
+            "- `get_account`: `{account_id: string}`",
+            "## Code features",
+            "- `get_order`: `status`; 0 combinations of values",
+        ] {
+            assert!(md.contains(part), "{part}\n{md}");
+        }
+        // The columns: a count, as not mentioned, or unbindable.
+        let bindings = md.split("## Bindings").nth(1).unwrap();
+        let row = |tool: &str| {
+            bindings
+                .lines()
+                .find(|l| l.starts_with(&format!("| `{tool}` |")))
+                .unwrap()
+        };
+        assert!(row("get_account").contains("(3/4) |"), "{md}");
+        assert!(row("get_order").contains(", as not mentioned |"), "{md}");
+        assert!(row("find_account").ends_with("| — | — | — |"), "{md}");
+        let v = view(&rich, 0.3);
+        let args = &v
+            .bindings
+            .iter()
+            .find(|b| b.tool == "get_account")
+            .unwrap()
+            .args;
+        assert_eq!(args[0].sources[0].share, 0.0);
+    }
+
+    #[test]
+    fn a_site_offers_what_it_can_bind_or_nothing() {
+        let (habit, _) = shop();
+        let odd = edit(&habit, |v| {
+            let next = v["sites"]["next"].as_array_mut().unwrap();
+            // After a write, only a reply; after a failed read, a read again;
+            // and lookups no binding covers, one with a description.
+            next.push(serde_json::json!([["close_order", false], {"respond": 3}]));
+            next.push(serde_json::json!([["get_order", true], {"get_order": 1}]));
+            next.push(serde_json::json!([["get_rewards", false], {"a_catalog": 2}]));
+            next.push(serde_json::json!([["list_offers", false], {"get_offer": 2}]));
+            v["manifest"]["docs"]["get_offer"] =
+                serde_json::json!({"summary": "An offer.", "args": {}});
+        });
+        let md = show(&odd, 0.3);
+        for part in [
+            "| `close_order` | `respond` (3) |",
+            "hands back: no lookup offered |",
+            "| `get_order` (failed) |",
+            "hands back: `a_catalog` 0.00, which it cannot bind |",
+            "`get_offer` 0.00 × 1.00 = 0.00 |",
+        ] {
+            assert!(md.contains(part), "{part}\n{md}");
+        }
+    }
+
+    #[test]
+    fn a_diff_names_each_kind_of_change() {
+        let (habit, arbiter) = shop();
+        let changes = |old: &Flow, new: &Flow| {
+            let d = diff(old, new, 0.05, 0.3);
+            (d.changes(), d.needs_review)
+        };
+        let has = |list: &[String], text: &str| list.iter().any(|c| c.contains(text));
+        // Tools, sites, the run, and the sources and constants of bindings.
+        let constant = |limit: u32| {
+            serde_json::json!([
+                [["get_order", "limit"], limit],
+                [["get_order", "sort"], "asc"]
+            ])
+        };
+        let old = edit(&habit, |v| {
+            v["manifest"]["tools"]["get_order"] = serde_json::json!("read");
+            v["bindings"]["constants"] = constant(10);
+            v["contracts"] = serde_json::json!({"a": "x", "b": "y", "d": "z"});
+            v["map"]["fields"] = serde_json::json!({"get_account": [{"Scalar": "tier"}]});
+        });
+        let program = crate::program::PROGRAM.replacen(
+            "let prev = call;\nlet failed = call_failed;",
+            "let failed = call_failed;\nlet prev = call;",
+            1,
+        );
+        let new = edit(&old, |v| {
+            v["manifest"]["tools"]["close_order"] = serde_json::json!("read");
+            v["manifest"]["tools"]["get_order"] = serde_json::json!("generic");
+            v["manifest"]["tools"]["extra"] = serde_json::json!("write");
+            v["sites"]["every_read"] = serde_json::json!(true);
+            v["sites"]["next"][0][1] = serde_json::json!({});
+            v["program"] =
+                serde_json::to_value(fugue::program::Program::parse(&program).unwrap()).unwrap();
+            let b = &mut v["bindings"];
+            b["sources"][2][1]["found"] = serde_json::json!([]);
+            b["named_other"] = serde_json::json!({"get_account": [0, 5]});
+            b["described_read"] = serde_json::json!({"get_account": [0, 5]});
+            b["constants"] = constant(20);
+            v["contracts"] = serde_json::json!({"a": "w", "c": "v", "d": "z"});
+            v["map"]["fields"] = serde_json::json!({
+                "get_account": [{"Scalar": "tier"}],
+                "get_order": [{"Len": "items"}],
+            });
+        });
+        let (listed, review) = changes(&old, &new);
+        for part in [
+            "`close_order`: write → read",
+            "`get_order`: read → neither",
+            "`extra`: absent → write",
+            "runs the same lines in another order",
+            "every read tool is now offered after every call",
+            "after `find_account`: no longer looks up `get_account`",
+            "`get_order` no longer binds `order_id` from `get_account`",
+            "`get_account`'s chance (another named)",
+            "`get_account`'s chance (the described record read)",
+            "`get_order` `limit`: `10` → `20`",
+            "`a`: `x` → `w`",
+            "`c` pinned: `v`",
+            "`b` no longer pinned",
+            "`get_order`: none → `len(items)`",
+        ] {
+            assert!(has(&listed, part), "{part}: {listed:?}");
+        }
+        assert!(
+            has(&review, "`close_order` is now marked read-only"),
+            "{review:?}"
+        );
+        assert!(has(
+            &review,
+            "a changed constant: `get_order`'s `limit` is now `20`"
+        ));
+        let (listed, _) = changes(&new, &old);
+        assert!(has(
+            &listed,
+            "only the lookups training showed are offered now"
+        ));
+        // Promotion, and where a flow no longer acts.
+        let promoted = habit
+            .clone()
+            .with_promotion(Some(not_promoted("find_account")));
+        let (listed, _) = changes(&habit, &promoted);
+        assert!(
+            has(
+                &listed,
+                "after `find_account`: no longer acts (not promoted)"
+            ),
+            "{listed:?}"
+        );
+        assert!(has(
+            &listed,
+            "none: it may act after every call → 0 of 1 sites scored"
+        ));
+        // The arbiter gained, lost, and changed.
+        let bare = edit(&arbiter, |v| v["predicates"] = serde_json::json!([]));
+        for (to, asked) in [(&arbiter, ", with the predicates `p1`"), (&bare, "")] {
+            let (listed, review) = changes(&habit, to);
+            assert!(
+                has(&listed, &format!("which asks `jev-latest`{asked}")),
+                "{listed:?}"
+            );
+            assert!(has(&review, "the flow now asks `jev-latest`"), "{review:?}");
+        }
+        let (listed, _) = changes(&arbiter, &habit);
+        assert!(
+            has(&listed, "no longer has an arbiter: `reach` decides"),
+            "{listed:?}"
+        );
+        let changed = edit(&arbiter, |v| {
+            v["model"] = serde_json::json!("jev-2");
+            v["predicates"] = serde_json::json!([predicate("p2", "Another?")]);
+            v["weighed"] = serde_json::json!([]);
+            v["provenance"]["sources"] = serde_json::json!(["elsewhere"]);
+            v["provenance"]["arbiter_cases"] = serde_json::json!(99);
+        });
+        let (listed, review) = changes(&arbiter, &changed);
+        for part in [
+            "asks `jev-2` instead of `jev-latest`",
+            "asks new or reworded predicates: `p2`",
+            "no longer asks `p1`",
+            "weighs none (was `p1`)",
+            "sources: agent → elsewhere",
+            "held-out decisions behind the arbiter: 36 → 99",
+        ] {
+            assert!(has(&listed, part), "{part}: {listed:?}");
+        }
+        assert!(has(&review, "the System-One model is now `jev-2`"));
+        let reweighed = edit(&arbiter, |v| {
+            v["folds"] = serde_json::json!([v["folds"][0].clone()]);
+            v["folds"][0]["weights"][0] = serde_json::json!(9.0);
+        });
+        let (listed, _) = changes(&arbiter, &reweighed);
+        assert!(
+            has(&listed, "weight on ln the habit's probability:"),
+            "{listed:?}"
+        );
+    }
+
+    #[test]
+    fn a_diff_follows_the_source_a_binding_tries_first_at_each_site() {
+        let old = example("retail-10-sessions");
+        let source = |site: &str, from: &str, values| crate::flow::SiteSource {
+            tool: "get_user_details".to_string(),
+            arg: "user_id".to_string(),
+            site: site.to_string(),
+            source: (from.to_string(), "$".to_string()),
+            values,
+        };
+        let (email, zip) = ("find_user_id_by_email", "find_user_id_by_name_zip");
+        let mut was = old.clone();
+        was.bindings.site_sources = vec![
+            source(email, email, 2),
+            source(email, zip, 6),
+            source(zip, email, 6),
+            source(zip, zip, 2),
+        ];
+        let mut now = was.clone();
+        now.bindings.site_sources[0].values = 8;
+        let d = diff(&was, &now, 0.05, 0.3);
+        let changes = d.changes();
+        assert_eq!(changes.len(), 1, "{changes:?}");
+        assert!(changes[0].contains(&format!(
+            "after `{email}`: first from `{zip}` `$` → `{email}` `$`"
+        )));
+        let d = diff(&was, &old, 0.05, 0.3);
+        assert!(
+            d.markdown.contains(&format!(
+                "after `{zip}`: the most recent output first (was: `{email}` `$`)"
+            )),
+            "{}",
+            d.markdown
+        );
     }
 }

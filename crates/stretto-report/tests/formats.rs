@@ -221,3 +221,48 @@ fn the_review_page_shows_what_flow_show_and_flow_diff_print() {
         }
     }
 }
+
+/// The CLI reference of options the binaries do not have yet, and how a
+/// page is checked: a stale section fails, or is written when blessed.
+#[test]
+fn the_cli_reference_checks_a_page_and_blesses_it() {
+    use clap::{Arg, ArgAction, Command};
+    use stretto_report::cli_doc::{check_page_with, markdown};
+    let cmd = Command::new("demo")
+        .arg(
+            Arg::new("verbose")
+                .short('v')
+                .long("verbose")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(Arg::new("quiet").short('q').action(ArgAction::SetTrue))
+        .arg(Arg::new("level").long("level").action(ArgAction::Set));
+    let md = markdown(&cmd);
+    for form in ["`-v, --verbose`", "`-q`", "`--level <LEVEL>`"] {
+        assert!(md.contains(form), "{form}\n{md}");
+    }
+    let dir = std::env::temp_dir().join(format!("stretto-cli-doc-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let page = dir.join("cli.md");
+    let missing = check_page_with(&page, "demo", &md, false).unwrap_err();
+    assert!(
+        missing.starts_with(&page.display().to_string()),
+        "{missing}"
+    );
+    std::fs::write(&page, "# CLI\n").unwrap();
+    let unmarked = check_page_with(&page, "demo", &md, false).unwrap_err();
+    assert!(
+        unmarked.contains("has no `<!-- begin demo -->"),
+        "{unmarked}"
+    );
+    std::fs::write(
+        &page,
+        "# CLI\n<!-- begin demo -->\nold\n<!-- end demo -->\n",
+    )
+    .unwrap();
+    let stale = check_page_with(&page, "demo", &md, false).unwrap_err();
+    assert!(stale.contains("is out of date for `demo`"), "{stale}");
+    check_page_with(&page, "demo", &md, true).unwrap();
+    check_page_with(&page, "demo", &md, false).unwrap();
+    std::fs::remove_dir_all(&dir).ok();
+}
