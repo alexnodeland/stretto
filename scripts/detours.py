@@ -22,6 +22,18 @@ wrote (a `tags.json` per episode) and, for `chains`, with `--explore 0` (a
         read before it was one the customer had described (its origin and
         destination named, by code or city, or its id).
 
+    detours.py stops RESULTS.json [--split train|test]
+        Airline, from an agent's own episodes, with no replay: at each of its
+        reservation reads that leaves one the user's account lists unread
+        (not yet called: an agent that reads them all in one turn has no such
+        read), whether it goes on to read another before its next other call, by
+        what the reservations read so far hold against what the customer
+        wrote: one's origin and destination, each named by code or city
+        (`cities`); a code or city named that another read one does not hold
+        (`one city`); neither (`none`). A position after the customer gave
+        any reservation's id is left out: the flow scores it apart
+        (`bindings.named_other`).
+
     detours.py tools RESULTS.json REPLAY_DIR [RESULTS.json REPLAY_DIR ...]
         Each lookup tool's detours and uses, summed over the replays given,
         by the kind of task (the bracketed issue that starts a τ²-bench
@@ -169,11 +181,69 @@ CITY = {
 }  # τ²-bench airline's list_all_airports
 
 
+def says(text, code):
+    """Whether the customer's words (lower-cased) name an airport, by its
+    code or its city, as words."""
+    return any(re.search(rf"\b{re.escape(w.lower())}\b", text) for w in (code, CITY.get(code, code)))
+
+
+def cmd_stops(args):
+    split = Path(args.tau2) / "data/tau2/domains/airline/split_tasks.json"
+    tasks = set(json.loads(split.read_text())[args.split])
+    tally = collections.Counter()
+    for s in json.loads(Path(args.results).read_text())["simulations"]:
+        if str(s["task_id"]) not in tasks:
+            continue
+        messages = s["messages"]
+        calls = {c["id"]: c for m in messages for c in m.get("tool_calls") or []}
+        text, listed, read, called = "", set(), {}, set()
+        for i, m in enumerate(messages):
+            if m["role"] == "user":
+                text += (m.get("content") or "").lower() + "\n"
+            called |= {
+                c["arguments"].get("reservation_id")
+                for c in m.get("tool_calls") or []
+                if c["name"] == "get_reservation_details"
+            }
+            call = calls.get(m.get("id")) if m["role"] == "tool" else None
+            if call is None or m.get("error"):
+                continue
+            try:
+                out = json.loads(m["content"])
+            except (TypeError, ValueError):
+                continue
+            if call["name"] == "get_user_details":
+                listed |= set(out.get("reservations") or [])
+                continue
+            if call["name"] != "get_reservation_details" or not isinstance(out, dict):
+                continue
+            read[out["reservation_id"]] = (out["origin"], out["destination"])
+            if not listed - called or any(r.lower() in text for r in listed):
+                continue
+            routes = [set(od) for od in read.values()]
+            if any(says(text, o) and says(text, d) for o, d in read.values()):
+                where = "cities"
+            elif any(says(text, c) and any(c not in other for other in routes) for mine in routes for c in mine):
+                where = "one city"
+            else:
+                where = "none"
+            on = False
+            for later in messages[i + 1:]:
+                cs = later.get("tool_calls") or []
+                if not cs:
+                    continue
+                if any(c["name"] != "get_reservation_details" for c in cs):
+                    break
+                if any(c["arguments"].get("reservation_id") not in called for c in cs):
+                    on = True
+                    break
+            tally[(where, on)] += 1
+    for where in ("cities", "one city", "none"):
+        print(f"{args.split} {where:8s}  reads on {tally[(where, True)]:3d}  stops {tally[(where, False)]:3d}")
+
+
 def cmd_described(args):
     db = json.loads((Path(args.tau2) / "data/tau2/domains/airline/db.json").read_text())["reservations"]
-
-    def says(text, code):
-        return re.search(rf"\b{code.lower()}\b", text) is not None or CITY.get(code, code).lower() in text
 
     def described(rid, text):
         r = db.get(rid)
@@ -247,6 +317,11 @@ def main():
     p.add_argument("replay")
     p.add_argument("--tau2", default="../tau2-bench")
     p.set_defaults(run=cmd_described)
+    p = sub.add_parser("stops")
+    p.add_argument("results")
+    p.add_argument("--split", default="train", choices=["train", "test"])
+    p.add_argument("--tau2", default="../tau2-bench")
+    p.set_defaults(run=cmd_stops)
     p = sub.add_parser("tools")
     p.add_argument("pairs", nargs="+", metavar="RESULTS_OR_REPLAY")
     p.set_defaults(run=cmd_tools)
