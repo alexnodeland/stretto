@@ -114,8 +114,20 @@ const params = computed(() => {
   return Object.entries(p).filter(([k]) => k !== 'kind')
 })
 
+/**
+ * A job that writes where you say runs again through the form, filled in: the
+ * same path would be refused, since the first run wrote it.
+ */
+const againByForm = computed(() => {
+  const k = job.value?.kind
+  return k === 'learn' || k === 'promote' || k === 'redact'
+})
 const again = ref(false)
 async function runAgain() {
+  if (againByForm.value) {
+    void router.push({ name: 'job-new', query: { from: id.value } })
+    return
+  }
   const p = job.value?.params
   if (!isRecord(p)) return
   again.value = true
@@ -192,7 +204,7 @@ const icons = { flow: Workflow, report: FileText, dir: FolderOpen }
           :reason="readOnly ? 'The console is read-only' : undefined"
           @click="runAgain"
         >
-          Run again
+          {{ againByForm ? 'Run again…' : 'Run again' }}
         </UiButton>
       </template>
     </UiPageHeader>

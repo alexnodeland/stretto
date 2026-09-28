@@ -123,7 +123,7 @@ Every flow. A flow's page shows its graph, with a threshold slider that shows wh
 
 ### Jobs
 
-New jobs, the queue, and each job: its output as it comes, and the files it wrote, such as a new flow or an audit's report, which the page renders. A job can be cancelled while it waits or runs, and run again once it has ended.
+New jobs, the queue, and each job: its output as it comes, and the files it wrote, such as a new flow or an audit's report, which the page renders. A job can be cancelled while it waits or runs, and run again once it has ended: a job that writes where you say (`learn`, `promote`, `redact`) opens the form with its parameters, to change the path or let it replace the file.
 
 ![An audit job's page: the report it wrote, rendered, with the agreement and surprise of each site, the files it wrote and its parameters](../brand/media/console/jobs-light.png#gh-light-mode-only)
 ![An audit job's page: the report it wrote, rendered, with the agreement and surprise of each site, the files it wrote and its parameters](../brand/media/console/jobs-dark.png#gh-dark-mode-only)

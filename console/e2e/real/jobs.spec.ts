@@ -38,6 +38,24 @@ test('a learn job will not write over a flow without leave', async ({ page }) =>
   await expect(page.getByRole('alert')).toContainText('shop.flow.json exists')
 })
 
+test('run again on a learn job opens the form with what it ran with', async ({ page }) => {
+  const response = await page.request.get('/api/jobs')
+  const { items } = (await response.json()) as {
+    items: { id: string; kind: string; params: { out?: string } }[]
+  }
+  const learned = items.find((j) => j.kind === 'learn' && j.params.out === 'e2e.flow.json')
+  expect(learned, 'the learn job that wrote e2e.flow.json').toBeTruthy()
+  await page.goto(`/jobs/${learned!.id}`)
+  await page.getByRole('button', { name: 'Run again…' }).click()
+  await expect(page.getByTestId('learn-domain')).toHaveValue('shop')
+  await expect(page.getByPlaceholder('shop.flow.json')).toHaveValue('e2e.flow.json')
+  await page.getByTestId('job-start').click()
+  await expect(page.getByRole('alert')).toContainText('e2e.flow.json exists')
+  await page.getByRole('switch', { name: /Replace an existing flow/ }).click()
+  await page.getByTestId('job-start').click()
+  await expect(page.getByText('Succeeded').first()).toBeVisible({ timeout: 60_000 })
+})
+
 test('the jobs list has every job, newest first', async ({ page }) => {
   await page.goto('/jobs')
   await expect(page.getByRole('heading', { name: 'Jobs', level: 1 })).toBeVisible()
