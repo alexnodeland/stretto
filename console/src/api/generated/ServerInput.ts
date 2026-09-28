@@ -8,4 +8,4 @@ import type { Upstream } from "./Upstream";
 /**
  * A server as a request describes it: an entry without its timestamps.
  */
-export type ServerInput = { name: string, description?: string | null, upstream: Upstream, mode: ServerMode, flow?: string | null, record_dir?: string | null, decider?: DeciderName | null, threshold?: number | null, surprise?: Surprise | null, guards?: boolean, judge?: Judge | null, commit?: boolean, retain_days?: number | null, };
+export type ServerInput = { name: string, description?: string | null, upstream: Upstream, mode: ServerMode, flow?: string | null, record_dir?: string | null, decider?: DeciderName | null, threshold?: number | null, surprise?: Surprise | null, flow_tools?: Array<string>, guards?: boolean, judge?: Judge | null, commit?: boolean, retain_days?: number | null, };

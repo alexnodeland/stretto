@@ -37,7 +37,11 @@ sites: number,
 /**
  * Distinct lookups it may make.
  */
-lookups: number, promoted: PromotedCounts | null, 
+lookups: number, 
+/**
+ * The tools of those lookups, by name.
+ */
+lookup_tools: Array<string>, promoted: PromotedCounts | null, 
 /**
  * When it hands back for the rest of a session that surprises it, if
  * it has a surprise gate.

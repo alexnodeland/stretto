@@ -361,6 +361,7 @@ function entryOf(input: ServerInput): Omit<ServerEntry, 'created_unix_ms' | 'upd
     decider: input.decider ?? null,
     threshold: input.threshold ?? null,
     surprise: input.surprise ?? null,
+    flow_tools: input.flow_tools ?? [],
     guards: input.guards ?? false,
     judge: input.judge ?? null,
     commit: input.commit ?? false,
@@ -412,6 +413,11 @@ function checkServer(input: unknown, name?: string): ServerInput {
     )
   )
     throw new HttpError(400, `surprise ${s.surprise.nats}: a threshold in nats, above 0`)
+  const badTool = (s.flow_tools ?? []).find(
+    (t) => typeof t !== 'string' || !t.trim() || /[\s,]/.test(t.trim()) || t.trim().length > 128,
+  )
+  if (badTool !== undefined)
+    throw new HttpError(400, `flow_tools: ${JSON.stringify(badTool)} is not a tool's name`)
   if (s.guards && !['retail', 'airline'].includes(s.name))
     throw new HttpError(
       400,
@@ -443,6 +449,7 @@ function checkServer(input: unknown, name?: string): ServerInput {
     decider: s.decider ?? null,
     threshold: s.threshold ?? null,
     surprise: s.surprise ?? null,
+    flow_tools: (s.flow_tools ?? []).map((t) => t.trim()),
     guards: s.guards ?? false,
     judge: s.judge ? { mode: s.judge.mode, context: s.judge.context.trim() } : null,
     commit: s.commit ?? false,

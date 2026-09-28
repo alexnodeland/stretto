@@ -615,6 +615,7 @@ export function buildWorld(
       judge: null,
       commit: false,
       retain_days: null,
+      flow_tools: [],
       // A gate set by hand: the flow stores none.
       surprise: { kind: 'threshold', nats: 3.1 },
       created_unix_ms: localDay(now, 13, 9, 40),
@@ -637,6 +638,7 @@ export function buildWorld(
       judge: null,
       commit: false,
       retain_days: null,
+      flow_tools: [],
       surprise: null,
       created_unix_ms: localDay(now, 9, 15, 20),
       updated_unix_ms: localDay(now, 9, 15, 20),
@@ -658,6 +660,7 @@ export function buildWorld(
       judge: null,
       commit: false,
       retain_days: null,
+      flow_tools: [],
       surprise: null,
       created_unix_ms: localDay(now, 2, 17, 5),
       updated_unix_ms: localDay(now, 2, 17, 5),

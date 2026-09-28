@@ -50,7 +50,7 @@ with $\delta$ a detour's cost and $\beta$ a saved turn's value. Live, a detour c
   stretto-proxy ... --flow orders.flow.json --flow-tools get_order_details,get_user_details -- <server command>
   ```
 
-  A server's `readOnlyHint` says a call changes nothing, not that it is free, unlogged, or fine to make unasked: a read can be metered, rate-limited, or recorded as an access. Name the tools you are content for the flow to call.
+  A server's `readOnlyHint` says a call changes nothing, not that it is free, unlogged, or fine to make unasked: a read can be metered, rate-limited, or recorded as an access. Name the tools you are content for the flow to call. In [the console](/guide/console), a server's form sets it: *Only some of its lookups* lists the flow's lookups to choose from.
 
 ## Caps
 

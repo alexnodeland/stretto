@@ -79,6 +79,8 @@ pub struct FlowSummary {
     pub sites: usize,
     /// Distinct lookups it may make.
     pub lookups: usize,
+    /// The tools of those lookups, by name.
+    pub lookup_tools: Vec<String>,
     pub promoted: Option<PromotedCounts>,
     /// When it hands back for the rest of a session that surprises it, if
     /// it has a surprise gate.

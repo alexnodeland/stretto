@@ -1655,6 +1655,49 @@ async fn a_servers_surprise_gate_reaches_the_proxy() {
 }
 
 #[tokio::test]
+async fn the_tools_a_servers_flow_may_call_reach_the_proxy() {
+    let c = console("server-flow-tools", |_| {});
+    let mut body = shop_server("shop-tools");
+    let plain = c
+        .call(Method::POST, "/api/servers", Some(body.clone()))
+        .await;
+    assert_eq!(plain.status, StatusCode::OK, "{}", plain.text());
+    // The form offers the flow's lookups, from its summary.
+    assert_eq!(
+        plain.json()["flow_summary"]["lookup_tools"],
+        json!(["get_order_details", "get_user_details"])
+    );
+    let args = |v: &Value| -> Vec<String> {
+        v["proxy_args"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|a| a.as_str().unwrap().to_string())
+            .collect()
+    };
+    assert!(!args(&plain.json()).contains(&"--flow-tools".to_string()));
+    body["flow_tools"] = json!(["get_user_details"]);
+    let only = c
+        .call(Method::PUT, "/api/servers/shop-tools", Some(body.clone()))
+        .await;
+    assert_eq!(only.status, StatusCode::OK, "{}", only.text());
+    assert_eq!(only.json()["flow_tools"], json!(["get_user_details"]));
+    let a = args(&only.json());
+    let at = a.iter().position(|w| w == "--flow-tools").unwrap();
+    assert_eq!(a[at + 1], "get_user_details");
+    assert!(at < a.iter().position(|w| w == "--").unwrap());
+    body["flow_tools"] = json!(["a,b"]);
+    let refused = c
+        .call(Method::PUT, "/api/servers/shop-tools", Some(body))
+        .await;
+    assert_eq!(refused.status, StatusCode::BAD_REQUEST);
+    assert!(refused.json()["error"]
+        .as_str()
+        .unwrap()
+        .starts_with("flow_tools: \"a,b\" is not a tool's name"));
+}
+
+#[tokio::test]
 async fn a_servers_guards_judge_commit_and_retention_reach_the_proxy() {
     let c = console("server-policy", |_| {});
     let body = json!({

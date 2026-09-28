@@ -113,6 +113,7 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 - A server in the console sets what the proxy does on writes, and how long it keeps what it records ([#36](https://github.com/alexnodeland/stretto/issues/36)). Under *Writes and retention*: the policy guards, the confirmation judge, logging or enforcing, with the file the host appends the conversation to, `stretto_commit`, and a number of days. Its configuration for each host passes them to `stretto-proxy` (`--guards`, `--confirm-judge` with `--context`, `--commit`, `--retain-days`).
   - `stretto init` takes the same options.
   - The guards need a domain that has them, retail or airline, and the judge needs the guards. The console and `init` refuse a setup that the proxy would refuse when it starts.
+- A server in the console can keep its flow to some of its lookups, chosen from the flow's own or typed for a flow the console does not have ([#36](https://github.com/alexnodeland/stretto/issues/36)). Its configuration for each host passes them to `stretto-proxy` (`--flow-tools`). A flow's summary names the tools of its lookups (`lookup_tools`). In the libraries: `init::Served::tools`.
 - `stretto doctor --data DIR` checks a data directory other than `~/.stretto`; the console's doctor job checks the one it serves.
 - `stretto_report::review::view` returns a flow's review as data, which `flow-show` renders from; `review::diff`'s result lists its changes by heading and serializes.
 

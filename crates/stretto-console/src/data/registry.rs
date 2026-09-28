@@ -163,6 +163,10 @@ pub struct ServerEntry {
     /// the one the flow stores.
     #[serde(default)]
     pub surprise: Option<Surprise>,
+    /// The only tools the flow may call on its own (`--flow-tools`); none,
+    /// every tool it reads as a lookup.
+    #[serde(default)]
+    pub flow_tools: Vec<String>,
     /// Check each of the agent's calls against the domain's policy guards,
     /// and refuse the ones they fail (`--guards`). `retail` and `airline`
     /// have guards.
@@ -209,6 +213,9 @@ pub struct ServerInput {
     #[cfg_attr(feature = "ts", ts(optional = nullable))]
     pub surprise: Option<Surprise>,
     #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(as = "Option<Vec<String>>", optional))]
+    pub flow_tools: Vec<String>,
+    #[serde(default)]
     #[cfg_attr(feature = "ts", ts(as = "Option<bool>", optional))]
     pub guards: bool,
     #[serde(default)]
@@ -236,6 +243,12 @@ impl ServerInput {
             decider: self.decider,
             threshold: self.threshold,
             surprise: self.surprise,
+            flow_tools: self
+                .flow_tools
+                .iter()
+                .map(|t| t.trim().to_string())
+                .filter(|t| !t.is_empty())
+                .collect(),
             guards: self.guards,
             judge: self.judge.map(|j| Judge {
                 context: j.context.trim().to_string(),
@@ -372,6 +385,20 @@ pub fn validate(input: &ServerInput, root: &Path, home: Option<&Path>) -> Result
     if let Some(Surprise::Threshold { nats }) = input.surprise {
         if !nats.is_finite() || nats <= 0.0 {
             return Err(format!("surprise {nats}: a threshold in nats, above 0"));
+        }
+    }
+    if input.flow_tools.len() > 256 {
+        return Err("flow_tools: at most 256 tools".to_string());
+    }
+    for tool in &input.flow_tools {
+        let name = tool.trim();
+        // The proxy takes them comma-separated.
+        if name.is_empty()
+            || name.len() > 128
+            || name.contains(',')
+            || name.chars().any(|c| c.is_whitespace() || c.is_control())
+        {
+            return Err(format!("flow_tools: {tool:?} is not a tool's name"));
         }
     }
     if input.guards && stretto_report::guards::Guards::for_domain(name).is_none() {
@@ -519,6 +546,7 @@ mod tests {
             decider: None,
             threshold: None,
             surprise: None,
+            flow_tools: Vec::new(),
             guards: false,
             judge: None,
             commit: false,
@@ -601,6 +629,20 @@ mod tests {
         assert!(v(&far)
             .unwrap_err()
             .starts_with("surprise NaN: a threshold in nats"));
+        far.surprise = None;
+        far.flow_tools = vec![" get_order_details ".into(), "get_user_details".into()];
+        assert!(v(&far).is_ok());
+        assert_eq!(
+            far.clone().entry(1, 2).flow_tools,
+            ["get_order_details", "get_user_details"]
+        );
+        for bad in ["", "a,b", "two words", "x\ny"] {
+            far.flow_tools = vec![bad.into()];
+            assert!(v(&far).unwrap_err().starts_with("flow_tools: "), "{bad:?}");
+        }
+        far.flow_tools = (0..257).map(|i| format!("t{i}")).collect();
+        assert_eq!(v(&far).unwrap_err(), "flow_tools: at most 256 tools");
+        far.flow_tools = Vec::new();
         let mut long = stdio(&["x"]);
         long.description = Some("x".repeat(1001));
         assert!(v(&long).unwrap_err().contains("longer than 1,000"));
@@ -772,6 +814,7 @@ mod tests {
                 decider: s.decider,
                 threshold: s.threshold,
                 surprise: s.surprise,
+                flow_tools: s.flow_tools.clone(),
                 guards: s.guards,
                 judge: s.judge.clone(),
                 commit: s.commit,
