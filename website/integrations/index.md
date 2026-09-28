@@ -144,6 +144,22 @@ stretto init --host cursor --domain orders \
 
 A flow learned with `--habit-only` has no arbiter, so `init` serves it with the `reach` decider (`--flow-decider reach`), which asks no model and needs no key ([deciders](/guide/concepts/deciders)). A flow with an arbiter is served with it, and `init` reminds you that the server then needs `TYPESAFE_API_KEY` in its `env`. To name the only tools the flow may call on its own, add `--flow-tools` to `args` by hand, or set it on the server in [the console](/guide/console), whose configuration for each host includes it ([lookups](/guide/concepts/lookups#which-tools-a-flow-may-call)).
 
+## One proxy for every host
+
+Each host above starts its own proxy over stdio. With `--listen`, `init` sets up one proxy that every host connects to by URL, over Streamable HTTP ([hosts that connect by URL](/integrations/streamable-http#hosts-that-connect-by-url)):
+
+```bash
+stretto init --host claude-code --domain orders --listen 127.0.0.1:8931 -- npx -y some-mcp-server
+```
+
+It prints the host's configuration by URL, `claude mcp add --transport http orders http://127.0.0.1:8931/mcp` here, and its next steps start with the command that runs the proxy; keep it running. Each change after that, such as serving a flow, restarts the proxy, and leaves the host's configuration as it is.
+
+- **Beyond loopback, a token.** Without `--listen-token-file FILE`, `init` refuses an address other than loopback, as the proxy does. With it, each host sends the token as `Authorization: Bearer`: Claude Code reads it from the file when you run `claude mcp add`, and the JSON configurations read it from `STRETTO_PROXY_TOKEN`, which you set to the token in the host's environment.
+- **Every address.** A proxy listening on `0.0.0.0` is at `127.0.0.1` for this machine; a host on another one puts this machine's name in the URL.
+- **Claude Desktop** starts its servers as commands, so its configuration still starts a proxy of its own, over stdio.
+
+The console sets the same on a server, under *How hosts connect* ([the console](/guide/console)).
+
 ## What to watch for
 
 - **Paths.** Hosts start servers without a shell. The proxy expands a leading `~` in its own path options (`--record`, `--flow`, `--context`, `--flow-log`, `--confirm-log`, `--oracle-cache`), but the server's arguments after `--` are passed as written: give them as absolute paths.

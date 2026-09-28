@@ -1498,6 +1498,47 @@ fn init_prints_or_writes_each_hosts_configuration() {
         .run("init --host cursor --domain airline --guards --confirm-judge enforce --context ctx.jsonl -- server")
         .ok();
     assert!(said.contains("\"enforce\""), "{said}");
+    // One proxy that every host connects to by URL, sending the token in
+    // its file.
+    let listen = "--domain notes --listen 127.0.0.1:8931 --listen-token-file rel/token";
+    let said = t
+        .run(&format!("init --host cursor {listen} -- server"))
+        .ok();
+    assert!(
+        said.contains("\"url\": \"http://127.0.0.1:8931/mcp\"")
+            && said.contains("${env:STRETTO_PROXY_TOKEN}"),
+        "{said}"
+    );
+    let said = t
+        .run(&format!("init --host claude-code {listen} -- server"))
+        .ok();
+    let token = here.join("rel/token").display().to_string();
+    assert!(said.contains(&format!("$(cat {token})")), "{said}");
+    // Written, Claude Code's configuration reads the token from a variable.
+    t.run(&format!(
+        "init --host claude-code {listen} --write $T/listen/.mcp.json -- server"
+    ))
+    .ok();
+    let written = fs::read_to_string(t.at("listen/.mcp.json")).unwrap();
+    assert!(
+        written.contains("\"Authorization\": \"Bearer ${STRETTO_PROXY_TOKEN}\""),
+        "{written}"
+    );
+    let said = t
+        .run("init --host claude-code --domain notes --listen 127.0.0.1:8931 -- server")
+        .ok();
+    assert!(
+        said.contains("claude mcp add --transport http notes http://127.0.0.1:8931/mcp"),
+        "{said}"
+    );
+    t.fails(
+        "init --host cursor --domain notes --listen 0.0.0.0:8931 -- server",
+        "without --listen-token-file",
+    );
+    t.fails(
+        "init --host cursor --domain notes --listen 127.0.0.1:0 -- server",
+        "not 0",
+    );
 }
 
 #[test]

@@ -7,6 +7,7 @@ import {
   checkServerName,
   checkThreshold,
   checkUrl,
+  listenUrl,
 } from '@/lib/validate'
 import type { ServerInput } from '@/api/types'
 
@@ -104,6 +105,22 @@ describe('the server form’s checks', () => {
     for (const bad of ['', 'a,b', 'two words']) {
       expect(checkServer({ ...base, flow_tools: [bad] }).flow_tools).toMatch(/is not a tool’s name/)
     }
+  })
+
+  it('checks where the proxy listens for hosts, and names its URL', () => {
+    const listen = (addr: string, token_file: string | null = null) =>
+      checkServer({ ...base, listen: { addr, token_file } }).listen
+    expect(listen('127.0.0.1:8931')).toBeUndefined()
+    expect(listen('[::1]:8931')).toBeUndefined()
+    expect(listen('0.0.0.0:8931', '~/.stretto/proxy-token')).toBeUndefined()
+    expect(listen('0.0.0.0:8931')).toMatch(/only on a loopback address/)
+    expect(listen('127.0.0.1:0')).toMatch(/not 0/)
+    for (const bad of ['localhost:8931', '127.0.0.1', '127.0.0.1:99999', '127.0.0.256:80']) {
+      expect(listen(bad)).toMatch(/^An address and a port/)
+    }
+    expect(listenUrl('0.0.0.0:8931')).toBe('http://127.0.0.1:8931/mcp')
+    expect(listenUrl('[::]:8931')).toBe('http://[::1]:8931/mcp')
+    expect(listenUrl(' 10.0.0.2:80 ')).toBe('http://10.0.0.2:80/mcp')
   })
 
   it('accepts a good server and names every problem by field', () => {

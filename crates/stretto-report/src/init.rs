@@ -7,12 +7,18 @@
 //! command), [`config_text`] the whole configuration file that `--write`
 //! writes, and [`next_steps`] the loop `docs/walkthrough.md` runs, from the
 //! step the configuration is at.
+//!
+//! With [`Setup::listen`], one proxy serves every host over Streamable HTTP
+//! (`stretto-proxy --listen`): [`Setup::args`] starts it, and a host's
+//! configuration names its URL, save Claude Desktop's, which starts a proxy
+//! of its own.
 
 use crate::flow::Decider;
 use crate::surprise::Override;
 use anyhow::{bail, Context, Result};
 use serde_json::{json, Value};
 use std::io::Write;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::path::{Path, PathBuf};
 
 /// An MCP host that `init` configures.
@@ -174,6 +180,55 @@ pub struct Upstream {
     pub headers: Vec<(String, String)>,
 }
 
+/// The environment variable a host's JSON configuration reads the listening
+/// proxy's token from.
+pub const TOKEN_VAR: &str = "STRETTO_PROXY_TOKEN";
+
+/// One proxy that hosts connect to by URL (`stretto-proxy --listen`), in
+/// place of each host starting its own over stdio.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Listening {
+    /// The address it listens on, such as `127.0.0.1:8931`.
+    pub addr: String,
+    /// The file that holds the token hosts send (`--listen-token-file`).
+    pub token_file: Option<String>,
+}
+
+impl Listening {
+    /// Whether it listens on every address (`0.0.0.0` or `[::]`).
+    pub fn everywhere(&self) -> bool {
+        self.addr
+            .parse::<SocketAddr>()
+            .is_ok_and(|addr| addr.ip().is_unspecified())
+    }
+
+    /// The proxy's MCP endpoint, with loopback named for an unspecified
+    /// address, as the proxy prints it.
+    pub fn url(&self) -> String {
+        let host = match self.addr.parse::<SocketAddr>() {
+            Ok(addr) if addr.ip().is_unspecified() => {
+                let loopback: IpAddr = if addr.is_ipv4() {
+                    Ipv4Addr::LOCALHOST.into()
+                } else {
+                    Ipv6Addr::LOCALHOST.into()
+                };
+                SocketAddr::new(loopback, addr.port()).to_string()
+            }
+            _ => self.addr.clone(),
+        };
+        format!("http://{host}/mcp")
+    }
+
+    /// The proxy's flags for it.
+    pub fn args(&self) -> Vec<String> {
+        let mut args = vec!["--listen".to_string(), self.addr.clone()];
+        if let Some(file) = &self.token_file {
+            args.extend(["--listen-token-file".to_string(), file.clone()]);
+        }
+        args
+    }
+}
+
 /// A server behind the proxy, as `init` sets it up.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Setup {
@@ -192,6 +247,8 @@ pub struct Setup {
     pub upstream: Option<Upstream>,
     /// The guards, the judge, `stretto_commit` and retention.
     pub policy: Policy,
+    /// One proxy that hosts connect to by URL, in place of stdio.
+    pub listen: Option<Listening>,
 }
 
 impl Setup {
@@ -203,8 +260,20 @@ impl Setup {
         format!("~/.stretto/{kind}/{domain}")
     }
 
-    /// The proxy's arguments.
+    /// The proxy's arguments: with [`Setup::listen`], those of the one
+    /// proxy hosts connect to.
     pub fn args(&self) -> Vec<String> {
+        let mut args = self.stdio_args();
+        if let Some(listen) = &self.listen {
+            // Before the server, which comes last.
+            let at = args.len() - self.target().len();
+            args.splice(at..at, listen.args());
+        }
+        args
+    }
+
+    /// The arguments of a proxy a host starts itself, over stdio.
+    pub fn stdio_args(&self) -> Vec<String> {
         let mut args: Vec<String> = vec![
             "--record".into(),
             self.record.clone(),
@@ -232,6 +301,25 @@ impl Setup {
         args.extend(self.policy.args());
         args.extend(self.target());
         args
+    }
+
+    /// The URL `host` connects to, if it connects to the listening proxy:
+    /// Claude Desktop starts its servers as commands, so it starts its own.
+    fn url_for(&self, host: Host) -> Option<String> {
+        self.listen
+            .as_ref()
+            .filter(|_| host != Host::ClaudeDesktop)
+            .map(Listening::url)
+    }
+
+    /// The `Authorization` header a host's JSON configuration sends to the
+    /// listening proxy, naming the token's variable as `host` expands it.
+    fn bearer(&self, host: Host) -> Option<String> {
+        self.listen.as_ref()?.token_file.as_ref()?;
+        Some(match host {
+            Host::ClaudeCode => format!("Bearer ${{{TOKEN_VAR}}}"),
+            _ => format!("Bearer ${{env:{TOKEN_VAR}}}"),
+        })
     }
 
     /// The server, as the proxy's last arguments: `--upstream` and its
@@ -274,8 +362,21 @@ pub fn config_file(host: Host, setup: &Setup) -> Value {
         Host::VsCode => ("servers", json!({"type": "stdio"})),
         Host::ClaudeCode | Host::ClaudeDesktop | Host::Cursor => ("mcpServers", json!({})),
     };
-    server["command"] = json!(setup.proxy);
-    server["args"] = json!(setup.args());
+    match setup.url_for(host) {
+        Some(url) => {
+            server = match host {
+                Host::Cursor => json!({ "url": url }),
+                _ => json!({ "type": "http", "url": url }),
+            };
+            if let Some(bearer) = setup.bearer(host) {
+                server["headers"] = json!({ "Authorization": bearer });
+            }
+        }
+        None => {
+            server["command"] = json!(setup.proxy);
+            server["args"] = json!(setup.stdio_args());
+        }
+    }
     json!({ key: { setup.domain.as_str(): server } })
 }
 
@@ -287,30 +388,118 @@ pub fn config_text(host: Host, setup: &Setup) -> String {
         Host::VsCode => ("servers", "      \"type\": \"stdio\",\n"),
         Host::ClaudeCode | Host::ClaudeDesktop | Host::Cursor => ("mcpServers", ""),
     };
-    let args: Vec<String> = setup.args().iter().map(|a| s(a)).collect();
+    let body = match setup.url_for(host) {
+        Some(url) => {
+            let mut fields = Vec::new();
+            if host != Host::Cursor {
+                fields.push("      \"type\": \"http\"".to_string());
+            }
+            fields.push(format!("      \"url\": {}", s(&url)));
+            if let Some(bearer) = setup.bearer(host) {
+                fields.push(format!(
+                    "      \"headers\": {{ \"Authorization\": {} }}",
+                    s(&bearer)
+                ));
+            }
+            fields.join(",\n") + "\n"
+        }
+        None => {
+            let args: Vec<String> = setup.stdio_args().iter().map(|a| s(a)).collect();
+            format!(
+                "{kind}      \"command\": {},\n      \"args\": [{}]\n",
+                s(&setup.proxy),
+                args.join(", ")
+            )
+        }
+    };
     format!(
-        "{{\n  \"{key}\": {{\n    {}: {{\n{kind}      \"command\": {},\n      \"args\": [{}]\n    }}\n  }}\n}}\n",
-        s(&setup.domain),
-        s(&setup.proxy),
-        args.join(", ")
+        "{{\n  \"{key}\": {{\n    {}: {{\n{body}    }}\n  }}\n}}\n",
+        s(&setup.domain)
     )
 }
 
 /// What the host takes: the configuration as JSON, or for Claude Code the
 /// `claude mcp add` command.
 pub fn snippet(host: Host, setup: &Setup) -> String {
-    match host {
-        Host::ClaudeCode => {
+    match (host, setup.url_for(host)) {
+        (Host::ClaudeCode, Some(url)) => {
+            let mut words: Vec<String> = [
+                "claude",
+                "mcp",
+                "add",
+                "--transport",
+                "http",
+                &setup.domain,
+                &url,
+            ]
+            .into_iter()
+            .map(shell_quote)
+            .collect();
+            if let Some(file) = setup.listen.as_ref().and_then(|l| l.token_file.as_ref()) {
+                // The shell reads the token from its file as it adds the server.
+                words.push("--header".to_string());
+                words.push(format!(
+                    "\"Authorization: Bearer $(cat {})\"",
+                    shell_quote(file)
+                ));
+            }
+            format!("{}\n", words.join(" "))
+        }
+        (Host::ClaudeCode, None) => {
             let words: Vec<String> = ["claude", "mcp", "add", &setup.domain, "--", &setup.proxy]
                 .into_iter()
                 .map(String::from)
-                .chain(setup.args())
+                .chain(setup.stdio_args())
                 .collect();
             let quoted: Vec<String> = words.iter().map(|w| shell_quote(w)).collect();
             format!("{}\n", quoted.join(" "))
         }
         _ => config_text(host, setup),
     }
+}
+
+/// Where `host`'s configuration goes ([`Host::placement`]), and with
+/// [`Setup::listen`], what else the host needs ([`listen_note`]).
+pub fn placement(host: Host, setup: &Setup) -> String {
+    let mut text = host.placement().to_string();
+    if let Some(note) = listen_note(host, setup, false) {
+        text.push(' ');
+        text.push_str(&note);
+    }
+    text
+}
+
+/// With [`Setup::listen`], what else `host` needs: the token's variable,
+/// when its configuration reads the token from there, and this machine's
+/// name, for a proxy on every address; or for Claude Desktop, why it starts
+/// a proxy of its own. `written`: the configuration file ([`config_text`]),
+/// which reads the token from the variable for Claude Code too, rather than
+/// [`snippet`]'s command, which reads its file.
+pub fn listen_note(host: Host, setup: &Setup, written: bool) -> Option<String> {
+    let listen = setup.listen.as_ref()?;
+    if host == Host::ClaudeDesktop {
+        return Some(format!(
+            "Claude Desktop starts its servers as commands, so it runs a proxy of its own, over \
+             stdio, rather than connecting to the one at {}.",
+            listen.url()
+        ));
+    }
+    let mut notes = Vec::new();
+    match &listen.token_file {
+        Some(file) if written || host != Host::ClaudeCode => notes.push(format!(
+            "The host sends the token from {TOKEN_VAR}: set it, in the environment the host \
+             starts in, to the token in {file}."
+        )),
+        _ => {}
+    }
+    if listen.everywhere() {
+        notes.push(
+            "The proxy listens on every address: a host on another machine puts this one's name \
+             in the URL."
+                .to_string(),
+        );
+    }
+    (!notes.is_empty()).then(|| notes.join(" "))
 }
 
 /// `word` as a POSIX shell reads it back: bare when it is plain, else in
@@ -371,11 +560,12 @@ pub fn expand_home(path: &str, home: Option<&Path>) -> PathBuf {
 /// The steps from where `setup` is to a served flow, with the commands to
 /// run. `init` is how to call `stretto init` again for the same host and
 /// server, up to the options that differ.
-pub fn next_steps(setup: &Setup, init: &str) -> String {
-    // The guards, the judge, `stretto_commit` and retention are init's
-    // options too, the same at every step.
+pub fn next_steps(host: Host, setup: &Setup, init: &str) -> String {
+    // The guards, the judge, `stretto_commit`, retention and listening are
+    // init's options too, the same at every step.
     let mut init = init.to_string();
-    for word in setup.policy.args() {
+    let listen = setup.listen.iter().flat_map(Listening::args);
+    for word in setup.policy.args().into_iter().chain(listen) {
         init.push(' ');
         init.push_str(&shell_quote(&word));
     }
@@ -388,6 +578,26 @@ pub fn next_steps(setup: &Setup, init: &str) -> String {
         format!("~/.stretto/{d}-promoted.flow.json"),
     );
     let mut steps: Vec<String> = Vec::new();
+    // A host that connects by URL keeps its configuration; the proxy changes.
+    let (replace_above, replace) = match setup.url_for(host) {
+        Some(url) => {
+            let words: Vec<String> = std::iter::once(setup.proxy.clone())
+                .chain(setup.args())
+                .map(|w| shell_quote(&w))
+                .collect();
+            steps.push(format!(
+                "Start the proxy, and keep it running: each host that connects to {url} gets a \
+                 session of its own.\n{}",
+                words.join(" ")
+            ));
+            let restart = "Restart the proxy with the command this prints";
+            (restart, restart)
+        }
+        None => (
+            "Replace the configuration above with what this prints",
+            "Replace the configuration with what this prints",
+        ),
+    };
     match &setup.flow {
         None => {
             steps.push(format!(
@@ -404,8 +614,7 @@ pub fn next_steps(setup: &Setup, init: &str) -> String {
                  where their arguments come from:\nstretto flow-show {flow}"
             ));
             steps.push(format!(
-                "Run it in shadow: it decides and logs, but looks nothing up. Replace the \
-                 configuration above with what this prints:\n\
+                "Run it in shadow: it decides and logs, but looks nothing up. {replace_above}:\n\
                  {init} --flow {flow} --shadow {server}"
             ));
             let shadow = Setup::default_record(d, true);
@@ -417,7 +626,7 @@ pub fn next_steps(setup: &Setup, init: &str) -> String {
                 false,
                 Some("reach"),
             ));
-            steps.push(serve_step(init, &promoted, &server));
+            steps.push(serve_step(init, &promoted, &server, replace));
         }
         Some(served) if served.shadow => {
             steps.push(format!(
@@ -432,7 +641,7 @@ pub fn next_steps(setup: &Setup, init: &str) -> String {
                 served.arbiter,
                 served.decider(),
             ));
-            steps.push(serve_step(init, &promoted, &server));
+            steps.push(serve_step(init, &promoted, &server, replace));
         }
         Some(served) => {
             steps.push(format!(
@@ -503,10 +712,10 @@ fn promote_step(
     )
 }
 
-fn serve_step(init: &str, promoted: &str, server: &str) -> String {
+fn serve_step(init: &str, promoted: &str, server: &str, replace: &str) -> String {
     format!(
         "Serve it: after each of the agent's calls, the flow's lookups ride in the same result. \
-         Replace the configuration with what this prints:\n{init} --flow {promoted} {server}"
+         {replace}:\n{init} --flow {promoted} {server}"
     )
 }
 
@@ -531,6 +740,7 @@ mod tests {
             .to_vec(),
             upstream: None,
             policy: Policy::default(),
+            listen: None,
         }
     }
 
@@ -661,7 +871,7 @@ mod tests {
 
     #[test]
     fn the_next_steps_start_where_the_configuration_is() {
-        let record = next_steps(&setup(None), INIT);
+        let record = next_steps(Host::Cursor, &setup(None), INIT);
         for line in [
             "stretto learn --sessions ~/.stretto/logs/notes --domain notes --habit-only \
              --out ~/.stretto/notes.flow.json",
@@ -679,6 +889,7 @@ mod tests {
         assert!(!record.contains("TYPESAFE_API_KEY"), "{record}");
 
         let shadow = next_steps(
+            Host::Cursor,
             &setup(Some(Served {
                 path: "~/.stretto/notes.flow.json".to_string(),
                 arbiter: true,
@@ -709,7 +920,7 @@ mod tests {
             tools: Vec::new(),
         }));
         custom.record = "/srv/shadow".to_string();
-        let custom = next_steps(&custom, INIT);
+        let custom = next_steps(Host::Cursor, &custom, INIT);
         assert!(
             custom.contains("--sessions /srv/shadow --decider reach --out"),
             "{custom}"
@@ -717,6 +928,7 @@ mod tests {
         assert!(!custom.contains("--oracle-cache"), "{custom}");
 
         let served = next_steps(
+            Host::Cursor,
             &setup(Some(Served {
                 path: "~/.stretto/notes-promoted.flow.json".to_string(),
                 arbiter: false,
@@ -773,7 +985,7 @@ mod tests {
             ]
         );
         assert!(!s.args().contains(&"--".to_string()));
-        let steps = next_steps(&s, INIT);
+        let steps = next_steps(Host::Cursor, &s, INIT);
         assert!(
             steps.contains(
                 "stretto flow-diff ~/.stretto/notes.flow.json ~/.stretto/notes-new.flow.json"
@@ -781,7 +993,7 @@ mod tests {
             "{steps}"
         );
         s.flow = None;
-        let steps = next_steps(&s, INIT);
+        let steps = next_steps(Host::Cursor, &s, INIT);
         assert!(
             steps.contains(
                 "--flow ~/.stretto/notes.flow.json --shadow --upstream https://example.com/mcp \
@@ -841,7 +1053,11 @@ mod tests {
             commit: true,
             retain_days: Some(30),
         };
-        let steps = next_steps(&s, "stretto init --host cursor --domain retail");
+        let steps = next_steps(
+            Host::Cursor,
+            &s,
+            "stretto init --host cursor --domain retail",
+        );
         assert!(
             steps.contains(
                 "stretto init --host cursor --domain retail --retain-days 30 --guards \
@@ -854,7 +1070,130 @@ mod tests {
             steps.contains("reads the conversation from ~/.stretto/context/retail.jsonl"),
             "{steps}"
         );
-        assert!(!next_steps(&setup(None), INIT).contains("confirmation judge"));
+        assert!(!next_steps(Host::Cursor, &setup(None), INIT).contains("confirmation judge"));
+    }
+
+    #[test]
+    fn a_listening_proxy_gives_hosts_its_url_and_the_command_that_starts_it() {
+        let mut s = setup(None);
+        s.listen = Some(Listening {
+            addr: "0.0.0.0:8931".into(),
+            token_file: Some("~/.stretto/proxy-token".into()),
+        });
+        // The proxy listens, and the server comes last.
+        assert_eq!(
+            s.args()[4..9],
+            [
+                "--listen",
+                "0.0.0.0:8931",
+                "--listen-token-file",
+                "~/.stretto/proxy-token",
+                "--"
+            ]
+        );
+        assert!(!s.stdio_args().contains(&"--listen".to_string()));
+        // Each host connects by URL, loopback for an unspecified address,
+        // and sends the token.
+        assert_eq!(
+            snippet(Host::ClaudeCode, &s),
+            "claude mcp add --transport http notes http://127.0.0.1:8931/mcp \
+             --header \"Authorization: Bearer $(cat ~/.stretto/proxy-token)\"\n"
+        );
+        let cursor = config_file(Host::Cursor, &s);
+        assert_eq!(
+            cursor,
+            json!({"mcpServers": {"notes": {
+                "url": "http://127.0.0.1:8931/mcp",
+                "headers": {"Authorization": "Bearer ${env:STRETTO_PROXY_TOKEN}"}}}})
+        );
+        for host in [Host::ClaudeCode, Host::Cursor, Host::VsCode] {
+            let text: Value = serde_json::from_str(&config_text(host, &s)).unwrap();
+            assert_eq!(text, config_file(host, &s), "{host:?}");
+        }
+        let code = &config_file(Host::ClaudeCode, &s)["mcpServers"]["notes"];
+        assert_eq!(
+            (
+                code["type"].clone(),
+                code["headers"]["Authorization"].clone()
+            ),
+            (json!("http"), json!("Bearer ${STRETTO_PROXY_TOKEN}"))
+        );
+        assert_eq!(
+            config_file(Host::VsCode, &s)["servers"]["notes"]["type"],
+            "http"
+        );
+        // Claude Desktop starts a proxy of its own, over stdio, and says why.
+        let desktop = config_file(Host::ClaudeDesktop, &s);
+        assert_eq!(
+            desktop["mcpServers"]["notes"]["args"],
+            json!(s.stdio_args())
+        );
+        assert!(placement(Host::ClaudeDesktop, &s)
+            .ends_with("rather than connecting to the one at http://127.0.0.1:8931/mcp."));
+        // Beyond this machine, a host names it in the URL.
+        let everywhere = " The proxy listens on every address: a host on another machine puts \
+                          this one's name in the URL.";
+        assert_eq!(
+            placement(Host::Cursor, &s),
+            format!(
+                "{} The host sends the token from STRETTO_PROXY_TOKEN: set it, in the environment \
+                 the host starts in, to the token in ~/.stretto/proxy-token.{everywhere}",
+                Host::Cursor.placement()
+            )
+        );
+        assert_eq!(
+            placement(Host::ClaudeCode, &s),
+            format!("{}{everywhere}", Host::ClaudeCode.placement())
+        );
+        // Written, Claude Code's configuration reads the token from the
+        // variable too.
+        assert!(listen_note(Host::ClaudeCode, &s, true)
+            .unwrap()
+            .starts_with("The host sends the token from STRETTO_PROXY_TOKEN"));
+        // The steps start the proxy, then restart it with each change.
+        let steps = next_steps(Host::Cursor, &s, INIT);
+        assert!(
+            steps.contains(
+                "1. Start the proxy, and keep it running: each host that connects to \
+                 http://127.0.0.1:8931/mcp gets a session of its own.\n     stretto-proxy \
+                 --record ~/.stretto/logs/notes --domain notes --listen 0.0.0.0:8931 \
+                 --listen-token-file ~/.stretto/proxy-token -- npx"
+            ),
+            "{steps}"
+        );
+        assert!(
+            steps.contains(
+                "Restart the proxy with the command this prints:\n     stretto init --host \
+                 cursor --domain notes --listen 0.0.0.0:8931 --listen-token-file \
+                 ~/.stretto/proxy-token --flow"
+            ),
+            "{steps}"
+        );
+        assert!(!next_steps(Host::ClaudeDesktop, &s, INIT).contains("Start the proxy"));
+
+        // Without a token, no header; a named address is its own URL.
+        s.listen = Some(Listening {
+            addr: "127.0.0.1:8931".into(),
+            token_file: None,
+        });
+        assert_eq!(
+            snippet(Host::ClaudeCode, &s),
+            "claude mcp add --transport http notes http://127.0.0.1:8931/mcp\n"
+        );
+        assert!(config_file(Host::Cursor, &s)["mcpServers"]["notes"]
+            .get("headers")
+            .is_none());
+        assert_eq!(placement(Host::Cursor, &s), Host::Cursor.placement());
+        assert_eq!(listen_note(Host::VsCode, &s, true), None);
+        let url = |addr: &str| {
+            Listening {
+                addr: addr.into(),
+                token_file: None,
+            }
+            .url()
+        };
+        assert_eq!(url("[::]:1"), "http://[::1]:1/mcp");
+        assert_eq!(url("localhost:1"), "http://localhost:1/mcp");
     }
 
     #[test]

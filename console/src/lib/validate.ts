@@ -60,7 +60,8 @@ export type ServerErrors = Partial<
     | 'flow_tools'
     | 'guards'
     | 'context'
-    | 'retain_days',
+    | 'retain_days'
+    | 'listen',
     string
   >
 >
@@ -108,5 +109,29 @@ export function checkServer(input: ServerInput, taken: readonly string[] = []): 
   const days = input.retain_days ?? null
   if (days !== null && (!Number.isInteger(days) || days < 1))
     errors.retain_days = 'Keep sessions for a whole number of days, at least one.'
+  const listen = input.listen ?? null
+  if (listen) {
+    const at = /^(\d{1,3}(?:\.\d{1,3}){3}|\[[0-9a-fA-F:.]+\]):(\d{1,5})$/.exec(listen.addr.trim())
+    const octets = at?.[1]?.startsWith('[') ? [] : (at?.[1]?.split('.') ?? [])
+    if (!at || octets.some((n) => Number(n) > 255) || Number(at[2]) > 65535)
+      errors.listen = 'An address and a port, such as 127.0.0.1:8931.'
+    else if (Number(at[2]) === 0) errors.listen = 'Hosts need the port the proxy listens on, not 0.'
+    else if (!listen.token_file?.trim() && !loopback(at[1] ?? ''))
+      errors.listen = 'Without a token file, the proxy listens only on a loopback address.'
+  }
   return errors
+}
+
+/** Whether an address's host, as `--listen` takes it, is this machine's loopback. */
+export function loopback(host: string): boolean {
+  return /^127\./.test(host) || host === '[::1]'
+}
+
+/** The URL of a proxy listening at `addr`: loopback for an unspecified address, as the proxy prints it. */
+export function listenUrl(addr: string): string {
+  const named = addr
+    .trim()
+    .replace(/^0\.0\.0\.0:/, '127.0.0.1:')
+    .replace(/^\[::\]:/, '[::1]:')
+  return `http://${named}/mcp`
 }

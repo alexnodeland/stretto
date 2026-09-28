@@ -94,7 +94,7 @@ stretto-proxy --listen 127.0.0.1:8931 --record ~/.stretto/logs --domain orders -
 claude mcp add --transport http orders http://127.0.0.1:8931/mcp
 ```
 
-VS Code takes it as `{"type": "http", "url": "http://127.0.0.1:8931/mcp"}`, and Cursor as `{"url": "http://127.0.0.1:8931/mcp"}`.
+VS Code takes it as `{"type": "http", "url": "http://127.0.0.1:8931/mcp"}`, and Cursor as `{"url": "http://127.0.0.1:8931/mcp"}`. `stretto init --listen ADDR` prints each host's configuration by URL, with the command that starts the proxy ([one proxy for every host](https://stretto.alexnodeland.com/integrations/#one-proxy-for-every-host)); so does the console, for a server set to it.
 
 - **Sessions.** Each MCP session (`Mcp-Session-Id`, assigned on `initialize`) gets a server of its own (the command, or its own session of `--upstream`), its own log (`<start>-<pid>-<n>.jsonl`), and its own run of the flow, the guards and the judge, as one stdio proxy has. A DELETE ends the session and closes its server's input, as a stdio host does when it exits. So does the server's exiting, and `--listen-idle` minutes (240 by default) with no request and no open stream; the host then gets 404 and starts another. SIGTERM or Ctrl-C ends every session and waits up to 10 seconds for their logs to close.
 - **Streams.** A request is answered on an event stream, which carries what the server sends while the request waits, then the answer. A host that accepts only `application/json` gets the answer as one body. The server's own messages go on the host's GET stream when one is open, else on a waiting request's stream, else wait for one (1,000 at most). The proxy keeps no history of events, so a stream that drops is not resumed.

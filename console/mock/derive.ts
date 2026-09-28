@@ -17,6 +17,7 @@ import type {
   Settings,
   ToolInfo,
 } from '../src/api/types.ts'
+import { listenUrl } from '../src/lib/validate.ts'
 import type { World } from './fixtures/world.ts'
 import { stageLink } from './fixtures/stage.ts'
 import { FS_TOOLS, SHOP_TOOLS } from './fixtures/tools.ts'
@@ -77,8 +78,16 @@ function policyArgs(entry: ServerEntry): string[] {
   return args
 }
 
-/** stretto_report::init::Setup::args, with the console's extras (threshold, HTTP). */
-export function proxyArgs(world: World, entry: ServerEntry): string[] {
+/** The listening proxy's flags (`--listen`), before the server. */
+function listenArgs(entry: ServerEntry): string[] {
+  if (!entry.listen) return []
+  const args = ['--listen', entry.listen.addr]
+  if (entry.listen.token_file) args.push('--listen-token-file', entry.listen.token_file)
+  return args
+}
+
+/** stretto_report::init::Setup::args, with the console's extras (threshold, HTTP); `stdio`: a proxy a host starts itself. */
+export function proxyArgs(world: World, entry: ServerEntry, stdio = false): string[] {
   const args = [
     '--record',
     entry.record_dir ?? defaultRecord(entry.name, entry.mode),
@@ -101,6 +110,7 @@ export function proxyArgs(world: World, entry: ServerEntry): string[] {
     if (entry.mode === 'shadow') args.push('--flow-shadow')
   }
   args.push(...policyArgs(entry))
+  if (!stdio) args.push(...listenArgs(entry))
   if (entry.upstream.kind === 'http') {
     args.push('--upstream', entry.upstream.url)
     for (const h of entry.upstream.headers) args.push('--upstream-header', `${h.name}=${h.env}`)
@@ -170,6 +180,9 @@ function shellQuote(word: string): string {
   return `'${word.replace(/'/g, `'\\''`)}'`
 }
 
+/** The variable a host's JSON configuration reads the listening proxy's token from. */
+const TOKEN_VAR = 'STRETTO_PROXY_TOKEN'
+
 const PLACEMENT: Record<HostName, string> = {
   'claude-code':
     'Run the command in the project where you use Claude Code. With `--scope user` it applies to every project; `--scope project` writes it to .mcp.json, to share.',
@@ -180,24 +193,53 @@ const PLACEMENT: Record<HostName, string> = {
     'Merge it into .vscode/mcp.json in the workspace, or into your user mcp.json (the command MCP: Open User Configuration).',
 }
 
+/** The URL a host connects to, if it connects to the listening proxy (Claude Desktop starts its own). */
+function urlFor(entry: ServerEntry, host: HostName): string | null {
+  return entry.listen && host !== 'claude-desktop' ? listenUrl(entry.listen.addr) : null
+}
+
 /** What `stretto init` prints for a host: the configuration, where it goes, and the next steps. */
 export function hostConfig(world: World, entry: ServerEntry, host: HostName): HostConfig {
-  const args = proxyArgs(world, entry)
+  const args = proxyArgs(world, entry, true)
   const proxy = 'stretto-proxy'
+  const url = urlFor(entry, host)
+  const token = entry.listen?.token_file ?? null
+  const key = host === 'vscode' ? 'servers' : 'mcpServers'
   let snippet: string
-  if (host === 'claude-code') {
+  if (host === 'claude-code' && url) {
+    const words = ['claude', 'mcp', 'add', '--transport', 'http', entry.name, url].map(shellQuote)
+    if (token) words.push('--header', `"Authorization: Bearer $(cat ${shellQuote(token)})"`)
+    snippet = words.join(' ') + '\n'
+  } else if (host === 'claude-code') {
     snippet =
       ['claude', 'mcp', 'add', entry.name, '--', proxy, ...args].map(shellQuote).join(' ') + '\n'
+  } else if (url) {
+    const fields = host === 'cursor' ? [] : ['      "type": "http"']
+    fields.push(`      "url": ${JSON.stringify(url)}`)
+    if (token)
+      fields.push(
+        `      "headers": { "Authorization": ${JSON.stringify(`Bearer \${env:${TOKEN_VAR}}`)} }`,
+      )
+    snippet = `{\n  "${key}": {\n    ${JSON.stringify(entry.name)}: {\n${fields.join(',\n')}\n    }\n  }\n}\n`
   } else {
-    const key = host === 'vscode' ? 'servers' : 'mcpServers'
     const kind = host === 'vscode' ? '      "type": "stdio",\n' : ''
     snippet = `{\n  "${key}": {\n    ${JSON.stringify(entry.name)}: {\n${kind}      "command": ${JSON.stringify(proxy)},\n      "args": [${args.map((a) => JSON.stringify(a)).join(', ')}]\n    }\n  }\n}\n`
+  }
+  let placement = PLACEMENT[host]
+  if (entry.listen && host === 'claude-desktop')
+    placement += ` Claude Desktop starts its servers as commands, so it runs a proxy of its own, over stdio, rather than connecting to the one at ${listenUrl(entry.listen.addr)}.`
+  else if (entry.listen) {
+    if (token && host !== 'claude-code')
+      placement += ` The host sends the token from ${TOKEN_VAR}: set it, in the environment the host starts in, to the token in ${token}.`
+    if (/^(0\.0\.0\.0|\[::\]):/.test(entry.listen.addr))
+      placement +=
+        " The proxy listens on every address: a host on another machine puts this one's name in the URL."
   }
   return {
     host,
     language: host === 'claude-code' ? 'shell' : 'json',
     snippet,
-    placement: PLACEMENT[host],
+    placement,
     next_steps: nextSteps(world, entry, host),
   }
 }
@@ -208,6 +250,7 @@ function nextSteps(world: World, entry: ServerEntry, host: HostName): string {
   const init = [
     `stretto init --host ${host} --domain ${d}`,
     ...policyArgs(entry).map(shellQuote),
+    ...listenArgs(entry).map(shellQuote),
   ].join(' ')
   const server =
     entry.upstream.kind === 'stdio'
@@ -217,7 +260,16 @@ function nextSteps(world: World, entry: ServerEntry, host: HostName): string {
   const flow = `~/.stretto/${d}.flow.json`
   const promoted = `~/.stretto/${d}-promoted.flow.json`
   const steps: string[] = []
-  const serve = `Serve it: after each of the agent's calls, the flow's lookups ride in the same result. Replace the configuration with what this prints:\n${init} --flow ${promoted} -- ${server}`
+  // A host that connects by URL keeps its configuration; the proxy changes.
+  const url = urlFor(entry, host)
+  if (url)
+    steps.push(
+      `Start the proxy, and keep it running: each host that connects to ${url} gets a session of its own.\n${['stretto-proxy', ...proxyArgs(world, entry)].map(shellQuote).join(' ')}`,
+    )
+  const restart = 'Restart the proxy with the command this prints'
+  const replaceAbove = url ? restart : 'Replace the configuration above with what this prints'
+  const replace = url ? restart : 'Replace the configuration with what this prints'
+  const serve = `Serve it: after each of the agent's calls, the flow's lookups ride in the same result. ${replace}:\n${init} --flow ${promoted} -- ${server}`
   if (entry.mode === 'record' || !entry.flow) {
     steps.push(`Use the agent as usual. The proxy records each session in ${record}.`)
     steps.push(
@@ -227,7 +279,7 @@ function nextSteps(world: World, entry: ServerEntry, host: HostName): string {
       `Review what it may do: the tools it may call, the lookups it may make and where their arguments come from:\nstretto flow-show ${flow}`,
     )
     steps.push(
-      `Run it in shadow: it decides and logs, but looks nothing up. Replace the configuration above with what this prints:\n${init} --flow ${flow} --shadow -- ${server}`,
+      `Run it in shadow: it decides and logs, but looks nothing up. ${replaceAbove}:\n${init} --flow ${flow} --shadow -- ${server}`,
     )
     steps.push(
       `Keep the flow to the calls where its lookups were the agent's own:\nstretto promote --flow ${flow} --sessions ~/.stretto/shadow/${d} --decider reach --out ${promoted}`,

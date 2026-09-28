@@ -139,6 +139,20 @@ pub enum Upstream {
     },
 }
 
+/// One proxy that hosts connect to by URL (`stretto-proxy --listen`), in
+/// place of each host starting its own over stdio.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
+pub struct Listening {
+    /// The address it listens on, such as `127.0.0.1:8931`.
+    pub addr: String,
+    /// The file that holds the token hosts send (`--listen-token-file`):
+    /// relative to the data directory, `~/…`, or absolute inside it.
+    #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(optional = nullable))]
+    pub token_file: Option<String>,
+}
+
 /// A server in the registry.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS))]
@@ -183,6 +197,9 @@ pub struct ServerEntry {
     /// answers (`--retain-days`).
     #[serde(default)]
     pub retain_days: Option<u64>,
+    /// Hosts connect to one proxy by URL, which listens here.
+    #[serde(default)]
+    pub listen: Option<Listening>,
     pub created_unix_ms: u64,
     pub updated_unix_ms: u64,
 }
@@ -227,6 +244,9 @@ pub struct ServerInput {
     #[serde(default)]
     #[cfg_attr(feature = "ts", ts(optional = nullable))]
     pub retain_days: Option<u64>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(optional = nullable))]
+    pub listen: Option<Listening>,
 }
 
 impl ServerInput {
@@ -256,6 +276,10 @@ impl ServerInput {
             }),
             commit: self.commit,
             retain_days: self.retain_days,
+            listen: self.listen.map(|l| Listening {
+                addr: l.addr.trim().to_string(),
+                token_file: blank(l.token_file),
+            }),
             created_unix_ms: created,
             updated_unix_ms: now,
         }
@@ -399,6 +423,31 @@ pub fn validate(input: &ServerInput, root: &Path, home: Option<&Path>) -> Result
             || name.chars().any(|c| c.is_whitespace() || c.is_control())
         {
             return Err(format!("flow_tools: {tool:?} is not a tool's name"));
+        }
+    }
+    if let Some(listen) = &input.listen {
+        let addr: std::net::SocketAddr = listen.addr.trim().parse().map_err(|_| {
+            format!(
+                "listen {:?}: an address and a port, such as 127.0.0.1:8931",
+                listen.addr
+            )
+        })?;
+        if addr.port() == 0 {
+            return Err(format!(
+                "listen {addr}: hosts need the port the proxy listens on, not 0"
+            ));
+        }
+        match listen.token_file.as_deref().map(str::trim) {
+            Some(file) if !file.is_empty() => {
+                paths::resolve(root, home, file).map_err(|e| format!("listen: {e}"))?;
+            }
+            _ if !addr.ip().is_loopback() => {
+                return Err(format!(
+                    "listen {addr}: without a token file, the proxy listens only on a loopback \
+                     address, such as 127.0.0.1:8931"
+                ));
+            }
+            _ => {}
         }
     }
     if input.guards && stretto_report::guards::Guards::for_domain(name).is_none() {
@@ -551,6 +600,7 @@ mod tests {
             judge: None,
             commit: false,
             retain_days: None,
+            listen: None,
         }
     }
 
@@ -643,6 +693,50 @@ mod tests {
         far.flow_tools = (0..257).map(|i| format!("t{i}")).collect();
         assert_eq!(v(&far).unwrap_err(), "flow_tools: at most 256 tools");
         far.flow_tools = Vec::new();
+        // One proxy hosts connect to by URL: loopback, or anywhere with a
+        // token.
+        let listening = |addr: &str, token: Option<&str>| {
+            Some(Listening {
+                addr: addr.to_string(),
+                token_file: token.map(String::from),
+            })
+        };
+        far.listen = listening(" 127.0.0.1:8931 ", Some("  "));
+        assert!(v(&far).is_ok());
+        let entry = far.clone().entry(1, 2).listen.unwrap();
+        assert_eq!(
+            (entry.addr.as_str(), entry.token_file),
+            ("127.0.0.1:8931", None)
+        );
+        far.listen = listening("0.0.0.0:8931", Some("proxy-token"));
+        assert!(v(&far).is_ok());
+        for (addr, token, error) in [
+            (
+                "localhost",
+                None,
+                "listen \"localhost\": an address and a port",
+            ),
+            (
+                "127.0.0.1:0",
+                None,
+                "listen 127.0.0.1:0: hosts need the port",
+            ),
+            (
+                "0.0.0.0:8931",
+                None,
+                "listen 0.0.0.0:8931: without a token file",
+            ),
+            (
+                "0.0.0.0:8931",
+                Some("/etc/token"),
+                "listen: /etc/token is outside",
+            ),
+        ] {
+            far.listen = listening(addr, token);
+            let e = v(&far).unwrap_err();
+            assert!(e.starts_with(error), "{e}");
+        }
+        far.listen = None;
         let mut long = stdio(&["x"]);
         long.description = Some("x".repeat(1001));
         assert!(v(&long).unwrap_err().contains("longer than 1,000"));
@@ -819,6 +913,7 @@ mod tests {
                 judge: s.judge.clone(),
                 commit: s.commit,
                 retain_days: s.retain_days,
+                listen: s.listen.clone(),
             };
             validate(&input, &root, None).unwrap();
         }

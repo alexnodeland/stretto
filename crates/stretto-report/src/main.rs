@@ -997,6 +997,18 @@ struct InitArgs {
     /// answers (`stretto-proxy --retain-days`).
     #[arg(long, value_name = "DAYS", value_parser = clap::value_parser!(u64).range(1..))]
     retain_days: Option<u64>,
+    /// Serve every host from one proxy that listens at this address, such as
+    /// `127.0.0.1:8931`, and that hosts connect to by URL (`stretto-proxy
+    /// --listen`), rather than each starting its own over stdio. The
+    /// configuration names the URL, and the next steps start the proxy.
+    /// Claude Desktop, which starts its servers as commands, still starts
+    /// its own.
+    #[arg(long, value_name = "ADDR")]
+    listen: Option<std::net::SocketAddr>,
+    /// With --listen: the file that holds the token hosts send (`stretto-proxy
+    /// --listen-token-file`). Needed to listen beyond loopback.
+    #[arg(long, value_name = "FILE", requires = "listen")]
+    listen_token_file: Option<String>,
     /// A Streamable HTTP server, such as `https://example.com/mcp`, in place
     /// of a server command: the proxy connects to it (`stretto-proxy
     /// --upstream`).
@@ -2666,6 +2678,28 @@ fn init(args: InitArgs, env: &mut Env) -> Result<()> {
         }),
         _ => None,
     };
+    let listen = match args.listen {
+        Some(addr) => {
+            if addr.port() == 0 {
+                anyhow::bail!("--listen {addr}: hosts need the port the proxy listens on, not 0");
+            }
+            if args.listen_token_file.is_none() && !addr.ip().is_loopback() {
+                anyhow::bail!(
+                    "--listen {addr}: without --listen-token-file, the proxy listens only on a \
+                     loopback address, such as 127.0.0.1:8931"
+                );
+            }
+            Some(init::Listening {
+                addr: addr.to_string(),
+                token_file: args
+                    .listen_token_file
+                    .as_deref()
+                    .map(host_path)
+                    .transpose()?,
+            })
+        }
+        None => None,
+    };
     let host = Host::from(args.host);
     let setup = Setup {
         flow: flow.map(|(path, loaded)| Served {
@@ -2689,16 +2723,20 @@ fn init(args: InitArgs, env: &mut Env) -> Result<()> {
             commit: args.commit,
             retain_days: args.retain_days,
         },
+        listen,
     };
     match &args.write {
         Some(path) => {
             init::write_new(path, &init::config_text(host, &setup), args.force)?;
             eprintln!("stretto: wrote {}", path.display());
+            if let Some(note) = init::listen_note(host, &setup, true) {
+                eprintln!("\n{note}");
+            }
         }
         None => {
             write!(env.stdout, "{}", init::snippet(host, &setup))?;
             env.stdout.flush()?;
-            eprintln!("\n{}", host.placement());
+            eprintln!("\n{}", init::placement(host, &setup));
         }
     }
     let again = format!(
@@ -2706,7 +2744,7 @@ fn init(args: InitArgs, env: &mut Env) -> Result<()> {
         host.name(),
         setup.domain
     );
-    eprintln!("\n{}", init::next_steps(&setup, &again));
+    eprintln!("\n{}", init::next_steps(host, &setup, &again));
     Ok(())
 }
 

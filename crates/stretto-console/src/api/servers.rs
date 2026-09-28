@@ -256,8 +256,8 @@ pub async fn config(
                 ConfigLanguage::Json
             },
             snippet: init::snippet(host, &setup),
-            placement: host.placement().to_string(),
-            next_steps: init::next_steps(&setup, &again),
+            placement: init::placement(host, &setup),
+            next_steps: init::next_steps(host, &setup, &again),
         }))
     })
     .await
@@ -482,6 +482,10 @@ pub fn setup(state: &State, entry: &ServerEntry, host: Host) -> Setup {
             commit: entry.commit,
             retain_days: entry.retain_days,
         },
+        listen: entry.listen.as_ref().map(|l| init::Listening {
+            addr: l.addr.clone(),
+            token_file: l.token_file.as_deref().map(shown),
+        }),
     }
 }
 

@@ -120,6 +120,12 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
   - `stretto init` takes the same options.
   - The guards need a domain that has them, retail or airline, and the judge needs the guards. The console and `init` refuse a setup that the proxy would refuse when it starts.
 - A server in the console can keep its flow to some of its lookups, chosen from the flow's own or typed for a flow the console does not have ([#36](https://github.com/alexnodeland/stretto/issues/36)). Its configuration for each host passes them to `stretto-proxy` (`--flow-tools`). A flow's summary names the tools of its lookups (`lookup_tools`). In the libraries: `init::Served::tools`.
+- `stretto init --listen ADDR [--listen-token-file FILE]`, and a server's *How hosts connect* in the console, set up one proxy that every host connects to by URL, over Streamable HTTP, rather than each starting its own over stdio ([#80](https://github.com/alexnodeland/stretto/issues/80)).
+  - Each host's configuration names the proxy's URL: `claude mcp add --transport http` for Claude Code, `url` for Cursor, `"type": "http"` for VS Code. With a token file, it sends the token as a bearer: Claude Code's from the file, the others' from `STRETTO_PROXY_TOKEN`.
+  - The next steps start the proxy, and each change after that restarts it rather than replacing the host's configuration.
+  - Claude Desktop, which starts its servers as commands, still starts a proxy of its own over stdio, and its placement says why.
+  - Without a token file, both refuse an address beyond loopback, as the proxy does; both refuse port 0, which hosts could not find.
+  - In the libraries: `init::Listening`, `Setup::listen`, `init::placement` and `init::TOKEN_VAR`; `init::next_steps` takes the host.
 - `stretto doctor --data DIR` checks a data directory other than `~/.stretto`; the console's doctor job checks the one it serves.
 - `stretto_report::review::view` returns a flow's review as data, which `flow-show` renders from; `review::diff`'s result lists its changes by heading and serializes.
 

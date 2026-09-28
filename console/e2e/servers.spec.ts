@@ -95,6 +95,43 @@ test('a served server keeps its flow to some of its lookups', async ({ page }) =
   await expect(page.getByTestId('host-snippet')).toContainText('--flow-tools get_user_details')
 })
 
+test('hosts connect by URL to one proxy, with a token beyond loopback', async ({ page }) => {
+  await page.goto('/servers/new')
+  await page.getByTestId('server-name').fill('desk')
+  await page.getByTestId('server-command').fill('desk-mcp')
+  await page.getByTestId('server-listen').check()
+  await page.getByTestId('server-listen-addr').fill('0.0.0.0:8931')
+  await page.getByTestId('server-save').click()
+  await expect(
+    page.getByText('Without a token file, the proxy listens only on a loopback address.'),
+  ).toBeVisible()
+  await page.getByTestId('server-listen-token').fill('~/.stretto/proxy-token')
+  await expect(
+    page.getByText(
+      'stretto-proxy --record ~/.stretto/logs/desk --domain desk --listen 0.0.0.0:8931 --listen-token-file ~/.stretto/proxy-token -- desk-mcp',
+    ),
+  ).toBeVisible()
+  await page.getByTestId('server-save').click()
+
+  await expect(page).toHaveURL(/\/servers\/desk$/)
+  await expect(page.getByTestId('server-listen')).toHaveText(
+    'by URL, to one proxy at http://127.0.0.1:8931/mcp, with the token in ~/.stretto/proxy-token',
+  )
+  const snippet = page.getByTestId('host-snippet')
+  await expect(snippet).toContainText(
+    'claude mcp add --transport http desk http://127.0.0.1:8931/mcp --header "Authorization: Bearer $(cat ~/.stretto/proxy-token)"',
+  )
+  await page.getByText('Next steps from here').click()
+  await expect(page.getByText('Start the proxy, and keep it running')).toBeVisible()
+  await page.getByRole('tab', { name: 'Cursor' }).click()
+  await expect(snippet).toContainText('"url": "http://127.0.0.1:8931/mcp"')
+  await expect(snippet).toContainText('Bearer ${env:STRETTO_PROXY_TOKEN}')
+  await expect(page.getByText("puts this one's name in the URL", { exact: false })).toBeVisible()
+  await page.getByRole('tab', { name: 'Claude Desktop' }).click()
+  await expect(snippet).toContainText('"command": "stretto-proxy"')
+  await expect(snippet).not.toContainText('--listen')
+})
+
 test('testing the connection lists the tools and their kinds', async ({ page }) => {
   await page.goto('/servers/shop')
   await page.getByTestId('probe').click()
