@@ -4,7 +4,8 @@
 //! short page that says the API is up and how to build the UI.
 //!
 //! In a debug build the files are read from `console/dist` as they are on
-//! disk; a release build holds them.
+//! disk, even when it was built after the console; a release build holds
+//! them.
 
 use axum::body::Body;
 use axum::http::{header, HeaderValue, StatusCode};
@@ -17,7 +18,41 @@ struct Ui;
 
 /// Whether this build has a UI.
 pub fn built() -> bool {
-    Ui::get("index.html").is_some()
+    get("index.html").is_some()
+}
+
+/// The UI's file `path`.
+#[cfg(not(debug_assertions))]
+fn get(path: &str) -> Option<rust_embed::EmbeddedFile> {
+    Ui::get(path)
+}
+
+/// The UI's file `path`, from `console/dist` as it is now. rust-embed's debug
+/// build reads the files from disk, but only from under the folder's path as
+/// it was when this crate compiled. If console/dist did not exist then
+/// (`make ci`, then `make console`), that path keeps its `..`, no file is
+/// under it, and the UI never shows; so this looks in the folder itself too.
+#[cfg(debug_assertions)]
+fn get(path: &str) -> Option<rust_embed::EmbeddedFile> {
+    Ui::get(path).or_else(|| {
+        read_under(
+            &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../console/dist"),
+            path,
+        )
+    })
+}
+
+/// File `path` under folder `dir`, if it is a file there, and inside it once
+/// links are followed.
+#[cfg(any(debug_assertions, test))]
+fn read_under(dir: &std::path::Path, path: &str) -> Option<rust_embed::EmbeddedFile> {
+    let dir = dir.canonicalize().ok()?;
+    let file = dir.join(path).canonicalize().ok()?;
+    if !file.starts_with(&dir) || !file.is_file() {
+        return None;
+    }
+    // What rust-embed's own debug build reads a file with: the same metadata.
+    rust_embed::utils::read_file_from_fs(&file).ok()
 }
 
 /// The page served when no UI was built into the console.
@@ -56,7 +91,7 @@ pub async fn serve(path: &str) -> Response {
         return (StatusCode::NOT_FOUND, "not found").into_response();
     }
     let file = if path.is_empty() { "index.html" } else { path };
-    if let Some(asset) = Ui::get(file) {
+    if let Some(asset) = get(file) {
         return respond(file, asset);
     }
     // A file of the build that is not there is not found; any other path is
@@ -65,7 +100,7 @@ pub async fn serve(path: &str) -> Response {
     if file != "index.html" && is_file(file) {
         return (StatusCode::NOT_FOUND, "not found").into_response();
     }
-    match Ui::get("index.html") {
+    match get("index.html") {
         Some(index) => respond("index.html", index),
         None => html(NO_UI),
     }
@@ -138,7 +173,50 @@ fn html(page: &'static str) -> Response {
 
 #[cfg(test)]
 mod tests {
-    use super::is_file;
+    use super::{is_file, read_under};
+
+    #[test]
+    fn a_file_is_read_from_under_its_folder_and_never_from_outside() {
+        let root =
+            std::env::temp_dir().join(format!("stretto-console-assets-{}", std::process::id()));
+        let dist = root.join("dist");
+        std::fs::create_dir_all(dist.join("assets")).unwrap();
+        std::fs::write(dist.join("index.html"), "<!doctype html>").unwrap();
+        std::fs::write(dist.join("assets/app.js"), "export {}").unwrap();
+        std::fs::write(root.join("secret.txt"), "not the UI's").unwrap();
+
+        let index = read_under(&dist, "index.html").expect("index.html");
+        assert_eq!(index.data.as_ref(), b"<!doctype html>");
+        assert_eq!(index.metadata.mimetype(), "text/html");
+        assert_eq!(
+            read_under(&dist, "assets/app.js")
+                .expect("app.js")
+                .metadata
+                .mimetype(),
+            "text/javascript"
+        );
+        // Through a path with `..` in it, as rust-embed's is when the folder
+        // was missing at compile time.
+        let roundabout = root.join("dist/assets/../../dist");
+        assert!(read_under(&roundabout, "index.html").is_some());
+
+        for missing in [
+            "../secret.txt",
+            "assets/../../secret.txt",
+            "nope.js",
+            "assets",
+            "",
+        ] {
+            assert!(read_under(&dist, missing).is_none(), "{missing:?}");
+        }
+        assert!(read_under(&root.join("nowhere"), "index.html").is_none());
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(root.join("secret.txt"), dist.join("link.txt")).unwrap();
+            assert!(read_under(&dist, "link.txt").is_none());
+        }
+        std::fs::remove_dir_all(&root).unwrap();
+    }
 
     #[test]
     fn a_route_with_a_dot_is_a_route_and_a_file_is_a_file() {
