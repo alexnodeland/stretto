@@ -1,0 +1,29 @@
+{
+  "stretto_servers": 1,
+  "servers": [
+    {
+      "name": "shop",
+      "description": "stretto-mcp-demo's tiny retail shop, served with its flow",
+      "upstream": {"kind": "stdio", "command": ["stretto-mcp-demo", "--world", "retail"], "env": []},
+      "mode": "serve",
+      "flow": "shop.flow.json",
+      "record_dir": "served/shop",
+      "decider": null,
+      "threshold": null,
+      "created_unix_ms": 1790553600000,
+      "updated_unix_ms": 1790553600000
+    },
+    {
+      "name": "orders",
+      "description": "An order service over Streamable HTTP, recording",
+      "upstream": {"kind": "http", "url": "https://mcp.example.com/orders/mcp", "headers": [{"name": "Authorization", "env": "ORDERS_AUTH"}]},
+      "mode": "record",
+      "flow": null,
+      "record_dir": null,
+      "decider": null,
+      "threshold": null,
+      "created_unix_ms": 1790553600000,
+      "updated_unix_ms": 1790553600000
+    }
+  ]
+}

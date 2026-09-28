@@ -114,6 +114,7 @@ impl Episode {
 
 /// Whether a tool reads state, writes it, or neither (τ²-bench's `ToolType`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[serde(rename_all = "snake_case")]
 pub enum ToolKind {
     /// Reads the environment without changing it.

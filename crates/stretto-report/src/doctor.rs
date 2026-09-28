@@ -196,22 +196,34 @@ pub struct Found {
     pub flows: Vec<PathBuf>,
     /// Each directory of recorded sessions, with how many and their domains.
     pub sessions: BTreeMap<PathBuf, (usize, BTreeSet<String>)>,
+    /// Every session log, directory by directory, each in name order.
+    pub logs: Vec<PathBuf>,
 }
 
 /// The flows and the recorded sessions under `root`, down to three levels
 /// (`~/.stretto/logs/<domain>/`), leaving the answer cache out.
 pub fn scan(root: &Path) -> Found {
-    fn walk(dir: &Path, depth: usize, found: &mut Found) {
+    scan_with(root, &|_| true)
+}
+
+/// [`scan`], going into a directory or taking a file only when `keep`
+/// accepts its path: `stretto-console` leaves out its own directory, and
+/// anything a symbolic link takes out of `root`.
+pub fn scan_with(root: &Path, keep: &dyn Fn(&Path) -> bool) -> Found {
+    fn walk(dir: &Path, depth: usize, keep: &dyn Fn(&Path) -> bool, found: &mut Found) {
         let Ok(entries) = std::fs::read_dir(dir) else {
             return;
         };
         let mut paths: Vec<PathBuf> = entries.flatten().map(|e| e.path()).collect();
         paths.sort();
         for path in paths {
+            if !keep(&path) {
+                continue;
+            }
             let name = path.file_name().unwrap_or_default().to_string_lossy();
             if path.is_dir() {
                 if depth < 3 && name != "oracle-cache" {
-                    walk(&path, depth + 1, found);
+                    walk(&path, depth + 1, keep, found);
                 }
             } else if name.ends_with(".flow.json") {
                 found.flows.push(path);
@@ -221,11 +233,12 @@ pub fn scan(root: &Path) -> Found {
                 entry
                     .1
                     .insert(domain_of(&path).unwrap_or_else(|| "none".to_string()));
+                found.logs.push(path);
             }
         }
     }
     let mut found = Found::default();
-    walk(root, 1, &mut found);
+    walk(root, 1, keep, &mut found);
     found
 }
 
@@ -409,6 +422,12 @@ mod tests {
             found.sessions,
             BTreeMap::from([(logs.clone(), (2, BTreeSet::from(["notes".to_string()])))])
         );
+        assert_eq!(found.logs, [logs.join("a.jsonl"), logs.join("b.jsonl")]);
+        // What `keep` refuses is neither entered nor taken.
+        let without = scan_with(&root, &|p| {
+            !p.ends_with("logs") && !p.ends_with("notes.flow.json")
+        });
+        assert_eq!(without, Found::default());
         // A file that is not a flow is listed as one this stretto cannot read.
         let mut report = Report::default();
         check_files(&mut report, &root, &root);
