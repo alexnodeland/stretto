@@ -58,7 +58,8 @@ const guide: DefaultTheme.SidebarItem[] = [
       { text: 'Why stretto?', link: '/guide/why' },
       { text: 'Quick start', link: '/guide/quick-start' },
       { text: 'Installation', link: '/guide/installation' },
-      { text: 'How it works', link: '/guide/how-it-works' }
+      { text: 'How it works', link: '/guide/how-it-works' },
+      { text: 'The console', link: '/guide/console' }
     ]
   },
   {
