@@ -16,7 +16,7 @@ import type {
   ToolInfo,
   ToolKind,
   Turn,
-  Upstream,
+  UpstreamView,
 } from '../../src/api/types.ts'
 
 export interface ToolDef {
@@ -76,7 +76,7 @@ export interface SessionSpec {
   domain: string
   agentModel: string | null
   client: { name: string; version: string }
-  upstream: Upstream
+  upstream: UpstreamView
   server: { name: string; version: string; instructions: string | null }
   tools: ToolDef[]
   /** served: the flow's lookups ride in the results; shadow: decided and logged only. */
@@ -526,6 +526,10 @@ export class Recorder {
       description: t.description,
       read_only_hint: t.readOnly,
       destructive_hint: t.destructive ?? null,
+      // As a flow pins it: each argument, `!` when required.
+      contract: Object.keys(t.args)
+        .map((a) => `${a}:string${t.required.includes(a) ? '!' : ''}`)
+        .join(', '),
     }))
   }
 

@@ -109,9 +109,23 @@ describe('the sign-in screen', () => {
     expect(w.find('input').attributes('aria-invalid')).toBe('true')
   })
 
-  it('signs out by replacing the cookie with an empty token', () => {
+  it('signs out with POST /api/logout, then starts again', async () => {
+    const calls: { url: string; init: RequestInit }[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init: RequestInit) => {
+        calls.push({ url, init })
+        return new Response('{"ok":true}', {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }),
+    )
     const here = fakeLocation()
-    auth.signOut(here)
-    expect(here.assign).toHaveBeenCalledWith('/?token=')
+    expect(await auth.signOut(here)).toBeNull()
+    expect(calls[0]!.url).toBe('/api/logout')
+    expect(calls[0]!.init.method).toBe('POST')
+    expect((calls[0]!.init.headers as Record<string, string>)['X-Stretto-Console']).toBe('1')
+    expect(here.assign).toHaveBeenCalledWith('/')
   })
 })

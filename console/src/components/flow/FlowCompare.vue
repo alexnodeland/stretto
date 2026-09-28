@@ -7,6 +7,7 @@ import UiSkeleton from '../ui/UiSkeleton.vue'
 import UiError from '../ui/UiError.vue'
 import UiEmpty from '../ui/UiEmpty.vue'
 import MarkdownView from '../MarkdownView.vue'
+import RichText from '../RichText.vue'
 import { api, ApiError } from '@/api/client'
 import type { FlowDiffView, FlowSummary } from '@/api/types'
 
@@ -127,13 +128,21 @@ const names = computed(() => {
               question it did not before.
             </p>
             <ul v-else class="cmp-list review" data-testid="diff-review">
-              <li v-for="(r, i) in diff.review" :key="i">{{ r }}</li>
+              <li v-for="(r, i) in diff.review" :key="i"><RichText :text="r" /></li>
             </ul>
           </section>
           <section>
-            <h3 class="cmp-h">Other changes: {{ diff.changes.length }}</h3>
-            <ul v-if="diff.changes.length" class="cmp-list">
-              <li v-for="(c, i) in diff.changes" :key="i">{{ c }}</li>
+            <h3 class="cmp-h">Every change: {{ diff.changes.length }}</h3>
+            <template v-if="diff.sections.length">
+              <div v-for="sec in diff.sections" :key="sec.title" class="cmp-sec">
+                <h4 class="cmp-sub">{{ sec.title }}</h4>
+                <ul class="cmp-list">
+                  <li v-for="(c, i) in sec.changes" :key="i"><RichText :text="c" /></li>
+                </ul>
+              </div>
+            </template>
+            <ul v-else-if="diff.changes.length" class="cmp-list">
+              <li v-for="(c, i) in diff.changes" :key="i"><RichText :text="c" /></li>
             </ul>
             <p v-else class="caption">None.</p>
           </section>
@@ -202,6 +211,17 @@ const names = computed(() => {
   gap: 8px;
   font-size: 14px;
   margin-bottom: 8px;
+}
+
+.cmp-sec + .cmp-sec {
+  margin-top: 12px;
+}
+
+.cmp-sub {
+  margin-bottom: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--stretto-text-muted);
 }
 
 .cmp-list {

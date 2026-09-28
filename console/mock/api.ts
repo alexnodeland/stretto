@@ -9,16 +9,22 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type {
-  ChangedEvent,
+  Changed,
   HostName,
   Job,
   JobKind,
-  NewJob,
+  JobRequest,
   ServerEntry,
   ServerInput,
   SessionMode,
 } from '../src/api/types.ts'
-import { buildWorld, servedShopSession, shopSpec, type World } from './fixtures/world.ts'
+import {
+  buildWorld,
+  servedShopSession,
+  shopSpec,
+  splitReport,
+  type World,
+} from './fixtures/world.ts'
 import { detailAt, diffFlows, type FlowRecord } from './fixtures/flows.ts'
 import {
   discovered,
@@ -74,7 +80,7 @@ function send(event: string, data: unknown) {
   for (const res of clients) res.write(payload)
 }
 
-function changed(what: ChangedEvent['what'], keys: string[] = []) {
+function changed(what: Changed['what'], keys: string[] = []) {
   send('changed', { what, keys })
 }
 
@@ -178,6 +184,20 @@ function threshold(value: string | null): number {
   return t
 }
 
+/** A request's server, every optional field present. */
+function entryOf(input: ServerInput): Omit<ServerEntry, 'created_unix_ms' | 'updated_unix_ms'> {
+  return {
+    name: input.name,
+    description: input.description ?? null,
+    upstream: input.upstream,
+    mode: input.mode,
+    flow: input.flow ?? null,
+    record_dir: input.record_dir ?? null,
+    decider: input.decider ?? null,
+    threshold: input.threshold ?? null,
+  }
+}
+
 function checkServer(input: unknown, name?: string): ServerInput {
   if (!input || typeof input !== 'object') throw new HttpError(400, 'the body must be a server')
   const s = input as ServerInput
@@ -244,33 +264,67 @@ function checkPath(path: unknown, what: string): string {
 
 let jobCounter = 7
 
-function jobTitle(job: NewJob): string {
+function jobTitle(job: JobRequest): string {
   switch (job.kind) {
     case 'learn':
       return `Learn ${job.domain} from ${job.sessions}`
     case 'promote':
-      return `Promote ${job.flow} on ${job.sessions}`
+      return `Promote ${flowRecord(job.flow).summary.name} on ${job.sessions}`
     case 'audit':
-      return `Audit ${job.flow} on ${job.sessions}`
+      return `Audit ${flowRecord(job.flow).summary.name} on ${job.sessions}`
     case 'redact':
-      return `Redact ${job.sessions} into ${job.out}`
+      return `Redact ${job.sessions}`
     default:
-      return 'stretto doctor'
+      return 'Check the installation'
+  }
+}
+
+/** The request with its defaults filled in, as the server keeps it in `params`. */
+function withDefaults(req: JobRequest): JobRequest {
+  switch (req.kind) {
+    case 'learn':
+      return {
+        ...req,
+        out: req.out ?? `${req.domain}.flow.json`,
+        overwrite: req.overwrite ?? false,
+        habit_only: req.habit_only ?? true,
+        constants: req.constants ?? false,
+      }
+    case 'promote':
+      return {
+        ...req,
+        oracle_cache: req.oracle_cache ?? 'oracle-cache',
+        threshold: req.threshold ?? 0.3,
+        min_used: req.min_used ?? 0.7,
+        min_lower: req.min_lower ?? 0.5,
+        min_tasks: req.min_tasks ?? 3,
+        out: req.out ?? `${flowRecord(req.flow).summary.name}.promoted.flow.json`,
+        overwrite: req.overwrite ?? false,
+      }
+    case 'audit':
+      return { ...req, decider: req.decider ?? null }
+    case 'redact':
+      return { ...req, keep_shared: req.keep_shared ?? 3, hash_fields: req.hash_fields ?? [] }
+    default:
+      return req
   }
 }
 
 function startJob(input: unknown): Job {
   if (!input || typeof input !== 'object') throw new HttpError(400, 'the body must be a job')
-  const req = input as NewJob
   const kinds: JobKind[] = ['learn', 'promote', 'audit', 'redact', 'doctor']
-  if (!kinds.includes(req.kind))
+  if (!kinds.includes((input as JobRequest).kind))
     throw new HttpError(
       400,
-      `kind ${JSON.stringify((req as { kind: unknown }).kind)}: learn, promote, audit, redact or doctor`,
+      `the job is not as expected: kind ${JSON.stringify((input as { kind: unknown }).kind)}`,
     )
+  const req = withDefaults(input as JobRequest)
+  const id = `j-${String(jobCounter).padStart(4, '0')}`
   let lines: string[] = []
   let fail = false
-  let artifact: Job['artifacts'][number] | null = null
+  /** What it writes, as planned: after it ends, only what exists. */
+  const artifacts: Job['artifacts'] = []
+  const reports: Record<string, string> = {}
   let newFlow: FlowRecord | null = null
   const world = state.world
   if (req.kind === 'learn') {
@@ -282,7 +336,7 @@ function startJob(input: unknown): Job {
     const dir = checkPath(req.sessions, 'sessions')
     const out = req.out ? checkPath(req.out, 'out') : `${req.domain}.flow.json`
     if (world.flows.some((f) => f.summary.path === out) && !req.overwrite)
-      throw new HttpError(409, `${out} exists: tick "Replace it" to overwrite it`)
+      throw new HttpError(409, `${out} exists: choose another path, or overwrite it`)
     const sessions = world.sessions.filter((s) => s.summary.path.startsWith(dir + '/'))
     if (!sessions.length) {
       fail = true
@@ -308,14 +362,17 @@ function startJob(input: unknown): Job {
           served_by: [],
         },
       }
-      artifact = { kind: 'flow', path: out, key }
+      artifacts.push({ kind: 'flow', path: out, key })
     }
   } else if (req.kind === 'promote' || req.kind === 'audit') {
-    const flow = flowRecord(req.flow)
+    flowRecord(req.flow)
     const dir = checkPath(req.sessions, 'sessions')
     if (req.kind === 'promote') {
-      const out = req.out ? checkPath(req.out, 'out') : `${flow.summary.name}.promoted.flow.json`
-      lines = texts.promote_output.trimEnd().split('\n')
+      const out = checkPath(req.out!, 'out')
+      if (world.flows.some((f) => f.summary.path === out) && !req.overwrite)
+        throw new HttpError(409, `${out} exists: choose another path, or overwrite it`)
+      const { line, report } = splitReport(texts.promote_output)
+      lines = [line.trimEnd()]
       const key = out.replace(/^.*\//, '').replace(/\.flow\.json$/, '')
       const base = world.flows.find((f) => f.summary.key === 'shop-promoted')!
       newFlow = {
@@ -329,14 +386,17 @@ function startJob(input: unknown): Job {
           served_by: [],
         },
       }
-      artifact = { kind: 'flow', path: out, key }
+      artifacts.push({ kind: 'flow', path: out, key })
+      artifacts.push({ kind: 'report', path: `console/jobs/${id}.promote.md`, key: null })
+      reports[`console/jobs/${id}.promote.md`] = report
     } else {
-      lines = texts.audit_output.trimEnd().split('\n')
-      artifact = {
-        kind: 'report',
-        path: `console/jobs/j-${String(jobCounter).padStart(4, '0')}.audit.json`,
-        key: null,
-      }
+      const { line, report } = splitReport(texts.audit_output)
+      lines = [line.trimEnd()]
+      artifacts.push({ kind: 'report', path: `console/jobs/${id}.audit.json`, key: null })
+      artifacts.push({ kind: 'report', path: `console/jobs/${id}.audit.md`, key: null })
+      reports[`console/jobs/${id}.audit.json`] =
+        `${JSON.stringify({ flow: req.flow, episodes: 8, decisions: 32, agreement: 1 }, null, 2)}\n`
+      reports[`console/jobs/${id}.audit.md`] = report
     }
     void dir
   } else if (req.kind === 'redact') {
@@ -351,12 +411,12 @@ function startJob(input: unknown): Job {
     lines = [
       `stretto: redacted ${n} sessions into ${world.dataDir}/${out}; values fewer than ${req.keep_shared} of them share are hashed`,
     ]
-    artifact = { kind: 'dir', path: out, key: null }
+    artifacts.push({ kind: 'dir', path: out, key: null })
   } else {
     lines = doctorOutput(world, state.options).trimEnd().split('\n')
   }
 
-  const id = `j-${String(jobCounter++).padStart(4, '0')}`
+  jobCounter++
   const job: Job = {
     id,
     kind: req.kind,
@@ -368,7 +428,7 @@ function startJob(input: unknown): Job {
     finished_unix_ms: null,
     exit_code: null,
     output: '',
-    artifacts: [],
+    artifacts: [...artifacts],
   }
   world.jobs.unshift(job)
   const step = Number(process.env.MOCK_JOB_STEP_MS ?? 280)
@@ -389,7 +449,8 @@ function startJob(input: unknown): Job {
       job.status = fail ? 'failed' : 'succeeded'
       job.exit_code = fail ? 1 : 0
       job.finished_unix_ms = Date.now()
-      if (artifact && !fail) job.artifacts.push(artifact)
+      if (fail) job.artifacts = []
+      else Object.assign(world.reports, reports)
       if (newFlow && !fail) {
         world.flows = world.flows.filter((f) => f.summary.path !== newFlow!.summary.path)
         world.flows.unshift(newFlow)
@@ -402,7 +463,7 @@ function startJob(input: unknown): Job {
   return job
 }
 
-function commandLine(req: NewJob): string {
+function commandLine(req: JobRequest): string {
   const d = state.world.dataDir
   switch (req.kind) {
     case 'learn':
@@ -412,7 +473,7 @@ function commandLine(req: NewJob): string {
     case 'audit':
       return `audit --flow ${d}/${flowRecord(req.flow).summary.path} --sessions ${d}/${req.sessions}${req.decider ? ` --decider ${req.decider}` : ''} --json ${d}/console/jobs/report.json`
     case 'redact':
-      return `redact --sessions ${d}/${req.sessions} --out ${d}/${req.out} --keep-shared ${req.keep_shared}${req.hash_fields.length ? ` --hash-field ${req.hash_fields.join(',')}` : ''}`
+      return `redact --sessions ${d}/${req.sessions} --out ${d}/${req.out} --keep-shared ${req.keep_shared}${req.hash_fields?.length ? ` --hash-field ${req.hash_fields.join(',')}` : ''}`
     default:
       return 'doctor'
   }
@@ -439,8 +500,8 @@ const routes: [string, RegExp, Handler][] = [
       read_only: state.options.readOnly,
       auth: state.options.auth,
       key_set: state.options.keySet,
-      stretto: { path: '/home/me/.cargo/bin/stretto', version: '0.1.0' },
-      proxy: { path: '/home/me/.cargo/bin/stretto-proxy', version: '0.1.0' },
+      stretto: { path: '/home/me/.cargo/bin/stretto', version: 'stretto 0.1.0' },
+      proxy: { path: '/home/me/.cargo/bin/stretto-proxy', version: 'stretto-proxy 0.1.0' },
     }),
   ],
   ['GET', /^\/api\/overview$/, () => overview(state.world, state.options, state.world.jobs)],
@@ -565,7 +626,7 @@ const routes: [string, RegExp, Handler][] = [
       if (state.world.servers.some((s) => s.name === input.name))
         throw new HttpError(409, `a server named ${input.name} exists`)
       const now = Date.now()
-      const entry: ServerEntry = { ...input, created_unix_ms: now, updated_unix_ms: now }
+      const entry: ServerEntry = { ...entryOf(input), created_unix_ms: now, updated_unix_ms: now }
       state.world.servers.push(entry)
       state.world.servers.sort((a, b) => a.name.localeCompare(b.name))
       changed('servers', [entry.name])
@@ -579,7 +640,7 @@ const routes: [string, RegExp, Handler][] = [
       const current = serverEntry(params[0]!)
       const input = checkServer(body, current.name)
       const entry: ServerEntry = {
-        ...input,
+        ...entryOf(input),
         created_unix_ms: current.created_unix_ms,
         updated_unix_ms: Date.now(),
       }
@@ -635,6 +696,41 @@ const routes: [string, RegExp, Handler][] = [
       changed('jobs', [job.id])
       res.statusCode = 202
       return job
+    },
+  ],
+  [
+    'GET',
+    /^\/api\/jobs\/([^/]+)\/artifacts\/(\d+)$/,
+    ({ res, params }) => {
+      const job = state.world.jobs.find((j) => j.id === params[0])
+      if (!job) throw new HttpError(404, `no job ${params[0]}`)
+      const artifact = job.artifacts[Number(params[1])]
+      if (!artifact) throw new HttpError(404, `job ${job.id} has no artifact ${params[1]}`)
+      if (artifact.kind === 'dir') throw new HttpError(400, `${artifact.path} is a directory`)
+      const text =
+        artifact.kind === 'flow'
+          ? (state.world.flows.find((f) => f.summary.path === artifact.path)?.raw ?? null)
+          : (state.world.reports[artifact.path] ?? null)
+      if (text === null) throw new HttpError(404, `${artifact.path}: not found`)
+      res.statusCode = 200
+      res.setHeader(
+        'Content-Type',
+        artifact.path.endsWith('.json')
+          ? 'application/json'
+          : artifact.path.endsWith('.md')
+            ? 'text/markdown; charset=utf-8'
+            : 'text/plain; charset=utf-8',
+      )
+      res.end(text)
+      return undefined
+    },
+  ],
+  [
+    'POST',
+    /^\/api\/logout$/,
+    ({ res }) => {
+      res.setHeader('Set-Cookie', 'stretto_console=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0')
+      return { ok: true }
     },
   ],
   ['GET', /^\/api\/settings$/, () => settings(state.world, state.options)],
@@ -714,7 +810,7 @@ export async function handle(
     if (req.method !== 'GET') {
       if (req.headers['x-stretto-console'] !== '1')
         throw new HttpError(403, 'a write needs the X-Stretto-Console: 1 header')
-      if (state.options.readOnly)
+      if (state.options.readOnly && path !== '/api/logout')
         throw new HttpError(
           403,
           'the console is read-only (--read-only): nothing can be changed from here',

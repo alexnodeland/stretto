@@ -5,28 +5,25 @@
  * review::show's rule, so the two agree: at each site the flow takes the
  * lookup with the largest share, and acts when that share times the chance
  * its bound arguments are the agent's reaches the threshold (the site's own,
- * if a search set one), unless the flow was promoted and the site was not.
+ * if a search set one), where the site is active: not left out by a
+ * promotion, nor switched off.
  */
 import dagre from '@dagrejs/dagre'
-import type { FlowDetail, FlowTool, SiteLookup, SiteView, ToolKind } from '@/api/types'
+import type { FlowDetail, FlowTool, LookupView, SiteView, ToolKind } from '@/api/types'
 
-/** Whether the flow may act after this site at all, and why not. */
-export function siteGate(
-  detail: Pick<FlowDetail, 'promotion' | 'summary'>,
-  site: SiteView,
-  threshold: number,
-) {
+/**
+ * Whether the flow may act after this site at all (the server's `active`),
+ * why not, and the threshold it weighs lookups against there.
+ */
+export function siteGate(site: SiteView, threshold: number) {
   const t = site.threshold ?? threshold
-  if (t > 1) return { allowed: false, reason: 'switched off', threshold: t }
-  const promoted = detail.promotion !== null || detail.summary.promoted !== null
-  if (promoted && !site.promoted?.promoted)
-    return { allowed: false, reason: 'not promoted', threshold: t }
-  return { allowed: true, reason: null, threshold: t }
+  if (site.active) return { allowed: true, reason: null, threshold: t }
+  return { allowed: false, reason: t > 1 ? 'switched off' : 'not promoted', threshold: t }
 }
 
 /** The lookup the flow weighs at a site: the largest weighed share, the first of equals. */
-export function likeliest(site: SiteView): SiteLookup | null {
-  let best: SiteLookup | null = null
+export function likeliest(site: SiteView): LookupView | null {
+  let best: LookupView | null = null
   for (const lookup of site.lookups) {
     if (!best || lookup.weighed_share > best.weighed_share) best = lookup
   }
@@ -35,7 +32,7 @@ export function likeliest(site: SiteView): SiteLookup | null {
 
 export interface SitePreview {
   site: SiteView
-  choice: SiteLookup | null
+  choice: LookupView | null
   prob: number
   acts: boolean
   threshold: number
@@ -47,7 +44,7 @@ export interface SitePreview {
 export function previewSites(detail: FlowDetail, threshold: number): SitePreview[] {
   const exact = Math.abs(detail.threshold - threshold) < 1e-9
   return detail.sites.map((site) => {
-    const gate = siteGate(detail, site, threshold)
+    const gate = siteGate(site, threshold)
     const choice =
       (site.choice?.tool ? site.lookups.find((l) => l.tool === site.choice!.tool) : null) ??
       likeliest(site)
@@ -67,7 +64,7 @@ export function previewSites(detail: FlowDetail, threshold: number): SitePreview
 }
 
 /** Whether a lookup acts after a site, from the preview. */
-export function lookupActs(preview: SitePreview, lookup: SiteLookup): boolean {
+export function lookupActs(preview: SitePreview, lookup: LookupView): boolean {
   return preview.acts && preview.choice?.tool === lookup.tool
 }
 

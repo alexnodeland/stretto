@@ -3,7 +3,7 @@
  * Every number shown on a page goes through here, so they read the same
  * everywhere: counts with thousands separators, probabilities to two places.
  */
-import type { ServerMode, ServerUpstream, SessionMode, Upstream } from '@/api/types'
+import type { ServerMode, SessionMode, Upstream, UpstreamView } from '@/api/types'
 
 const counts = new Intl.NumberFormat('en-US')
 
@@ -174,7 +174,7 @@ export function commandText(words: readonly string[]): string {
 }
 
 /** Where a server is: its command, or its URL. */
-export function upstreamText(upstream: Upstream | ServerUpstream | null | undefined): string {
+export function upstreamText(upstream: Upstream | UpstreamView | null | undefined): string {
   if (!upstream) return 'unknown'
   return upstream.kind === 'stdio' ? commandText(upstream.command) : upstream.url
 }

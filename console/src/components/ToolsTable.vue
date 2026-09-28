@@ -20,6 +20,7 @@ function hints(t: ToolInfo): string {
           <th scope="col">Tool</th>
           <th scope="col">Kind</th>
           <th scope="col">Description</th>
+          <th scope="col">Input</th>
           <th scope="col">Annotations</th>
         </tr>
       </thead>
@@ -30,6 +31,9 @@ function hints(t: ToolInfo): string {
           </td>
           <td class="inline"><KindBadge :kind="t.kind" /></td>
           <td class="desc">{{ t.description ?? '—' }}</td>
+          <td class="mono contract" :class="{ 'stack-hide': !t.contract }" data-label="Input">
+            {{ t.contract || '—' }}
+          </td>
           <td class="caption mono hints" :class="{ 'stack-hide': !hints(t) }">{{ hints(t) }}</td>
         </tr>
       </tbody>
@@ -46,5 +50,11 @@ function hints(t: ToolInfo): string {
 .hints {
   font-size: 11.5px;
   white-space: nowrap;
+}
+
+.contract {
+  font-size: 11.5px;
+  color: var(--stretto-text-muted);
+  min-width: 160px;
 }
 </style>

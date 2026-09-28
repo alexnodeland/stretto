@@ -76,7 +76,7 @@ export function checkServer(input: ServerInput, taken: readonly string[] = []): 
         ? 'Shadow mode runs a flow: choose one.'
         : 'Serving runs a flow: choose one.'
   }
-  const threshold = checkThreshold(input.threshold)
+  const threshold = checkThreshold(input.threshold ?? null)
   if (threshold) errors.threshold = threshold
   return errors
 }

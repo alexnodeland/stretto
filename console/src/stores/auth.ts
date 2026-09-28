@@ -64,10 +64,16 @@ export async function signIn(
 }
 
 /**
- * Sign out: the cookie is HttpOnly, so the page cannot clear it itself; it
- * asks the server to replace it with an empty token (`?token=`), which the
- * server's cookie rule sets like any other, and every request is then a 401.
+ * Sign out: the cookie is HttpOnly, so the page cannot clear it itself.
+ * `POST /api/logout` clears it, and the page starts again at the sign-in
+ * screen. Resolves to an error message when the server refused.
  */
-export function signOut(here: Location = window.location): void {
-  here.assign('/?token=')
+export async function signOut(here: Location = window.location): Promise<string | null> {
+  try {
+    await api.logout({ quiet: true })
+  } catch (e) {
+    return e instanceof Error ? e.message : String(e)
+  }
+  here.assign('/')
+  return null
 }

@@ -15,7 +15,7 @@ import {
 } from 'vue'
 import { ApiError, type RequestOptions } from '@/api/client'
 import { onChanged } from '@/api/events'
-import type { ChangedEvent, ChangedWhat } from '@/api/types'
+import type { Changed, ChangedWhat } from '@/api/types'
 import { toast } from '@/stores/toasts'
 
 export interface ResourceOptions {
@@ -24,7 +24,7 @@ export interface ResourceOptions {
   /** Load again on these `changed` events. */
   events?: ChangedWhat[]
   /** Only for events whose keys pass (e.g. the session on screen). */
-  filter?: (event: ChangedEvent) => boolean
+  filter?: (event: Changed) => boolean
   /** Wait for the first load until this is true. */
   enabled?: () => boolean
 }

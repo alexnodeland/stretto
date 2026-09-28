@@ -15,7 +15,7 @@ import JobStatus from '@/components/JobStatus.vue'
 import MarkdownView from '@/components/MarkdownView.vue'
 import { api, ApiError } from '@/api/client'
 import { onJob } from '@/api/events'
-import type { Job, NewJob } from '@/api/types'
+import type { Job, JobRequest } from '@/api/types'
 import { useResource } from '@/composables/useResource'
 import { useTitle } from '@/composables/useTitle'
 import { readOnly } from '@/stores/auth'
@@ -78,19 +78,26 @@ function onScroll() {
 }
 
 /** Audit and promote write a Markdown report: offer it rendered, once the job is done. */
-const report = computed(() => {
+const reportIndex = computed(() => {
   const j = job.value
-  if (
-    !j ||
-    (j.kind !== 'audit' && j.kind !== 'promote') ||
-    j.status === 'running' ||
-    j.status === 'queued'
-  )
-    return null
-  const lines = j.output.split('\n').filter((l) => !l.startsWith('stretto:') && !l.startsWith('$ '))
-  const text = lines.join('\n').trim()
-  return /^(#|\|)/m.test(text) ? text : null
+  if (!j || j.status !== 'succeeded') return -1
+  return j.artifacts.findIndex((a) => a.kind === 'report' && a.path.endsWith('.md'))
 })
+const report = ref<string | null>(null)
+watch(
+  [id, reportIndex],
+  async ([jobId, index]) => {
+    report.value = null
+    if (index < 0) return
+    try {
+      const text = await api.jobArtifact(jobId, index, { quiet: true })
+      if (jobId === id.value) report.value = text.trim() || null
+    } catch {
+      // The output is still there.
+    }
+  },
+  { immediate: true },
+)
 const view = ref<'output' | 'report'>('report')
 const shownView = computed(() => (report.value ? view.value : 'output'))
 
@@ -106,7 +113,7 @@ async function runAgain() {
   if (!isRecord(p)) return
   again.value = true
   try {
-    const next = await api.createJob(p as unknown as NewJob, { quiet: true })
+    const next = await api.createJob(p as unknown as JobRequest, { quiet: true })
     void router.push({ name: 'job', params: { id: next.id } })
   } catch (e) {
     toast({
@@ -204,7 +211,7 @@ const icons = { flow: Workflow, report: FileText, dir: FolderOpen }
         <div class="stack">
           <UiCard title="What it wrote">
             <ul v-if="job?.artifacts.length" class="arts" data-testid="job-artifacts">
-              <li v-for="a in job.artifacts" :key="a.path">
+              <li v-for="(a, i) in job.artifacts" :key="a.path">
                 <component :is="icons[a.kind]" :size="16" :stroke-width="1.8" aria-hidden="true" />
                 <div>
                   <RouterLink
@@ -213,13 +220,25 @@ const icons = { flow: Workflow, report: FileText, dir: FolderOpen }
                     class="mono"
                     >{{ a.path }}</RouterLink
                   >
+                  <a
+                    v-else-if="a.kind === 'report' && !running"
+                    :href="api.jobArtifactUrl(job.id, i)"
+                    target="_blank"
+                    rel="noopener"
+                    class="mono"
+                    >{{ a.path }}</a
+                  >
                   <span v-else class="mono">{{ a.path }}</span>
                   <p class="caption">
                     {{
                       a.kind === 'flow'
-                        ? 'A flow: open it to review what it may do.'
+                        ? running
+                          ? 'The flow it writes.'
+                          : 'A flow: open it to review what it may do.'
                         : a.kind === 'report'
-                          ? 'The report, as JSON.'
+                          ? a.path.endsWith('.md')
+                            ? 'The report, in Markdown.'
+                            : 'The report, as JSON.'
                           : 'A directory.'
                     }}
                   </p>

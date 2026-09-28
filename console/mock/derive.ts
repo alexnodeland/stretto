@@ -122,12 +122,13 @@ export function discovered(world: World): DiscoveredUpstream[] {
   const byDomain = new Map<string, DiscoveredUpstream>()
   for (const s of world.sessions) {
     const domain = s.summary.domain
-    if (!domain) continue
+    const upstream = s.summary.upstream
+    if (!domain || !upstream) continue
     const d = byDomain.get(domain)
     if (!d) {
       byDomain.set(domain, {
         domain,
-        upstream: s.summary.upstream,
+        upstream,
         sessions: 1,
         last_seen_unix_ms: s.summary.started_unix_ms,
         registered: world.servers.some((x) => x.name === domain),
@@ -136,7 +137,7 @@ export function discovered(world: World): DiscoveredUpstream[] {
       d.sessions += 1
       if (s.summary.started_unix_ms > d.last_seen_unix_ms) {
         d.last_seen_unix_ms = s.summary.started_unix_ms
-        d.upstream = s.summary.upstream
+        d.upstream = upstream
       }
     }
   }
@@ -241,6 +242,9 @@ function infos(tools: ToolDef[]): ToolInfo[] {
     description: t.description,
     read_only_hint: t.readOnly,
     destructive_hint: t.destructive ?? null,
+    contract: Object.keys(t.args)
+      .map((a) => `${a}:string${t.required.includes(a) ? '!' : ''}`)
+      .join(', '),
   }))
 }
 
@@ -425,8 +429,12 @@ export function settings(world: World, options: MockOptions): Settings {
     retention_note:
       'The console deletes nothing: Delete moves a session or a flow to console/trash. stretto-proxy --retain-days N deletes logs and cached answers older than N days when it starts.',
     binaries: [
-      { name: 'stretto', path: '/home/me/.cargo/bin/stretto', version: '0.1.0' },
-      { name: 'stretto-proxy', path: '/home/me/.cargo/bin/stretto-proxy', version: '0.1.0' },
+      { name: 'stretto', path: '/home/me/.cargo/bin/stretto', version: 'stretto 0.1.0' },
+      {
+        name: 'stretto-proxy',
+        path: '/home/me/.cargo/bin/stretto-proxy',
+        version: 'stretto-proxy 0.1.0',
+      },
     ],
     version: '0.1.0',
     read_only: options.readOnly,

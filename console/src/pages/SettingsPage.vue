@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /** The console's settings: where the data is and how much of it, the installation, access, the theme, and privacy. */
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import {
   CircleCheck,
   ExternalLink,
@@ -24,7 +24,9 @@ import UiError from '@/components/ui/UiError.vue'
 import { api } from '@/api/client'
 import { useResource } from '@/composables/useResource'
 import { useTitle } from '@/composables/useTitle'
+import type { BinaryStatus } from '@/api/types'
 import { signOut } from '@/stores/auth'
+import { toast } from '@/stores/toasts'
 import { setTheme, theme, type ThemeChoice } from '@/stores/theme'
 import { formatBytes, formatCount, formatPercent } from '@/lib/format'
 
@@ -50,6 +52,20 @@ const themeChoice = computed({
 })
 
 const PRIVACY = 'https://github.com/alexnodeland/stretto/blob/main/docs/privacy.md'
+
+/** What `--version` printed, without the binary's name before it. */
+function versionOf(b: BinaryStatus): string {
+  if (!b.version) return 'no version'
+  return b.version.startsWith(`${b.name} `) ? b.version.slice(b.name.length + 1) : b.version
+}
+
+const signingOut = ref(false)
+async function leave() {
+  signingOut.value = true
+  const error = await signOut()
+  signingOut.value = false
+  if (error) toast({ kind: 'error', title: 'Not signed out', message: error })
+}
 </script>
 
 <template>
@@ -147,7 +163,7 @@ const PRIVACY = 'https://github.com/alexnodeland/stretto/blob/main/docs/privacy.
                 <dt class="mono">{{ b.name }}</dt>
                 <dd>
                   <span v-if="b.path" class="binary">
-                    <span class="mono">{{ b.version ?? '?' }}</span>
+                    <span class="mono">{{ versionOf(b) }}</span>
                     <span class="caption mono">{{ b.path }}</span>
                   </span>
                   <span v-else class="text-warn">not found: jobs that run it fail</span>
@@ -210,7 +226,12 @@ const PRIVACY = 'https://github.com/alexnodeland/stretto/blob/main/docs/privacy.
                 <span v-else>Writes are allowed: servers, deletes, connection tests and jobs.</span>
               </li>
             </ul>
-            <UiButton v-if="s.auth" :icon="LogOut" class="signout" @click="signOut()"
+            <UiButton
+              v-if="s.auth"
+              :icon="LogOut"
+              :loading="signingOut"
+              class="signout"
+              @click="leave"
               >Sign out</UiButton
             >
           </template>

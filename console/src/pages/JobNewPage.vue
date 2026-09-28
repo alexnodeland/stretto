@@ -19,7 +19,7 @@ import UiButton from '@/components/ui/UiButton.vue'
 import UiSwitch from '@/components/ui/UiSwitch.vue'
 import UiCode from '@/components/ui/UiCode.vue'
 import { api, ApiError } from '@/api/client'
-import type { Decider, JobKind, NewJob } from '@/api/types'
+import type { DeciderName, JobKind, JobRequest } from '@/api/types'
 import { useResource } from '@/composables/useResource'
 import { useTitle } from '@/composables/useTitle'
 import { meta, readOnly } from '@/stores/auth'
@@ -92,7 +92,7 @@ const promote = reactive({
   min_tasks: 3,
   out: '',
 })
-const audit = reactive({ flow: q('flow'), sessions: '', decider: '' as '' | Decider })
+const audit = reactive({ flow: q('flow'), sessions: '', decider: '' as '' | DeciderName })
 const redact = reactive({ sessions: '', out: '', keep_shared: 3, hash_fields: [] as string[] })
 const hashDraft = ref('')
 
@@ -142,7 +142,7 @@ const errors = computed(() => {
 })
 const err = (k: string) => (tried.value ? (errors.value[k] ?? null) : null)
 
-const body = computed<NewJob>(() => {
+const body = computed<JobRequest>(() => {
   switch (kind.value) {
     case 'learn':
       return {
@@ -245,7 +245,7 @@ const preview = computed(() => {
         b.out || '<dir>',
         '--keep-shared',
         String(b.keep_shared),
-        ...(b.hash_fields.length ? ['--hash-field', b.hash_fields.join(',')] : []),
+        ...(b.hash_fields?.length ? ['--hash-field', b.hash_fields.join(',')] : []),
       ])
     default:
       return 'stretto doctor'

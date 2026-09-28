@@ -10,8 +10,8 @@ import type {
   FlowDetail,
   FlowSummary,
   FlowTool,
-  Promotion,
-  SitePromotion,
+  PromotionView,
+  SiteRecord,
   SiteView,
 } from '../../src/api/types.ts'
 import texts from './data/texts.json' with { type: 'json' }
@@ -30,7 +30,7 @@ interface SiteSpec {
   steps: number
   lookups: LookupSpec[]
   hand_back_share: number
-  promoted?: SitePromotion | null
+  promoted?: SiteRecord | null
   threshold?: number | null
 }
 
@@ -39,7 +39,7 @@ export interface FlowRecord {
   tools: FlowTool[]
   sites: SiteSpec[]
   bindings: BindingView[]
-  promotion: Promotion | null
+  promotion: PromotionView | null
   weighedBy: 'reach' | 'habit'
   review: (threshold: number) => string
   raw: string
@@ -86,17 +86,43 @@ const SHOP_TOOLS: FlowTool[] = [
 
 const chance = (agreed: number, tried: number) => (agreed + 1) / (tried + 2)
 
+/**
+ * A binding's chances from `[agreed, tried]`, where the customer had not
+ * mentioned the values the flow picked and where they had: each smoothed,
+ * and over both.
+ */
+function scored(unmentioned: [number, number], mentioned: [number, number]) {
+  const both: [number, number] = [unmentioned[0] + mentioned[0], unmentioned[1] + mentioned[1]]
+  return {
+    chance: [chance(...unmentioned), chance(...mentioned), chance(...both)] as [
+      number,
+      number,
+      number,
+    ],
+    agreed: [unmentioned, mentioned] as [[number, number], [number, number]],
+  }
+}
+
+/** A lookup whose arguments the flow cannot bind: only the customer knows them. */
+const UNBOUND = {
+  chance: null,
+  agreed: [
+    [0, 0],
+    [0, 0],
+  ] as [[number, number], [number, number]],
+}
+
 const SHOP_BINDINGS: BindingView[] = [
   {
     tool: 'find_user_id_by_email',
     calls: 6,
-    chance: null,
+    ...UNBOUND,
     args: [{ name: 'email', required: true, calls: 6, constant: null, sources: [] }],
   },
   {
     tool: 'get_order_details',
     calls: 12,
-    chance: [chance(12, 12), chance(0, 0), chance(12, 12)],
+    ...scored([12, 12], [0, 0]),
     args: [
       {
         name: 'order_id',
@@ -110,7 +136,7 @@ const SHOP_BINDINGS: BindingView[] = [
   {
     tool: 'get_user_details',
     calls: 6,
-    chance: [chance(6, 6), chance(0, 0), chance(6, 6)],
+    ...scored([6, 6], [0, 0]),
     args: [
       {
         name: 'user_id',
@@ -124,7 +150,7 @@ const SHOP_BINDINGS: BindingView[] = [
 ]
 
 function shopSites(promoted: boolean): SiteSpec[] {
-  const p = (decisions: number, lookups: number): SitePromotion | null =>
+  const p = (decisions: number, lookups: number): SiteRecord | null =>
     promoted ? { decisions, lookups, used: lookups, tasks: 3, lower: 0.53, promoted: true } : null
   return [
     {
@@ -179,13 +205,13 @@ const RETAIL_BINDINGS: BindingView[] = [
   {
     tool: 'find_user_id_by_email',
     calls: 1,
-    chance: null,
+    ...UNBOUND,
     args: [{ name: 'email', required: true, calls: 1, constant: null, sources: [] }],
   },
   {
     tool: 'find_user_id_by_name_zip',
     calls: 2,
-    chance: null,
+    ...UNBOUND,
     args: ['first_name', 'last_name', 'zip'].map((name) => ({
       name,
       required: true,
@@ -197,7 +223,7 @@ const RETAIL_BINDINGS: BindingView[] = [
   {
     tool: 'get_order_details',
     calls: 10,
-    chance: [chance(10, 10), chance(0, 0), chance(10, 10)],
+    ...scored([10, 10], [0, 0]),
     args: [
       {
         name: 'order_id',
@@ -211,7 +237,7 @@ const RETAIL_BINDINGS: BindingView[] = [
   {
     tool: 'get_product_details',
     calls: 4,
-    chance: [chance(0, 0), chance(2, 4), chance(2, 4)],
+    ...scored([0, 0], [2, 4]),
     args: [
       {
         name: 'product_id',
@@ -225,7 +251,7 @@ const RETAIL_BINDINGS: BindingView[] = [
   {
     tool: 'get_user_details',
     calls: 3,
-    chance: [chance(2, 2), chance(0, 0), chance(2, 2)],
+    ...scored([2, 2], [0, 0]),
     args: [
       {
         name: 'user_id',
@@ -320,6 +346,20 @@ export function sitesAt(flow: FlowRecord, threshold: number): SiteView[] {
     for (const l of site.lookups) if (!best || l.weighed_share > best.weighed_share) best = l
     const prob = (l: LookupSpec) => l.weighed_share * (l.binding_chance ?? 0)
     const acts = allowed && !!best && prob(best) >= t
+    // As `stretto flow-show` words it.
+    const describe = (l: LookupSpec) =>
+      `\`${l.tool}\` ${l.weighed_share.toFixed(2)} × ${(l.binding_chance ?? 0).toFixed(2)} = ${prob(l).toFixed(2)}`
+    const verdict = !allowed
+      ? t > 1
+        ? 'hands back: switched off'
+        : 'hands back: not promoted'
+      : !best
+        ? 'hands back: no lookup offered'
+        : `${prob(best) >= t ? 'looks up' : 'hands back:'} ${describe(best)}`
+    const next = [
+      ...site.lookups.map((l) => ({ action: l.tool, share: l.share })),
+      ...(site.hand_back_share > 0 ? [{ action: 'respond', share: site.hand_back_share }] : []),
+    ].sort((a, b) => b.share - a.share)
     return {
       name: siteName(site),
       tool: site.tool,
@@ -340,6 +380,9 @@ export function sitesAt(flow: FlowRecord, threshold: number): SiteView[] {
       choice: best ? { tool: best.tool, prob: prob(best), acts } : null,
       promoted: site.promoted ?? null,
       threshold: site.threshold ?? null,
+      next,
+      active: allowed,
+      verdict,
     }
   })
 }
@@ -459,7 +502,7 @@ export function buildFlows(times: FlowTimes): FlowRecord[] {
   }
   flows.push(shop)
 
-  const promotion: Promotion = {
+  const promotion: PromotionView = {
     bar: { threshold: 0.3, min_used: 0.7, min_lower: 0.5, min_tasks: 3 },
     sites_promoted: 3,
     sites_scored: 4,
@@ -613,8 +656,32 @@ function rawFlow(f: FlowRecord): string {
   })
 }
 
+/** A change list's `## ` headings and the `- ` items under each. */
+function sectionsOf(markdown: string): { title: string; changes: string[] }[] {
+  const sections: { title: string; changes: string[] }[] = []
+  for (const line of markdown.split('\n')) {
+    if (line.startsWith('## ')) sections.push({ title: line.slice(3).trim(), changes: [] })
+    else if (line.startsWith('- ') && sections.length)
+      sections[sections.length - 1]!.changes.push(line.slice(2))
+  }
+  return sections.filter((x) => x.changes.length)
+}
+
 /** What flow-diff says between two flows, as the console shows it. */
 export function diffFlows(
+  from: FlowRecord,
+  to: FlowRecord,
+): {
+  review: string[]
+  changes: string[]
+  sections: { title: string; changes: string[] }[]
+  markdown: string
+} {
+  const d = diffLists(from, to)
+  return { ...d, sections: sectionsOf(d.markdown) }
+}
+
+function diffLists(
   from: FlowRecord,
   to: FlowRecord,
 ): { review: string[]; changes: string[]; markdown: string } {

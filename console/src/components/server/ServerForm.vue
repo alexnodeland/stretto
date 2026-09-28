@@ -10,7 +10,7 @@ import UiField from '../ui/UiField.vue'
 import UiSegmented from '../ui/UiSegmented.vue'
 import UiButton from '../ui/UiButton.vue'
 import UiCode from '../ui/UiCode.vue'
-import type { Decider, FlowSummary, ServerInput, ServerMode } from '@/api/types'
+import type { DeciderName, FlowSummary, ServerInput, ServerMode } from '@/api/types'
 import { splitCommand } from '@/lib/shell'
 import { checkEnvName, checkServer, type ServerErrors } from '@/lib/validate'
 import { commandText } from '@/lib/format'
@@ -26,7 +26,7 @@ export interface ServerModel {
   mode: ServerMode
   flow: string
   record_dir: string
-  decider: '' | Decider
+  decider: '' | DeciderName
   /** As typed: a number input's v-model gives a number, an empty one a string. */
   threshold: string | number
 }

@@ -39,16 +39,18 @@ describe('what a flow does at a threshold', () => {
 
   it('hands back where a promoted flow’s site was not promoted, or a site is switched off', () => {
     const detail = detailAt(byKey('shop-promoted'), 0.3)
-    const site = {
-      ...detail.sites[0]!,
-      promoted: { ...detail.sites[0]!.promoted!, promoted: false },
-    }
-    expect(siteGate(detail, site, 0.3)).toMatchObject({ allowed: false, reason: 'not promoted' })
-    expect(siteGate(detail, { ...detail.sites[0]!, threshold: 1.5 }, 0.3)).toMatchObject({
+    const site = detail.sites[0]!
+    expect(siteGate({ ...site, active: false }, 0.3)).toMatchObject({
+      allowed: false,
+      reason: 'not promoted',
+    })
+    expect(siteGate({ ...site, active: false, threshold: 1.5 }, 0.3)).toMatchObject({
       allowed: false,
       reason: 'switched off',
     })
-    expect(siteGate(detail, detail.sites[0]!, 0.3)).toMatchObject({ allowed: true, threshold: 0.3 })
+    expect(siteGate(site, 0.3)).toMatchObject({ allowed: true, threshold: 0.3 })
+    const off = { ...detail, sites: [{ ...site, active: false }] }
+    expect(previewSites(off, 0.1)[0]).toMatchObject({ acts: false, reason: 'not promoted' })
   })
 })
 

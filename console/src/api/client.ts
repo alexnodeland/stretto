@@ -14,7 +14,7 @@ import type {
   Job,
   JobList,
   Meta,
-  NewJob,
+  JobRequest,
   Ok,
   Overview,
   ProbeResult,
@@ -22,7 +22,7 @@ import type {
   ServerList,
   ServerView,
   SessionDetail,
-  SessionPage,
+  SessionList,
   SessionQuery,
   Settings,
 } from './types'
@@ -157,7 +157,7 @@ export const api = {
   overview: (o?: RequestOptions) => request<Overview>('GET', '/api/overview', undefined, o),
 
   sessions: (q: SessionQuery = {}, o?: RequestOptions) =>
-    request<SessionPage>(
+    request<SessionList>(
       'GET',
       `/api/sessions${query({ domain: q.domain, mode: q.mode, q: q.q, limit: q.limit, offset: q.offset })}`,
       undefined,
@@ -197,7 +197,17 @@ export const api = {
   jobs: (o?: RequestOptions) => request<JobList>('GET', '/api/jobs', undefined, o),
   job: (id: string, o?: RequestOptions) =>
     request<Job>('GET', `/api/jobs/${seg(id)}`, undefined, o),
-  createJob: (job: NewJob, o?: RequestOptions) => request<Job>('POST', '/api/jobs', job, o),
+  createJob: (job: JobRequest, o?: RequestOptions) => request<Job>('POST', '/api/jobs', job, o),
+  /** A report or flow a job wrote, by its index in `artifacts`. */
+  jobArtifactUrl: (id: string, index: number) => `/api/jobs/${seg(id)}/artifacts/${index}`,
+  jobArtifact: (id: string, index: number, o?: RequestOptions) =>
+    request<string>('GET', `/api/jobs/${seg(id)}/artifacts/${index}`, undefined, {
+      ...o,
+      as: 'text',
+    }),
+
+  /** Clears the token's cookie. */
+  logout: (o?: RequestOptions) => request<Ok>('POST', '/api/logout', undefined, o),
 
   settings: (o?: RequestOptions) => request<Settings>('GET', '/api/settings', undefined, o),
 }

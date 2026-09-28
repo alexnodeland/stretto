@@ -4,11 +4,11 @@
  * progress. One EventSource for the whole app; pages subscribe by topic.
  */
 import { ref, type Ref } from 'vue'
-import type { ChangedEvent, ChangedWhat, Job } from './types'
+import type { Changed, ChangedWhat, Job } from './types'
 
 export type LiveStatus = 'connecting' | 'live' | 'reconnecting' | 'off'
 
-type ChangedListener = (event: ChangedEvent) => void
+type ChangedListener = (event: Changed) => void
 type JobListener = (job: Job) => void
 
 const changedListeners = new Map<ChangedWhat, Set<ChangedListener>>()
@@ -39,7 +39,7 @@ export function onJob(listener: JobListener): () => void {
 }
 
 /** Deliver an event as if it came from the server (the mock and the tests use it). */
-export function emitChanged(event: ChangedEvent): void {
+export function emitChanged(event: Changed): void {
   changedListeners.get(event.what)?.forEach((listener) => listener(event))
 }
 
@@ -70,7 +70,7 @@ export function connectEvents(lost?: () => void): void {
     liveStatus.value = 'live'
   }
   es.addEventListener('changed', (e) => {
-    const event = parse<ChangedEvent>((e as MessageEvent<string>).data)
+    const event = parse<Changed>((e as MessageEvent<string>).data)
     if (event && typeof event.what === 'string')
       emitChanged({ what: event.what, keys: event.keys ?? [] })
   })

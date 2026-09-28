@@ -27,6 +27,17 @@ export interface World {
   flows: FlowRecord[]
   servers: ServerEntry[]
   jobs: Job[]
+  /** What the jobs' reports hold, by path. */
+  reports: Record<string, string>
+}
+
+/**
+ * A report command's output split as `--out` splits it: the line it prints,
+ * and the Markdown it writes to the report.
+ */
+export function splitReport(text: string): { line: string; report: string } {
+  const [line = '', ...rest] = text.trimEnd().split('\n')
+  return { line: `${line}\n`, report: `${rest.join('\n').trim()}\n` }
 }
 
 const DAY = 86_400_000
@@ -165,7 +176,8 @@ export function servedShopSession(
 
 export function buildWorld(now: number = Date.now(), options: { empty?: boolean } = {}): World {
   const dataDir = '/home/me/.stretto'
-  if (options.empty) return { now, dataDir, sessions: [], flows: [], servers: [], jobs: [] }
+  if (options.empty)
+    return { now, dataDir, sessions: [], flows: [], servers: [], jobs: [], reports: {} }
 
   const rand = rng(20260928)
   const between = (a: number, b: number) => a + rand() * (b - a)
@@ -589,11 +601,18 @@ export function buildWorld(now: number = Date.now(), options: { empty?: boolean 
     ...partial,
   })
   const learnedAt = shopCompiled - 900
+  const audit = splitReport(texts.audit_output)
+  const promote = splitReport(texts.promote_output)
+  const reports: Record<string, string> = {
+    'console/jobs/j-0005.audit.md': audit.report,
+    'console/jobs/j-0005.audit.json': `${JSON.stringify({ flow: 'shop', episodes: 8, decisions: 32, agreement: 1 }, null, 2)}\n`,
+    'console/jobs/j-0003.promote.md': promote.report,
+  }
   const jobs: Job[] = [
     job({
       id: 'j-0006',
       kind: 'doctor',
-      title: 'stretto doctor',
+      title: 'Check the installation',
       created_unix_ms: now - 2 * 3_600_000 - 17 * 60_000,
       finished_unix_ms: now - 2 * 3_600_000 - 17 * 60_000 + 900,
       output: '',
@@ -605,8 +624,11 @@ export function buildWorld(now: number = Date.now(), options: { empty?: boolean 
       params: { kind: 'audit', flow: 'shop-promoted', sessions: 'logs/shop', decider: null },
       created_unix_ms: now - DAY - 3 * 3_600_000,
       finished_unix_ms: now - DAY - 3 * 3_600_000 + 2100,
-      output: texts.audit_output,
-      artifacts: [{ kind: 'report', path: 'console/jobs/j-0005.audit.json', key: null }],
+      output: audit.line,
+      artifacts: [
+        { kind: 'report', path: 'console/jobs/j-0005.audit.json', key: null },
+        { kind: 'report', path: 'console/jobs/j-0005.audit.md', key: null },
+      ],
     }),
     job({
       id: 'j-0004',
@@ -641,11 +663,15 @@ export function buildWorld(now: number = Date.now(), options: { empty?: boolean 
         min_lower: 0.5,
         min_tasks: 3,
         out: 'shop-promoted.flow.json',
+        overwrite: false,
       },
       created_unix_ms: promotedCompiled - 1500,
       finished_unix_ms: promotedCompiled + 200,
-      output: texts.promote_output,
-      artifacts: [{ kind: 'flow', path: 'shop-promoted.flow.json', key: 'shop-promoted' }],
+      output: promote.line,
+      artifacts: [
+        { kind: 'flow', path: 'shop-promoted.flow.json', key: 'shop-promoted' },
+        { kind: 'report', path: 'console/jobs/j-0003.promote.md', key: null },
+      ],
     }),
     job({
       id: 'j-0002',
@@ -668,12 +694,12 @@ export function buildWorld(now: number = Date.now(), options: { empty?: boolean 
     job({
       id: 'j-0001',
       kind: 'doctor',
-      title: 'stretto doctor',
+      title: 'Check the installation',
       created_unix_ms: localDay(now, 13, 9, 31),
       finished_unix_ms: localDay(now, 13, 9, 31) + 800,
       output: '',
     }),
   ]
 
-  return { now, dataDir, sessions, flows, servers, jobs }
+  return { now, dataDir, sessions, flows, servers, jobs, reports }
 }

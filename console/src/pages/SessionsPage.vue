@@ -111,7 +111,8 @@ function clear() {
       <span class="spacer" />
       <p v-if="page.data.value" class="count caption num" aria-live="polite">
         {{ formatCount(page.data.value.total) }}
-        {{ page.data.value.total === 1 ? 'session' : 'sessions' }}{{ filtered ? ' match' : '' }}
+        {{ page.data.value.total === 1 ? 'session' : 'sessions'
+        }}{{ filtered ? (page.data.value.total === 1 ? ' matches' : ' match') : '' }}
       </p>
     </div>
 
