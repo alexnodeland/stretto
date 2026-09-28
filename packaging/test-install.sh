@@ -5,8 +5,9 @@
 #
 #   sh packaging/test-install.sh
 #
-# It checks that install.sh installs the four binaries into --prefix and
-# that they run, that a second install replaces the first, that it says
+# It checks that install.sh installs the five binaries into --prefix and
+# that they run, that a second install replaces the first, that a release
+# from before the console installs the other four, that it says
 # when the directory is not on PATH, and that it refuses an archive whose
 # checksum does not match, an archive SHA256SUMS does not list, and an
 # unknown argument, leaving the installed binaries as they were. It needs
@@ -52,11 +53,12 @@ else
 fi
 
 # A release of VERSION: an archive of stand-ins that answer --version, and
-# its SHA256SUMS.
+# its SHA256SUMS. BINARIES, if given, are the binaries it has (default: all
+# five).
 release() {
     rm -rf "${work:?}/release" "${work:?}/pack"
     mkdir -p "$work/release" "$work/pack/stretto-$target"
-    for bin in stretto stretto-proxy stretto-procedure stretto-mcp-demo; do
+    for bin in ${2:-stretto stretto-proxy stretto-procedure stretto-mcp-demo stretto-console}; do
         printf '#!/bin/sh\necho "%s %s"\n' "$bin" "$1" >"$work/pack/stretto-$target/$bin"
         chmod 755 "$work/pack/stretto-$target/$bin"
     done
@@ -84,18 +86,29 @@ install() {
 }
 
 install || fail "install.sh: $(cat "$work/out")"
-for bin in stretto stretto-proxy stretto-procedure stretto-mcp-demo; do
+for bin in stretto stretto-proxy stretto-procedure stretto-mcp-demo stretto-console; do
     [ "$("$prefix/bin/$bin" --version)" = "$bin 0.9.0" ] || fail "$bin is not installed"
 done
 grep -q "stretto 0.9.0 is installed in $prefix/bin" "$work/out" || fail "no summary: $(cat "$work/out")"
 grep -q "is not on your PATH" "$work/out" || fail "no word about PATH: $(cat "$work/out")"
-echo "test-install: installs the four binaries into --prefix, and says how to put them on PATH"
+echo "test-install: installs the five binaries into --prefix, and says how to put them on PATH"
 
 release 0.9.1
 PATH="$prefix/bin:$PATH" install || fail "install.sh again: $(cat "$work/out")"
 [ "$("$prefix/bin/stretto" --version)" = "stretto 0.9.1" ] || fail "the second install did not replace the first"
 if grep -q "not on your PATH" "$work/out"; then fail "it asked to add a directory already on PATH"; fi
 echo "test-install: a second install replaces the first"
+
+# A release from before the console: the four others, and the console
+# already installed stays as it was.
+release 0.8.0 "stretto stretto-proxy stretto-procedure stretto-mcp-demo"
+PATH="$prefix/bin:$PATH" install || fail "install.sh, a release with no console: $(cat "$work/out")"
+[ "$("$prefix/bin/stretto" --version)" = "stretto 0.8.0" ] || fail "the release with no console was not installed"
+[ "$("$prefix/bin/stretto-console" --version)" = "stretto-console 0.9.1" ] || fail "the console was changed"
+grep -q "stretto-mcp-demo\.$" "$work/out" || fail "the summary names the console: $(cat "$work/out")"
+echo "test-install: a release from before the console installs the other four"
+release 0.9.1
+PATH="$prefix/bin:$PATH" install || fail "install.sh, back to 0.9.1: $(cat "$work/out")"
 
 cp "$work/release/SHA256SUMS" "$work/sums"
 # The checksum with its first digit changed: to 1 if it was 0, else to 0.

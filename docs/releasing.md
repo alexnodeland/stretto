@@ -2,8 +2,8 @@
 
 A version tag, `vX.Y.Z`, pushed to the commit on `main` to release, starts two workflows:
 
-- [`release.yml`](../.github/workflows/release.yml) makes the GitHub release. Its notes are the version's section of [CHANGELOG.md](../CHANGELOG.md). It carries an archive of the four binaries, with `LICENSE` and `README.md`, for each of five targets, their `SHA256SUMS`, [`install.sh`](../install.sh), [`install.ps1`](../install.ps1), and `stretto.rb`, the Homebrew formula with the checksums filled in.
-- [`container.yml`](../.github/workflows/container.yml) publishes `ghcr.io/alexnodeland/stretto` for linux/amd64 and linux/arm64, tagged `X.Y.Z`, `X.Y` and `latest`.
+- [`release.yml`](../.github/workflows/release.yml) makes the GitHub release. Its notes are the version's section of [CHANGELOG.md](../CHANGELOG.md). It builds the console's UI once, then carries an archive of the five binaries (`stretto-console` with the UI built in), with `LICENSE` and `README.md`, for each of five targets, their `SHA256SUMS`, [`install.sh`](../install.sh), [`install.ps1`](../install.ps1), and `stretto.rb`, the Homebrew formula with the checksums filled in.
+- [`container.yml`](../.github/workflows/container.yml) publishes `ghcr.io/alexnodeland/stretto` and `ghcr.io/alexnodeland/stretto-console` for linux/amd64 and linux/arm64, tagged `X.Y.Z`, `X.Y` and `latest`.
 
 Nothing is published to crates.io ([below](#cratesio)). [docs/install.md](install.md) is what users read.
 
@@ -30,8 +30,8 @@ Run the Release workflow by hand from the Actions tab with *dry_run* checked, th
 7. **Check the release:**
    - the release page lists five archives, `SHA256SUMS`, `install.sh`, `install.ps1` and `stretto.rb`;
    - `curl -fsSL https://github.com/alexnodeland/stretto/releases/latest/download/install.sh | sh -s -- --prefix /tmp/stretto-check`, then `/tmp/stretto-check/bin/stretto doctor`;
-   - `docker run --rm ghcr.io/alexnodeland/stretto:X.Y.Z --version`;
-   - the first time only: the package `stretto` appears under the account's packages on GitHub. If it is private, make it public in its settings (Package settings, Change visibility), and link it to the repository if it is not linked.
+   - `docker run --rm ghcr.io/alexnodeland/stretto:X.Y.Z --version`, and the same for `stretto-console`;
+   - the first time only: the packages `stretto` and `stretto-console` appear under the account's packages on GitHub. If one is private, make it public in its settings (Package settings, Change visibility), and link it to the repository if it is not linked.
 8. **Update the Homebrew tap** ([below](#homebrew)).
 
 **By hand, instead of pushing a tag:** in the Actions tab, run *Release* on `main`. It tags the commit it runs on `v` plus Cargo.toml's version, makes the release, and then starts *Container* on the new tag, since a tag made with the workflow's own token starts no workflow by itself.
