@@ -21,7 +21,7 @@ Open the URL it prints: the token in it signs the browser in (a cookie), and the
 | `--token TOKEN` | The token the API requires. Default: `$STRETTO_CONSOLE_TOKEN`, else 32 random bytes as hex, new at each start and printed in the URL. A token you give is never printed. |
 | `--no-auth` | Require no token. Refused unless `--listen` is a loopback address. |
 | `--read-only` | Change nothing: every write and action is refused. |
-| `--open` | Open the URL in the browser. |
+| `--open` | Open the URL in the browser: `$BROWSER` when it is set, else the system's. |
 | `--stretto PATH` | The `stretto` CLI that jobs run. Default: the one beside `stretto-console`, else the one on PATH. |
 
 `stretto-console healthcheck [--listen ADDR]` asks `GET /api/health` on 127.0.0.1 at the port and exits with 0 when the console answers, 1 when not: a container's healthcheck. The console's own messages go to stderr, prefixed `stretto-console:`; Ctrl-C or SIGTERM stops it.
