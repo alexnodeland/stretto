@@ -2807,8 +2807,12 @@ exit 1
                 .contains("stretto drift sounded its alarm")),
         "{overview}"
     );
-    // A later run that finds no change is the one the flow shows.
-    let (_, calm) = submit(&c, drift(20)).await;
+    // A later run that finds no change is the one the flow shows. It may
+    // name the decider.
+    let mut body = drift(20);
+    body["decider"] = json!("reach");
+    let (_, calm) = submit(&c, body).await;
+    assert_eq!(calm["params"]["decider"], "reach");
     let done = c.finished(calm["id"].as_str().unwrap()).await;
     assert_eq!(
         (&done["status"], &done["alarm"]),
