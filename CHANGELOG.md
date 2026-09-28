@@ -4,6 +4,13 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ## Unreleased
 
+### Development
+
+- A `Makefile` with the everyday commands (`make help`). `make ci` runs what CI's check job runs; `make coverage`, `make msrv`, `make bless`, `make quickstart`, `make walkthrough`, `make site` and `make docker` run the rest.
+- CI also runs the doctests, builds the API docs with rustdoc warnings as errors, and checks the workspace on Rust 1.88, the `rust-version`, with the committed lockfile. A coverage workflow measures line coverage with cargo-llvm-cov and fails under 78%; its LCOV report is an artifact, and goes to Codecov when a `CODECOV_TOKEN` secret is set.
+- A Claude Code setup: `CLAUDE.md`, which imports `AGENTS.md`, and `.claude/`, with permission rules, a hook that runs rustfmt on each edited Rust file, a session-start hook for Claude Code on the web, four skills (`check`, `results`, `release`, `steward`) and two subagents (`reviewer`, `claims-checker`).
+- A dev container (`.devcontainer/`) and VS Code settings (`.vscode/`).
+
 ## 0.1.0 (2026-09-27)
 
 The first release: [RFC-001](docs/rfc/001-habit-compiler.md)'s design, built and measured, with release binaries, installers, a container image and a documentation site. [docs/results](docs/results/README.md) has every result, and [the working paper](paper/stretto.md) puts them together. The [development log](CHANGELOG.md#development-log-before-010) below lists every change on the way here.

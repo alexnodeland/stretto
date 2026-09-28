@@ -6,25 +6,45 @@ Thanks for helping. stretto is a Rust workspace (the product: `stretto`, `strett
 
 ```bash
 git clone https://github.com/alexnodeland/stretto && cd stretto
-cargo build --release --locked # the toolchain is pinned in rust-toolchain.toml
-cargo test
+make help   # the everyday commands
+make ci     # what CI's check job runs
 ```
 
-The checks CI runs ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)):
+You need Rust (`rust-toolchain.toml` pins stable, with rustfmt and clippy; the workspace builds with Rust 1.88 or later), Python 3 for `scripts/` and `pilot/`, and Node 22 for the documentation site and the walkthrough. `make install-dev-tools` adds llvm-tools and cargo-llvm-cov, which `make coverage` needs.
 
-```bash
-cargo fmt --all --check
-cargo clippy --all-targets -- -D warnings
-cargo test
-```
+The [`Makefile`](Makefile)'s Rust targets run the commands CI runs ([`.github/workflows/ci.yml`](.github/workflows/ci.yml) and [`coverage.yml`](.github/workflows/coverage.yml)):
 
-`docs/cli.md` is generated from the CLI's own help, and each binary's tests fail when its section is stale. After changing a command or an option, regenerate it with `STRETTO_BLESS=1 cargo test` and commit the result. A test also checks that `docs/formats.md` names every field a flow or an arbiter file holds.
+| Command | What it does |
+|---|---|
+| `make fmt`, `make check` | Formats the code; checks the formatting, as CI does |
+| `make lint` | Clippy on every target, with warnings as errors |
+| `make test` | Unit, integration and doc tests |
+| `make doc` | The API docs, with rustdoc warnings as errors |
+| `make ci` | `check`, `lint`, `test` and `doc`: CI's check job |
+| `make msrv` | The workspace on Rust 1.88, Cargo.toml's `rust-version`, with the lockfile, as CI's MSRV job |
+| `make coverage` | Line coverage with cargo-llvm-cov, written to `lcov.info`; fails under the threshold in the Makefile |
+| `make bless` | Regenerates `docs/cli.md` and the examples in `docs/review.md` |
+| `make quickstart`, `make walkthrough` | The quickstart and the walkthrough end to end on a debug build, as CI's walkthrough job runs them |
+| `make site` | Builds the documentation site, which fails on a dead link |
+| `make docker` | Builds the container image |
 
-The documentation site lives in [`website/`](website/) (VitePress):
+`docs/cli.md` is generated from the CLI's own help, and each binary's tests fail when its section is stale. After changing a command or an option, regenerate it with `make bless` (`STRETTO_BLESS=1 cargo test`) and commit the result. A test also checks that `docs/formats.md` names every field a flow or an arbiter file holds.
 
-```bash
-cd website && npm ci && npm run dev
-```
+The documentation site lives in [`website/`](website/) (VitePress). `make site` builds it; `cd website && npm run dev` serves it with hot reload while you edit.
+
+### Dev container and editor
+
+[`.devcontainer/`](.devcontainer/) sets up Rust, Python 3, Node 22, shellcheck and Claude Code, with the editor extensions, and forwards port 7878 (the console) and 5173 (the site's dev server). Open the repository in VS Code with the Dev Containers extension, or in GitHub Codespaces; the first start runs `make install-dev-tools` and fetches the dependencies. [`.vscode/`](.vscode/) formats Rust on save, runs clippy as you edit, and recommends the extensions.
+
+### Claude Code
+
+The repository carries a [Claude Code](https://code.claude.com/docs) setup. [`CLAUDE.md`](CLAUDE.md) imports [`AGENTS.md`](AGENTS.md), the context every coding agent shares, and adds the commands, the rules for numbers and secrets, and the pull request workflow. In [`.claude/`](.claude/):
+
+- `settings.json` allows the routine commands (cargo, the make targets, npm in `website/`, read-only git). It asks before live pilots, `--oracle jev`, pushes to `main`, force-pushes and tags. It denies reading `.env` files and key files, and `cargo publish`. It also runs two hooks: rustfmt on each `.rs` file Claude edits, and `hooks/session-start.sh`, which prepares a Claude Code on the web container (Rust components, crates, node modules) and does nothing locally.
+- `skills/` holds `check` (run what CI runs), `results` (write up an experiment across the results page, the claims ledger, the paper and RFC-001), `release` and `steward` (take a pull request to green).
+- `agents/` holds `reviewer`, which reviews a diff against the conventions and the docs' drift tests, and `claims-checker`, which checks every number in changed prose against the claims ledger.
+
+Personal overrides go in `.claude/settings.local.json`, which git ignores.
 
 ## Project layout
 
