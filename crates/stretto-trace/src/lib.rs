@@ -110,6 +110,46 @@ impl Episode {
             _ => &[],
         })
     }
+
+    /// The episode as it stands for a decision made when the call `call_id`
+    /// returns, and the calls of its turn still awaiting a response.
+    ///
+    /// In the call's turn, the calls that have returned (a
+    /// [`Event::ToolResult`] follows) are kept, with this one last, so the
+    /// episode's last step is this call. The others are set apart: the agent
+    /// has asked for them already, so a lookup of one would spare it
+    /// nothing. An episode where no turn has the call is returned as it is.
+    pub fn after_call(&self, call_id: &str) -> (Episode, Vec<ToolCall>) {
+        let returned: std::collections::HashSet<&str> = self
+            .events
+            .iter()
+            .filter_map(|e| match e {
+                Event::ToolResult { call_id, .. } => Some(call_id.as_str()),
+                _ => None,
+            })
+            .collect();
+        let mut episode = self.clone();
+        let mut asked = Vec::new();
+        let turn = episode.events.iter_mut().find_map(|e| match e {
+            Event::Assistant { calls, .. } if calls.iter().any(|c| c.id == call_id) => Some(calls),
+            _ => None,
+        });
+        if let Some(calls) = turn {
+            let (mut kept, mut this) = (Vec::new(), Vec::new());
+            for c in std::mem::take(calls) {
+                if c.id == call_id {
+                    this.push(c);
+                } else if returned.contains(c.id.as_str()) {
+                    kept.push(c);
+                } else {
+                    asked.push(c);
+                }
+            }
+            kept.append(&mut this);
+            *calls = kept;
+        }
+        (episode, asked)
+    }
 }
 
 /// Whether a tool reads state, writes it, or neither (τ²-bench's `ToolType`).
@@ -157,5 +197,76 @@ impl ToolManifest {
     /// Whether `name` is a write tool.
     pub fn is_write(&self, name: &str) -> bool {
         self.kind(name) == Some(ToolKind::Write)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn call(id: &str, order: &str) -> ToolCall {
+        ToolCall {
+            id: id.to_string(),
+            name: "get_order".to_string(),
+            arguments: json!({"order_id": order}),
+        }
+    }
+
+    fn result(id: &str) -> Event {
+        Event::ToolResult {
+            call_id: id.to_string(),
+            name: "get_order".to_string(),
+            error: false,
+            content: "{}".to_string(),
+        }
+    }
+
+    /// The ids of the episode's calls, in order.
+    fn ids(episode: &Episode) -> Vec<&str> {
+        episode.tool_calls().map(|c| c.id.as_str()).collect()
+    }
+
+    #[test]
+    fn after_a_call_its_turns_calls_still_in_flight_are_set_apart() {
+        let episode = Episode {
+            id: "e".to_string(),
+            task_id: "t".to_string(),
+            trial: 0,
+            domain: "retail".to_string(),
+            agent_model: "agent".to_string(),
+            reward: 1.0,
+            events: vec![
+                Event::User {
+                    text: "My orders?".to_string(),
+                },
+                Event::Assistant {
+                    text: None,
+                    calls: vec![call("1", "#W1"), call("2", "#W2"), call("3", "#W3")],
+                    usage: None,
+                },
+                // The second call answered first, then the third.
+                result("2"),
+                result("3"),
+            ],
+        };
+        // When the third returns, the second has too; the first is still
+        // on its way, so the agent has asked for it already.
+        let (view, asked) = episode.after_call("3");
+        assert_eq!(ids(&view), ["2", "3"]);
+        assert_eq!(asked, [call("1", "#W1")]);
+        assert_eq!(view.events[2..], episode.events[2..]);
+        // When the second returned, the third was asked for too.
+        let upto = Episode {
+            events: episode.events[..3].to_vec(),
+            ..episode.clone()
+        };
+        let (view, asked) = upto.after_call("2");
+        assert_eq!(ids(&view), ["2"]);
+        assert_eq!(asked.len(), 2);
+        // A call no turn has leaves the episode as it is.
+        let (view, asked) = episode.after_call("9");
+        assert_eq!(view.events, episode.events);
+        assert!(asked.is_empty());
     }
 }

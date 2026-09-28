@@ -661,7 +661,7 @@ enum Command {
     },
     /// Promote a flow's sites (RFC-001 §3.7). Wherever the flow would decide
     /// in recorded sessions or τ²-bench results, score the lookup it would
-    /// make: used if the agent made it later in the session, a detour if it
+    /// make: used if the agent made it in a later LLM turn, a detour if it
     /// never did. The promoted flow acts only after the calls whose record
     /// meets the bar, and hands back after the rest.
     /// Sessions recorded with `stretto-proxy --flow-shadow` have the flow's
@@ -719,7 +719,7 @@ enum Command {
         )]
         threshold: f64,
         /// The least share of the flow's lookups at a site that the agent
-        /// made later in the session.
+        /// made in a later LLM turn.
         #[arg(
             help_heading = "The bar",
             value_name = "X",
@@ -738,6 +738,16 @@ enum Command {
         /// The fewest distinct tasks (or sessions) the lookups came from.
         #[arg(help_heading = "The bar", value_name = "N", long, default_value_t = 3)]
         min_tasks: usize,
+        /// Lookups the proxy will make after one call, at most, as it will
+        /// be served (`stretto-proxy --flow-per-call`): the flow decides
+        /// again after each lookup the agent made later.
+        #[arg(
+            help_heading = "The bar",
+            value_name = "N",
+            long,
+            default_value_t = stretto_report::flow::PER_CALL
+        )]
+        per_call: usize,
         /// Write the promoted flow here.
         #[arg(help_heading = "Output", value_name = "FILE", long)]
         out: PathBuf,
@@ -1624,7 +1634,11 @@ fn run() -> Result<()> {
         } => {
             let flow = stretto_report::flow::Flow::load(&flow)?;
             let domain = flow.domain().to_string();
-            let episodes = recorded(&domain, sessions.as_deref(), &results, tau2.as_deref(), &[])?;
+            let episodes: Vec<stretto_trace::Episode> =
+                recorded(&domain, sessions.as_deref(), &results, tau2.as_deref(), &[])?
+                    .into_iter()
+                    .map(|r| r.episode)
+                    .collect();
             if episodes.is_empty() {
                 anyhow::bail!("no episodes to audit: pass --sessions or --results for {domain}");
             }
@@ -1926,6 +1940,7 @@ fn run() -> Result<()> {
             min_used,
             min_lower,
             min_tasks,
+            per_call,
             out,
             report,
         } => {
@@ -1954,20 +1969,24 @@ fn run() -> Result<()> {
             if decider == Decider::Reach && !flow.has_reach() {
                 anyhow::bail!("the flow has no counts for --decider reach: learn it again");
             }
-            let scored = stretto_report::promote::score(
-                &flow,
-                &episodes,
-                oracle.as_ref(),
-                decider,
-                threshold,
-            );
             let bar = stretto_report::flow::Bar {
                 threshold,
                 min_used,
                 min_lower,
                 min_tasks,
             };
-            let promotion = stretto_report::promote::promote(&scored, bar);
+            let serving = stretto_report::promote::Serving {
+                decider,
+                threshold,
+                per_call,
+            };
+            let (scored, promotion) = stretto_report::promote::promote_served(
+                &flow,
+                &episodes,
+                oracle.as_ref(),
+                serving,
+                bar,
+            );
             let promoted = promotion.sites.values().filter(|r| r.promoted).count();
             eprintln!(
                 "stretto: scored {} episodes ({} decisions left out, unanswered); {promoted} of {} sites promoted",
@@ -2660,13 +2679,16 @@ fn recorded(
     results: &[PathBuf],
     tau2: Option<&Path>,
     task_ids: &[String],
-) -> Result<Vec<stretto_trace::Episode>> {
+) -> Result<Vec<stretto_report::promote::Recorded>> {
     let mut episodes = Vec::new();
     if let Some(dir) = sessions {
         for log in stretto_trace::mcp::read_sessions(dir)? {
-            let mut ep = stretto_trace::mcp::episode(&log);
-            ep.task_id = ep.id.clone();
-            episodes.push(ep);
+            let (mut episode, sent_after) = stretto_trace::mcp::episode_sent(&log);
+            episode.task_id = episode.id.clone();
+            episodes.push(stretto_report::promote::Recorded {
+                episode,
+                sent_after,
+            });
         }
     }
     let test = match tau2 {
@@ -2683,10 +2705,15 @@ fn recorded(
         if run.domain != domain {
             continue;
         }
-        episodes.extend(run.episodes.into_iter().filter(|ep| {
-            test.as_ref().is_none_or(|t| t.contains(&ep.task_id))
-                && (task_ids.is_empty() || task_ids.contains(&ep.task_id))
-        }));
+        episodes.extend(
+            run.episodes
+                .into_iter()
+                .filter(|ep| {
+                    test.as_ref().is_none_or(|t| t.contains(&ep.task_id))
+                        && (task_ids.is_empty() || task_ids.contains(&ep.task_id))
+                })
+                .map(stretto_report::promote::Recorded::from),
+        );
     }
     Ok(episodes)
 }
@@ -2775,12 +2802,6 @@ fn serve(
     rule: Rule,
     log: Option<PathBuf>,
 ) -> Result<()> {
-    let Rule {
-        threshold,
-        decider,
-        max_questions,
-        explore,
-    } = rule;
     let listener =
         std::net::TcpListener::bind(listen).with_context(|| format!("listening on {listen}"))?;
     // The harness waits for this line.
@@ -2801,40 +2822,7 @@ fn serve(
         let mut line = String::new();
         std::io::BufReader::new(&stream).read_line(&mut line)?;
         let started = Instant::now();
-        let answer = match serde_json::from_str::<FlowQuery>(&line) {
-            Err(e) => {
-                serde_json::json!({"action": "hand_back", "reason": format!("bad query: {e}")})
-            }
-            Ok(_) if asked >= max_questions => serde_json::json!({
-                "action": "hand_back",
-                "reason": format!("the flow's {max_questions} questions are spent"),
-            }),
-            Ok(query) => {
-                let sim = serde_json::json!({
-                    "id": "live",
-                    "task_id": query.task_id,
-                    "messages": query.messages,
-                });
-                let answer = stretto_trace::tau2::parse_simulation(
-                    &sim.to_string(),
-                    flow.domain(),
-                    &query.agent_model,
-                )
-                .and_then(|episode| {
-                    flow.next_explored(&episode, oracle, threshold, decider, explore)
-                });
-                match answer {
-                    Ok(next) => {
-                        asked += next.key.is_some() as usize;
-                        serde_json::to_value(&next)?
-                    }
-                    Err(e) => serde_json::json!({
-                        "action": "hand_back",
-                        "reason": format!("error: {e:#}"),
-                    }),
-                }
-            }
-        };
+        let answer = answer_query(flow, oracle, &line, &rule, &mut asked)?;
         let mut reply = answer.to_string();
         reply.push('\n');
         stream.write_all(reply.as_bytes())?;
@@ -2845,6 +2833,59 @@ fn serve(
         }
     }
     Ok(())
+}
+
+/// The answer to one query to `flow-serve`, `line`: the flow's next step
+/// after the conversation it holds, or a hand-back that says why not.
+/// `asked` counts the questions asked of the System-One model so far.
+fn answer_query(
+    flow: &stretto_report::flow::Flow,
+    oracle: &(dyn Oracle + Sync),
+    line: &str,
+    rule: &Rule,
+    asked: &mut usize,
+) -> Result<serde_json::Value> {
+    let query = match serde_json::from_str::<FlowQuery>(line) {
+        Err(e) => {
+            return Ok(
+                serde_json::json!({"action": "hand_back", "reason": format!("bad query: {e}")}),
+            )
+        }
+        Ok(_) if *asked >= rule.max_questions => {
+            return Ok(serde_json::json!({
+                "action": "hand_back",
+                "reason": format!("the flow's {} questions are spent", rule.max_questions),
+            }))
+        }
+        Ok(query) => query,
+    };
+    let sim = serde_json::json!({
+        "id": "live",
+        "task_id": query.task_id,
+        "messages": query.messages,
+    });
+    let next =
+        stretto_trace::tau2::parse_simulation(&sim.to_string(), flow.domain(), &query.agent_model)
+            .and_then(|episode| {
+                flow.next_explored(
+                    &episode,
+                    &[],
+                    oracle,
+                    rule.threshold,
+                    rule.decider,
+                    rule.explore,
+                )
+            });
+    Ok(match next {
+        Ok(next) => {
+            *asked += next.key.is_some() as usize;
+            serde_json::to_value(&next)?
+        }
+        Err(e) => serde_json::json!({
+            "action": "hand_back",
+            "reason": format!("error: {e:#}"),
+        }),
+    })
 }
 
 #[derive(serde::Deserialize)]
@@ -2921,6 +2962,114 @@ mod tests {
 
     fn kind(args: &str) -> Option<ErrorKind> {
         parse(args).err().map(|e| e.kind())
+    }
+
+    /// A flow of the docs' examples, from five retail sessions.
+    fn example_flow() -> stretto_report::flow::Flow {
+        stretto_report::flow::Flow::load(
+            &std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../docs/examples/retail-5-sessions.flow.json"),
+        )
+        .unwrap()
+    }
+
+    const ORACLE: stretto_oracle::MockOracle = stretto_oracle::MockOracle {
+        confidence: 0.6,
+        noul: 0.5,
+    };
+
+    /// The habit's rule, which asks no questions. After finding the user,
+    /// the example flow reads their details at 0.25, and the binding's
+    /// chance is 0.75.
+    fn habit_rule(max_questions: usize) -> super::Rule {
+        super::Rule {
+            threshold: 0.15,
+            decider: stretto_report::flow::Decider::Habit,
+            max_questions,
+            explore: None,
+        }
+    }
+
+    /// `flow-serve` answers a query with the flow's next step after the
+    /// conversation, and hands back one it cannot read, one that is not a
+    /// conversation, and any past its budget of questions.
+    #[test]
+    fn flow_serve_answers_a_query_or_says_why_not() {
+        let flow = example_flow();
+        let query = serde_json::json!({
+            "task_id": "1",
+            "messages": [
+                {"role": "user", "content": "Please cancel my order. I am c1@example.com."},
+                {"role": "assistant", "tool_calls": [{"id": "a", "name": "find_user_id_by_email",
+                    "arguments": {"email": "c1@example.com"}, "requestor": "assistant"}]},
+                {"role": "tool", "id": "a", "content": "user_1", "error": false}
+            ]
+        })
+        .to_string();
+        let mut asked = 0;
+        let mut answer = |line: &str, max_questions| {
+            super::answer_query(&flow, &ORACLE, line, &habit_rule(max_questions), &mut asked)
+                .unwrap()
+        };
+        let next = answer(&query, 5);
+        assert_eq!(next["site"], "find_user_id_by_email", "{next}");
+        assert_eq!(next["tool"], "get_user_details", "{next}");
+        assert_eq!(next["arguments"], serde_json::json!({"user_id": "user_1"}));
+        let reason = |v: serde_json::Value| v["reason"].as_str().unwrap().to_string();
+        assert!(reason(answer("not json", 5)).starts_with("bad query: "));
+        let not_a_conversation = r#"{"task_id": "1", "messages": "none"}"#;
+        assert!(reason(answer(not_a_conversation, 5)).starts_with("error: "));
+        assert_eq!(
+            reason(answer(&query, 0)),
+            "the flow's 0 questions are spent"
+        );
+    }
+
+    /// `flow-serve` answers a line on a connection with a line, and logs
+    /// the answer with the time it took.
+    #[test]
+    fn flow_serve_answers_on_its_port_and_logs_each_answer() {
+        use std::io::{BufRead, Write};
+        let port = std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        let listen = format!("127.0.0.1:{port}");
+        let log =
+            std::env::temp_dir().join(format!("stretto-flow-serve-{}.jsonl", std::process::id()));
+        let _ = std::fs::remove_file(&log);
+        // It serves until the process ends.
+        let (at, to) = (listen.clone(), log.clone());
+        std::thread::spawn(move || {
+            super::serve(&example_flow(), &ORACLE, &at, habit_rule(5), Some(to))
+        });
+        let wait = || std::thread::sleep(std::time::Duration::from_millis(20));
+        let ask = |line: &str| {
+            let mut stream = (0..250)
+                .find_map(|_| {
+                    std::net::TcpStream::connect(&listen)
+                        .map_err(|_| wait())
+                        .ok()
+                })
+                .expect("flow-serve listens");
+            stream.write_all(line.as_bytes()).unwrap();
+            let mut reply = String::new();
+            std::io::BufReader::new(&stream)
+                .read_line(&mut reply)
+                .unwrap();
+            serde_json::from_str::<serde_json::Value>(&reply).unwrap()
+        };
+        let first = ask("not json\n");
+        assert_eq!(first["action"], "hand_back", "{first}");
+        // It logs an answer before it takes the next connection.
+        assert_eq!(ask("{}\n")["action"], "hand_back");
+        let logged = std::fs::read_to_string(&log).unwrap();
+        let entry: serde_json::Value =
+            serde_json::from_str(logged.lines().next().unwrap()).unwrap();
+        assert_eq!(entry["reason"], first["reason"]);
+        assert!(entry["ms"].is_u64(), "{entry}");
+        std::fs::remove_file(&log).ok();
     }
 
     const LEARN: &str = "learn --sessions logs --domain retail --out f.json";

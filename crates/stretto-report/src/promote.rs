@@ -4,28 +4,61 @@
 //!
 //! Wherever the flow would decide in a recorded session, right after a tool
 //! returns, [`score`] asks it what it would do, at the threshold it will be
-//! served with. The flow decides after every call, and sees an agent's
-//! parallel calls one at a time, so a turn of several calls is scored as
-//! one call per turn, as the replays and the proxy present it. A lookup it
-//! would make counts as used when the agent makes it later in the session
-//! (the same tool, with the flow's arguments among the agent's), which
-//! spares the agent that call, and as a detour when it never does, as in
-//! the replays. [`promote`]
-//! keeps the sites whose record meets a [`Bar`]: a share of used lookups, a
-//! lower bound on that share, and a number of distinct tasks. The bound and
-//! the tasks matter because agreement measured on a few tasks does not carry
-//! to new ones (Phase 0's validated arbitration).
+//! served with, and decides as the proxy would:
+//!
+//! - **As each result arrives** ([`Episode::after_call`]). The calls of the
+//!   turn the host had sent and that have not returned are asked for
+//!   already, so the flow does not propose them. The calls it sent later, as
+//!   a host that runs a turn's calls as the model streams them does, the
+//!   proxy could not know of ([`Recorded::sent_after`]).
+//! - **Again after each lookup,** up to `per_call` of them, as the proxy
+//!   chains them: a lookup the agent made later has its result, so the flow
+//!   decides after it as it would have served. A chain can spare a whole
+//!   parallel turn of the agent's, as the flow reads one record after
+//!   another. The proxy makes a lookup only at a promoted site, so
+//!   [`promote_served`] scores again with chains through the promoted sites
+//!   alone, until the promotion no longer changes.
+//!
+//! A lookup counts as used when the agent makes it in a later LLM turn (the
+//! same tool, with the flow's arguments among the agent's), which spares the
+//! agent that call, and as a detour when it never does, as in the replays; a
+//! hand-back is neither. [`promote`] keeps the sites whose record meets a
+//! [`Bar`]: a share of used lookups, a lower bound on that share, and a
+//! number of distinct tasks. The bound and the tasks matter because
+//! agreement measured on a few tasks does not carry to new ones (Phase 0's
+//! validated arbitration).
 
 use crate::flow::{Bar, Decider, Flow, Promotion, Proposal, SiteRecord};
 use serde::Serialize;
 use serde_json::Value;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt::Write;
 use stretto_oracle::Oracle;
-use stretto_trace::{Episode, Event};
+use stretto_trace::{Episode, Event, ToolCall};
 
 /// The z of a 90% two-sided interval.
 const Z90: f64 = 1.644_853_6;
+
+/// A session to score.
+#[derive(Clone, Debug)]
+pub struct Recorded {
+    /// The session.
+    pub episode: Episode,
+    /// For each call, by id, how many of its turn's results had come back
+    /// when the host sent it ([`stretto_trace::mcp::episode_sent`]). A call
+    /// not listed was sent with its turn's first, as τ²-bench's harness
+    /// sends a turn's calls.
+    pub sent_after: HashMap<String, usize>,
+}
+
+impl From<Episode> for Recorded {
+    fn from(episode: Episode) -> Self {
+        Recorded {
+            episode,
+            sent_after: HashMap::new(),
+        }
+    }
+}
 
 /// One site's decisions in the sessions scored.
 #[derive(Clone, Debug, Default, PartialEq, Serialize)]
@@ -34,7 +67,7 @@ pub struct Tally {
     pub decisions: usize,
     /// The lookups it would have made.
     pub lookups: usize,
-    /// Of those, the ones the agent made later in the session.
+    /// Of those, the ones the agent made in a later LLM turn.
     pub used: usize,
     /// The tasks (or sessions) the lookups came from.
     pub tasks: BTreeSet<String>,
@@ -52,88 +85,86 @@ pub struct Scored {
     pub episodes: usize,
 }
 
-/// Whether the agent makes the lookup `tool(arguments)` in `later`, the
-/// rest of the session: a call of the same tool whose arguments hold each
-/// of the flow's.
-fn made(later: &[Event], tool: &str, arguments: &Value) -> bool {
+/// Where the agent makes the lookup `tool(arguments)` in `later`, the rest
+/// of the session: a call of the same tool whose arguments hold each of the
+/// flow's, with its result if one came.
+fn made<'a>(later: &'a [Event], tool: &str, arguments: &Value) -> Option<Option<&'a Event>> {
     let text = |v: &Value| v.as_str().map_or_else(|| v.to_string(), str::to_string);
-    later.iter().any(|e| {
-        let Event::Assistant { calls, .. } = e else {
-            return false;
-        };
-        calls.iter().any(|c| {
+    let call = later
+        .iter()
+        .flat_map(|e| match e {
+            Event::Assistant { calls, .. } => calls.as_slice(),
+            _ => &[],
+        })
+        .find(|c| {
             c.name == tool
                 && arguments.as_object().is_none_or(|flow| {
                     flow.iter()
                         .all(|(k, v)| c.arguments.get(k).is_some_and(|a| text(a) == text(v)))
                 })
-        })
-    })
-}
-
-/// `episode` with each turn of several calls split into one turn per call,
-/// each followed by its result: the calls as the flow sees them, one at a
-/// time. A turn whose results cannot all be matched to its calls is kept.
-pub fn one_call_per_turn(episode: &Episode) -> Episode {
-    let events = &episode.events;
-    let mut out = Vec::with_capacity(events.len());
-    let mut i = 0;
-    while i < events.len() {
-        let Event::Assistant { text, calls, usage } = &events[i] else {
-            out.push(events[i].clone());
-            i += 1;
-            continue;
-        };
-        let results = &events[i + 1..(i + 1 + calls.len()).min(events.len())];
-        let matched: Option<Vec<&Event>> = calls
+        })?;
+    Some(
+        later
             .iter()
-            .map(|c| {
-                results
-                    .iter()
-                    .find(|r| matches!(r, Event::ToolResult { call_id, .. } if *call_id == c.id))
-            })
-            .collect();
-        match matched {
-            Some(matched) if calls.len() > 1 => {
-                for (k, (call, result)) in calls.iter().zip(matched).enumerate() {
-                    out.push(Event::Assistant {
-                        text: if k == 0 { text.clone() } else { None },
-                        calls: vec![call.clone()],
-                        usage: if k == 0 { *usage } else { None },
-                    });
-                    out.push(result.clone());
-                }
-                i += 1 + calls.len();
-            }
-            _ => {
-                out.push(events[i].clone());
-                i += 1;
-            }
-        }
-    }
-    Episode {
-        events: out,
-        ..episode.clone()
-    }
+            .find(|e| matches!(e, Event::ToolResult { call_id, .. } if *call_id == call.id)),
+    )
 }
 
-/// Score each lookup `flow` would make in `episodes`, deciding by `decider`
-/// at `threshold`, against the rest of the session. The flow's own
-/// promotion, if it has one, is set aside, so every site is scored.
+/// `view` with the lookup `id`, `tool(arguments)`, in the turn at `turn`,
+/// and `result`'s outcome as its result: the session as the proxy sees it
+/// once its lookup returns.
+fn with_lookup(mut view: Episode, turn: usize, lookup: ToolCall, result: &Event) -> Episode {
+    if let Event::ToolResult { error, content, .. } = result {
+        view.events.push(Event::ToolResult {
+            call_id: lookup.id.clone(),
+            name: lookup.name.clone(),
+            error: *error,
+            content: content.clone(),
+        });
+    }
+    if let Some(Event::Assistant { calls, .. }) = view.events.get_mut(turn) {
+        calls.push(lookup);
+    }
+    view
+}
+
+/// How the flow will be served, which [`score`] mirrors.
+#[derive(Clone, Copy, Debug)]
+pub struct Serving {
+    /// Where the tool's probability comes from.
+    pub decider: Decider,
+    /// The threshold it is served with (`stretto-proxy --flow-threshold`).
+    pub threshold: f64,
+    /// Lookups after one call, at most (`stretto-proxy --flow-per-call`).
+    pub per_call: usize,
+}
+
+/// Score each lookup `flow` would make in `sessions`, served as `serving`,
+/// against the rest of the session. A chain goes on after a lookup made at
+/// a site of `chains`, or at any site without it. The flow's own promotion,
+/// if it has one, is set aside, so every site is scored.
 pub fn score(
     flow: &Flow,
-    episodes: &[Episode],
+    sessions: &[Recorded],
     oracle: &dyn Oracle,
-    decider: Decider,
-    threshold: f64,
+    serving: Serving,
+    chains: Option<&BTreeSet<String>>,
 ) -> Scored {
+    let Serving {
+        decider,
+        threshold,
+        per_call,
+    } = serving;
     let flow = flow.clone().with_promotion(None);
     let mut out = Scored {
-        episodes: episodes.len(),
+        episodes: sessions.len(),
         ..Scored::default()
     };
-    for episode in episodes {
-        let episode = &one_call_per_turn(episode);
+    for Recorded {
+        episode,
+        sent_after,
+    } in sessions
+    {
         let task = if episode.task_id.is_empty() {
             episode.id.clone()
         } else {
@@ -142,36 +173,110 @@ pub fn score(
         let events = &episode.events;
         for (i, e) in events.iter().enumerate() {
             // A decision point: a tool result with something after it.
-            let (Event::ToolResult { .. }, Some(_)) = (e, events.get(i + 1)) else {
+            let (Event::ToolResult { call_id, .. }, Some(_)) = (e, events.get(i + 1)) else {
                 continue;
             };
+            // The call's LLM turn: only a later one's calls can be spared.
+            let Some((turn, ids)) = events.iter().enumerate().find_map(|(t, e)| match e {
+                Event::Assistant { calls, .. } if calls.iter().any(|c| &c.id == call_id) => Some((
+                    t,
+                    calls.iter().map(|c| c.id.as_str()).collect::<HashSet<_>>(),
+                )),
+                _ => None,
+            }) else {
+                continue;
+            };
+            // How many of the turn's results have come back, this one too.
+            let back = events[turn..=i]
+                .iter()
+                .filter(|e| matches!(e, Event::ToolResult { call_id, .. } if ids.contains(call_id.as_str())))
+                .count();
             let prefix = Episode {
                 events: events[..=i].to_vec(),
                 ..episode.clone()
             };
-            let Ok(next) = flow.next_with(&prefix, oracle, threshold, decider) else {
-                out.unanswered += 1;
-                continue;
-            };
-            let Some(site) = next.site.clone() else {
-                continue;
-            };
-            if next.key.is_some() && next.probs.is_empty() {
-                out.unanswered += 1;
-                continue;
-            }
-            let tally = out.sites.entry(site).or_default();
-            tally.decisions += 1;
-            if let Proposal::Lookup { tool, arguments } = &next.proposal {
+            let (mut view, pending) = prefix.after_call(call_id);
+            // The calls the host had sent by now; the proxy knows no others.
+            let pending: Vec<ToolCall> = pending
+                .into_iter()
+                .filter(|c| sent_after.get(&c.id).copied().unwrap_or(0) < back)
+                .collect();
+            let later = &events[turn + 1..];
+            let mut looked = 0;
+            loop {
+                let Ok(next) =
+                    flow.next_explored(&view, &pending, oracle, threshold, decider, None)
+                else {
+                    out.unanswered += 1;
+                    break;
+                };
+                let Some(site) = next.site.clone() else {
+                    break;
+                };
+                if next.key.is_some() && next.probs.is_empty() {
+                    out.unanswered += 1;
+                    break;
+                }
+                // The proxy makes a lookup only at a promoted site.
+                let chains_on = chains.is_none_or(|c| c.contains(&site));
+                let tally = out.sites.entry(site).or_default();
+                tally.decisions += 1;
+                let Proposal::Lookup { tool, arguments } = next.proposal else {
+                    break;
+                };
                 tally.lookups += 1;
                 tally.tasks.insert(task.clone());
-                if made(&events[i + 1..], tool, arguments) {
-                    tally.used += 1;
-                }
+                let Some(result) = made(later, &tool, &arguments) else {
+                    break;
+                };
+                tally.used += 1;
+                looked += 1;
+                // The proxy makes it and decides again once it returns.
+                let Some(result) = result.filter(|_| looked < per_call && chains_on) else {
+                    break;
+                };
+                let id = format!("stretto-{looked}");
+                let lookup = ToolCall {
+                    id: id.clone(),
+                    name: tool,
+                    arguments,
+                };
+                view = with_lookup(view, turn, lookup, result).after_call(&id).0;
             }
         }
     }
     out
+}
+
+/// The promotion `flow` earns on `sessions` at `bar`, served as `serving`,
+/// and the scores it rests on. Chains go through every site at first; then
+/// through the sites promoted, scored again, until the promotion repeats
+/// (or eight times, if it keeps changing).
+pub fn promote_served(
+    flow: &Flow,
+    sessions: &[Recorded],
+    oracle: &dyn Oracle,
+    serving: Serving,
+    bar: Bar,
+) -> (Scored, Promotion) {
+    let mut scored = score(flow, sessions, oracle, serving, None);
+    let mut promotion = promote(&scored, bar);
+    for _ in 0..8 {
+        let promoted: BTreeSet<String> = promotion
+            .sites
+            .iter()
+            .filter(|(_, r)| r.promoted)
+            .map(|(s, _)| s.clone())
+            .collect();
+        let again = score(flow, sessions, oracle, serving, Some(&promoted));
+        let next = promote(&again, bar);
+        let same = next == promotion;
+        (scored, promotion) = (again, next);
+        if same {
+            break;
+        }
+    }
+    (scored, promotion)
 }
 
 /// The lower bound of the Wilson interval for `k` successes in `n` trials.
@@ -226,7 +331,7 @@ pub fn markdown(promotion: &Promotion) -> String {
     let mut md = String::new();
     let _ = writeln!(
         md,
-        "A site is promoted when, at a threshold of {}, at least {:.0}% of the flow's lookups there were ones the agent made later in the session, the 90% interval's lower bound on that share is at least {:.2}, and the lookups came from at least {} tasks.\n",
+        "A site is promoted when, at a threshold of {}, at least {:.0}% of the flow's lookups there were ones the agent made in a later LLM turn, the 90% interval's lower bound on that share is at least {:.2}, and the lookups came from at least {} tasks.\n",
         b.threshold,
         100.0 * b.min_used,
         b.min_lower,
@@ -281,6 +386,71 @@ mod tests {
         }
     }
 
+    /// A decision the flow cannot make is left out: its decider needs what
+    /// the flow does not hold, the System-One model has no answer, or the
+    /// session's last step is a reply, not a call.
+    #[test]
+    fn decisions_the_flow_cannot_make_are_left_out() {
+        struct Silent;
+        impl Oracle for Silent {
+            fn ask(&self, _: &stretto_oracle::Request) -> anyhow::Result<stretto_oracle::Response> {
+                anyhow::bail!("no answer")
+            }
+        }
+        let flow = crate::flow::tests::toy_flow();
+        let result = |id: &str, name: &str, content: Value| Event::ToolResult {
+            call_id: id.to_string(),
+            name: name.to_string(),
+            error: false,
+            content: content.to_string(),
+        };
+        let session = Episode {
+            id: "s".to_string(),
+            task_id: "t".to_string(),
+            trial: 0,
+            domain: "retail".to_string(),
+            agent_model: "agent".to_string(),
+            reward: 1.0,
+            events: vec![
+                Event::User {
+                    text: "help with my orders".to_string(),
+                },
+                turn(&[("get_user_details", json!({"user_id": "ann_1"}))]),
+                result("0", "get_user_details", json!({"orders": ["#W1", "#W2"]})),
+                turn(&[("get_order_details", json!({"order_id": "#W1"}))]),
+                result("0", "get_order_details", json!({"order_id": "#W1"})),
+            ],
+        };
+        let scored = |episode: &Episode, decider| {
+            let serving = Serving {
+                decider,
+                threshold: 0.3,
+                per_call: crate::flow::PER_CALL,
+            };
+            score(&flow, &[episode.clone().into()], &Silent, serving, None)
+        };
+        // The toy flow holds no counts for reach, and its arbiter's
+        // question goes unanswered.
+        for decider in [Decider::Reach, Decider::Arbiter] {
+            let s = scored(&session, decider);
+            assert!(s.sites.is_empty(), "{decider:?}");
+            assert_eq!(s.unanswered, 1, "{decider:?}");
+        }
+        // A reply before the result: no call to decide after.
+        let mut replied = session.clone();
+        replied.events.insert(
+            2,
+            Event::Assistant {
+                text: Some("One moment.".to_string()),
+                calls: Vec::new(),
+                usage: None,
+            },
+        );
+        let s = scored(&replied, Decider::Habit);
+        assert!(s.sites.is_empty());
+        assert_eq!(s.unanswered, 0);
+    }
+
     #[test]
     fn a_lookup_is_used_when_the_agent_makes_it_later_with_the_flows_arguments() {
         let order = json!({"order_id": "#W1"});
@@ -290,11 +460,7 @@ mod tests {
             usage: None,
         };
         let one = |calls: &[(&str, Value)]| vec![turn(calls)];
-        assert!(made(
-            &one(&[("get_order", order.clone())]),
-            "get_order",
-            &order
-        ));
+        assert!(made(&one(&[("get_order", order.clone())]), "get_order", &order).is_some());
         // After a reply, among parallel calls, and with more arguments than
         // the flow bound.
         let later = [
@@ -304,53 +470,12 @@ mod tests {
                 ("get_order", json!({"order_id": "#W1", "verbose": true})),
             ]),
         ];
-        assert!(made(&later, "get_order", &order));
+        assert!(made(&later, "get_order", &order).is_some());
         // Another order, another tool, or no call at all is a detour.
         let other = one(&[("get_order", json!({"order_id": "#W2"}))]);
-        assert!(!made(&other, "get_order", &order));
-        assert!(!made(
-            &one(&[("get_user", order.clone())]),
-            "get_order",
-            &order
-        ));
-        assert!(!made(&[reply], "get_order", &order));
-    }
-
-    #[test]
-    fn parallel_calls_are_scored_one_at_a_time() {
-        let result = |id: &str| Event::ToolResult {
-            call_id: id.to_string(),
-            name: "get_order".to_string(),
-            error: false,
-            content: "{}".to_string(),
-        };
-        let episode = Episode {
-            id: "e".to_string(),
-            task_id: "1".to_string(),
-            trial: 0,
-            domain: "retail".to_string(),
-            agent_model: "agent".to_string(),
-            reward: 1.0,
-            events: vec![
-                turn(&[
-                    ("get_order", json!({"order_id": "#W1"})),
-                    ("get_order", json!({"order_id": "#W2"})),
-                ]),
-                result("1"),
-                result("0"),
-            ],
-        };
-        let split = one_call_per_turn(&episode);
-        let shape: Vec<String> = split
-            .events
-            .iter()
-            .map(|e| match e {
-                Event::Assistant { calls, .. } => format!("call {}", calls[0].id),
-                Event::ToolResult { call_id, .. } => format!("result {call_id}"),
-                Event::User { .. } => "user".to_string(),
-            })
-            .collect();
-        assert_eq!(shape, ["call 0", "result 0", "call 1", "result 1"]);
+        assert!(made(&other, "get_order", &order).is_none());
+        assert!(made(&one(&[("get_user", order.clone())]), "get_order", &order).is_none());
+        assert!(made(&[reply], "get_order", &order).is_none());
     }
 
     #[test]

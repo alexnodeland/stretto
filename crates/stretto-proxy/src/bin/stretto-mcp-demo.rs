@@ -23,6 +23,8 @@
 //!   needed" and "ordered by mistake", as τ²-bench's tool does. Nothing is
 //!   stored, so a cancelled order still reads as pending.
 //!
+//! `"delay_ms": n` makes these wait too, though their schemas do not list it.
+//!
 //! It answers `initialize`, `ping`, `tools/list` and `tools/call`, rejects
 //! other requests with "method not found", ignores notifications, and exits
 //! when its input ends. It accepts whichever protocol version the client
@@ -517,6 +519,9 @@ mod retail {
             .get("arguments")
             .cloned()
             .unwrap_or_else(|| json!({}));
+        if let Some(ms) = arguments.get("delay_ms").and_then(Value::as_u64) {
+            std::thread::sleep(super::Duration::from_millis(ms.min(10_000)));
+        }
         let (text, failed) = match answer(name, &arguments) {
             Ok(Value::String(s)) => (s, false),
             Ok(v) => (v.to_string(), false),

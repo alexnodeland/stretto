@@ -70,7 +70,7 @@ struct Cli {
     #[arg(help_heading = "Flows", long, value_enum)]
     flow_decider: Option<DeciderArg>,
     /// Lookups appended to one result, at most.
-    #[arg(help_heading = "Flows", value_name = "N", long, default_value_t = 8)]
+    #[arg(help_heading = "Flows", value_name = "N", long, default_value_t = stretto_report::flow::PER_CALL)]
     flow_per_call: usize,
     /// Lookups per session, at most.
     #[arg(help_heading = "Flows", value_name = "N", long, default_value_t = 40)]

@@ -7,10 +7,10 @@
 {"t_ms":7,"from":"context","message":{"role":"user","content":"Hello, c4@example.com here. Where are my orders?"}}
 {"t_ms":7,"from":"client","message":{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"find_user_id_by_email","arguments":{"email":"c4@example.com"}}}}
 {"t_ms":7,"from":"server","message":{"id":3,"jsonrpc":"2.0","result":{"content":[{"text":"user_4","type":"text"}],"isError":false}}}
-{"t_ms":11,"from":"client","message":{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_user_details","arguments":{"user_id":"user_4"}}}}
-{"t_ms":12,"from":"server","message":{"id":4,"jsonrpc":"2.0","result":{"content":[{"text":"{\"email\":\"c4@example.com\",\"orders\":[\"#W4a\",\"#W4b\"],\"payment_methods\":{\"credit_card_4\":{\"source\":\"credit_card\"}},\"user_id\":\"user_4\"}","type":"text"}],"isError":false}}}
-{"t_ms":16,"from":"client","message":{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_order_details","arguments":{"order_id":"#W4a"}}}}
-{"t_ms":16,"from":"server","message":{"id":5,"jsonrpc":"2.0","result":{"content":[{"text":"{\"items\":[{\"item_id\":\"1\",\"name\":\"Desk lamp\",\"product_id\":\"p1\"}],\"order_id\":\"#W4a\",\"payment_history\":[{\"payment_method_id\":\"credit_card_4\"}],\"status\":\"pending\",\"user_id\":\"user_4\"}","type":"text"}],"isError":false}}}
-{"t_ms":20,"from":"client","message":{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"get_order_details","arguments":{"order_id":"#W4b"}}}}
-{"t_ms":20,"from":"server","message":{"id":6,"jsonrpc":"2.0","result":{"content":[{"text":"{\"items\":[{\"item_id\":\"1\",\"name\":\"Desk lamp\",\"product_id\":\"p1\"}],\"order_id\":\"#W4b\",\"payment_history\":[{\"payment_method_id\":\"credit_card_4\"}],\"status\":\"pending\",\"user_id\":\"user_4\"}","type":"text"}],"isError":false}}}
-{"t_ms":21,"from":"context","message":{"role":"assistant","content":"Your orders #W4a and #W4b are both pending."}}
+{"t_ms":607,"from":"client","message":{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_user_details","arguments":{"user_id":"user_4"}}}}
+{"t_ms":608,"from":"server","message":{"id":4,"jsonrpc":"2.0","result":{"content":[{"text":"{\"email\":\"c4@example.com\",\"orders\":[\"#W4a\",\"#W4b\"],\"payment_methods\":{\"credit_card_4\":{\"source\":\"credit_card\"}},\"user_id\":\"user_4\"}","type":"text"}],"isError":false}}}
+{"t_ms":1208,"from":"client","message":{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_order_details","arguments":{"order_id":"#W4a"}}}}
+{"t_ms":1208,"from":"server","message":{"id":5,"jsonrpc":"2.0","result":{"content":[{"text":"{\"items\":[{\"item_id\":\"1\",\"name\":\"Desk lamp\",\"product_id\":\"p1\"}],\"order_id\":\"#W4a\",\"payment_history\":[{\"payment_method_id\":\"credit_card_4\"}],\"status\":\"pending\",\"user_id\":\"user_4\"}","type":"text"}],"isError":false}}}
+{"t_ms":1808,"from":"client","message":{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"get_order_details","arguments":{"order_id":"#W4b"}}}}
+{"t_ms":1808,"from":"server","message":{"id":6,"jsonrpc":"2.0","result":{"content":[{"text":"{\"items\":[{\"item_id\":\"1\",\"name\":\"Desk lamp\",\"product_id\":\"p1\"}],\"order_id\":\"#W4b\",\"payment_history\":[{\"payment_method_id\":\"credit_card_4\"}],\"status\":\"pending\",\"user_id\":\"user_4\"}","type":"text"}],"isError":false}}}
+{"t_ms":1809,"from":"context","message":{"role":"assistant","content":"Your orders #W4a and #W4b are both pending."}}

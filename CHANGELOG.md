@@ -4,6 +4,20 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ## Unreleased
 
+### LLM turns and promotion
+
+- stretto infers an agent's LLM turns from timing as well as overlap. A call the agent sends within 500 ms of its turn's last response, with nothing said in between, joins that turn, unless it passes a value that first appeared in what the turn returned. The proxy's own lookups join a turn only by overlap, as before. Claude Code runs a turn's calls as the model streams them, so a call could reach the proxy after an earlier call of its turn had returned, and stretto counted it as a new turn ([results](docs/results/turns-2026-09-28.md), [#40](https://github.com/alexnodeland/stretto/issues/40)).
+  - This changes the turns that `learn`, `promote`, `audit` and the console read from a proxy's log.
+  - A script that sends its next call within 500 ms of a result it does not use now reads as one turn. The quickstart and the walkthrough wait 0.6 s between calls.
+- `stretto-proxy` decides at the site of the call whose result came back, and leaves the calls of its turn still on their way to the agent. Before, it decided at its turn's last call, and could look up a call the agent had already sent.
+- `stretto promote` scores a flow as the proxy serves it:
+  - as each result comes back;
+  - along chains of lookups, up to `--per-call` (8, as the proxy's `--flow-per-call`), and only through the sites it promotes;
+  - with a lookup used only when the agent makes it in a later LLM turn.
+
+  On AgentDojo's Slack it no longer promotes sites whose lookups the agents had already asked for.
+- In the libraries: `stretto_trace::mcp::episode_sent`, `mcp::SAME_TURN_MS` and `Episode::after_call`. In `stretto_report`, `flow::PER_CALL`, `promote::promote_served`, and `promote::score` over `promote::Recorded` sessions with a `promote::Serving`; `promote::one_call_per_turn` is gone. `Flow::next_explored` takes the calls still on their way.
+
 ### The console
 
 - `stretto-console`, a new crate and binary: the server of stretto's management plane, a local web app over the data directory (`~/.stretto`, `--data` or `$STRETTO_HOME`). Its JSON API lists and shows the recorded sessions call by call, with each of the flow's lookups and the decision that made it; the flows, as `stretto flow-show` reviews them and as `stretto flow-diff` compares them; a registry of the MCP servers stretto fronts (`servers.json`), with the host configuration `stretto init` prints for each and a live test of the connection; and jobs that run the `stretto` CLI (`learn`, `promote`, `audit`, `redact`, `doctor`). It requires a token (a cookie, or a bearer), a header on every change, and a loopback Host under `--no-auth`; `--read-only` changes nothing ([its README](crates/stretto-console/README.md)). The UI is `console/`; its API types are generated from the Rust.

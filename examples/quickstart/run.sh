@@ -127,11 +127,15 @@ looked_up() { # looked_up TOOL ARGUMENTS
     grep -qF -- "$heading" "$replies"
 }
 
-# The agent calls TOOL, unless the flow has already looked it up.
+# The agent calls TOOL, unless the flow has already looked it up. Like a
+# model, it takes a moment to read a result before its next call: longer
+# than the half second within which a host's calls count as one LLM turn,
+# so the log shows one turn per call.
 call() { # call TOOL ARGUMENTS
     if looked_up "$1" "$2"; then
         return 0
     fi
+    [ "$calls" -eq 0 ] || sleep 0.6
     calls=$((calls + 1))
     rpc tools/call "{\"name\":\"$1\",\"arguments\":$2}"
     case $reply in *'"isError":true'*) fail "$1 $2: $reply" ;; esac

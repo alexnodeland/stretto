@@ -5,10 +5,20 @@ use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use stretto_oracle::MockOracle;
-use stretto_report::flow::{Decider, Proposal};
+use stretto_report::flow::{Decider, Proposal, PER_CALL};
 use stretto_report::phase0::{
     compile_flow_from_episodes, compile_habit_flow_from_episodes, Config,
 };
+use stretto_report::promote::{Recorded, Serving};
+
+/// Served on the habit alone at 0.3, with up to `per_call` lookups a call.
+fn habit(per_call: usize) -> Serving {
+    Serving {
+        decider: Decider::Habit,
+        threshold: 0.3,
+        per_call,
+    }
+}
 use stretto_report::shadow::{OracleKind, QuestionSet, ShadowConfig};
 use stretto_trace::{Episode, Event, ToolCall, ToolKind, ToolManifest};
 
@@ -280,6 +290,17 @@ fn a_learned_flow_counts_what_comes_before_the_next_write() {
     let reach = flow.next_with(&live, &MOCK, 0.3, Decider::Reach).unwrap();
     assert_eq!(reach.proposal, habit.proposal, "{reach:?}");
     assert!(reach.prob.unwrap() > 0.99, "{reach:?}");
+    // Between its chance and that chance times its arguments', it hands
+    // back for the arguments.
+    let (p, chance) = (reach.prob.unwrap(), reach.binding.unwrap());
+    assert!(chance < 1.0, "{reach:?}");
+    let between = flow
+        .next_with(&live, &MOCK, p * (1.0 + chance) / 2.0, Decider::Reach)
+        .unwrap();
+    assert!(
+        matches!(&between.proposal, Proposal::HandBack { reason } if reason.contains("for its arguments")),
+        "{between:?}"
+    );
     // Above every chance, it hands back.
     let high = flow.next_with(&live, &MOCK, 1.01, Decider::Reach).unwrap();
     assert!(
@@ -676,6 +697,103 @@ fn flow_diff_exits_with_1_when_a_change_needs_review() {
 
 // Promoting a flow's sites (`stretto promote`).
 
+/// Customer `i`'s session with both orders read in one LLM turn, the
+/// second answered first.
+fn batched(i: usize) -> Episode {
+    let mut ep = session(i);
+    let calls: Vec<ToolCall> = [&ep.events[5], &ep.events[7]]
+        .into_iter()
+        .flat_map(|e| match e {
+            Event::Assistant { calls, .. } => calls.clone(),
+            _ => Vec::new(),
+        })
+        .collect();
+    let (first, second) = (ep.events[6].clone(), ep.events[8].clone());
+    let turn = Event::Assistant {
+        text: None,
+        calls,
+        usage: None,
+    };
+    ep.events.splice(5..=8, [turn, second, first]);
+    ep
+}
+
+#[test]
+fn a_lookup_of_a_call_the_agent_asked_for_in_the_same_turn_is_not_scored() {
+    let flow = habit_flow(&(0..60).map(session).collect::<Vec<_>>(), &manifest());
+    let sessions: Vec<Recorded> = (100..110).map(|i| batched(i).into()).collect();
+    let scored = stretto_report::promote::score(&flow, &sessions, &MOCK, habit(PER_CALL), None);
+    // After the account, the agent's read of it or the flow's own after
+    // finding it, the flow reads the first order, which the agent asks for
+    // in its next turn: used.
+    let account = &scored.sites["get_account"];
+    assert_eq!((account.lookups, account.used), (20, 20));
+    // Each chain goes on to the second order, which spares the rest of that
+    // turn: used. When either of the agent's own reads returns, the other is
+    // on its way, so the flow proposes nothing: it would spare no call.
+    let order = &scored.sites["get_order"];
+    assert_eq!(
+        (order.decisions, order.lookups, order.used),
+        (60, 20, 20),
+        "{order:?}"
+    );
+    // Allowed one lookup per call, it makes no chain.
+    let one = stretto_report::promote::score(&flow, &sessions, &MOCK, habit(1), None);
+    assert_eq!(one.sites["get_order"].lookups, 0);
+    // A host that streams a turn's calls sends the second order only after
+    // the first returned: the proxy could not know of it, and a lookup of
+    // it would spare nothing.
+    let streamed: Vec<Recorded> = (100..110)
+        .map(|i| {
+            let mut ep = batched(i);
+            ep.events.swap(6, 7);
+            let mut r = Recorded::from(ep);
+            r.sent_after.insert("4".to_string(), 1);
+            r
+        })
+        .collect();
+    let scored = stretto_report::promote::score(&flow, &streamed, &MOCK, habit(PER_CALL), None);
+    let order = &scored.sites["get_order"];
+    assert_eq!((order.lookups, order.used), (30, 20), "{order:?}");
+    // A result whose call no turn holds is no decision.
+    let mut orphan = session(200);
+    orphan.events.remove(3);
+    let scored =
+        stretto_report::promote::score(&flow, &[orphan.into()], &MOCK, habit(PER_CALL), None);
+    assert!(!scored.sites.contains_key("get_account"), "{scored:?}");
+}
+
+#[test]
+fn a_chain_counts_only_where_the_proxy_would_make_it() {
+    let flow = habit_flow(&(0..60).map(session).collect::<Vec<_>>(), &manifest());
+    // Ten sessions where the agent reads the account and both orders after
+    // finding it, and ten where it finds the account and answers at once.
+    let mut sessions: Vec<Recorded> = (100..110).map(|i| batched(i).into()).collect();
+    sessions.extend((110..120).map(|i| {
+        let mut ep = session(i);
+        ep.events.truncate(3);
+        ep.events.push(say("Found it."));
+        Recorded::from(ep)
+    }));
+    // Scored with every chain, the account read after finding it counts
+    // at the account's site too.
+    let all = stretto_report::promote::score(&flow, &sessions, &MOCK, habit(PER_CALL), None);
+    assert_eq!(all.sites["get_account"].lookups, 20);
+    // But finding the account is used only half the time, so it is not
+    // promoted, and the proxy would never read the account after it.
+    let bar = stretto_report::flow::Bar {
+        threshold: 0.3,
+        min_used: 0.7,
+        min_lower: 0.5,
+        min_tasks: 3,
+    };
+    let (scored, promotion) =
+        stretto_report::promote::promote_served(&flow, &sessions, &MOCK, habit(PER_CALL), bar);
+    assert!(!promotion.sites["find_account"].promoted);
+    assert_eq!(scored.sites["get_account"].lookups, 10);
+    assert!(promotion.sites["get_account"].promoted && promotion.sites["get_order"].promoted);
+}
+
 #[test]
 fn a_promoted_flow_acts_only_where_its_lookups_were_the_agents_own() {
     let flow = habit_flow(&(0..60).map(session).collect::<Vec<_>>(), &manifest());
@@ -689,7 +807,8 @@ fn a_promoted_flow_acts_only_where_its_lookups_were_the_agents_own() {
             ep
         })
         .collect();
-    let scored = stretto_report::promote::score(&flow, &brief, &MOCK, Decider::Habit, 0.3);
+    let brief: Vec<Recorded> = brief.into_iter().map(Recorded::from).collect();
+    let scored = stretto_report::promote::score(&flow, &brief, &MOCK, habit(PER_CALL), None);
     let bar = stretto_report::flow::Bar {
         threshold: 0.3,
         min_used: 0.5,
@@ -700,8 +819,10 @@ fn a_promoted_flow_acts_only_where_its_lookups_were_the_agents_own() {
     let found = &promotion.sites["find_account"];
     assert_eq!((found.lookups, found.used, found.tasks), (10, 10, 10));
     assert!(found.promoted);
+    // Its lookups there are detours, whether after the agent's own read of
+    // the account or after its own, which the agent then made: 10 each.
     let account = &promotion.sites["get_account"];
-    assert_eq!((account.lookups, account.used), (10, 0));
+    assert_eq!((account.lookups, account.used), (20, 0));
     assert!(!account.promoted);
 
     // Served, it still reads the account, but no longer the orders.
@@ -737,7 +858,7 @@ fn a_promoted_flow_acts_only_where_its_lookups_were_the_agents_own() {
         "{md}"
     );
     assert!(
-        md.contains("| `get_account` | 10 | 10 | 0 (0%) | 0.00 | 10 | no |"),
+        md.contains("| `get_account` | 20 | 20 | 0 (0%) | 0.00 | 10 | no |"),
         "{md}"
     );
     // Lifting the promotion lets the flow act where it handed back: after

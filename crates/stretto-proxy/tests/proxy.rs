@@ -133,10 +133,15 @@ impl Drop for TempDir {
 /// The session the host runs: initialize, list tools, two overlapping
 /// calls, a failing call, an unknown tool, and a line that is not JSON.
 fn session(host: &mut Host) {
+    // The host's model reads each result before its next turn, which takes
+    // longer than the half second within which calls count as one turn.
+    let reads = || std::thread::sleep(std::time::Duration::from_millis(600));
     host.step(&[INITIALIZE], 1);
     host.step(&[INITIALIZED, LIST], 1);
     host.step(&[CALL_3, CALL_4], 2);
+    reads();
     host.step(&[CALL_5], 1);
+    reads();
     host.step(&[CALL_6], 1);
     host.step(&[JUNK], 1);
 }

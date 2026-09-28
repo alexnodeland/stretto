@@ -139,6 +139,7 @@ Shadow mode and promotion ([results](promotion-2026-09-25.md)) are the deploymen
   - Claude Code runs a turn's calls as the model streams them. So a call can reach the proxy after an earlier call of the same turn has returned, and the proxy counts it as a new turn.
   - `stretto promote` counted those later calls as the lookups being used, and the lookups spared nothing.
   - Scoring a lookup only against calls the agent could not already have asked for is [issue #40](https://github.com/alexnodeland/stretto/issues/40).
+  - *Since 2026-09-28* ([LLM turns from what the proxy sees](turns-2026-09-28.md)), `promote` scores as the proxy serves, and stretto infers such calls as the same LLM turn. Scored so, promotion keeps no Slack site for either agent, so the promoted flow would have made none of the 8 repeated lookups.
 
 This test cost 39.0 GLM credits (26.2 for the training sessions, 12.7 for the promoted arm).
 
