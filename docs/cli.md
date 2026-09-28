@@ -616,7 +616,7 @@ Usage: stretto import-answers [OPTIONS]
 Print the configuration that runs an MCP server behind `stretto-proxy` in an MCP host, recording its sessions, and the steps from there to a served flow: for Claude Code a `claude mcp add` command, for the other hosts their JSON. The configuration goes to stdout and the steps to stderr. Nothing is written without --write.
 
 ```text
-Usage: stretto init [OPTIONS] --host <HOST> -- <SERVER_COMMAND>...
+Usage: stretto init [OPTIONS] --host <HOST> [-- <SERVER_COMMAND>...]
 ```
 
 **Options**
@@ -628,10 +628,12 @@ Usage: stretto init [OPTIONS] --host <HOST> -- <SERVER_COMMAND>...
 - `--record <DIR>`: Where the proxy records sessions (default: ~/.stretto/logs/NAME, or ~/.stretto/shadow/NAME with --shadow).
 - `--write <PATH>`: Write the host's configuration file here instead of printing it (for Claude Code, a project's .mcp.json). An existing file is left as it is, unless --force is given.
 - `--force`: With --write, replace an existing file, with any other servers in it.
+- `--upstream <URL>`: A Streamable HTTP server, such as `https://example.com/mcp`, in place of a server command: the proxy connects to it (`stretto-proxy --upstream`).
+- `--upstream-header <NAME=VAR>` (repeatable): With --upstream: send header NAME with the value of environment variable VAR, which the host gives the proxy in its `env` (`stretto-proxy --upstream-header`). The value is not written.
 
 **Arguments**
 
-- `<SERVER_COMMAND>...` (required): The MCP server's command and its arguments, after `--`.
+- `<SERVER_COMMAND>...` (not with `--upstream`): The MCP server's command and its arguments, after `--`.
 
 ### `stretto doctor`
 

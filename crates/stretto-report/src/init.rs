@@ -8,6 +8,7 @@
 //! writes, and [`next_steps`] the loop `docs/walkthrough.md` runs, from the
 //! step the configuration is at.
 
+use crate::flow::Decider;
 use anyhow::{bail, Context, Result};
 use serde_json::{json, Value};
 use std::io::Write;
@@ -61,7 +62,7 @@ impl Host {
 }
 
 /// A flow the proxy runs.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Served {
     /// The flow's file, as the host passes it (the proxy expands `~`).
     pub path: String,
@@ -74,13 +75,22 @@ pub struct Served {
     pub reach: bool,
     /// Shadow mode: decide and log, but look nothing up.
     pub shadow: bool,
+    /// The decider to serve it with, in place of the one [`Served::decider`]
+    /// picks.
+    pub decide_with: Option<Decider>,
+    /// The threshold to serve it at (`--flow-threshold`), in place of the
+    /// proxy's.
+    pub threshold: Option<f64>,
 }
 
 impl Served {
-    /// The decider to pass the proxy: none for a flow with an arbiter, which
-    /// the proxy serves by default, else `reach` where the flow holds its
-    /// counts and `habit` where it does not.
+    /// The decider to pass the proxy: the one asked for, else none for a
+    /// flow with an arbiter, which the proxy serves by default, else `reach`
+    /// where the flow holds its counts and `habit` where it does not.
     pub fn decider(&self) -> Option<&'static str> {
+        if let Some(decider) = self.decide_with {
+            return Some(decider.name());
+        }
         match (self.arbiter, self.reach) {
             (true, _) => None,
             (false, true) => Some("reach"),
@@ -89,8 +99,20 @@ impl Served {
     }
 }
 
+/// A Streamable HTTP server behind the proxy (`stretto-proxy --upstream`),
+/// in place of a command.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Upstream {
+    /// The server's MCP endpoint, such as `https://example.com/mcp`.
+    pub url: String,
+    /// Each header to send, `(NAME, VAR)`: the header, and the environment
+    /// variable the proxy reads its value from (`--upstream-header NAME=VAR`).
+    /// Values never appear in the configuration.
+    pub headers: Vec<(String, String)>,
+}
+
 /// A server behind the proxy, as `init` sets it up.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Setup {
     /// The host's name for the server, which is also the sessions' and the
     /// flow's domain.
@@ -101,8 +123,10 @@ pub struct Setup {
     pub flow: Option<Served>,
     /// The proxy's command: `stretto-proxy`, or its path.
     pub proxy: String,
-    /// The server's command and its arguments.
+    /// The server's command and its arguments; empty for an [`Upstream`].
     pub server: Vec<String>,
+    /// A Streamable HTTP server, in place of a command.
+    pub upstream: Option<Upstream>,
 }
 
 impl Setup {
@@ -127,13 +151,32 @@ impl Setup {
             if let Some(decider) = flow.decider() {
                 args.extend(["--flow-decider".into(), decider.into()]);
             }
+            if let Some(threshold) = flow.threshold {
+                args.extend(["--flow-threshold".into(), threshold.to_string()]);
+            }
             if flow.shadow {
                 args.push("--flow-shadow".into());
             }
         }
-        args.push("--".into());
-        args.extend(self.server.iter().cloned());
+        args.extend(self.target());
         args
+    }
+
+    /// The server, as the proxy's last arguments: `--upstream` and its
+    /// headers, or `--` and the command.
+    fn target(&self) -> Vec<String> {
+        match &self.upstream {
+            Some(upstream) => {
+                let mut args = vec!["--upstream".to_string(), upstream.url.clone()];
+                for (name, var) in &upstream.headers {
+                    args.extend(["--upstream-header".to_string(), format!("{name}={var}")]);
+                }
+                args
+            }
+            None => std::iter::once("--".to_string())
+                .chain(self.server.iter().cloned())
+                .collect(),
+        }
     }
 }
 
@@ -258,7 +301,7 @@ pub fn expand_home(path: &str, home: Option<&Path>) -> PathBuf {
 /// server, up to the options that differ.
 pub fn next_steps(setup: &Setup, init: &str) -> String {
     let d = &setup.domain;
-    let server: Vec<String> = setup.server.iter().map(|w| shell_quote(w)).collect();
+    let server: Vec<String> = setup.target().iter().map(|w| shell_quote(w)).collect();
     let server = server.join(" ");
     let (flow, promoted) = (
         format!("~/.stretto/{d}.flow.json"),
@@ -283,7 +326,7 @@ pub fn next_steps(setup: &Setup, init: &str) -> String {
             steps.push(format!(
                 "Run it in shadow: it decides and logs, but looks nothing up. Replace the \
                  configuration above with what this prints:\n\
-                 {init} --flow {flow} --shadow -- {server}"
+                 {init} --flow {flow} --shadow {server}"
             ));
             let shadow = Setup::default_record(d, true);
             // `stretto learn` writes a flow with the counts `reach` reads.
@@ -374,7 +417,7 @@ fn promote_step(
 fn serve_step(init: &str, promoted: &str, server: &str) -> String {
     format!(
         "Serve it: after each of the agent's calls, the flow's lookups ride in the same result. \
-         Replace the configuration with what this prints:\n{init} --flow {promoted} -- {server}"
+         Replace the configuration with what this prints:\n{init} --flow {promoted} {server}"
     )
 }
 
@@ -397,6 +440,7 @@ mod tests {
             ]
             .map(String::from)
             .to_vec(),
+            upstream: None,
         }
     }
 
@@ -424,6 +468,8 @@ mod tests {
             arbiter: false,
             reach: true,
             shadow: true,
+            decide_with: None,
+            threshold: None,
         }));
         assert_eq!(
             shadow.args()[..9],
@@ -445,6 +491,8 @@ mod tests {
             arbiter: false,
             reach: false,
             shadow: false,
+            decide_with: None,
+            threshold: None,
         }));
         assert_eq!(
             older.args()[4..8],
@@ -456,6 +504,8 @@ mod tests {
             arbiter: true,
             reach: false,
             shadow: false,
+            decide_with: None,
+            threshold: None,
         }));
         assert!(!arbiter.args().contains(&"--flow-decider".to_string()));
         assert!(!arbiter.args().contains(&"--flow-shadow".to_string()));
@@ -538,6 +588,8 @@ mod tests {
                 arbiter: true,
                 reach: false,
                 shadow: true,
+                decide_with: None,
+                threshold: None,
             })),
             INIT,
         );
@@ -553,6 +605,8 @@ mod tests {
             arbiter: false,
             reach: true,
             shadow: true,
+            decide_with: None,
+            threshold: None,
         }));
         custom.record = "/srv/shadow".to_string();
         let custom = next_steps(&custom, INIT);
@@ -568,6 +622,8 @@ mod tests {
                 arbiter: false,
                 reach: false,
                 shadow: false,
+                decide_with: None,
+                threshold: None,
             })),
             INIT,
         );
@@ -576,6 +632,55 @@ mod tests {
             "{served}"
         );
         assert!(!served.contains("promote --flow"), "{served}");
+    }
+
+    #[test]
+    fn an_http_server_is_an_upstream_with_headers_by_variable() {
+        let mut s = setup(Some(Served {
+            path: "~/.stretto/notes.flow.json".to_string(),
+            arbiter: true,
+            reach: true,
+            shadow: false,
+            decide_with: Some(Decider::Habit),
+            threshold: Some(0.5),
+        }));
+        s.server.clear();
+        s.upstream = Some(Upstream {
+            url: "https://example.com/mcp".to_string(),
+            headers: vec![("Authorization".to_string(), "NOTES_AUTH".to_string())],
+        });
+        assert_eq!(
+            s.args()[4..],
+            [
+                "--flow",
+                "~/.stretto/notes.flow.json",
+                "--flow-decider",
+                "habit",
+                "--flow-threshold",
+                "0.5",
+                "--upstream",
+                "https://example.com/mcp",
+                "--upstream-header",
+                "Authorization=NOTES_AUTH"
+            ]
+        );
+        assert!(!s.args().contains(&"--".to_string()));
+        let steps = next_steps(&s, INIT);
+        assert!(
+            steps.contains(
+                "stretto flow-diff ~/.stretto/notes.flow.json ~/.stretto/notes-new.flow.json"
+            ),
+            "{steps}"
+        );
+        s.flow = None;
+        let steps = next_steps(&s, INIT);
+        assert!(
+            steps.contains(
+                "--flow ~/.stretto/notes.flow.json --shadow --upstream https://example.com/mcp \
+                 --upstream-header Authorization=NOTES_AUTH"
+            ),
+            "{steps}"
+        );
     }
 
     #[test]
