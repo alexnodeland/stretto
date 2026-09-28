@@ -1566,3 +1566,77 @@ async fn events_say_what_changed_and_carry_jobs() {
     );
     assert!(seen.contains("\"kind\":\"doctor\""), "{seen}");
 }
+
+// ---- a first run ----------------------------------------------------------------
+
+#[tokio::test]
+async fn an_empty_data_directory_answers_with_empty_lists() {
+    let dir = std::env::temp_dir().join(format!("stretto-console-it-empty-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut config = Config::new(&dir, Some(TOKEN.to_string()));
+    config.now_unix_ms = Some(fixture_now());
+    let state = State::start(config);
+    let c = Console {
+        app: stretto_console::router(state.clone()),
+        dir,
+        state,
+    };
+    let o = c.get("/api/overview").await.json();
+    assert_eq!(o["totals"]["sessions"], 0);
+    assert_eq!(o["domains"], json!([]));
+    assert_eq!(o["recent_sessions"], json!([]));
+    assert_eq!(o["activity"].as_array().unwrap().len(), 14);
+    assert!(o["health"].as_array().unwrap().iter().any(|h| h["message"]
+        .as_str()
+        .unwrap()
+        .contains("stretto is not beside the console")));
+    assert_eq!(
+        c.get("/api/sessions").await.json(),
+        json!({"total": 0, "items": []})
+    );
+    assert_eq!(c.get("/api/flows").await.json(), json!({"items": []}));
+    assert_eq!(
+        c.get("/api/servers").await.json(),
+        json!({"items": [], "discovered": []})
+    );
+    assert_eq!(c.get("/api/jobs").await.json(), json!({"items": []}));
+    let s = c.get("/api/settings").await.json();
+    assert_eq!(
+        (s["sessions"].as_u64(), s["disk"]["total_bytes"].as_u64()),
+        (Some(0), Some(0))
+    );
+    // The first server makes the registry.
+    let created = c
+        .call(Method::POST, "/api/servers", Some(shop_server("shop")))
+        .await;
+    assert_eq!(created.status, StatusCode::OK);
+    assert!(created.json()["issues"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|i| i.as_str().unwrap().starts_with("flow not found")));
+    assert!(c.dir.join("servers.json").is_file());
+    // A registry that does not parse is not written over.
+    std::fs::write(c.dir.join("servers.json"), "{").unwrap();
+    let broken = c.get("/api/servers").await;
+    assert_eq!(broken.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(broken.json()["error"]
+        .as_str()
+        .unwrap()
+        .contains("not a server registry"));
+    let refused = c
+        .call(Method::POST, "/api/servers", Some(shop_server("other")))
+        .await;
+    assert_eq!(refused.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert_eq!(
+        std::fs::read_to_string(c.dir.join("servers.json")).unwrap(),
+        "{"
+    );
+    let health = c.get("/api/overview").await.json()["health"].clone();
+    assert!(health
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|h| h["level"] == "error" && h["message"].as_str().unwrap().contains("servers.json")));
+}
