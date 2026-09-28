@@ -637,7 +637,7 @@ Usage: stretto init [OPTIONS] --host <HOST> [-- <SERVER_COMMAND>...]
 
 ### `stretto doctor`
 
-Check the installation: the versions of `stretto-proxy`, `stretto-procedure` and `stretto-mcp-demo` on PATH, whether ~/.stretto is writable, whether TYPESAFE_API_KEY is set (never its value), and the flows and recorded sessions in ~/.stretto. Exits with 1 when something needs fixing.
+Check the installation: the versions of `stretto-proxy`, `stretto-procedure` and `stretto-mcp-demo` on PATH, whether the data directory (~/.stretto) is writable, whether TYPESAFE_API_KEY is set (never its value), and the flows and recorded sessions in the data directory. Exits with 1 when something needs fixing.
 
 ```text
 Usage: stretto doctor [OPTIONS]
@@ -646,6 +646,7 @@ Usage: stretto doctor [OPTIONS]
 **Options**
 
 - `--network`: Also ask Jev one question (uncached) if a key is set, as `jev-check` does. Without it, doctor makes no network request.
+- `--data <DIR>`: The data directory to check, instead of ~/.stretto, as `stretto-console --data` serves it.
 
 ### `stretto completions`
 

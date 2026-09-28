@@ -174,17 +174,22 @@ async fn stdio(command: &[String]) -> Result<ProbeResult, String> {
     }
 }
 
+/// Write `message` to the server. A server that no longer reads (it
+/// exited, or closed its input) is not an error here: reading on, the probe
+/// reports the answer that does not come, with the exit status.
 async fn send(stdin: &mut ChildStdin, message: &Value) -> Result<(), String> {
     let mut line = message.to_string();
     line.push('\n');
-    stdin
-        .write_all(line.as_bytes())
-        .await
-        .map_err(|e| format!("writing to the server: {e}"))?;
-    stdin
-        .flush()
-        .await
-        .map_err(|e| format!("writing to the server: {e}"))
+    let written = async {
+        stdin.write_all(line.as_bytes()).await?;
+        stdin.flush().await
+    };
+    match written.await {
+        Err(e) if e.kind() != std::io::ErrorKind::BrokenPipe => {
+            Err(format!("writing to the server: {e}"))
+        }
+        _ => Ok(()),
+    }
 }
 
 /// The server's answer to request `id`. Lines that are not JSON are
@@ -467,6 +472,24 @@ mod tests {
                 "{e}"
             );
         }
+    }
+
+    /// A server that exits before the probe writes to it: the write finds
+    /// no reader, and the answer that does not come is what the probe
+    /// reports, with the exit status. (The test above raced the same way,
+    /// and failed when the server won.)
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_server_that_stopped_reading_is_not_a_write_error() {
+        let mut child = tokio::process::Command::new("sh")
+            .args(["-c", "exit 3"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let mut stdin = child.stdin.take().unwrap();
+        child.wait().await.unwrap();
+        assert_eq!(send(&mut stdin, &initialize(1)).await, Ok(()));
     }
 
     #[tokio::test]

@@ -583,7 +583,8 @@ pub fn plan(state: &State, id: &str, request: JobRequest) -> ApiResult<Plan> {
             kind: JobKind::Doctor,
             title: "Check the installation".into(),
             params: params(&JobRequest::Doctor),
-            args: vec!["doctor".into()],
+            // The data directory the console serves, not ~/.stretto.
+            args: vec!["doctor".into(), "--data".into(), root.display().to_string()],
             artifacts: Vec::new(),
         },
     })

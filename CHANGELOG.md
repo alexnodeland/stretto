@@ -9,6 +9,7 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 - `stretto-console`, a new crate and binary: the server of stretto's management plane, a local web app over the data directory (`~/.stretto`, `--data` or `$STRETTO_HOME`). Its JSON API lists and shows the recorded sessions call by call, with each of the flow's lookups and the decision that made it; the flows, as `stretto flow-show` reviews them and as `stretto flow-diff` compares them; a registry of the MCP servers stretto fronts (`servers.json`), with the host configuration `stretto init` prints for each and a live test of the connection; and jobs that run the `stretto` CLI (`learn`, `promote`, `audit`, `redact`, `doctor`). It requires a token (a cookie, or a bearer), a header on every change, and a loopback Host under `--no-auth`; `--read-only` changes nothing ([its README](crates/stretto-console/README.md)). The UI is `console/`; its API types are generated from the Rust.
 - The console's jobs can be cancelled (`POST /api/jobs/:id/cancel`): a queued job never runs, and a running one's `stretto` is killed. A job that ends so is `cancelled`.
 - `stretto init --upstream URL [--upstream-header NAME=VAR]` configures the proxy in front of a Streamable HTTP server.
+- `stretto doctor --data DIR` checks a data directory other than `~/.stretto`; the console's doctor job checks the one it serves.
 - `stretto_report::review::view` returns a flow's review as data, which `flow-show` renders from; `review::diff`'s result lists its changes by heading and serializes.
 
 ### Development
