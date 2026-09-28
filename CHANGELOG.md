@@ -4,6 +4,17 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ## Unreleased
 
+### Surprise
+
+- `stretto learn --surprise Q` gives a flow a surprise gate ([#17](https://github.com/alexnodeland/stretto/issues/17), RFC-001 §3.6). After each call where the flow decides, the gate scores the agent's next step by its surprise under the habit, −ln p. A step the flow does not offer counts as handing back, and the flow's own lookups (the proxy's `stretto-N` calls) are not the agent's. Once `--surprise-window` of the agent's steps in a row (default 5) average more than the gate's threshold, the flow hands back after every call for the rest of the session, with the reason `the session surprised the flow`.
+  - The threshold is the Q-quantile of the most surprising run of steps in each successful training session, each scored by a habit learned without its task (the arbiter's folds).
+  - The gate is stored in the flow (`surprise`), which makes it format 2. `flow-show` shows it, `flow-diff` lists a change to it, and `stretto stage` learns it again at its quantile, keeping one set by hand.
+  - `serve` and `flow-serve --surprise off|NATS`, and `stretto-proxy --flow-surprise off|NATS`, serve a flow without its gate or with another threshold.
+  - The audit and `stretto drift` score a flow's probabilities whatever its gate says.
+- **Replayed** on GLM-5's and Claude 3.7 Sonnet's τ²-bench test episodes, retail and airline, at five quantiles over four windows ([results](docs/results/surprise-2026-09-28.md)). At the quantiles a deployment would choose, 0.8 to 0.99, turns saved and detours moved by at most one in 62 of 64 runs. Where the gate tripped, the flow had already made 90% or more of its lookups. No setting paid in more than one of the four agent and domain pairs, so the default stays off. `scripts/surprise_study.py` replays it.
+- `pilot/tau2_mcp.py` and `trace_env.py` give the flow's lookups the proxy's ids (`stretto-1`, …), and `pilot/check_flow.py` and `run_episode.py` take `--flow-surprise`.
+- In the libraries: `stretto_report::surprise`; `Flow::surprise`, `with_surprise` and `with_surprise_override`.
+
 ### Staged flows
 
 - A deployment's flow comes in two parts: the committed flow the proxy serves, and a staged flow that learns as sessions arrive ([#35](https://github.com/alexnodeland/stretto/issues/35), [staged flows](website/guide/concepts/staged-flows.md)).

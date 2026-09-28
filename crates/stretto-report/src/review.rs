@@ -782,6 +782,14 @@ pub fn show(flow: &Flow, threshold: f64) -> String {
         );
         md.push_str(&crate::promote::markdown(p));
     }
+    if let Some(gate) = flow.surprise() {
+        let _ = writeln!(md, "\n## Surprise\n");
+        let _ = writeln!(
+            md,
+            "The flow {} (`learn --surprise`). A step's surprise is −ln of the habit's probability of what the agent did, after a call where the flow decides; a step it does not offer there counts as handing back, and the flow's own lookups are not the agent's steps. `--surprise off` serves the flow without the gate, and `--surprise NATS` with another threshold.",
+            gate.describe()
+        );
+    }
     let _ = writeln!(md, "\n## Bindings\n");
     let named_other = bound.values().any(|b| b.named_other.is_some());
     let described = bound.values().any(|b| b.described_read.is_some());
@@ -1431,6 +1439,19 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
     }
     sections.push(("Promotion".to_string(), promotion));
 
+    let gate = |f: &Flow| {
+        f.surprise().map_or_else(
+            || "none: it never hands back for surprise".to_string(),
+            |g| format!("it {}", g.describe()),
+        )
+    };
+    let surprise = if old.surprise() == new.surprise() {
+        Vec::new()
+    } else {
+        vec![format!("{} → {}", gate(old), gate(new))]
+    };
+    sections.push(("Surprise".to_string(), surprise));
+
     let (pa, pb) = (&old.provenance, &new.provenance);
     let mut provenance = Vec::new();
     if pa.sources != pb.sources {
@@ -1842,6 +1863,38 @@ mod tests {
             v["weighed"] = serde_json::json!([]);
         });
         assert!(!show(&plain, 0.3).contains("The predicates it asks"));
+    }
+
+    #[test]
+    fn a_surprise_gate_shows_and_diffs() {
+        let old = example("retail-5-sessions");
+        let gate = crate::surprise::SurpriseGate {
+            window: 5,
+            threshold: 2.5,
+            quantile: Some(0.95),
+        };
+        let new = old.clone().with_surprise(Some(gate));
+        assert!(!show(&old, 0.3).contains("## Surprise"));
+        let md = show(&new, 0.3);
+        assert!(
+            md.contains("## Surprise\n\nThe flow hands back for the rest of a session once 5 of the agent's steps in a row average more than 2.50 nats of surprise, the 0.95 quantile"),
+            "{md}"
+        );
+        let d = diff(&old, &new, 0.05, 0.3);
+        assert!(
+            d.markdown.contains("## Surprise\n\n- none: it never hands back for surprise → it hands back for the rest of a session once 5 of"),
+            "{}",
+            d.markdown
+        );
+        // A gate only hands back, and a flow without one acts as it did
+        // before it had one: neither change needs review.
+        assert!(d.needs_review.is_empty(), "{:?}", d.needs_review);
+        let back = diff(&new, &old, 0.05, 0.3);
+        assert!(back
+            .markdown
+            .contains("surprising windows → none: it never hands back for surprise"));
+        assert!(back.needs_review.is_empty(), "{:?}", back.needs_review);
+        assert!(diff(&new, &new, 0.05, 0.3).sections.is_empty());
     }
 
     #[test]

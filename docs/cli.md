@@ -148,6 +148,7 @@ Usage: stretto flow-serve [OPTIONS] --tau2 <DIR>
 - `--threshold <P>` (default `0.3`): Take the most likely lookup when its probability, times the chance that its arguments are the agent's, is at least this.
 - `--decider <DECIDER>` (one of `arbiter`, `habit`, `reach`; default `arbiter`): Where each option's probability comes from: `arbiter` (the habit, the System-One model and the predicates, combined: arm D0), `habit` (the habit alone, never asking the System-One model: a flow compiled from traces only, arm C at a high threshold), or `reach` (the habit's counts for whether the agent makes the lookup before its next write, now or later; a flow learned with them).
 - `--max-questions <N>` (default `300`): Stop asking the System-One model after this many live questions.
+- `--surprise <off|NATS>`: Hand back for the rest of a session once the agent's steps in a row surprise the flow by more than this many nats on average, over the flow's surprise gate's steps (5, if it has none); `off` serves the flow without the gate it stores (`learn --surprise`).
 - `--log <FILE>`: Append every query's answer here (JSON lines).
 - `--explore <EPSILON>`: Explore: with this probability, take a lookup other than the rule's choice, drawn by the decider's probabilities among those that bind. Each answer then carries its `policy`: every option and the chance that the flow took what it took, for `evaluate`. 0 explores nothing but still logs it.
 - `--explore-seed <N>` (default `0`): Seed for the exploration draws.
@@ -243,6 +244,11 @@ Usage: stretto learn [OPTIONS] --domain <NAME> --out <FILE>
 
 - `--half-life <SESSIONS>`: Forget old sessions: one this many sessions older than the newest counts half in the habit, one twice as old a quarter. Sessions are taken in the order they started (with `--results`, as listed). Relearn with it once `stretto drift` says the agent changed, to follow the change without discarding every earlier session.
 
+**Surprise**
+
+- `--surprise <Q>`: Hand back for the rest of a session that surprises the flow. The threshold is this quantile of the most surprising run of the agent's steps (`--surprise-window` in a row) in each successful session, scored by a habit learned without the session's task: at 0.95, about one session like them in twenty trips it. `serve --surprise off` serves the flow without it.
+- `--surprise-window <N>` (default `5`): The agent's steps in a row whose surprise `--surprise` averages.
+
 **Output**
 
 - `--out <FILE>` (required): Where to write the flow.
@@ -270,6 +276,7 @@ Usage: stretto serve [OPTIONS] --flow <FILE>
 - `--threshold <P>` (default `0.3`): Take the most likely lookup when its probability, times the chance that its arguments are the agent's, is at least this.
 - `--decider <DECIDER>` (one of `arbiter`, `habit`, `reach`; default `arbiter`): Where each option's probability comes from: `arbiter` (the habit, the System-One model and the predicates, combined: arm D0), `habit` (the habit alone, never asking the System-One model: a flow compiled from traces only, arm C at a high threshold), or `reach` (the habit's counts for whether the agent makes the lookup before its next write, now or later; a flow learned with them).
 - `--max-questions <N>` (default `300`): Stop asking the System-One model after this many live questions.
+- `--surprise <off|NATS>`: Hand back for the rest of a session once the agent's steps in a row surprise the flow by more than this many nats on average, over the flow's surprise gate's steps (5, if it has none); `off` serves the flow without the gate it stores (`learn --surprise`).
 - `--log <FILE>`: Append every query's answer here (JSON lines).
 - `--explore <EPSILON>`: Explore: with this probability, take a lookup other than the rule's choice, drawn by the decider's probabilities among those that bind. Each answer then carries its `policy`: every option and the chance that the flow took what it took, for `evaluate`. 0 explores nothing but still logs it.
 - `--explore-seed <N>` (default `0`): Seed for the exploration draws.
@@ -808,6 +815,7 @@ Usage: stretto-proxy [OPTIONS] [-- <SERVER_COMMAND>...]
 - `--flow <FILE>`: Run this flow (from `stretto compile` or `stretto learn`) after each of the agent's calls, and append its lookups to the result.
 - `--flow-threshold <P>` (default `0.3`): Take a lookup when the tool's probability times its arguments' agreement is at least this.
 - `--flow-decider <FLOW_DECIDER>` (one of `arbiter`, `habit`, `reach`): Where the tool's probability comes from: `arbiter` (the habit, the System-One model's answers and the predicates, combined), `habit` (the habit alone, which never asks a System-One model and needs no key), or `reach` (the habit's counts for whether the agent makes the lookup before its next write; no key either). Default: the flow's arbiter, else `reach`, else, for a flow learned before flows held reach's counts, `habit`.
+- `--flow-surprise <off|NATS>`: Hand back for the rest of a session once the agent's steps in a row surprise the flow by more than this many nats on average, over the flow's surprise gate's steps (5, if it has none); `off` serves the flow without the gate it stores (`stretto learn --surprise`).
 - `--flow-per-call <N>` (default `8`): Lookups appended to one result, at most.
 - `--flow-per-session <N>` (default `40`): Lookups per session, at most.
 - `--flow-questions <N>` (default `300`): Questions to the System-One model per session, at most.

@@ -1344,6 +1344,7 @@ fn featured(
                 thresholds: BTreeMap::new(),
                 contracts: BTreeMap::new(),
                 reach: Some(reach.clone()),
+                surprise: None,
             })
         }
         None => None,

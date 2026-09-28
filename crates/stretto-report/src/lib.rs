@@ -27,7 +27,9 @@
 //! included, for where no user speaks, run with no model. [`init`] writes an
 //! MCP host's configuration for the proxy, and [`doctor`] checks an
 //! installation. [`stage`] learns a deployment's next flow as sessions
-//! arrive, and keeps the committed one's versions.
+//! arrive, and keeps the committed one's versions. A flow with a
+//! [`surprise`] gate hands back for the rest of a session unlike those it
+//! learned from.
 
 pub mod arbitrate;
 pub mod audit;
@@ -50,6 +52,7 @@ pub mod review;
 pub mod search;
 pub mod shadow;
 pub mod stage;
+pub mod surprise;
 
 /// The integration tests' fixtures, which the unit tests share.
 #[cfg(test)]

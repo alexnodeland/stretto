@@ -21,7 +21,7 @@ A flow makes read-only calls on the agent's behalf, so a review asks what it may
 4. **`provenance`.** Check which sources the flow learned from, how many successful episodes (`habit_episodes`) and how many held-out decisions (`arbiter_cases`). The [cold start](results/cold-start-2026-09-24.md) found an arbiter fitted on a handful of decisions worse than none.
 5. **`map.ids`.** Holds values copied from training outputs, such as user ids. Treat a flow with features like the data it was learned from before sharing it. The rest of the file holds tool names, argument names, JSON paths, counts, the tools' documentation, and the questions' text.
 
-## The flow IR (`stretto_flow: 1`, or `2` with per-site thresholds)
+## The flow IR (`stretto_flow: 1` or `2`)
 
 | Field | What it holds |
 |---|---|
@@ -42,6 +42,7 @@ A flow makes read-only calls on the agent's behalf, so a review asks what it may
 | `thresholds` | Per-site thresholds, in place of the served one at those sites; absent unless a search set them |
 | `contracts` | Each tool's input contract when the flow was learned from recorded sessions: `{tool: "order_id:string!, reason:string"}`, each argument with its JSON type and `!` when required. `stretto-proxy` makes no lookup of a tool whose server lists another. Absent for a flow compiled from τ²-bench results |
 | `reach` | Over the habit's histories, how often each action came before the agent's next write, for `--decider reach`; absent in a flow learned before flows counted it |
+| `surprise` | When the flow hands back for the rest of a session that surprises it; absent unless `learn --surprise` set it |
 
 ### `provenance`
 
@@ -188,6 +189,18 @@ Check: a site newly promoted lets the flow act where it handed back, and `strett
 
 A map from site to threshold, written when a flow's settings come from `stretto search` ([RFC-001 §3.10](rfc/001-habit-compiler.md)), and absent otherwise. A flow with thresholds is format version 2 ([Versions](#versions)). At a listed site the flow takes a lookup when it clears that site's threshold instead of the one it is served with (`--threshold`). Above 1, the flow never acts at the site: it hands back with the reason `the site is switched off`, before asking anything.
 
+### `surprise`
+
+Written by `stretto learn --surprise Q` ([RFC-001 §3.6](rfc/001-habit-compiler.md)), and absent otherwise. A flow with a gate is format version 2 ([Versions](#versions)).
+
+- `window`: how many of the agent's steps in a row the gate averages, at least 1.
+- `threshold`: the mean surprise, in nats, above which the flow hands back.
+- `quantile`: the quantile of the training sessions it was learned at; absent when the threshold was set by hand.
+
+A step's surprise is −ln of the habit's probability of what the agent did next, after a call where the flow decides. A step the flow does not offer there, such as a reply or a write, counts as handing back. The flow's own lookups (the proxy's `stretto-N` calls) are not the agent's steps. Once any `window` of the agent's steps in a row average more than `threshold`, the flow hands back after every call for the rest of the session, with the reason `the session surprised the flow`. The gate reads the habit alone, whichever decider serves the flow, and asks no one.
+
+`learn` sets `threshold` from the training sessions. Each successful session is scored by a habit learned without its fold of tasks (the arbiter's five folds). The threshold is the `quantile` of each session's most surprising window, among sessions with at least `window` steps to score. `stretto stage` learns the gate again at its quantile, and keeps one set by hand. `--surprise off|NATS` in `serve` and `flow-serve`, and `--flow-surprise` in the proxy, serve a flow without its gate or with another threshold.
+
 ## A flow, walked through
 
 [The live cold start's flow](results/cold-start-2026-09-24-live.flow.json) was learned from five retail sessions GLM-5.3 ran through the proxy, and it served the three tasks of [the cold start's live run](results/cold-start-2026-09-24.md).
@@ -274,7 +287,7 @@ A flow's arbiter on its own, to serve with a habit learned elsewhere ([data/arbi
 
 Every reader checks the version field first and refuses any other version, with a message naming both. Before the first release, fields added, such as `every_read`, kept version 1. Since it:
 
-- **Flow version 2** adds `thresholds`, `bindings.named_other`, `bindings.described_read`, `bindings.site_sources`, `bindings.lists`, `bindings.bare` and `bindings.constants`, which a build that reads only version 1 would ignore and must not: it would give a record the customer did not ask about the chance of any other, bind from another source, make fewer lookups than the flow was learned to, make searches the agent never makes, or make lookups without the arguments the agent always passes. A flow is written as version 2 only when it has any of them, and this build reads versions 1 and 2.
+- **Flow version 2** adds `thresholds`, `surprise`, `bindings.named_other`, `bindings.described_read`, `bindings.site_sources`, `bindings.lists`, `bindings.bare` and `bindings.constants`, which a build that reads only version 1 would ignore and must not: it would give a record the customer did not ask about the chance of any other, bind from another source, make fewer lookups than the flow was learned to, make searches the agent never makes, make lookups without the arguments the agent always passes, or go on looking up in a session it was set to hand back in. A flow is written as version 2 only when it has any of them, and this build reads versions 1 and 2.
 
 The rules:
 

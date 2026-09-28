@@ -519,6 +519,10 @@ def main() -> None:
     )
     parser.add_argument("--flow", type=Path, help="a compiled flow (`stretto compile`), else compiled here")
     parser.add_argument(
+        "--flow-surprise", metavar="off|NATS",
+        help="serve the flow with this surprise threshold, or without its gate (`stretto serve --surprise`)",
+    )
+    parser.add_argument(
         "--explore", type=float, metavar="EPSILON",
         help="serve the flow exploring, and write each decision with its options' outcomes to decisions.jsonl",
     )
@@ -563,6 +567,7 @@ def main() -> None:
             flow_decider=args.flow_decider,
             flow_max_questions=50 * len(episodes),
             flow=args.flow,
+            flow_surprise=args.flow_surprise,
             explore=args.explore,
             explore_seed=args.explore_seed,
         ),
@@ -593,6 +598,7 @@ def main() -> None:
         "threshold": args.flow_threshold,
         "oracle": args.flow_oracle,
         "explore": args.explore,
+        "surprise": args.flow_surprise,
     }
     (out / "check.json").write_text(
         json.dumps({"flow": flow, "total": total, "episodes": rows}, indent=1)

@@ -10,6 +10,7 @@ use stretto_report::confirm::Second;
 use stretto_report::flow::{Arbiter, Decider};
 use stretto_report::init::Host;
 use stretto_report::shadow::{OracleKind, QuestionSet, ShadowConfig};
+use stretto_report::surprise::{self, Override};
 use stretto_report::{phase0, render};
 
 /// Compile an agent's recorded behavior into flows, serve them, and measure
@@ -81,6 +82,12 @@ enum Command {
             default_value_t = 300
         )]
         max_questions: usize,
+        /// Hand back for the rest of a session once the agent's steps in a
+        /// row surprise the flow by more than this many nats on average,
+        /// over the flow's surprise gate's steps (5, if it has none); `off`
+        /// serves the flow without the gate it stores (`learn --surprise`).
+        #[arg(help_heading = "Serving", value_name = "off|NATS", long)]
+        surprise: Option<Override>,
         /// Append every query's answer here (JSON lines).
         #[arg(help_heading = "Serving", value_name = "FILE", long)]
         log: Option<PathBuf>,
@@ -121,130 +128,7 @@ enum Command {
     /// With `--results`, the sessions are τ²-bench episodes on a checkout's
     /// training tasks instead, as if a deployment had recorded them; with
     /// `--otel`, the traces of an agent framework's OpenTelemetry spans.
-    Learn {
-        /// Directory of session logs (`*.jsonl`); needed unless `--results`
-        /// or `--otel` is given.
-        #[arg(
-            help_heading = "Inputs",
-            value_name = "DIR",
-            long,
-            required_unless_present_any = ["results", "otel"]
-        )]
-        sessions: Option<PathBuf>,
-        /// OpenTelemetry GenAI spans to learn from in place of `--sessions`:
-        /// an OTLP JSON export, as the Collector's file exporter writes it,
-        /// each trace one session. Spans do not say which tools only read,
-        /// so `--manifest` gives the kinds. Without the tools' arguments and
-        /// results, which the conventions capture only on request, the flow
-        /// learns which lookups follow which calls but binds no arguments.
-        #[arg(
-            help_heading = "Inputs",
-            value_name = "FILE",
-            long,
-            conflicts_with_all = ["sessions", "results"],
-            requires = "manifest"
-        )]
-        otel: Option<PathBuf>,
-        /// τ²-bench results to learn from in place of `--sessions`
-        /// (repeatable): their episodes on the training tasks of the
-        /// `--tau2` checkout's split, with their rewards. The tools come
-        /// from the checkout.
-        #[arg(help_heading = "Inputs", value_name = "FILE", 
-            long = "results",
-            requires = "tau2",
-            conflicts_with_all = ["sessions", "manifest", "rewards"]
-        )]
-        results: Vec<PathBuf>,
-        /// The τ²-bench checkout that `--results` belong to.
-        #[arg(help_heading = "Inputs", value_name = "DIR", long)]
-        tau2: Option<PathBuf>,
-        /// With `--results`, learn from this share of the training tasks:
-        /// the sample `compile --train-fraction` takes.
-        #[arg(
-            help_heading = "Inputs",
-            value_name = "SHARE",
-            long,
-            default_value_t = 1.0
-        )]
-        train_fraction: f64,
-        /// With `--results`, learn from these training tasks only
-        /// (comma-separated), in place of `--train-fraction`.
-        #[arg(
-            help_heading = "Inputs",
-            value_name = "IDS",
-            long,
-            value_delimiter = ',',
-            conflicts_with = "train_fraction"
-        )]
-        train_tasks: Vec<String>,
-        /// With `--results`, only these trials of each task (default: all).
-        #[arg(help_heading = "Inputs", value_name = "N", long, num_args = 1..)]
-        trials: Vec<u32>,
-        /// Ask no System-One model: every session trains the habit, and the
-        /// flow has no arbiter (serve it with `--flow-decider reach`, as
-        /// `stretto init` does).
-        #[arg(help_heading = "The arbiter", long)]
-        habit_only: bool,
-        /// Also pass, as the agent did, each argument it passed with one value
-        /// in every call of a lookup, at least five, and in at least half of
-        /// them, such as a page size, so that the flow's lookups are the
-        /// agent's own calls.
-        #[arg(help_heading = "The bindings", long)]
-        constants: bool,
-        /// Once the arbiter is fitted on the held-out sessions, learn the
-        /// habit, the sites and the bindings again from every session.
-        #[arg(help_heading = "The arbiter", long, conflicts_with = "habit_only")]
-        refit_habit: bool,
-        /// Forget old sessions: one this many sessions older than the newest
-        /// counts half in the habit, one twice as old a quarter. Sessions are
-        /// taken in the order they started (with `--results`, as listed).
-        /// Relearn with it once `stretto drift` says the agent changed, to
-        /// follow the change without discarding every earlier session.
-        #[arg(help_heading = "The habit", value_name = "SESSIONS", long, value_parser = positive)]
-        half_life: Option<f64>,
-        /// Ask no System-One model while learning: every session trains the
-        /// habit, and the flow serves this arbiter instead. It is an arbiter
-        /// file (`export-arbiter`; `data/arbiters/` ships two), or a flow
-        /// whose arbiter to take, such as one `compile` fitted on other
-        /// agents' traces.
-        #[arg(help_heading = "The arbiter", value_name = "FILE", long, conflicts_with_all = ["habit_only", "refit_habit"])]
-        arbiter_from: Option<PathBuf>,
-        /// Offer every read-only tool at every site (see `compile`). Only
-        /// the arbiter a flow fits here weighs such options.
-        #[arg(help_heading = "The arbiter", long, conflicts_with_all = ["habit_only", "arbiter_from"])]
-        manifest_options: bool,
-        /// The domain to name the flow for.
-        #[arg(help_heading = "Inputs", value_name = "NAME", long)]
-        domain: String,
-        /// A tool manifest (JSON, as stretto-trace writes it) instead of the
-        /// sessions' own `tools/list`.
-        #[arg(help_heading = "Inputs", value_name = "FILE", long)]
-        manifest: Option<PathBuf>,
-        /// Rewards by session id (JSON object): a log's session, or, for the
-        /// logs a host session left with several servers, the host session.
-        /// Sessions without one count as successful.
-        #[arg(help_heading = "Inputs", value_name = "FILE", long)]
-        rewards: Option<PathBuf>,
-        /// Who answers the held-out questions the arbiter is fitted on.
-        /// `--habit-only` and `--arbiter-from` ask nothing, so they take none
-        /// of the oracle's options.
-        #[arg(help_heading = "The arbiter", long, value_enum, default_value_t = OracleArg::Jev, conflicts_with_all = ["habit_only", "arbiter_from"])]
-        oracle: OracleArg,
-        /// Replay cache for oracle answers.
-        #[arg(help_heading = "The arbiter", value_name = "DIR", long, default_value = ".oracle-cache", conflicts_with_all = ["habit_only", "arbiter_from"])]
-        oracle_cache: PathBuf,
-        /// Refuse to start if uncached questions could cost more than this
-        /// many dollars.
-        #[arg(help_heading = "The arbiter", value_name = "DOLLARS", long, default_value_t = 1.0, conflicts_with_all = ["habit_only", "arbiter_from"])]
-        oracle_budget: f64,
-        /// Yes/no predicates to ask and weigh (see `data/predicates-v2.json`).
-        /// An arbiter from `--arbiter-from` brings its own.
-        #[arg(help_heading = "The arbiter", value_name = "FILE", long, conflicts_with_all = ["habit_only", "arbiter_from"])]
-        predicates: Option<PathBuf>,
-        /// Where to write the flow.
-        #[arg(help_heading = "Output", value_name = "FILE", long)]
-        out: PathBuf,
-    },
+    Learn(LearnArgs),
     /// Serve a compiled flow (from `compile`), as `flow-serve` does.
     Serve {
         /// The flow IR to load.
@@ -296,6 +180,12 @@ enum Command {
             default_value_t = 300
         )]
         max_questions: usize,
+        /// Hand back for the rest of a session once the agent's steps in a
+        /// row surprise the flow by more than this many nats on average,
+        /// over the flow's surprise gate's steps (5, if it has none); `off`
+        /// serves the flow without the gate it stores (`learn --surprise`).
+        #[arg(help_heading = "Serving", value_name = "off|NATS", long)]
+        surprise: Option<Override>,
         /// Append every query's answer here (JSON lines).
         #[arg(help_heading = "Serving", value_name = "FILE", long)]
         log: Option<PathBuf>,
@@ -1108,6 +998,145 @@ struct InitArgs {
 
 /// What Phase 0 reads and how it measures, shared by `phase0` and
 /// `flow-serve`.
+/// `learn`'s arguments, apart from the other commands' so that parsing the
+/// CLI builds them in a stack frame of their own.
+#[derive(clap::Args)]
+struct LearnArgs {
+    /// Directory of session logs (`*.jsonl`); needed unless `--results`
+    /// or `--otel` is given.
+    #[arg(
+        help_heading = "Inputs",
+        value_name = "DIR",
+        long,
+        required_unless_present_any = ["results", "otel"]
+    )]
+    sessions: Option<PathBuf>,
+    /// OpenTelemetry GenAI spans to learn from in place of `--sessions`:
+    /// an OTLP JSON export, as the Collector's file exporter writes it,
+    /// each trace one session. Spans do not say which tools only read,
+    /// so `--manifest` gives the kinds. Without the tools' arguments and
+    /// results, which the conventions capture only on request, the flow
+    /// learns which lookups follow which calls but binds no arguments.
+    #[arg(
+        help_heading = "Inputs",
+        value_name = "FILE",
+        long,
+        conflicts_with_all = ["sessions", "results"],
+        requires = "manifest"
+    )]
+    otel: Option<PathBuf>,
+    /// τ²-bench results to learn from in place of `--sessions`
+    /// (repeatable): their episodes on the training tasks of the
+    /// `--tau2` checkout's split, with their rewards. The tools come
+    /// from the checkout.
+    #[arg(help_heading = "Inputs", value_name = "FILE", 
+        long = "results",
+        requires = "tau2",
+        conflicts_with_all = ["sessions", "manifest", "rewards"]
+    )]
+    results: Vec<PathBuf>,
+    /// The τ²-bench checkout that `--results` belong to.
+    #[arg(help_heading = "Inputs", value_name = "DIR", long)]
+    tau2: Option<PathBuf>,
+    /// With `--results`, learn from this share of the training tasks:
+    /// the sample `compile --train-fraction` takes.
+    #[arg(
+        help_heading = "Inputs",
+        value_name = "SHARE",
+        long,
+        default_value_t = 1.0
+    )]
+    train_fraction: f64,
+    /// With `--results`, learn from these training tasks only
+    /// (comma-separated), in place of `--train-fraction`.
+    #[arg(
+        help_heading = "Inputs",
+        value_name = "IDS",
+        long,
+        value_delimiter = ',',
+        conflicts_with = "train_fraction"
+    )]
+    train_tasks: Vec<String>,
+    /// With `--results`, only these trials of each task (default: all).
+    #[arg(help_heading = "Inputs", value_name = "N", long, num_args = 1..)]
+    trials: Vec<u32>,
+    /// Ask no System-One model: every session trains the habit, and the
+    /// flow has no arbiter (serve it with `--flow-decider reach`, as
+    /// `stretto init` does).
+    #[arg(help_heading = "The arbiter", long)]
+    habit_only: bool,
+    /// Also pass, as the agent did, each argument it passed with one value
+    /// in every call of a lookup, at least five, and in at least half of
+    /// them, such as a page size, so that the flow's lookups are the
+    /// agent's own calls.
+    #[arg(help_heading = "The bindings", long)]
+    constants: bool,
+    /// Once the arbiter is fitted on the held-out sessions, learn the
+    /// habit, the sites and the bindings again from every session.
+    #[arg(help_heading = "The arbiter", long, conflicts_with = "habit_only")]
+    refit_habit: bool,
+    /// Forget old sessions: one this many sessions older than the newest
+    /// counts half in the habit, one twice as old a quarter. Sessions are
+    /// taken in the order they started (with `--results`, as listed).
+    /// Relearn with it once `stretto drift` says the agent changed, to
+    /// follow the change without discarding every earlier session.
+    #[arg(help_heading = "The habit", value_name = "SESSIONS", long, value_parser = positive)]
+    half_life: Option<f64>,
+    /// Hand back for the rest of a session that surprises the flow. The
+    /// threshold is this quantile of the most surprising run of the
+    /// agent's steps (`--surprise-window` in a row) in each successful
+    /// session, scored by a habit learned without the session's task:
+    /// at 0.95, about one session like them in twenty trips it. `serve
+    /// --surprise off` serves the flow without it.
+    #[arg(help_heading = "Surprise", value_name = "Q", long, value_parser = probability)]
+    surprise: Option<f64>,
+    /// The agent's steps in a row whose surprise `--surprise` averages.
+    #[arg(help_heading = "Surprise", value_name = "N", long, default_value_t = 5, requires = "surprise", value_parser = clap::value_parser!(u64).range(1..))]
+    surprise_window: u64,
+    /// Ask no System-One model while learning: every session trains the
+    /// habit, and the flow serves this arbiter instead. It is an arbiter
+    /// file (`export-arbiter`; `data/arbiters/` ships two), or a flow
+    /// whose arbiter to take, such as one `compile` fitted on other
+    /// agents' traces.
+    #[arg(help_heading = "The arbiter", value_name = "FILE", long, conflicts_with_all = ["habit_only", "refit_habit"])]
+    arbiter_from: Option<PathBuf>,
+    /// Offer every read-only tool at every site (see `compile`). Only
+    /// the arbiter a flow fits here weighs such options.
+    #[arg(help_heading = "The arbiter", long, conflicts_with_all = ["habit_only", "arbiter_from"])]
+    manifest_options: bool,
+    /// The domain to name the flow for.
+    #[arg(help_heading = "Inputs", value_name = "NAME", long)]
+    domain: String,
+    /// A tool manifest (JSON, as stretto-trace writes it) instead of the
+    /// sessions' own `tools/list`.
+    #[arg(help_heading = "Inputs", value_name = "FILE", long)]
+    manifest: Option<PathBuf>,
+    /// Rewards by session id (JSON object): a log's session, or, for the
+    /// logs a host session left with several servers, the host session.
+    /// Sessions without one count as successful.
+    #[arg(help_heading = "Inputs", value_name = "FILE", long)]
+    rewards: Option<PathBuf>,
+    /// Who answers the held-out questions the arbiter is fitted on.
+    /// `--habit-only` and `--arbiter-from` ask nothing, so they take none
+    /// of the oracle's options.
+    #[arg(help_heading = "The arbiter", long, value_enum, default_value_t = OracleArg::Jev, conflicts_with_all = ["habit_only", "arbiter_from"])]
+    oracle: OracleArg,
+    /// Replay cache for oracle answers.
+    #[arg(help_heading = "The arbiter", value_name = "DIR", long, default_value = ".oracle-cache", conflicts_with_all = ["habit_only", "arbiter_from"])]
+    oracle_cache: PathBuf,
+    /// Refuse to start if uncached questions could cost more than this
+    /// many dollars.
+    #[arg(help_heading = "The arbiter", value_name = "DOLLARS", long, default_value_t = 1.0, conflicts_with_all = ["habit_only", "arbiter_from"])]
+    oracle_budget: f64,
+    /// Yes/no predicates to ask and weigh (see `data/predicates-v2.json`).
+    /// An arbiter from `--arbiter-from` brings its own.
+    #[arg(help_heading = "The arbiter", value_name = "FILE", long, conflicts_with_all = ["habit_only", "arbiter_from"])]
+    predicates: Option<PathBuf>,
+    /// Where to write the flow.
+    #[arg(help_heading = "Output", value_name = "FILE", long)]
+    out: PathBuf,
+}
+
 /// `stage`'s arguments, apart from the other commands' so that parsing the
 /// CLI builds them in a stack frame of their own.
 #[derive(clap::Args)]
@@ -1605,6 +1634,7 @@ fn run(cli: Cli, env: &mut Env) -> Result<i32> {
             threshold,
             decider,
             max_questions,
+            surprise,
             log,
             explore,
             explore_seed,
@@ -1614,7 +1644,7 @@ fn run(cli: Cli, env: &mut Env) -> Result<i32> {
                 anyhow::bail!("flow-serve serves one domain: pass --domain once");
             };
             let config = phase0_config(data)?;
-            let flow = compile(&config, domain)?;
+            let flow = compile(&config, domain)?.with_surprise_override(surprise);
             let oracle = config
                 .shadow
                 .as_ref()
@@ -1645,119 +1675,7 @@ fn run(cli: Cli, env: &mut Env) -> Result<i32> {
             );
             Ok(())
         }
-        Command::Learn {
-            sessions,
-            otel,
-            results,
-            tau2,
-            train_fraction,
-            train_tasks,
-            trials,
-            habit_only,
-            constants,
-            refit_habit,
-            half_life,
-            arbiter_from,
-            manifest_options,
-            domain,
-            manifest,
-            rewards,
-            oracle,
-            oracle_cache,
-            oracle_budget,
-            predicates,
-            out,
-        } => {
-            if !(train_fraction > 0.0 && train_fraction <= 1.0) {
-                anyhow::bail!("--train-fraction must be in (0, 1]");
-            }
-            let conventions = otel
-                .is_some()
-                .then(|| stretto_trace::otel::CONVENTIONS.to_string());
-            // Sessions or spans, which clap allows only without --results.
-            let recorded = results.is_empty();
-            if recorded && (train_fraction < 1.0 || !train_tasks.is_empty() || !trials.is_empty()) {
-                anyhow::bail!("--train-fraction, --train-tasks and --trials apply to --results");
-            }
-            let rewards = read_rewards(rewards)?;
-            let manifest = read_manifest(manifest)?;
-            let (mut episodes, manifest, contracts) = match (sessions, otel) {
-                (Some(sessions), _) => {
-                    let logs = sessions_in(&sessions)?;
-                    let manifest =
-                        manifest.unwrap_or_else(|| stretto_trace::mcp::manifest_of(&logs, &domain));
-                    let episodes = logs.iter().map(stretto_trace::mcp::episode).collect();
-                    (episodes, manifest, stretto_trace::mcp::contracts_of(&logs))
-                }
-                (None, Some(otel)) => {
-                    let manifest = manifest.context("--otel needs --manifest")?;
-                    (spans_in(&otel)?, manifest, BTreeMap::new())
-                }
-                (None, None) => {
-                    let tau2 = tau2.context("--results needs --tau2")?;
-                    let (episodes, manifest) = tau2_sessions(
-                        &tau2,
-                        &domain,
-                        &results,
-                        &train_tasks,
-                        train_fraction,
-                        &trials,
-                    )?;
-                    (episodes, manifest, BTreeMap::new())
-                }
-            };
-            if recorded {
-                for ep in &mut episodes {
-                    ep.domain = domain.clone();
-                    ep.reward = rewards.get(&ep.id).copied().unwrap_or(1.0);
-                }
-            }
-            let mut config = phase0::Config::new(PathBuf::new());
-            config.domains = vec![domain.clone()];
-            config.refit_habit = refit_habit;
-            config.constants = constants;
-            config.half_life = half_life;
-            let flow = if let Some(path) = arbiter_from {
-                let habit =
-                    phase0::compile_habit_flow_from_episodes(&config, &episodes, &manifest)?;
-                let text = std::fs::read_to_string(&path)
-                    .with_context(|| format!("reading {}", path.display()))?;
-                let is_arbiter = serde_json::from_str::<serde_json::Value>(&text)
-                    .with_context(|| format!("parsing {}", path.display()))?
-                    .get("stretto_arbiter")
-                    .is_some();
-                if is_arbiter {
-                    habit.with_arbiter(Arbiter::from_json(&text)?)
-                } else {
-                    habit.with_arbiter_of(stretto_report::flow::Flow::from_json(&text)?)?
-                }
-            } else if habit_only {
-                phase0::compile_habit_flow_from_episodes(&config, &episodes, &manifest)?
-            } else {
-                let mut sc = ShadowConfig::new(oracle_kind(oracle));
-                sc.cache_dir = oracle_cache;
-                sc.budget = oracle_budget;
-                sc.questions = QuestionSet::V2;
-                sc.manifest_options = manifest_options;
-                if let Some(path) = predicates {
-                    sc.predicates =
-                        serde_json::from_str::<PredicateFile>(&std::fs::read_to_string(&path)?)?
-                            .predicates;
-                }
-                let oracle = sc.build()?;
-                config.shadow = Some(sc);
-                phase0::compile_flow_from_episodes(&config, &episodes, &manifest, oracle.as_ref())?
-            };
-            let flow = flow.with_contracts(contracts).with_conventions(conventions);
-            flow.save(&out)?;
-            eprintln!(
-                "stretto: learned the {domain} flow from {} sessions ({} tools) and wrote {}",
-                episodes.len(),
-                manifest.tools.len(),
-                out.display()
-            );
-            Ok(())
-        }
+        Command::Learn(args) => learn(args),
         Command::Serve {
             flow,
             oracle,
@@ -1766,11 +1684,12 @@ fn run(cli: Cli, env: &mut Env) -> Result<i32> {
             threshold,
             decider,
             max_questions,
+            surprise,
             log,
             explore,
             explore_seed,
         } => {
-            let flow = stretto_report::flow::Flow::load(&flow)?;
+            let flow = stretto_report::flow::Flow::load(&flow)?.with_surprise_override(surprise);
             if decider == DeciderArg::Arbiter && !flow.has_arbiter() {
                 anyhow::bail!(
                     "this flow was learned without a System-One model: serve it with --decider {}",
@@ -2788,6 +2707,138 @@ fn host_path(path: &str) -> Result<String> {
         .to_string())
 }
 
+/// `stretto learn`.
+fn learn(args: LearnArgs) -> Result<()> {
+    let LearnArgs {
+        sessions,
+        otel,
+        results,
+        tau2,
+        train_fraction,
+        train_tasks,
+        trials,
+        habit_only,
+        constants,
+        refit_habit,
+        half_life,
+        surprise,
+        surprise_window,
+        arbiter_from,
+        manifest_options,
+        domain,
+        manifest,
+        rewards,
+        oracle,
+        oracle_cache,
+        oracle_budget,
+        predicates,
+        out,
+    } = args;
+    if !(train_fraction > 0.0 && train_fraction <= 1.0) {
+        anyhow::bail!("--train-fraction must be in (0, 1]");
+    }
+    let conventions = otel
+        .is_some()
+        .then(|| stretto_trace::otel::CONVENTIONS.to_string());
+    // Sessions or spans, which clap allows only without --results.
+    let recorded = results.is_empty();
+    if recorded && (train_fraction < 1.0 || !train_tasks.is_empty() || !trials.is_empty()) {
+        anyhow::bail!("--train-fraction, --train-tasks and --trials apply to --results");
+    }
+    let rewards = read_rewards(rewards)?;
+    let manifest = read_manifest(manifest)?;
+    let (mut episodes, manifest, contracts) = match (sessions, otel) {
+        (Some(sessions), _) => {
+            let logs = sessions_in(&sessions)?;
+            let manifest =
+                manifest.unwrap_or_else(|| stretto_trace::mcp::manifest_of(&logs, &domain));
+            let episodes = logs.iter().map(stretto_trace::mcp::episode).collect();
+            (episodes, manifest, stretto_trace::mcp::contracts_of(&logs))
+        }
+        (None, Some(otel)) => {
+            let manifest = manifest.context("--otel needs --manifest")?;
+            (spans_in(&otel)?, manifest, BTreeMap::new())
+        }
+        (None, None) => {
+            let tau2 = tau2.context("--results needs --tau2")?;
+            let (episodes, manifest) = tau2_sessions(
+                &tau2,
+                &domain,
+                &results,
+                &train_tasks,
+                train_fraction,
+                &trials,
+            )?;
+            (episodes, manifest, BTreeMap::new())
+        }
+    };
+    if recorded {
+        for ep in &mut episodes {
+            ep.domain = domain.clone();
+            ep.reward = rewards.get(&ep.id).copied().unwrap_or(1.0);
+        }
+    }
+    let mut config = phase0::Config::new(PathBuf::new());
+    config.domains = vec![domain.clone()];
+    config.refit_habit = refit_habit;
+    config.constants = constants;
+    config.half_life = half_life;
+    let flow = if let Some(path) = arbiter_from {
+        let habit = phase0::compile_habit_flow_from_episodes(&config, &episodes, &manifest)?;
+        let text = std::fs::read_to_string(&path)
+            .with_context(|| format!("reading {}", path.display()))?;
+        let is_arbiter = serde_json::from_str::<serde_json::Value>(&text)
+            .with_context(|| format!("parsing {}", path.display()))?
+            .get("stretto_arbiter")
+            .is_some();
+        if is_arbiter {
+            habit.with_arbiter(Arbiter::from_json(&text)?)
+        } else {
+            habit.with_arbiter_of(stretto_report::flow::Flow::from_json(&text)?)?
+        }
+    } else if habit_only {
+        phase0::compile_habit_flow_from_episodes(&config, &episodes, &manifest)?
+    } else {
+        let mut sc = ShadowConfig::new(oracle_kind(oracle));
+        sc.cache_dir = oracle_cache;
+        sc.budget = oracle_budget;
+        sc.questions = QuestionSet::V2;
+        sc.manifest_options = manifest_options;
+        if let Some(path) = predicates {
+            sc.predicates =
+                serde_json::from_str::<PredicateFile>(&std::fs::read_to_string(&path)?)?.predicates;
+        }
+        let oracle = sc.build()?;
+        config.shadow = Some(sc);
+        phase0::compile_flow_from_episodes(&config, &episodes, &manifest, oracle.as_ref())?
+    };
+    let gate = match surprise {
+        Some(q) => Some(stretto_report::surprise::learn(
+            &config,
+            &episodes,
+            &manifest,
+            q,
+            surprise_window as usize,
+        )?),
+        None => None,
+    };
+    if let Some(gate) = &gate {
+        eprintln!("stretto: the flow {}", gate.describe());
+    }
+    let flow = flow
+        .with_contracts(contracts)
+        .with_conventions(conventions)
+        .with_surprise(gate);
+    flow.save(&out)?;
+    eprintln!(
+        "stretto: learned the {domain} flow from {} sessions ({} tools) and wrote {}",
+        episodes.len(),
+        manifest.tools.len(),
+        out.display()
+    );
+    Ok(())
+}
+
 /// `stretto stage`: learn the staged flow beside the committed one, and
 /// report how the two compare.
 fn stage_flow(args: StageArgs, env: &mut Env) -> Result<()> {
@@ -2942,6 +2993,8 @@ fn stage_flow(args: StageArgs, env: &mut Env) -> Result<()> {
                 flow = flow
                     .with_promotion(c.promotion().cloned())
                     .with_thresholds(c.thresholds().clone());
+                let gate = surprise::again(c.surprise(), &config, &episodes, &manifest)?;
+                flow = flow.with_surprise(gate);
             }
             stage::write_atomic(&paths.staged, &serde_json::to_vec(&flow)?)?;
             flow
@@ -2965,6 +3018,9 @@ fn stage_flow(args: StageArgs, env: &mut Env) -> Result<()> {
             "its thresholds at {} sites",
             staged.thresholds().len()
         ));
+    }
+    if staged.surprise().is_some_and(|g| g.quantile.is_none()) {
+        carried.push("its surprise gate, set by hand".to_string());
     }
     let mut cmp = stage::compare(&state, window, committed.is_some());
     cmp.new = new;

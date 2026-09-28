@@ -117,6 +117,23 @@ fn each_flow_is_served_as_asked() {
         })
     );
     assert_eq!(fc.log, Some(log));
+    // With a surprise gate, or without the one the flow stores.
+    let gated = |over: &str| {
+        let args = [
+            "--flow",
+            &habit,
+            "--flow-decider",
+            "habit",
+            "--flow-surprise",
+            over,
+        ];
+        built(&args).unwrap().flow.unwrap().flow.surprise().copied()
+    };
+    assert_eq!(
+        gated("2.5").map(|g| (g.window, g.threshold)),
+        Some((5, 2.5))
+    );
+    assert_eq!(gated("off"), None);
 
     // Jev is asked for only when the oracle is Jev.
     assert_eq!(error(&["--flow", &arbiter]), "no Jev here");

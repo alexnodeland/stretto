@@ -159,10 +159,12 @@ class Episode:
             ))
         return out
 
-    def execute(self, name: str, arguments: dict) -> tuple[str, bool]:
-        """Run one call against the environment and record it."""
+    def execute(self, name: str, arguments: dict, call_id: str | None = None) -> tuple[str, bool]:
+        """Run one call against the environment and record it, with `call_id`
+        (the flow's lookups are `stretto-N`, as stretto-proxy numbers its
+        own), or a fresh id."""
         call = ToolCall(
-            id=f"call_{uuid.uuid4().hex[:12]}",
+            id=call_id or f"call_{uuid.uuid4().hex[:12]}",
             name=name,
             arguments=arguments,
             requestor="assistant",
@@ -233,7 +235,7 @@ class Episode:
                 break
             tool, args = answer["tool"], answer.get("arguments") or {}
             self.flow_lookups += 1
-            result, failed = self.execute(tool, args)
+            result, failed = self.execute(tool, args, f"stretto-{self.flow_lookups}")
             done.append((tool, args, result, failed))
         return done
 

@@ -1,5 +1,5 @@
 ---
-description: Review a flow before serving it with stretto flow-show, review every change with stretto flow-diff, audit a flow on sessions it never saw, and watch for drift with stretto drift.
+description: Review a flow before serving it with stretto flow-show, review every change with stretto flow-diff, audit a flow on sessions it never saw, watch for drift with stretto drift, and hand back when a session surprises the flow.
 ---
 
 # Audit and review
@@ -113,6 +113,21 @@ The proxy watches the server's side on its own. Once the server lists its tools,
 - the tool's input changed since the flow was learned.
 
 The flow log records why on the decision (`"withheld"`), and stderr says so once per tool.
+
+## Hand back when a session surprises the flow
+
+`drift` watches sessions go by. Within one session, a flow can hand back once the agent's steps stop looking like the sessions it learned from. Learn it with a surprise gate:
+
+```sh
+stretto learn --sessions ~/.stretto/logs/orders --domain orders --habit-only \
+  --surprise 0.95 --out orders.flow.json
+```
+
+After each call where the flow decides, the gate scores what the agent did next by its surprise: −ln of the habit's probability of that step. A reply, a write or a lookup the flow does not offer there counts as handing back, and the flow's own lookups are not the agent's steps. Once the agent's steps average more than the gate's threshold over five in a row (`--surprise-window`), the flow hands back after every call for the rest of the session. The flow log gives the reason `the session surprised the flow`.
+
+`--surprise 0.95` sets the threshold from the training sessions. Each one is scored by a habit learned without its task, and the threshold is the 0.95 quantile of their most surprising runs of steps, so about one session like them in twenty trips it. `flow-show` shows the gate, and `flow-diff` lists a change to it. `stretto stage` learns it again at the same quantile. The proxy serves a flow without its gate with `--flow-surprise off`, or with another threshold with `--flow-surprise NATS`; `serve` and `flow-serve` take `--surprise`.
+
+Replayed on two τ²-bench agents' test episodes, the gate rarely had anything left to stop. At the quantiles a deployment would choose, 0.8 to 0.99, turns saved and detours moved by at most one in 62 of 64 runs. Where it tripped, the flow had already made 90% or more of its lookups: they come early in a session, and the steps that surprise it come later. No setting paid in more than one of the four agent and domain pairs, so no flow has a gate unless `--surprise` gives it one ([results](../../../docs/results/surprise-2026-09-28.md)).
 
 ## Related
 
