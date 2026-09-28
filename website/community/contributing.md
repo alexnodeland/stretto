@@ -29,12 +29,12 @@ brand/             the brand kit, the explainer and the videos
 ## Build and test
 
 ```sh
-cargo fmt --all
-cargo clippy --all-targets -- -D warnings
-cargo test
+make help   # the everyday commands
+make fmt    # cargo fmt --all
+make ci     # the formatting check, clippy, the tests and doctests, and the API docs
 ```
 
-`cargo test` runs the unit tests, and Phase 0 on a miniature fixture checkout. CI runs the three, and then:
+`make test` runs the unit tests, and Phase 0 on a miniature fixture checkout. CI runs what `make ci` runs, checks that the workspace builds with Rust 1.88, the oldest it supports (`make msrv`), and measures line coverage, failing under a threshold (`make coverage`). Then it runs:
 
 - [the quick start's demo](/guide/quick-start#2-see-the-whole-loop-with-no-key), with no key and no network (`sh examples/quickstart/run.sh --bin target/debug`);
 - `install.sh` against a local release of stand-in binaries (`sh packaging/test-install.sh`), and shellcheck on the shell scripts;

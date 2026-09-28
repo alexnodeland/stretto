@@ -34,7 +34,8 @@ docs/
 ## Before committing
 
 ```bash
-cargo fmt --all
-cargo clippy --all-targets -- -D warnings
-cargo test
+make fmt   # cargo fmt --all
+make ci    # what CI's check job runs: the formatting check, clippy, the tests and doctests, and rustdoc
 ```
+
+`make help` lists the other targets, among them `make bless` after a change to a command or an option (it regenerates `docs/cli.md`).
