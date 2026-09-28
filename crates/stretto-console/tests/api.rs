@@ -1347,7 +1347,10 @@ async fn jobs_run_one_at_a_time_and_report_their_artifacts() {
     assert!(d["started_unix_ms"].as_u64() >= p["finished_unix_ms"].as_u64());
     // doctor exits 1 when something needs fixing, as stretto-proxy not on PATH.
     assert!(d["exit_code"] == 0 || d["exit_code"] == 1, "{d:#}");
-    assert!(d["output"].as_str().unwrap().contains("stretto"));
+    // It checks the directory the console serves (--data), not ~/.stretto:
+    // the fixtures' flow is there.
+    let out = d["output"].as_str().unwrap();
+    assert!(out.contains("shop.flow.json"), "{out}");
 
     let kinds: Vec<&str> = a["artifacts"]
         .as_array()

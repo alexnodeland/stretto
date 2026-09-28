@@ -859,15 +859,19 @@ enum Command {
     /// stdout and the steps to stderr. Nothing is written without --write.
     Init(InitArgs),
     /// Check the installation: the versions of `stretto-proxy`,
-    /// `stretto-procedure` and `stretto-mcp-demo` on PATH, whether
-    /// ~/.stretto is writable, whether TYPESAFE_API_KEY is set (never its
-    /// value), and the flows and recorded sessions in ~/.stretto. Exits
-    /// with 1 when something needs fixing.
+    /// `stretto-procedure` and `stretto-mcp-demo` on PATH, whether the data
+    /// directory (~/.stretto) is writable, whether TYPESAFE_API_KEY is set
+    /// (never its value), and the flows and recorded sessions in the data
+    /// directory. Exits with 1 when something needs fixing.
     Doctor {
         /// Also ask Jev one question (uncached) if a key is set, as
         /// `jev-check` does. Without it, doctor makes no network request.
         #[arg(long)]
         network: bool,
+        /// The data directory to check, instead of ~/.stretto, as
+        /// `stretto-console --data` serves it.
+        #[arg(long, value_name = "DIR")]
+        data: Option<PathBuf>,
     },
     /// Print the completion script for `stretto` in `bash`, `zsh`, `fish`,
     /// `powershell` or `elvish` to stdout. docs/install.md says where each
@@ -2171,7 +2175,7 @@ fn run() -> Result<()> {
             Ok(())
         }
         Command::Init(args) => init(args),
-        Command::Doctor { network } => doctor(network),
+        Command::Doctor { network, data } => doctor(network, data),
         Command::Completions { shell } => {
             // Generated whole first: clap_complete panics on a failed write.
             let mut script = Vec::new();
@@ -2331,8 +2335,9 @@ fn home_dir() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-/// `stretto doctor`: the report, then, with `network`, Jev's answer.
-fn doctor(network: bool) -> Result<()> {
+/// `stretto doctor`: the report on `data` (default: ~/.stretto), then, with
+/// `network`, Jev's answer.
+fn doctor(network: bool, data: Option<PathBuf>) -> Result<()> {
     use stretto_report::doctor::{self, Report};
     let version = env!("CARGO_PKG_VERSION");
     let exe = std::env::current_exe().ok();
@@ -2349,16 +2354,18 @@ fn doctor(network: bool) -> Result<()> {
         exe.as_deref().and_then(Path::parent),
     );
     let home = home_dir();
-    match &home {
-        Some(home) => doctor::check_dir(&mut report, &home.join(".stretto")),
-        None => report.problem("neither HOME nor USERPROFILE is set, so there is no ~/.stretto"),
+    let dir = data.or_else(|| home.as_ref().map(|h| h.join(".stretto")));
+    match &dir {
+        Some(dir) => doctor::check_dir(&mut report, dir),
+        None => report
+            .problem("neither HOME nor USERPROFILE is set, so there is no ~/.stretto: pass --data"),
     }
     // Whether the variables are set, never what they hold.
     let set = |var: &str| std::env::var_os(var).is_some_and(|v| !v.is_empty());
     let (key, key_file) = (set("TYPESAFE_API_KEY"), set("TYPESAFE_API_KEY_FILE"));
     doctor::check_key(&mut report, key, key_file);
-    if let Some(home) = &home {
-        doctor::check_files(&mut report, &home.join(".stretto"), home);
+    if let Some(dir) = &dir {
+        doctor::check_files(&mut report, dir, home.as_deref());
     }
     if network {
         if !(key || key_file) {
