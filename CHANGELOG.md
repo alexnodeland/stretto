@@ -13,6 +13,10 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
   - `stretto flow-rollback` restores an earlier version as a new one, and `stretto flow-log` lists them.
 - `stretto promote` no longer counts a served flow's lookups as the agent's. In a session a flow served, the proxy's lookups (`stretto-1`, `stretto-2`, …) are in it, and the agent had no reason to make them again. A lookup the proxy had made now counts as served, neither used nor a detour, and the share and its bound rest on the rest. A promotion records them per site (`served`). The proxy's lookups are no longer decision points of their own, either: they are the chain after the agent's call.
 - `stretto doctor` and the console leave committed flows' histories out of their flows.
+- **In the console** ([#36](https://github.com/alexnodeland/stretto/issues/36)), a flow's **Staged** tab shows the staged flow beside it. It has the comparison site by site, with the share's interval, what committing would change, and every version with the evidence it rested on. It commits the staged flow, with a note, and rolls back to any version.
+  - A `stage` job learns the staged flow. The flows list marks staged flows, and committed flows with staged changes waiting.
+  - The API: `GET /api/flows/:key/stage`, `POST /api/flows/:key/commit` and `POST /api/flows/:key/rollback`, and `stage` among the jobs. A flow's summary says its part in staged learning (`stage`).
+  - `stretto_report::stage::candidate` checks a commit before it writes. `stage::Refused` marks the commits and rollbacks that do not fit the files, which the console answers with 409.
 - In the libraries: `stretto_report::stage`, `promote::score_as_served`, `promote::Tally::served` and `detours`, `flow::SiteRecord::served`; `stretto_trace::mcp::is_flow_lookup`.
 
 ### Drift

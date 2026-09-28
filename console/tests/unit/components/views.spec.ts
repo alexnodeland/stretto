@@ -6,6 +6,11 @@ import ActivityChart from '@/components/ActivityChart.vue'
 import SitesTable from '@/components/flow/SitesTable.vue'
 import BindingsList from '@/components/flow/BindingsList.vue'
 import FlowToolsTable from '@/components/flow/FlowToolsTable.vue'
+import StageComparison from '@/components/flow/StageComparison.vue'
+import FlowVersions from '@/components/flow/FlowVersions.vue'
+import DiffLists from '@/components/flow/DiffLists.vue'
+import { comparison, counts, shopStage } from '../../../mock/fixtures/stage.ts'
+import { diffFlows } from '../../../mock/fixtures/flows.ts'
 import { previewSites } from '@/lib/flow'
 import { servedShopSession, shopSpec } from '../../../mock/fixtures/world.ts'
 import { buildFlows, detailAt } from '../../../mock/fixtures/flows.ts'
@@ -158,5 +163,86 @@ describe('the flow’s tables', () => {
     ])
     expect(rows[3]!.text()).toContain('never calls it')
     expect(rows[0]!.text()).toContain('may call it')
+  })
+})
+
+describe('a staged flow', () => {
+  const last = shopStage(1_790_000_000_000).last!
+
+  it('compares the two flows site by site, with the share’s interval and the difference', () => {
+    const w = mount(StageComparison, { props: { last } })
+    const orders = w.find('[data-testid="stage-site-get_order_details"]')
+    expect(orders.text()).toContain('3 lookups')
+    expect(orders.text()).toContain('1 lookup')
+    const total = w.find('[data-testid="stage-total"]')
+    expect(total.text()).toContain('Every site')
+    expect(total.text()).toContain('12 lookups')
+    expect(total.text()).toContain('9 used (75%')
+    expect(w.find('[data-testid="stage-delta"]').text()).toBe('+1 used, −2 detours')
+    expect(w.text()).toContain('as stretto promote counts it')
+    expect(w.text()).not.toContain('The proxy had already made')
+  })
+
+  it('says what the proxy had served, and what was left out', () => {
+    const site = { site: 'a', committed: counts(3, 3, 1, 2), staged: counts(3, 3, 1, 1) }
+    const w = mount(StageComparison, {
+      props: { last: { ...comparison(1, 4, 4, 4, [site]), unanswered: [1, 0] } },
+    })
+    expect(w.text()).toContain('already made 2 of the committed flow’s lookups and 1 of the staged')
+    expect(w.text()).toContain('1 decision of the committed flow’s')
+    expect(w.find('[data-testid="stage-delta"]').text()).toBe('+1 detour')
+  })
+
+  it('leaves the committed flow out when there was none', () => {
+    const w = mount(StageComparison, { props: { last: { ...last, committed: false } } })
+    expect(w.findAll('thead th')).toHaveLength(2)
+    expect(w.find('[data-testid="stage-delta"]').exists()).toBe(false)
+  })
+
+  it('lists the versions, the committed one first, and offers to roll back to the rest', async () => {
+    const version = (n: number, kind: 'found' | 'commit' | 'rollback', current: boolean) => ({
+      version: n,
+      kind,
+      unix_ms: 1_790_000_000_000 + n,
+      restored: kind === 'rollback' ? 1 : null,
+      note: kind === 'commit' ? 'reads the order first' : null,
+      changes: kind === 'commit' ? ['the habit learned from 6 → 11 successful sessions'] : [],
+      evidence: kind === 'commit' ? last : null,
+      current,
+    })
+    const versions = [
+      version(3, 'rollback', true),
+      version(2, 'commit', false),
+      version(1, 'found', false),
+    ]
+    const w = mount(FlowVersions, { props: { versions, readOnly: false } })
+    expect(w.find('[data-testid="version-3"]').text()).toContain('rolled back to version 1')
+    expect(w.find('[data-testid="version-3"]').text()).toContain('committed now')
+    expect(w.find('[data-testid="rollback-3"]').exists()).toBe(false)
+    const commit = w.find('[data-testid="version-2"]')
+    expect(commit.text()).toContain('reads the order first')
+    expect(commit.text()).toContain(
+      'On the last 5 sessions before it, the staged flow’s lookups: 11, 10 used, 1 detour; the committed flow’s: 12, 9 used, 3 detours.',
+    )
+    expect(commit.text()).toContain('1 change from the version before')
+    expect(w.find('[data-testid="version-1"]').text()).toContain('found in place')
+    await w.find('[data-testid="rollback-1"]').trigger('click')
+    expect(w.emitted('rollback')![0]).toEqual([versions[2]])
+    const empty = mount(FlowVersions, { props: { versions: [], readOnly: true } })
+    expect(empty.text()).toContain('No version has been committed')
+  })
+
+  it('lists what committing it would change', () => {
+    const [shop, staged] = ['shop', 'shop.staged'].map((k) =>
+      flows.find((f) => f.summary.key === k)!,
+    )
+    const diff = { from: 'shop', to: 'shop.staged', ...diffFlows(shop!, staged!) }
+    const w = mount(DiffLists, { props: { diff } })
+    expect(w.text()).toContain('Nothing needs review')
+    expect(w.text()).toContain('Every change: 3')
+    expect(w.text()).toContain('What the agent did next in training')
+    const back = { from: 'shop.staged', to: 'shop', ...diffFlows(staged!, shop!) }
+    const r = mount(DiffLists, { props: { diff: back } })
+    expect(r.find('[data-testid="diff-review"]').text()).toContain('now acts after')
   })
 })

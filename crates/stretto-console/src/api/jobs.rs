@@ -1,5 +1,6 @@
-//! Jobs: the `stretto` CLI's `learn`, `promote`, `audit`, `redact` and
-//! `doctor`, run one at a time as subprocesses ([`crate::jobs`]).
+//! Jobs: the `stretto` CLI's `learn`, `promote`, `audit`, `stage`,
+//! `redact` and `doctor`, run one at a time as subprocesses
+//! ([`crate::jobs`]).
 
 use super::{blocking, ApiError, ApiResult};
 use crate::data::registry::DeciderName;
@@ -24,6 +25,7 @@ pub enum JobKind {
     Learn,
     Promote,
     Audit,
+    Stage,
     Redact,
     Doctor,
 }
@@ -159,6 +161,31 @@ pub enum JobRequest {
         #[serde(default)]
         #[cfg_attr(feature = "ts", ts(optional = nullable))]
         decider: Option<DeciderName>,
+    },
+    /// `stretto stage`: learn the staged flow beside a committed one from
+    /// its sessions, scoring each new session with both flows first.
+    Stage {
+        /// The committed flow's key, or its staged flow's.
+        flow: String,
+        sessions: String,
+        /// Compare the flows on the last this many sessions both were scored
+        /// on (50).
+        #[serde(default)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
+        window: Option<usize>,
+        /// How both flows decide as they are scored; by default each as the
+        /// proxy serves it.
+        #[serde(default)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
+        decider: Option<DeciderName>,
+        /// Forget old sessions: one this many sessions older than the newest
+        /// counts half.
+        #[serde(default)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
+        half_life: Option<f64>,
+        #[serde(default)]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
+        constants: Option<bool>,
     },
     /// `stretto redact`: needs `STRETTO_REDACT_SALT` in the console's
     /// environment.
@@ -513,6 +540,89 @@ pub fn plan(state: &State, id: &str, request: JobRequest) -> ApiResult<Plan> {
                 artifacts: vec![
                     artifact(ArtifactKind::Report, &json),
                     artifact(ArtifactKind::Report, &md),
+                ],
+            }
+        }
+        JobRequest::Stage {
+            flow,
+            sessions,
+            window,
+            decider,
+            half_life,
+            constants,
+        } => {
+            let file = flow_of(&flow)?;
+            let paths = super::stage::paths_of(&file)?;
+            let domain = match &state.flow(&file).flow {
+                Ok(f) => f.domain().to_string(),
+                Err(e) => {
+                    return Err(ApiError::new(
+                        StatusCode::UNPROCESSABLE_ENTITY,
+                        format!("{} does not load: {e}", file.rel),
+                    ))
+                }
+            };
+            let from = dir("sessions", &sessions)?;
+            let window = window.unwrap_or(50);
+            if window == 0 {
+                return Err(ApiError::bad_request("window: at least 1 session"));
+            }
+            if let Some(h) = half_life.filter(|h| !(h.is_finite() && *h > 0.0)) {
+                return Err(ApiError::bad_request(format!(
+                    "half_life {h}: a number of sessions, more than 0"
+                )));
+            }
+            let constants = constants.unwrap_or(false);
+            let (json, md) = (report("stage.json"), report("stage.md"));
+            let mut args = vec![
+                "stage".into(),
+                "--flow".into(),
+                s(&paths.committed),
+                "--domain".into(),
+                domain,
+                "--sessions".into(),
+                s(&from),
+                "--oracle-cache".into(),
+                s(&root.join("oracle-cache")),
+                "--window".into(),
+                window.to_string(),
+                "--out".into(),
+                s(&md),
+                "--json".into(),
+                s(&json),
+            ];
+            if let Some(d) = decider {
+                args.extend(["--decider".into(), d.decider().name().into()]);
+            }
+            if let Some(h) = half_life {
+                args.extend(["--half-life".into(), h.to_string()]);
+            }
+            if constants {
+                args.push("--constants".into());
+            }
+            let name = paths
+                .committed
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .trim_end_matches(".flow.json")
+                .to_string();
+            Plan {
+                kind: JobKind::Stage,
+                title: format!("Stage {name} from {}", shown(state, &from)),
+                params: params(&JobRequest::Stage {
+                    flow,
+                    sessions: shown(state, &from),
+                    window: Some(window),
+                    decider,
+                    half_life,
+                    constants: Some(constants),
+                }),
+                args,
+                artifacts: vec![
+                    artifact(ArtifactKind::Flow, &paths.staged),
+                    artifact(ArtifactKind::Report, &md),
+                    artifact(ArtifactKind::Report, &json),
                 ],
             }
         }

@@ -17,6 +17,7 @@ import type {
   ToolInfo,
 } from '../src/api/types.ts'
 import type { World } from './fixtures/world.ts'
+import { stageLink } from './fixtures/stage.ts'
 import { FS_TOOLS, SHOP_TOOLS } from './fixtures/tools.ts'
 import type { ToolDef } from './fixtures/recorder.ts'
 
@@ -49,12 +50,14 @@ export function flowByPath(world: World, path: string | null): FlowSummary | nul
 }
 
 export function flowSummaries(world: World): FlowSummary[] {
+  const exists = (key: string) => world.flows.some((f) => f.summary.key === key)
   return world.flows
     .map((f) => ({
       ...f.summary,
       served_by: world.servers
         .filter((s) => s.flow && relative(world, s.flow) === f.summary.path)
         .map((s) => s.name),
+      stage: stageLink(world.stages, f.summary.key, exists),
     }))
     .sort((a, b) => b.modified_unix_ms - a.modified_unix_ms)
 }

@@ -13,6 +13,7 @@ use super::overview::Overview;
 use super::servers::{HostConfig, ProbeResult, ServerList, ServerView};
 use super::sessions::{SessionDetail, SessionList};
 use super::settings::Settings;
+use super::stage::{CommitRequest, RollbackRequest, StageView, VersionView};
 use super::{ErrorBody, Ok};
 use crate::data::registry::{Registry, ServerInput};
 use crate::watch::Changed;
@@ -59,6 +60,10 @@ fn generate() -> BTreeMap<PathBuf, String> {
     c.visit::<FlowList>();
     c.visit::<FlowDetail>();
     c.visit::<FlowDiffView>();
+    c.visit::<StageView>();
+    c.visit::<VersionView>();
+    c.visit::<CommitRequest>();
+    c.visit::<RollbackRequest>();
     c.visit::<ServerList>();
     c.visit::<ServerView>();
     c.visit::<ServerInput>();

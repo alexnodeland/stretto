@@ -48,7 +48,9 @@ pub struct Changed {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Snapshot {
     sessions: BTreeMap<String, Vec<Stamp>>,
-    flows: BTreeMap<String, Stamp>,
+    /// Each flow's file, and its staged learner's state (`NAME.stage.json`),
+    /// which `stretto stage` rewrites even when it learns nothing new.
+    flows: BTreeMap<String, [Stamp; 2]>,
     servers: Stamp,
     jobs: BTreeMap<String, Stamp>,
 }
@@ -86,7 +88,12 @@ pub fn snapshot(root: &std::path::Path) -> Snapshot {
         flows: catalog
             .flows
             .iter()
-            .map(|f| (f.key.clone(), stamp(&f.path)))
+            .map(|f| {
+                let state = f
+                    .path
+                    .with_file_name(format!("{}.stage.json", f.name.trim_end_matches(".staged")));
+                (f.key.clone(), [stamp(&f.path), stamp(&state)])
+            })
             .collect(),
         servers: stamp(&root.join(data::registry::FILE)),
         jobs,
@@ -193,6 +200,18 @@ mod tests {
             [Changed {
                 what: ChangedWhat::Sessions,
                 keys: vec!["b".into()]
+            }]
+        );
+        // `stretto stage` ran: the committed flow and its staged flow changed.
+        std::fs::write(root.join("s.staged.flow.json"), "{}").unwrap();
+        let third = snapshot(&root);
+        std::fs::write(root.join("s.stage.json"), "{}").unwrap();
+        let c = changes(&third, &snapshot(&root));
+        assert_eq!(
+            c,
+            [Changed {
+                what: ChangedWhat::Flows,
+                keys: vec!["s".into(), "s.staged".into()]
             }]
         );
         std::fs::remove_dir_all(&root).unwrap();

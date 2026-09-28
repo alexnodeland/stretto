@@ -29,6 +29,7 @@ import {
   type World,
 } from './fixtures/world.ts'
 import { detailAt, diffFlows, type FlowRecord } from './fixtures/flows.ts'
+import { comparison, counts, stageView, type StageRecord } from './fixtures/stage.ts'
 import {
   discovered,
   doctorOutput,
@@ -175,6 +176,163 @@ function flowRecord(key: string): FlowRecord {
   return f
 }
 
+/** The deployment the flow `key` belongs to: its committed flow's path and its staged flow's. */
+function stagePaths(key: string): { committed: string; staged: string; name: string } {
+  const f = flowRecord(key)
+  const path = f.summary.path
+  const staged = /^(.*)\.staged\.flow\.json$/.exec(path)
+  const base = staged ? staged[1]! : path.replace(/\.flow\.json$/, '')
+  return {
+    committed: `${base}.flow.json`,
+    staged: `${base}.staged.flow.json`,
+    name: base.split('/').pop()!,
+  }
+}
+
+/** The stage record of the deployment the flow `key` belongs to, if it has one. */
+function stageOf(key: string): StageRecord | null {
+  const { committed, staged } = stagePaths(key)
+  const keyAt = (path: string) =>
+    state.world.flows.find((f) => f.summary.path === path)?.summary.key
+  return (
+    state.world.stages.find(
+      (s) =>
+        s.committed === keyAt(committed) ||
+        s.staged === keyAt(staged) ||
+        s.committed === key ||
+        s.staged === key,
+    ) ?? null
+  )
+}
+
+/** `GET /api/flows/:key/stage` */
+function stageFor(key: string) {
+  const paths = stagePaths(key)
+  const byPath = (path: string) => state.world.flows.find((f) => f.summary.path === path) ?? null
+  const committed = byPath(paths.committed)
+  const staged = byPath(paths.staged)
+  const summaries = flowSummaries(state.world)
+  const diff =
+    committed && staged
+      ? { from: committed.summary.key, to: staged.summary.key, ...diffFlows(committed, staged) }
+      : null
+  return stageView(
+    stageOf(key),
+    committed?.summary.key ?? null,
+    { ...paths, dataDir: state.world.dataDir },
+    staged ? (summaries.find((f) => f.key === staged.summary.key) ?? null) : null,
+    diff,
+  )
+}
+
+/** A flow as another file: the committed flow's key and path, the other flow's content. */
+function asFlow(from: FlowRecord, key: string, path: string, name: string): FlowRecord {
+  const now = Date.now()
+  return {
+    ...from,
+    summary: { ...from.summary, key, path, name, modified_unix_ms: now },
+  }
+}
+
+function note(text: unknown): string | null {
+  return typeof text === 'string' && text.trim() ? text.trim() : null
+}
+
+/** `POST /api/flows/:key/commit`, as `stretto flow-commit` does it. */
+function commitFlow(key: string, body: unknown) {
+  const paths = stagePaths(key)
+  const world = state.world
+  const staged = world.flows.find((f) => f.summary.path === paths.staged)
+  if (!staged)
+    throw new HttpError(
+      409,
+      `there is no staged flow at ${world.dataDir}/${paths.staged}: stretto stage learns it`,
+    )
+  let record = stageOf(key)
+  if (!record) {
+    record = { committed: '', staged: staged.summary.key, pending: true, last: null, versions: [] }
+    world.stages.push(record)
+  }
+  if (!record.pending)
+    throw new HttpError(409, 'the staged flow is the committed one: nothing to commit')
+  const now = Date.now()
+  const before = world.flows.find((f) => f.summary.path === paths.committed)
+  const version = (n: number, kind: 'found' | 'commit', flow: FlowRecord, extra = {}) => ({
+    view: {
+      version: n,
+      kind,
+      unix_ms: now,
+      restored: null,
+      note: null,
+      changes: [] as string[],
+      evidence: null,
+      current: false,
+      ...extra,
+    },
+    flow,
+  })
+  if (before && record.versions.length === 0) record.versions.push(version(1, 'found', before))
+  const changes = before ? diffFlows(before, staged).changes : []
+  const committed = asFlow(staged, before?.summary.key ?? paths.name, paths.committed, paths.name)
+  record.versions.push(
+    version(record.versions.length + 1, 'commit', committed, {
+      note: note((body as { note?: unknown } | null)?.note),
+      changes,
+      evidence: record.last,
+    }),
+  )
+  for (const v of record.versions) v.view.current = false
+  record.versions[record.versions.length - 1]!.view.current = true
+  record.committed = committed.summary.key
+  record.pending = false
+  world.flows = [committed, ...world.flows.filter((f) => f.summary.path !== paths.committed)]
+  changed('flows', [committed.summary.key, staged.summary.key])
+  return record.versions[record.versions.length - 1]!.view
+}
+
+/** `POST /api/flows/:key/rollback`, as `stretto flow-rollback` does it. */
+function rollbackFlow(key: string, body: unknown) {
+  const paths = stagePaths(key)
+  const world = state.world
+  const record = stageOf(key)
+  const versions = record?.versions ?? []
+  const latest = versions.length
+  const asked = (body as { to?: unknown } | null)?.to
+  const to = typeof asked === 'number' ? asked : latest - 1
+  if (!record || latest < 1 || (typeof asked !== 'number' && latest < 2))
+    throw new HttpError(
+      409,
+      `${world.dataDir}/${paths.committed} has no earlier version to roll back to`,
+    )
+  const target = versions.find((v) => v.view.version === to)
+  if (!target)
+    throw new HttpError(
+      409,
+      `there is no version ${to}: ${world.dataDir}/${paths.committed} has versions 1 to ${latest}`,
+    )
+  if (to === latest) throw new HttpError(409, `version ${to} is the committed flow already`)
+  const current = world.flows.find((f) => f.summary.path === paths.committed)!
+  const restored = asFlow(target.flow, current.summary.key, paths.committed, paths.name)
+  versions.push({
+    view: {
+      version: latest + 1,
+      kind: 'rollback',
+      unix_ms: Date.now(),
+      restored: to,
+      note: note((body as { note?: unknown } | null)?.note),
+      changes: diffFlows(current, target.flow).changes,
+      evidence: null,
+      current: true,
+    },
+    flow: restored,
+  })
+  for (const v of versions.slice(0, -1)) v.view.current = false
+  record.pending = true
+  world.flows = [restored, ...world.flows.filter((f) => f.summary.path !== paths.committed)]
+  changed('flows', [restored.summary.key])
+  return versions[versions.length - 1]!.view
+}
+
 function serverEntry(name: string): ServerEntry {
   const s = state.world.servers.find((x) => x.name === name)
   if (!s) throw new HttpError(404, `no server named ${name}`)
@@ -282,6 +440,8 @@ function jobTitle(job: JobRequest): string {
       return `Promote ${flowRecord(job.flow).summary.name} on ${job.sessions}`
     case 'audit':
       return `Audit ${flowRecord(job.flow).summary.name} on ${job.sessions}`
+    case 'stage':
+      return `Stage ${stagePaths(job.flow).name} from ${job.sessions}`
     case 'redact':
       return `Redact ${job.sessions}`
     default:
@@ -313,6 +473,14 @@ function withDefaults(req: JobRequest): JobRequest {
       }
     case 'audit':
       return { ...req, decider: req.decider ?? null }
+    case 'stage':
+      return {
+        ...req,
+        window: req.window ?? 50,
+        decider: req.decider ?? null,
+        half_life: req.half_life ?? null,
+        constants: req.constants ?? false,
+      }
     case 'redact':
       return { ...req, keep_shared: req.keep_shared ?? 3, hash_fields: req.hash_fields ?? [] }
     default:
@@ -322,7 +490,7 @@ function withDefaults(req: JobRequest): JobRequest {
 
 function startJob(input: unknown): Job {
   if (!input || typeof input !== 'object') throw new HttpError(400, 'the body must be a job')
-  const kinds: JobKind[] = ['learn', 'promote', 'audit', 'redact', 'doctor']
+  const kinds: JobKind[] = ['learn', 'promote', 'audit', 'stage', 'redact', 'doctor']
   if (!kinds.includes((input as JobRequest).kind))
     throw new HttpError(
       400,
@@ -336,6 +504,8 @@ function startJob(input: unknown): Job {
   const artifacts: Job['artifacts'] = []
   const reports: Record<string, string> = {}
   let newFlow: FlowRecord | null = null
+  /** For a stage job: what it learns, and the run it records. */
+  let staged: { flow: FlowRecord; last: StageRecord['last'] } | null = null
   const world = state.world
   if (req.kind === 'learn') {
     if (!/^[a-z0-9_-]+$/.test(req.domain ?? ''))
@@ -409,6 +579,46 @@ function startJob(input: unknown): Job {
       reports[`console/jobs/${id}.audit.md`] = report
     }
     void dir
+  } else if (req.kind === 'stage') {
+    const paths = stagePaths(req.flow)
+    const dir = checkPath(req.sessions, 'sessions')
+    if (!req.window || req.window < 1) throw new HttpError(400, 'window: at least 1 session')
+    if (req.half_life !== null && req.half_life !== undefined && !(req.half_life > 0))
+      throw new HttpError(400, `half_life ${req.half_life}: a number of sessions, more than 0`)
+    const sessions = world.sessions.filter((s) => s.summary.path.startsWith(dir + '/'))
+    const record = stageOf(req.flow)
+    const before = record?.last?.sessions ?? 0
+    const fresh = Math.max(0, sessions.length - before)
+    lines = [
+      `stretto: staged ${world.dataDir}/${paths.staged} from ${sessions.length} sessions, ${fresh} of them new`,
+    ]
+    const base = world.flows.find((f) => f.summary.path === paths.staged) ?? flowRecord(req.flow)
+    const now = Date.now()
+    const key = paths.staged.replace(/^.*\//, '').replace(/\.flow\.json$/, '')
+    const flow: FlowRecord = {
+      ...base,
+      summary: {
+        ...base.summary,
+        key,
+        path: paths.staged,
+        name: key,
+        habit_episodes: sessions.length,
+        compiled_unix_ms: now,
+        modified_unix_ms: now,
+        served_by: [],
+      },
+    }
+    const last = record?.last
+      ? { ...record.last, learned_unix_ms: now, sessions: sessions.length, new: fresh }
+      : comparison(now, sessions.length, fresh, 0, [])
+    if (!record?.last)
+      last.total = { site: '', committed: counts(0, 0, 0), staged: counts(0, 0, 0) }
+    staged = { flow, last }
+    artifacts.push({ kind: 'flow', path: paths.staged, key })
+    artifacts.push({ kind: 'report', path: `console/jobs/${id}.stage.md`, key: null })
+    artifacts.push({ kind: 'report', path: `console/jobs/${id}.stage.json`, key: null })
+    reports[`console/jobs/${id}.stage.md`] = `# Staged flow: ${world.dataDir}/${paths.committed}\n`
+    reports[`console/jobs/${id}.stage.json`] = `${JSON.stringify(last, null, 2)}\n`
   } else if (req.kind === 'redact') {
     if (!state.options.redactSalt)
       throw new HttpError(
@@ -470,6 +680,27 @@ function startJob(input: unknown): Job {
         world.flows.unshift(newFlow)
         changed('flows', [newFlow.summary.key])
       }
+      if (staged && req.kind === 'stage') {
+        const { flow, last } = staged
+        world.flows = [flow, ...world.flows.filter((f) => f.summary.path !== flow.summary.path)]
+        let record = stageOf(req.flow)
+        if (!record) {
+          const committed = world.flows.find(
+            (f) => f.summary.path === stagePaths(req.flow).committed,
+          )
+          record = {
+            committed: committed?.summary.key ?? '',
+            staged: flow.summary.key,
+            pending: true,
+            last: null,
+            versions: [],
+          }
+          world.stages.push(record)
+        }
+        record.last = last
+        record.pending = true
+        changed('flows', [flow.summary.key, record.committed].filter(Boolean))
+      }
       send('job', job)
       changed('jobs', [id])
     }, step)
@@ -519,6 +750,8 @@ function commandLine(req: JobRequest): string {
       return `promote --flow ${d}/${flowRecord(req.flow).summary.path} --sessions ${d}/${req.sessions} --threshold ${req.threshold} --min-used ${req.min_used} --min-lower ${req.min_lower} --min-tasks ${req.min_tasks} --out ${d}/${req.out ?? `${flowRecord(req.flow).summary.name}.promoted.flow.json`}`
     case 'audit':
       return `audit --flow ${d}/${flowRecord(req.flow).summary.path} --sessions ${d}/${req.sessions}${req.decider ? ` --decider ${req.decider}` : ''} --json ${d}/console/jobs/report.json`
+    case 'stage':
+      return `stage --flow ${d}/${stagePaths(req.flow).committed} --sessions ${d}/${req.sessions} --window ${req.window}${req.decider ? ` --decider ${req.decider}` : ''}${req.half_life ? ` --half-life ${req.half_life}` : ''}${req.constants ? ' --constants' : ''}`
     case 'redact':
       return `redact --sessions ${d}/${req.sessions} --out ${d}/${req.out} --keep-shared ${req.keep_shared}${req.hash_fields?.length ? ` --hash-field ${req.hash_fields.join(',')}` : ''}`
     default:
@@ -630,6 +863,13 @@ const routes: [string, RegExp, Handler][] = [
       detail.summary = flowSummaries(state.world).find((s) => s.key === f.summary.key) ?? f.summary
       return detail
     },
+  ],
+  ['GET', /^\/api\/flows\/([^/]+)\/stage$/, ({ params }) => stageFor(params[0]!)],
+  ['POST', /^\/api\/flows\/([^/]+)\/commit$/, ({ params, body }) => commitFlow(params[0]!, body)],
+  [
+    'POST',
+    /^\/api\/flows\/([^/]+)\/rollback$/,
+    ({ params, body }) => rollbackFlow(params[0]!, body),
   ],
   [
     'GET',

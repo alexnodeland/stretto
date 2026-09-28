@@ -32,6 +32,22 @@ pub struct PromotedCounts {
     pub sites_scored: usize,
 }
 
+/// A flow's part in staged learning (`stretto stage`): set on a staged
+/// flow, `NAME.staged.flow.json`, and on the committed flow `NAME.flow.json`
+/// beside one.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
+pub struct StageLink {
+    /// Whether this is the staged flow; else it is the committed one.
+    pub staged: bool,
+    /// The other of the two, by key: none for a staged flow before its
+    /// first commit.
+    pub other: Option<String>,
+    /// Whether the staged flow differs from the committed one, so that
+    /// there is something to commit.
+    pub pending: bool,
+}
+
 /// One flow file, in short. When the file does not load, `error` says why
 /// and the fields the flow would give are empty or zero.
 #[derive(Clone, Debug, Serialize)]
@@ -65,6 +81,8 @@ pub struct FlowSummary {
     pub promoted: Option<PromotedCounts>,
     /// The registry's servers whose flow is this file.
     pub served_by: Vec<String>,
+    /// Its part in staged learning, if it has one.
+    pub stage: Option<StageLink>,
     pub error: Option<String>,
 }
 
@@ -144,10 +162,14 @@ fn threshold(t: Option<f64>) -> ApiResult<f64> {
 pub async fn list(State(state): State<Shared>) -> ApiResult<Json<FlowList>> {
     blocking(&state, |state| {
         let registry = registry::load(state.data_dir()).unwrap_or_default();
-        let items = parse::all(state)
+        let all = parse::all(state);
+        let files: Vec<data::FlowFile> = all.iter().map(|(f, _)| f.clone()).collect();
+        let items = all
             .iter()
             .map(|(file, loaded)| {
-                parse::summary(file, loaded, parse::served_by(file, &registry, state))
+                let mut s = parse::summary(file, loaded, parse::served_by(file, &registry, state));
+                s.stage = parse::stage_link(file, &files);
+                s
             })
             .collect();
         Ok(Json(FlowList { items }))
@@ -167,8 +189,10 @@ pub async fn detail(
         let flow = loaded.flow.clone().map_err(|e| unreadable(&file.rel, &e))?;
         let registry = registry::load(state.data_dir()).unwrap_or_default();
         let view = review::view(&flow, threshold);
+        let mut summary = parse::summary(&file, &loaded, parse::served_by(&file, &registry, state));
+        summary.stage = parse::stage_link(&file, &data::catalog(state.data_dir()).flows);
         Ok(Json(FlowDetail {
-            summary: parse::summary(&file, &loaded, parse::served_by(&file, &registry, state)),
+            summary,
             threshold,
             tools: view.tools,
             sites: view.sites,

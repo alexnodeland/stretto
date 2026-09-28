@@ -1,6 +1,7 @@
 /**
  * The mock's flows: the shop flow the quickstart learns (from six sessions,
- * with no key), the same flow promoted on three shadow sessions, the live
+ * with no key), the flow `stretto stage` learned again beside it from those
+ * and five more, the same flow promoted on three shadow sessions, the live
  * cold start's retail flow from docs/results (with an arbiter), and a file
  * that does not load. Each FlowDetail is computed at the threshold asked
  * for, with review::show's rule.
@@ -451,6 +452,7 @@ function summary(
     lookups: 0,
     promoted: null,
     served_by: [],
+    stage: null,
     error: null,
     ...partial,
   }
@@ -473,6 +475,39 @@ export interface FlowTimes {
   promotedCompiled: number
   retailCopied: number
   scratchModified: number
+  /** When `stretto stage` last learned the shop's staged flow; a day after the promotion by default. */
+  stagedCompiled?: number
+}
+
+/** The shop's sites as `stretto stage` learned them again from eleven sessions. */
+function stagedShopSites(): SiteSpec[] {
+  const [find, order, user] = shopSites(false)
+  return [
+    {
+      ...find!,
+      steps: 11,
+      lookups: [{ ...find!.lookups[0]!, count: 11, binding_chance: chance(11, 11) }],
+    },
+    {
+      ...order!,
+      steps: 22,
+      lookups: [
+        {
+          ...order!.lookups[0]!,
+          count: 6,
+          share: 0.27,
+          weighed_share: 0.27,
+          binding_chance: chance(22, 22),
+        },
+      ],
+      hand_back_share: 0.73,
+    },
+    {
+      ...user!,
+      steps: 11,
+      lookups: [{ ...user!.lookups[0]!, count: 11, binding_chance: chance(22, 22) }],
+    },
+  ]
 }
 
 export function buildFlows(times: FlowTimes): FlowRecord[] {
@@ -503,6 +538,33 @@ export function buildFlows(times: FlowTimes): FlowRecord[] {
     warnings: [],
   }
   flows.push(shop)
+
+  const stagedCompiled = times.stagedCompiled ?? times.promotedCompiled + 86_400_000
+  const staged: FlowRecord = {
+    summary: summary({
+      key: 'shop.staged',
+      path: 'shop.staged.flow.json',
+      name: 'shop.staged',
+      domain: 'shop',
+      sources: ['claude-sonnet-5'],
+      habit_episodes: 11,
+      compiled_unix_ms: stagedCompiled,
+      modified_unix_ms: stagedCompiled,
+      size_bytes: 5012,
+      tools: counts(SHOP_TOOLS),
+      sites: 3,
+      lookups: 2,
+    }),
+    tools: SHOP_TOOLS,
+    sites: stagedShopSites(),
+    bindings: SHOP_BINDINGS,
+    promotion: null,
+    weighedBy: 'reach',
+    review: (t) => reviewAt(texts.shop_review, () => staged, t),
+    raw: '',
+    warnings: [],
+  }
+  flows.push(staged)
 
   const promotion: PromotionView = {
     bar: { threshold: 0.3, min_used: 0.7, min_lower: 0.5, min_tasks: 3 },
@@ -710,6 +772,40 @@ function diffLists(
       .map((l) => l.slice(2).replace(/`/g, ''))
       .filter((l) => !review.includes(l))
     return { review, changes, markdown: md }
+  }
+  if (pair === 'shop→shop.staged' || pair === 'shop.staged→shop') {
+    const [a, b] = pair === 'shop→shop.staged' ? ['6', '11'] : ['11', '6']
+    const [x, y] = pair === 'shop→shop.staged' ? ['50%', '27%'] : ['27%', '50%']
+    const acts = pair === 'shop→shop.staged'
+    const changes = [
+      acts
+        ? 'after `get_order_details`: hands back (was: looks up `get_order_details`)'
+        : 'after `get_order_details`: looks up `get_order_details` (was: hands back)',
+      `after \`get_order_details\`: \`get_order_details\` ${x} → ${y}`,
+      `the habit learned from ${a} → ${b} successful sessions or episodes`,
+    ]
+    const review = acts ? [] : ['the flow now acts after `get_order_details`, where it handed back']
+    const markdown = [
+      '# Flow diff: shop',
+      '',
+      review.length
+        ? '**Needs review:**\n\n' + review.map((r) => `- ${r}`).join('\n')
+        : 'Nothing needs review: the flow runs the same program, and calls no tool, makes no lookup, binds no argument and asks no model or question it did not before.',
+      '',
+      '## With reach, at 0.3',
+      '',
+      `- ${changes[0]}`,
+      '',
+      '## What the agent did next in training',
+      '',
+      `- ${changes[1]}`,
+      '',
+      '## Provenance',
+      '',
+      `- ${changes[2]}`,
+      '',
+    ].join('\n')
+    return { review, changes, markdown }
   }
   if (from.summary.key === to.summary.key) {
     return {

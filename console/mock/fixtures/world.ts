@@ -10,6 +10,7 @@ import type { Job, ServerEntry, SessionSummary, SessionDetail } from '../../src/
 import { Recorder, type SessionSpec, type ToolDef } from './recorder.ts'
 import { FS_TOOLS, SHOP_TOOLS, TICKET_TOOLS, shop } from './tools.ts'
 import { buildFlows, type FlowRecord } from './flows.ts'
+import { shopStage, type StageRecord } from './stage.ts'
 import texts from './data/texts.json' with { type: 'json' }
 
 export interface SessionRecord {
@@ -25,6 +26,8 @@ export interface World {
   dataDir: string
   sessions: SessionRecord[]
   flows: FlowRecord[]
+  /** Each deployment's staged learning (`stretto stage`), by its committed flow. */
+  stages: StageRecord[]
   servers: ServerEntry[]
   jobs: Job[]
   /** What the jobs' reports hold, by path. */
@@ -180,7 +183,7 @@ export function buildWorld(
 ): World {
   const dataDir = options.dataDir ?? '/home/me/.stretto'
   if (options.empty)
-    return { now, dataDir, sessions: [], flows: [], servers: [], jobs: [], reports: {} }
+    return { now, dataDir, sessions: [], flows: [], stages: [], servers: [], jobs: [], reports: {} }
 
   const rand = rng(20260928)
   const between = (a: number, b: number) => a + rand() * (b - a)
@@ -704,5 +707,7 @@ export function buildWorld(
     }),
   ]
 
-  return { now, dataDir, sessions, flows, servers, jobs, reports }
+  const staged = flows.find((f) => f.summary.key === 'shop.staged')!
+  const stages = [shopStage(staged.summary.compiled_unix_ms)]
+  return { now, dataDir, sessions, flows, stages, servers, jobs, reports }
 }
