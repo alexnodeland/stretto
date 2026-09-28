@@ -83,6 +83,8 @@ stretto init --host claude-code --flow orders.flow.json --shadow -- npx -y @your
 - [The guide](https://stretto.alexnodeland.com/guide/) walks through each step.
 - [The walkthrough](docs/walkthrough.md) runs the loop on the official MCP filesystem server.
 
+**When to relearn a flow.** A flow fits the agent, prompt, harness and tools it was learned from. `stretto drift --flow orders.flow.json --sessions ~/.stretto/logs/orders` scores the sessions a flow served, in the order they ran. It exits with 1 when the agent changed in the last few sessions, and names the sites that moved. Relearn then, with `learn --half-life` so that the sessions since the change count most. On the server's side, the proxy stops making a lookup on its own once the server no longer lists the tool, marks it as a write, or changes its input, and the flow log says why.
+
 ## The console
 
 `stretto-console` is a web app on your machine, over the files stretto writes to `~/.stretto`. In one place it shows:

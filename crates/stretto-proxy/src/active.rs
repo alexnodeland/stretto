@@ -423,8 +423,8 @@ pub(crate) struct Engine<'a, W: Write> {
     /// The server's tools' input contracts, once listed
     /// ([`stretto_trace::mcp::contract`]).
     server_contracts: HashMap<String, String>,
-    /// Tools the flow pins another contract for, reported once each.
-    changed: HashSet<String>,
+    /// Tools the flow may not call, reported once each ([`Engine::withheld`]).
+    left: HashSet<String>,
     jobs: Vec<Job>,
     /// Requests of the proxy's own it stopped waiting for.
     abandoned: HashSet<String>,
@@ -478,7 +478,7 @@ impl<'a, W: Write> Engine<'a, W> {
             abandoned: HashSet::new(),
             next_id: 0,
             server_contracts: HashMap::new(),
-            changed: HashSet::new(),
+            left: HashSet::new(),
             lookups: 0,
             questions: 0,
             context_read: 0,
@@ -795,6 +795,12 @@ impl<'a, W: Write> Engine<'a, W> {
             }
         };
         self.questions += usize::from(next.key.is_some());
+        // In shadow mode the decision is only logged, and the agent gets its
+        // result as the server sent it.
+        let withheld = match &next.proposal {
+            Proposal::Lookup { tool, .. } if !fc.shadow => self.withheld(fc, tool),
+            _ => None,
+        };
         let mut entry = serde_json::to_value(&next).unwrap_or(Value::Null);
         entry["after"] = job.client_id.clone();
         entry["address"] = json!(address);
@@ -802,11 +808,12 @@ impl<'a, W: Write> Engine<'a, W> {
         if fc.shadow {
             entry["shadow"] = json!(true);
         }
+        if let Some(why) = &withheld {
+            entry["withheld"] = json!(why);
+        }
         self.log_flow(&entry);
         match next.proposal {
-            // In shadow mode the decision is only logged, and the agent gets
-            // its result as the server sent it.
-            Proposal::Lookup { tool, arguments } if !fc.shadow && self.may_look_up(fc, &tool) => {
+            Proposal::Lookup { tool, arguments } if !fc.shadow && withheld.is_none() => {
                 let Some(choice) = site.options.iter().position(|o| *o == tool) else {
                     eprintln!(
                         "stretto-proxy: the flow chose {tool}, which its program does not offer at {}; handing back",
@@ -1073,35 +1080,56 @@ impl<'a, W: Write> Engine<'a, W> {
         }
     }
 
-    /// Whether the flow may call `tool`: the flow reads it as a lookup, the
-    /// operator granted it (`--flow-tools`, if given), and the server, once
-    /// it has listed its tools, has it, does not mark it as a write, and
-    /// lists the input contract the flow pinned for it, if any. A tool whose
-    /// arguments changed since the flow learned to bind them is left to the
-    /// agent.
-    fn may_look_up(&mut self, fc: &FlowConfig, tool: &str) -> bool {
-        let flow_reads = fc.flow.manifest().tools.get(tool) == Some(&ToolKind::Read);
-        let server_allows = match self.server_tools.get(tool) {
-            Some(Some(false)) => false,
-            Some(_) => true,
-            None => self.server_tools.is_empty(),
-        };
-        let changed = match (
-            fc.flow.contracts().get(tool),
-            self.server_contracts.get(tool),
-        ) {
-            (Some(pinned), Some(now)) => pinned != now,
-            _ => false,
-        };
-        if changed && self.changed.insert(tool.to_string()) {
-            eprintln!(
-                "stretto-proxy: {tool}'s input changed since the flow was learned ({} → {}); the flow no longer looks it up",
-                fc.flow.contracts()[tool],
-                self.server_contracts[tool]
-            );
+    /// Why the flow may not call `tool` now, if it may not. It may when it
+    /// reads the tool as a lookup, the operator granted it (`--flow-tools`,
+    /// if given), and the server, once it has listed its tools (support is
+    /// the current manifest, RFC-001 §3.7), still lists it, does not mark it
+    /// as a write, still marks it read-only if the flow learned it from this
+    /// server's listing, and lists the input contract the flow pinned for
+    /// it, if any: a tool whose arguments changed since the flow learned to
+    /// bind them is left to the agent. The first time, it says so on
+    /// stderr.
+    fn withheld(&mut self, fc: &FlowConfig, tool: &str) -> Option<String> {
+        let listed = self.server_tools.get(tool);
+        let pinned = fc.flow.contracts().get(tool);
+        let now = self.server_contracts.get(tool);
+        let reasons = [
+            (
+                fc.flow.manifest().tools.get(tool) != Some(&ToolKind::Read),
+                "the flow does not read it".to_string(),
+            ),
+            (
+                fc.tools.as_ref().is_some_and(|t| !t.contains(tool)),
+                "--flow-tools does not grant it".to_string(),
+            ),
+            (
+                listed.is_none() && !self.server_tools.is_empty(),
+                "the server no longer lists it".to_string(),
+            ),
+            (
+                listed == Some(&Some(false)),
+                "the server marks it as a write".to_string(),
+            ),
+            (
+                listed == Some(&None) && pinned.is_some(),
+                "the server no longer marks it read-only".to_string(),
+            ),
+            (
+                pinned.zip(now).is_some_and(|(p, n)| p != n),
+                format!(
+                    "its input changed since the flow was learned ({} → {})",
+                    pinned.map_or("", String::as_str),
+                    now.map_or("", String::as_str)
+                ),
+            ),
+        ];
+        let why = reasons
+            .into_iter()
+            .find_map(|(withheld, why)| withheld.then_some(why))?;
+        if self.left.insert(tool.to_string()) {
+            eprintln!("stretto-proxy: the flow leaves {tool} to the agent: {why}");
         }
-        let granted = fc.tools.as_ref().is_none_or(|t| t.contains(tool));
-        flow_reads && server_allows && !changed && granted
+        Some(why)
     }
 
     fn learn_tools(&mut self, response: &Value) {

@@ -1,5 +1,5 @@
 ---
-description: Review a flow before serving it with stretto flow-show, review every change with stretto flow-diff, and audit a flow on sessions it never saw.
+description: Review a flow before serving it with stretto flow-show, review every change with stretto flow-diff, audit a flow on sessions it never saw, and watch for drift with stretto drift.
 ---
 
 # Audit and review
@@ -80,10 +80,42 @@ A site with low agreement is not a site the flow gets wrong, but a site to look 
 
 The audit scores next-step predictions, the habit's by default for a flow with no arbiter. To score the lookups a flow would make, used or not before the agent's next write, which is what `reach` decides on, record in [shadow mode](./shadow-and-promotion) and read `stretto promote`'s report.
 
-**When to learn again:** a site whose agreement falls on new sessions, a request type the flow has not seen, or a server whose tools changed.
+**When to learn again:** a site whose agreement falls on new sessions, a request type the flow has not seen, or a server whose tools changed. `stretto drift` watches for the first of these as sessions arrive.
+
+## Watch for drift
+
+A flow is learned from one agent, one prompt, one harness and one set of tools, and any of them can change. `drift` scores the sessions a flow served, in the order they ran:
+
+```sh
+stretto drift --flow ~/.stretto/orders.flow.json --sessions ~/.stretto/logs/orders
+```
+
+For each session it takes three scores under the flow, as the audit does: the surprise of the agent's steps, how often the flow's likeliest option was not the agent's step, and the share of the agent's steps that follow a tool training never saw it call. Bayesian online change-point detection (Adams and MacKay, 2007) watches the three together. The alarm sounds when a change is more likely than not to have happened in the last ten sessions (`--window`), after at least ten sessions and with three sessions of the new behavior since. One odd session is not enough, nor two alike, which can be one task's retries.
+
+The report names the change and the sites where the flow's surprise rose most across it, lists the tools the agent called that training never saw, and scores every session. `drift` exits with 1 while the alarm sounds after the last session, 0 when it does not, and 2 on an error, so a scheduled job can act on it.
+
+When it sounds, learn again with the recent sessions weighed more:
+
+```sh
+stretto learn --sessions ~/.stretto/logs/orders --domain orders --habit-only \
+  --half-life 20 --out orders.flow.json
+```
+
+With `--half-life 20`, a session 20 sessions older than the newest counts half as much in the habit, and one 40 older a quarter. The flow follows the change without discarding everything it learned before. Review the new flow with `flow-diff` before serving it.
+
+On τ²-bench, `drift` found agents that fit a flow clearly worse than the one it was learned from, or called tools it never saw, a median of 8 to 10 sessions after they took over. It stayed quiet where they fit about as well, and on one agent's own sessions it sounded in 5 of 160 random orders ([results](../../../docs/results/drift-2026-09-28.md)).
+
+The proxy watches the server's side on its own. Once the server lists its tools, a tool the flow looks up is left to the agent in any of these cases:
+
+- the server no longer lists it;
+- it marks the tool as a write;
+- it no longer marks the tool read-only, for a flow learned from that server's listing;
+- the tool's input changed since the flow was learned.
+
+The flow log records why on the decision (`"withheld"`), and stderr says so once per tool.
 
 ## Related
 
 - [Reviewing flows](/reference/review), in full
-- [`stretto audit`](/reference/cli#stretto-audit), [`flow-show`](/reference/cli#stretto-flow-show) and [`flow-diff`](/reference/cli#stretto-flow-diff)
+- [`stretto audit`](/reference/cli#stretto-audit), [`drift`](/reference/cli#stretto-drift), [`flow-show`](/reference/cli#stretto-flow-show) and [`flow-diff`](/reference/cli#stretto-flow-diff)
 - [The console](../console): the review, the comparison and audits, in a browser

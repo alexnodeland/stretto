@@ -88,11 +88,12 @@ The [working paper](../../paper/stretto.md) puts them together, and [RFC-001](..
 | [Frontier models and a prompting baseline, live](frontier-2026-09-27.md) ([plan](frontier-2026-09-27-plan.md), [rows](frontier-2026-09-27.json), [episodes](frontier-2026-09-27-episodes.tar.xz)) | Pre-registered, three trials of the reach round's 28 tasks: the flow cut Claude Sonnet 5's LLM turns by 20.5% (16.5–24.4%) and Claude Haiku 4.5's by 22.4% (15.8–29.4%), with passes 65 → 69 and 58 → 62 of 84. Anthropic's sample prompt for parallel tool calls saved them 3.4% and 5.9%, and GLM-5.3 7.6%; with the prompt in both arms, the flow still saved 22.9% and 17.2%. The agent's cost at list prices fell 11.8% and 8.7% |
 | [Claims and their evidence](claims.md) | Each number in the paper's abstract and contributions, whether it rests on live runs, replays against τ²-bench's environment or the published record, and the script and page that recompute it |
 
-## 2026-09-28: what the proxy sees
+## 2026-09-28: what the proxy sees, and drift
 
 | Page | What it found |
 |---|---|
 | [LLM turns from what the proxy sees](turns-2026-09-28.md) ([rows](turns-2026-09-28.json)) | Claude Code runs a turn's calls as the model streams them, so a call can reach the proxy after an earlier call of its turn has returned. Against Claude Code's own record of 285 live sessions, inferring turns by overlap alone split 122 of the 210 turns of several calls. A turn's other calls came a median of 218 ms after its last response, and a new turn never sooner than 850 ms. A call within 500 ms now joins the turn, unless it passes a value the turn returned: that splits 20 and merges none. `promote` now scores as the proxy serves, leaving the calls still on their way to the agent. In AgentDojo's Slack it keeps no site, where it had kept lookups the agents had already asked for; in τ²-bench, 23 of 24 promotions keep the same sites |
+| [Drift alarms on τ²-bench agents](drift-2026-09-28.md) ([rows](drift-2026-09-28.json)) | `stretto drift` on four τ²-bench agents, alone and spliced two by two, in 20 random orders each. On an agent's own sessions it sounded in 5 of 160 runs; requiring three sessions of a new run, not two, cut that from 18. Where the new agent fit the flow 0.3 nats worse or more, it found the splice in 26 of 60 runs, a median of 7.5 sessions in; where it called tools the flow never saw, in 32 of 60. Where the fit moved less and no new tool appeared, in 2 of 360. A new harness, GLM-5.3 in Claude Code under a flow learned in τ²-bench's, moved the fit not at all. Relearned with a 100-episode half-life, a flow fit the new agent better than one learned from it alone |
 
 ## Recorded episodes
 

@@ -193,8 +193,8 @@ MCP servers (real tools)
   - When a tool disappears, every flow that uses it scores −∞ and is invalidated. The spike shows this.
   - When a tool appears, its prior comes from back-off, plus optionally Jev-judged similarity to the descriptions of existing tools.
 - **Non-stationarity.**
-  - Exponential forgetting on counts.
-  - Change-point alarms on surprise (Bayesian online change-point detection) for when the agent's model, its prompts or its tools change.
+  - Exponential forgetting on counts. *Built:* `stretto learn --half-life`.
+  - Change-point alarms on surprise (Bayesian online change-point detection) for when the agent's model, its prompts or its tools change. *Built:* `stretto drift`, on surprise, disagreement and the share of steps at sites the flow does not know ([results](../results/drift-2026-09-28.md)).
 - **Posteriors, not frequencies.** Every quantity used downstream is a posterior. Observing 3/3 and 300/300 gives the same frequency but should give very different arbitration decisions.
 
 ### 3.4 State abstraction by predicate refinement
@@ -1340,7 +1340,7 @@ What this changes:
   - Simulation is optimistic and counterfactual estimates are high-variance.
   - Guarantees in the style of ProbGuard's PAC bounds call for 530 to 10⁵ traces [3].
   - Canaries cost traffic.
-- **Drift.** A new LLM version, prompt or tool changes behavior. Compiled flows must be re-validated, not trusted forever. *Amended (§3.15):* `stretto audit` scores new sessions under a flow, per site and per episode. So does a new harness: the same model family called tools very differently in Claude Code and in τ²-bench's harness.
+- **Drift.** A new LLM version, prompt or tool changes behavior. Compiled flows must be re-validated, not trusted forever. *Amended (§3.15):* `stretto audit` scores new sessions under a flow, per site and per episode. So does a new harness: the same model family called tools very differently in Claude Code and in τ²-bench's harness. *Amended (2026-09-28):* `stretto drift` watches for a change session by session, and the proxy leaves a tool whose listing changed to the agent. On τ²-bench, the alarm found agents that fit a flow clearly worse, or called tools it never saw. It stayed quiet on one agent's own sessions in 155 of 160 random orders. The harness change moved a flow's next-step fit not at all: Claude Code calls in parallel, but in the same order ([results](../results/drift-2026-09-28.md)).
 - **Scope.** This is a new product surface beside a PPL that is still pre-1.0 and has a single maintainer.
 
 ---

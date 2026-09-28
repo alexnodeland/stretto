@@ -20,7 +20,9 @@
 //! [`render::markdown`] turns the result into a report, and
 //! [`phase0::compile_flow`] keeps what a live read-only [`flow`] needs.
 //! [`guards`] are typed policy checks a proxy runs before a write, and
-//! [`audit`] scores recorded episodes under a flow, as a fugue program.
+//! [`audit`] scores recorded episodes under a flow, as a fugue program;
+//! [`drift`] scores them session by session and sounds an alarm when the
+//! agent changes.
 //! A [`procedure`] is a whole workflow compiled once from traces, writes
 //! included, for where no user speaks, run with no model. [`init`] writes an
 //! MCP host's configuration for the proxy, and [`doctor`] checks an
@@ -31,6 +33,7 @@ pub mod audit;
 pub mod cli_doc;
 pub mod confirm;
 pub mod doctor;
+pub mod drift;
 pub mod evaluate;
 pub mod flow;
 pub mod guards;

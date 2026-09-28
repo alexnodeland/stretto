@@ -24,6 +24,10 @@
 //!   stored, so a cancelled order still reads as pending.
 //!
 //! `"delay_ms": n` makes these wait too, though their schemas do not list it.
+//! `--hide TOOL` leaves a tool out of the shop's `tools/list` (and rejects
+//! calls to it), and `--hint TOOL=false` or `--hint TOOL=none` lists it as a
+//! write or with no `readOnlyHint`: a server that changed since a flow was
+//! learned from it.
 //!
 //! It answers `initialize`, `ping`, `tools/list` and `tools/call`, rejects
 //! other requests with "method not found", ignores notifications, and exits
@@ -48,8 +52,19 @@ use std::time::Duration;
 /// Protocol version to offer when the client names none.
 const DEFAULT_PROTOCOL_VERSION: &str = "2025-06-18";
 
-const USAGE: &str =
-    "usage: stretto-mcp-demo [--world echo|retail] [--http ADDR [--require-auth VALUE]]";
+const USAGE: &str = "usage: stretto-mcp-demo [--world echo|retail] [--hide TOOL] \
+                     [--hint TOOL=false|none] [--http ADDR [--require-auth VALUE]]";
+
+/// How the shop lists its tools (`--hide`, `--hint`).
+#[derive(Default)]
+struct Listing {
+    /// Tools it leaves out.
+    hidden: Vec<String>,
+    /// Tools listed with this `readOnlyHint`, or none.
+    hints: Vec<(String, Option<bool>)>,
+}
+
+static LISTING: std::sync::OnceLock<Listing> = std::sync::OnceLock::new();
 
 /// Which tools the server has.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -74,6 +89,7 @@ fn main() -> io::Result<()> {
         _ => {}
     }
     let (mut world, mut http, mut auth) = (Some(World::Echo), None, None);
+    let mut listing = Listing::default();
     let mut rest = args.iter().map(String::as_str);
     while let Some(arg) = rest.next() {
         match (arg, rest.next()) {
@@ -81,6 +97,12 @@ fn main() -> io::Result<()> {
             ("--world", Some("retail")) => world = Some(World::Retail),
             ("--http", Some(addr)) => http = Some(addr.to_string()),
             ("--require-auth", Some(value)) => auth = Some(value.to_string()),
+            ("--hide", Some(tool)) => listing.hidden.push(tool.to_string()),
+            ("--hint", Some(spec)) => match spec.split_once('=') {
+                Some((tool, "false")) => listing.hints.push((tool.to_string(), Some(false))),
+                Some((tool, "none")) => listing.hints.push((tool.to_string(), None)),
+                _ => world = None,
+            },
             _ => world = None,
         }
     }
@@ -88,6 +110,7 @@ fn main() -> io::Result<()> {
         eprintln!("{USAGE}");
         std::process::exit(2);
     };
+    let _ = LISTING.set(listing);
     if let Some(addr) = http {
         return http::serve(&addr, world, auth);
     }
@@ -430,7 +453,20 @@ mod retail {
         })
     }
 
+    /// The shop's tools, as `--hide` and `--hint` list them.
     pub(super) fn tools() -> Vec<Value> {
+        let listing = super::LISTING.get_or_init(Default::default);
+        let mut tools = all();
+        tools.retain(|t| !listing.hidden.iter().any(|h| t["name"] == h.as_str()));
+        for (name, hint) in &listing.hints {
+            for t in tools.iter_mut().filter(|t| t["name"] == name.as_str()) {
+                t["annotations"] = hint.map_or(json!({}), |h| json!({"readOnlyHint": h}));
+            }
+        }
+        tools
+    }
+
+    fn all() -> Vec<Value> {
         vec![
             tool(
                 "find_user_id_by_email",

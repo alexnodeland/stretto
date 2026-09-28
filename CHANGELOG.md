@@ -4,6 +4,24 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ## Unreleased
 
+### Drift
+
+- `stretto drift --flow F --sessions DIR` watches for the agent changing under a flow (RFC-001 §3.3 and §4, [#18](https://github.com/alexnodeland/stretto/issues/18)).
+  - It scores the sessions in the order they ran, as `audit` does, for surprise, disagreement and the share of the agent's steps at sites the flow does not know.
+  - Bayesian online change-point detection (Adams and MacKay, 2007) watches the three together. It sounds an alarm when a change within the last `--window` sessions is more likely than `--threshold`, and names the sites whose surprise rose most across the change.
+  - The alarm needs at least ten sessions before a change, and three after it, so one odd session, or two retries of one task, is no change.
+  - It exits with 1 while the alarm sounds after the last session, and 2 on an error. It also takes τ²-bench results (`--results`, `--tau2`), which come before any sessions.
+  - On four τ²-bench agents, it found agents that fit a flow clearly worse, or called tools it never saw, a median of 7.5 to 10 sessions after they took over. On one agent's own sessions in random orders it sounded in 5 runs of 160 ([results](docs/results/drift-2026-09-28.md)).
+- `stretto learn --half-life N` forgets old sessions: one N sessions older than the newest counts half in the habit's counts, and in `reach`'s. Relearned with a 100-episode half-life, a retail flow fit a new agent better than one learned from the new agent's episodes alone ([results](docs/results/drift-2026-09-28.md)).
+- `stretto-proxy` records why it leaves a lookup the flow chose to the agent, in the flow log (`"withheld"`) and once per tool on stderr. The reasons are:
+  - the server no longer lists the tool;
+  - it marks the tool as a write;
+  - it no longer marks the tool read-only, for a flow learned from its listing (new);
+  - the tool's input changed;
+  - `--flow-tools` does not grant it.
+- `stretto-mcp-demo --world retail` takes `--hide TOOL` and `--hint TOOL=false|none`, to stand in for a server that changed since a flow was learned.
+- In the libraries: `stretto_report::drift`, `Flow::trained_on`, `phase0::Config::half_life`; in `stretto_model`, `EncodedEpisode::weight` and `with_weight`, `BackoffModel::observe_weighted` and `count`.
+
 ### LLM turns and promotion
 
 - stretto infers an agent's LLM turns from timing as well as overlap. A call the agent sends within 500 ms of its turn's last response, with nothing said in between, joins that turn, unless it passes a value that first appeared in what the turn returned. The proxy's own lookups join a turn only by overlap, as before. Claude Code runs a turn's calls as the model streams them, so a call could reach the proxy after an earlier call of its turn had returned, and stretto counted it as a new turn ([results](docs/results/turns-2026-09-28.md), [#40](https://github.com/alexnodeland/stretto/issues/40)).

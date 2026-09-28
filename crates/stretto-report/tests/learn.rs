@@ -901,3 +901,153 @@ fn a_flow_is_served_with_its_arbiter_else_reach_else_its_habit() {
     assert!(!older.has_reach());
     assert_eq!(older.served_decider(), Decider::Habit);
 }
+
+// Drift alarms (`stretto drift`) and forgetting (`learn --half-life`).
+
+/// `episode` as the session log stretto-proxy would write, named to sort
+/// `n`th: each call a second after the last answer, an LLM turn of its own.
+fn session_log(episode: &Episode, n: usize) -> (String, String) {
+    let session = format!("20260928T{n:06}.000Z-{}", episode.id);
+    let header = json!({"stretto_mcp_log": 2, "session": session,
+        "started_unix_ms": 1_790_000_000_000u64 + n as u64 * 60_000,
+        "server_command": ["shop"], "domain": null, "agent_model": null});
+    let mut lines = vec![header.to_string()];
+    let (mut t, mut ids) = (0, BTreeMap::new());
+    for e in &episode.events {
+        match e {
+            Event::Assistant { calls, .. } => {
+                for c in calls {
+                    t += 1000;
+                    let id = ids.len() + 1;
+                    ids.insert(c.id.clone(), id);
+                    lines.push(
+                        json!({"t_ms": t, "from": "client", "message": {"jsonrpc": "2.0",
+                            "id": id, "method": "tools/call",
+                            "params": {"name": c.name, "arguments": c.arguments}}})
+                        .to_string(),
+                    );
+                }
+            }
+            Event::ToolResult {
+                call_id,
+                content,
+                error,
+                ..
+            } => {
+                t += 10;
+                lines.push(
+                    json!({"t_ms": t, "from": "server", "message": {"jsonrpc": "2.0",
+                        "id": ids[call_id],
+                        "result": {"content": [{"type": "text", "text": content}], "isError": error}}})
+                    .to_string(),
+                );
+            }
+            _ => {}
+        }
+    }
+    (format!("{session}.jsonl"), lines.join("\n") + "\n")
+}
+
+fn write_sessions(dir: &std::path::Path, episodes: &[Episode]) {
+    std::fs::create_dir_all(dir).unwrap();
+    for (n, ep) in episodes.iter().enumerate() {
+        let (name, text) = session_log(ep, n);
+        std::fs::write(dir.join(name), text).unwrap();
+    }
+}
+
+#[test]
+fn drift_sounds_when_another_agent_takes_over_and_a_half_life_follows_it() {
+    let dir = std::env::temp_dir().join(format!("stretto-drift-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let flow = dir.join("shop.flow.json");
+    habit_flow(&(0..60).map(session).collect::<Vec<_>>(), &manifest())
+        .save(&flow)
+        .unwrap();
+    // Agent A, then agent B, who also reads the customer's rewards.
+    let a: Vec<Episode> = (100..130).map(session).collect();
+    let b: Vec<Episode> = (0..8).map(session_with_rewards).collect();
+    write_sessions(&dir.join("a"), &a);
+    write_sessions(&dir.join("b"), &b);
+    write_sessions(&dir.join("ab"), &[a, b].concat());
+    let stretto = env!("CARGO_BIN_EXE_stretto");
+    let drift = |flow: &std::path::Path, sessions: &str, extra: &[&str]| {
+        std::process::Command::new(stretto)
+            .arg("drift")
+            .arg("--flow")
+            .arg(flow)
+            .arg("--sessions")
+            .arg(dir.join(sessions))
+            .args(extra)
+            .output()
+            .unwrap()
+    };
+    // One agent throughout: no alarm.
+    let quiet = drift(&flow, "a", &[]);
+    assert_eq!(quiet.status.code(), Some(0), "{quiet:?}");
+    assert!(String::from_utf8_lossy(&quiet.stdout).contains("**No alarm now:**"));
+    // B takes over: the alarm sounds at the splice, and the report names
+    // B's new tool.
+    let json = dir.join("drift.json");
+    let out = dir.join("drift.md");
+    let loud = drift(
+        &flow,
+        "ab",
+        &[
+            "--json",
+            json.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+        ],
+    );
+    assert_eq!(loud.status.code(), Some(1), "{loud:?}");
+    let md = std::fs::read_to_string(&out).unwrap();
+    assert!(
+        md.contains("**Alarm: the agent changed at session 31"),
+        "{md}"
+    );
+    assert!(md.contains("| `get_rewards` | 31 "), "{md}");
+    let report: Value = serde_json::from_slice(&std::fs::read(&json).unwrap()).unwrap();
+    assert_eq!(report["alarms"][0]["change"], 30);
+    // What the flow cannot decide by, and settings the alarm cannot use.
+    let no_arbiter = drift(&flow, "a", &["--decider", "arbiter"]);
+    assert_eq!(no_arbiter.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&no_arbiter.stderr).contains("no arbiter"));
+    let mut old: Value = serde_json::from_slice(&std::fs::read(&flow).unwrap()).unwrap();
+    old.as_object_mut().unwrap().remove("reach");
+    let old_flow = dir.join("old.flow.json");
+    std::fs::write(&old_flow, old.to_string()).unwrap();
+    let no_reach = drift(&old_flow, "a", &["--decider", "reach"]);
+    assert!(String::from_utf8_lossy(&no_reach.stderr).contains("no counts"));
+    for bad in [["--window", "2"], ["--threshold", "0"], ["--hazard", "1.5"]] {
+        assert_eq!(drift(&flow, "a", &bad).status.code(), Some(2), "{bad:?}");
+    }
+    // Relearned with recent sessions weighed more, the flow fits B better.
+    let manifest_path = dir.join("manifest.json");
+    std::fs::write(&manifest_path, serde_json::to_vec(&manifest()).unwrap()).unwrap();
+    let learn = |extra: &[&str], out: &std::path::Path| {
+        std::process::Command::new(stretto)
+            .args(["learn", "--domain", "shop", "--habit-only", "--manifest"])
+            .arg(&manifest_path)
+            .arg("--sessions")
+            .arg(dir.join("ab"))
+            .args(extra)
+            .arg("--out")
+            .arg(out)
+            .output()
+            .unwrap()
+    };
+    let (all, recent) = (dir.join("all.flow.json"), dir.join("recent.flow.json"));
+    assert!(learn(&[], &all).status.success());
+    assert!(learn(&["--half-life", "4"], &recent).status.success());
+    let surprise = |flow: &std::path::Path| {
+        let json = dir.join("b.json");
+        drift(flow, "b", &["--json", json.to_str().unwrap()]);
+        let d: Value = serde_json::from_slice(&std::fs::read(&json).unwrap()).unwrap();
+        d["sessions"][0]["surprise"].as_f64().unwrap()
+    };
+    assert!(surprise(&recent) < surprise(&all));
+    assert_eq!(learn(&["--half-life", "0"], &recent).status.code(), Some(2));
+    std::fs::remove_dir_all(&dir).ok();
+}

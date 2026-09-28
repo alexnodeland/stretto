@@ -1136,18 +1136,37 @@ fn a_flow_leaves_a_tool_whose_input_changed_to_the_agent() {
     flow["contracts"] = json!({"get_user_details": "user_id:integer!"});
     let pinned = dir.join("pinned.flow.json");
     fs::write(&pinned, flow.to_string()).unwrap();
-    let mut host = Host::start(&[
+    // The server now lists it with a string: the flow no longer looks it up,
+    // the agent gets the server's result alone, and the flow log says why.
+    assert_eq!(
+        withheld(&dir, &pinned, &[]),
+        ["its input changed since the flow was learned (user_id:integer! → user_id:string!)"]
+    );
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+/// Serve `flow` on the demo shop, run with `server`'s options, through one
+/// user lookup, and return why the proxy withheld the flow's lookups. With
+/// a reason, the agent gets the server's result alone.
+fn withheld(dir: &Path, flow: &Path, server: &[&str]) -> Vec<String> {
+    let log = dir.join("withheld.flow.jsonl");
+    let _ = fs::remove_file(&log);
+    let mut args = vec![
         "--domain",
         "retail",
         "--flow",
-        pinned.to_str().unwrap(),
+        flow.to_str().unwrap(),
         "--oracle",
         "mock",
+        "--flow-log",
+        log.to_str().unwrap(),
         "--",
         DEMO,
         "--world",
         "retail",
-    ]);
+    ];
+    args.extend(server);
+    let mut host = Host::start(&args);
     host.send(
         json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
         "protocolVersion": "2025-06-18", "capabilities": {},
@@ -1157,15 +1176,52 @@ fn a_flow_leaves_a_tool_whose_input_changed_to_the_agent() {
     host.send(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
     host.send(json!({"jsonrpc": "2.0", "id": 2, "method": "tools/list"}));
     host.recv();
-    // The server now lists it with a string: the flow no longer looks it up,
-    // and the agent gets the server's result alone.
     let found = host.call(
         3,
         "find_user_id_by_email",
         json!({"email": "c7@example.com"}),
     );
-    assert_eq!(texts(&found), ["user_7"]);
-    drop(host);
+    assert_eq!(host.finish(), 0);
+    let reasons: Vec<String> = fs::read_to_string(&log)
+        .unwrap()
+        .lines()
+        .filter_map(|l| {
+            serde_json::from_str::<Value>(l).ok()?["withheld"]
+                .as_str()
+                .map(str::to_string)
+        })
+        .collect();
+    assert_eq!(texts(&found).len() == 1, !reasons.is_empty(), "{found}");
+    reasons
+}
+
+#[test]
+fn a_flow_leaves_a_tool_the_server_no_longer_lists_as_a_read_to_the_agent() {
+    let dir = std::env::temp_dir().join(format!("stretto-listing-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    // The flow learned `get_user_details` from this server's listing, where
+    // it was marked read-only.
+    let learned = learned_flow(&dir);
+    let mut flow: Value = serde_json::from_str(&fs::read_to_string(&learned).unwrap()).unwrap();
+    flow["contracts"] = json!({"get_user_details": "user_id:string!"});
+    let pinned = dir.join("pinned.flow.json");
+    fs::write(&pinned, flow.to_string()).unwrap();
+    assert_eq!(
+        withheld(&dir, &pinned, &["--hide", "get_user_details"]),
+        ["the server no longer lists it"]
+    );
+    assert_eq!(
+        withheld(&dir, &pinned, &["--hint", "get_user_details=false"]),
+        ["the server marks it as a write"]
+    );
+    assert_eq!(
+        withheld(&dir, &pinned, &["--hint", "get_user_details=none"]),
+        ["the server no longer marks it read-only"]
+    );
+    // A flow learned elsewhere pins no contract, so a server that marks
+    // nothing read-only is no change.
+    assert!(withheld(&dir, &learned, &["--hint", "get_user_details=none"]).is_empty());
     fs::remove_dir_all(&dir).unwrap();
 }
 
@@ -1277,4 +1333,49 @@ fn after_one_call_of_a_batch_the_flow_decides_at_its_site_and_leaves_the_rest_to
     let after_second = decisions.iter().find(|d| d["after"] == 6).unwrap();
     assert_eq!(after_second["site"], "get_order_details");
     fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn the_demo_shop_lists_its_tools_as_told() {
+    let mut demo = Command::new(DEMO)
+        .args(["--world", "retail", "--hide", "cancel_pending_order"])
+        .args([
+            "--hint",
+            "get_user_details=none",
+            "--hint",
+            "get_order_details=false",
+        ])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut stdin = demo.stdin.take().unwrap();
+    writeln!(
+        stdin,
+        "{}",
+        json!({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
+    )
+    .unwrap();
+    drop(stdin);
+    let out = demo.wait_with_output().unwrap();
+    let listed: Value = serde_json::from_slice(&out.stdout).unwrap();
+    let tools = listed["result"]["tools"].as_array().unwrap();
+    let names: Vec<&str> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
+    assert_eq!(
+        names,
+        [
+            "find_user_id_by_email",
+            "get_user_details",
+            "get_order_details"
+        ]
+    );
+    assert_eq!(tools[1]["annotations"], json!({}));
+    assert_eq!(tools[2]["annotations"]["readOnlyHint"], false);
+    // A hint it does not know is a usage error.
+    let out = Command::new(DEMO)
+        .args(["--world", "retail", "--hint", "get_user_details=maybe"])
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("[--hint TOOL=false|none]"));
 }
