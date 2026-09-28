@@ -17,10 +17,11 @@ The [`Makefile`](Makefile)'s Rust targets run the commands CI runs ([`.github/wo
 | Command | What it does |
 |---|---|
 | `make fmt`, `make check` | Formats the code; checks the formatting, as CI does |
-| `make lint` | Clippy on every target, with warnings as errors |
+| `make lint` | Clippy on every target, with warnings as errors, and on the console's `ts` feature |
 | `make test` | Unit, integration and doc tests |
+| `make types` | Rewrites the API's TypeScript for the UI (`console/src/api/generated/`), and fails if it was out of date |
 | `make doc` | The API docs, with rustdoc warnings as errors |
-| `make ci` | `check`, `lint`, `test` and `doc`: CI's check job |
+| `make ci` | `check`, `lint`, `test`, `types` and `doc`: CI's check job |
 | `make msrv` | The workspace on Rust 1.88, Cargo.toml's `rust-version`, with the lockfile, as CI's MSRV job |
 | `make coverage` | Line coverage with cargo-llvm-cov, written to `lcov.info`; fails under the threshold in the Makefile |
 | `make bless` | Regenerates `docs/cli.md` and the examples in `docs/review.md` |

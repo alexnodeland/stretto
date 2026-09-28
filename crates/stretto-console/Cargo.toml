@@ -1,0 +1,46 @@
+[package]
+name = "stretto-console"
+description = "stretto's management plane: a local web console over the sessions, flows, servers and jobs in ~/.stretto."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+homepage.workspace = true
+documentation = "https://github.com/alexnodeland/stretto/blob/main/crates/stretto-console/README.md"
+readme = "README.md"
+keywords.workspace = true
+categories = ["command-line-utilities", "web-programming::http-server", "development-tools"]
+
+[[bin]]
+name = "stretto-console"
+path = "src/main.rs"
+
+[features]
+# The API's types as TypeScript (ts-rs): with it, `cargo test` writes
+# console/src/api/generated/ and fails when that was out of date. Off by
+# default, so builds and coverage leave the derives out; `make types` and
+# CI's check job turn it on.
+ts = ["dep:ts-rs", "stretto-report/ts", "stretto-trace/ts"]
+
+[dependencies]
+anyhow.workspace = true
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "query", "tokio"] }
+clap.workspace = true
+futures-util = { version = "0.3", default-features = false }
+hex.workspace = true
+rand.workspace = true
+reqwest.workspace = true
+# 8.11: the last that shares sha2 0.10 with the workspace.
+rust-embed = { version = "~8.11", features = ["mime-guess"] }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+stretto-report.workspace = true
+stretto-trace.workspace = true
+tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "process", "rt-multi-thread", "signal", "sync", "time"] }
+ts-rs = { workspace = true, optional = true }
+
+[dev-dependencies]
+tower = { version = "0.5", default-features = false, features = ["util"] }

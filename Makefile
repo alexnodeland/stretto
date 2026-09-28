@@ -20,7 +20,7 @@ BIN := $(or $(CARGO_TARGET_DIR),target)/debug
 # The tag `make docker` gives the image.
 IMAGE ?= stretto:dev
 
-.PHONY: help fmt check lint test doc ci msrv coverage bless quickstart walkthrough \
+.PHONY: help fmt check lint test types doc ci msrv coverage bless quickstart walkthrough \
 	site docker install-dev-tools all
 
 help: ## Show this help
@@ -35,23 +35,30 @@ fmt: ## Format the Rust code
 check: ## Check the formatting, as CI does
 	cargo fmt --all -- --check
 
-lint: ## Clippy on every target, with warnings as errors
+lint: ## Clippy on every target, with warnings as errors, and on the console's ts feature
 	cargo clippy --all-targets -- -D warnings
+	cargo clippy -p stretto-console --all-targets --features ts -- -D warnings
 
 test: ## Unit, integration and doc tests (the docs' drift tests among them)
 	cargo test --all-targets
 	cargo test --doc
 
+types: ## The API's TypeScript for the UI (console/src/api/generated/): rewrites it, and fails if it was out of date
+	cargo test -p stretto-console --features ts --lib api::typescript
+
 doc: ## API docs, with rustdoc warnings as errors
 	RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
 
-ci: check lint test doc ## What CI's check job runs: check, lint, test and doc
+ci: check lint test types doc ## What CI's check job runs: check, lint, test, types and doc
 
 msrv: ## Check the workspace on Cargo.toml's rust-version, with the lockfile
 	rustup toolchain install $(MSRV) --profile minimal
 	cargo +$(MSRV) check --workspace --all-targets --locked
 
+# `clean --workspace` first: --no-report keeps the profiles and test binaries
+# of earlier runs (CI's cache restores them), and the report would count them.
 coverage: ## Line coverage with cargo-llvm-cov: writes lcov.info, fails under COVERAGE_MIN
+	cargo llvm-cov clean --workspace
 	cargo llvm-cov --workspace --all-targets --no-report
 	cargo llvm-cov report --lcov --output-path lcov.info
 	cargo llvm-cov report --fail-under-lines $(COVERAGE_MIN)
@@ -83,4 +90,4 @@ install-dev-tools: ## Install rustfmt, clippy, llvm-tools and cargo-llvm-cov
 	command -v cargo-llvm-cov >/dev/null 2>&1 || cargo install cargo-llvm-cov --locked
 	@command -v shellcheck >/dev/null 2>&1 || echo 'shellcheck, which CI runs on the shell scripts, comes from your package manager'
 
-all: fmt lint test coverage ## Format, then lint, test and coverage
+all: fmt lint test types coverage ## Format, then lint, test, types and coverage

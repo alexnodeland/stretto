@@ -7,8 +7,10 @@
 //! marked read-only or a lookup the flow could not make before, is listed as
 //! one to review.
 
-use crate::flow::{Decider, Flow, LookupBinding};
+use crate::flow::{Bar, Decider, Flow, LookupBinding, Provenance, SiteRecord};
 use crate::shadow::{Predicate, Sites, RESPOND};
+use serde::Serialize;
+use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write;
 use stretto_model::world::{decode, BackoffModel};
@@ -140,16 +142,7 @@ fn likely(
         if best.as_ref().is_some_and(|b| b.share >= share) {
             continue;
         }
-        // A lookup training never made is bound by argument name, with a
-        // chance of 1/2 (1 without arguments).
-        let chance = match bound.get(&o) {
-            Some(b) => b.bindable().then(|| b.chance()[2]),
-            None => flow
-                .manifest
-                .docs
-                .get(&o)
-                .map(|d| if d.args.is_empty() { 1.0 } else { 0.5 }),
-        };
+        let chance = binding_chance(flow, &o, bound);
         best = Some(Likely {
             tool: o,
             share,
@@ -157,6 +150,21 @@ fn likely(
         });
     }
     best
+}
+
+/// The chance that the arguments the flow binds for the lookup `tool` are
+/// the agent's own, over whether the customer mentioned them or not, if it
+/// can bind them. A lookup training never made is bound by argument name,
+/// with a chance of 1/2 (1 without arguments).
+fn binding_chance(flow: &Flow, tool: &str, bound: &BTreeMap<String, LookupBinding>) -> Option<f64> {
+    match bound.get(tool) {
+        Some(b) => b.bindable().then(|| b.chance()[2]),
+        None => flow
+            .manifest
+            .docs
+            .get(tool)
+            .map(|d| if d.args.is_empty() { 1.0 } else { 0.5 }),
+    }
 }
 
 /// What the flow does after a site, as [`weighed_by`] says, at `threshold`.
@@ -282,13 +290,24 @@ fn thousands(n: usize) -> String {
     out
 }
 
-/// The top few actions after a site, as "a 71%, respond 20%, …".
-fn top_shares(shares: &BTreeMap<String, f64>, n: usize) -> String {
-    let mut v: Vec<(&String, &f64)> = shares.iter().collect();
-    v.sort_by(|a, b| b.1.total_cmp(a.1).then(a.0.cmp(b.0)));
-    v.iter()
+/// Each action's share, largest first (and by name among equals).
+fn by_share(shares: &BTreeMap<String, f64>) -> Vec<NextShare> {
+    let mut v: Vec<NextShare> = shares
+        .iter()
+        .map(|(action, share)| NextShare {
+            action: action.clone(),
+            share: *share,
+        })
+        .collect();
+    v.sort_by(|a, b| b.share.total_cmp(&a.share).then(a.action.cmp(&b.action)));
+    v
+}
+
+/// The first few of `next`, as "a 71%, respond 20%, …".
+fn top_shares(next: &[NextShare], n: usize) -> String {
+    next.iter()
         .take(n)
-        .map(|(a, p)| format!("{a} {}", percent(**p)))
+        .map(|s| format!("{} {}", s.action, percent(s.share)))
         .collect::<Vec<_>>()
         .join(", ")
 }
@@ -310,6 +329,341 @@ fn feature_fields(flow: &Flow) -> BTreeMap<String, Vec<String>> {
         .iter()
         .map(|(t, fs)| (t.clone(), fs.iter().map(|f| format!("`{f}`")).collect()))
         .collect()
+}
+
+/// A flow as a reviewer reads it, as data, for `stretto-console`: the tools
+/// it knows, what it does after each call and why, where its lookups'
+/// arguments come from, and where it came from. [`view`] builds it, and
+/// [`show`] renders its sites from it, so the two cannot disagree.
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+pub struct FlowView {
+    /// The threshold the flow will be served with, which the sites are
+    /// judged at.
+    pub threshold: f64,
+    /// Every tool the flow knows, by name.
+    pub tools: Vec<FlowTool>,
+    /// After each call: the lookups the flow may make next, and what it
+    /// does there.
+    pub sites: Vec<SiteView>,
+    /// Where each lookup's arguments come from, by lookup.
+    pub bindings: Vec<BindingView>,
+    /// Where the flow came from.
+    pub provenance: Provenance,
+    /// Where it may act, if it was promoted.
+    pub promotion: Option<PromotionView>,
+}
+
+/// A tool the flow knows.
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+pub struct FlowTool {
+    pub name: String,
+    /// `read` tools are the only ones the flow may call.
+    pub kind: ToolKind,
+    /// What the server's documentation says it does, if anything.
+    pub summary: Option<String>,
+    /// Each argument's description, where the server gave one.
+    pub args: BTreeMap<String, String>,
+    /// Its input contract as the flow pins it (`contracts`), such as
+    /// `order_id:string!`.
+    pub contract: Option<String>,
+}
+
+/// What a site's shares are weighed with: `reach` for a flow served with it
+/// by default, else the habit alone (for a flow with an arbiter, that
+/// leaves out the model it asks).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[serde(rename_all = "snake_case")]
+pub enum WeighedBy {
+    /// How often each lookup came before the agent's next write.
+    Reach,
+    /// What the agent did next.
+    Habit,
+}
+
+/// One site: the calls to a tool, failed or not, after which the flow may
+/// make a lookup.
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+pub struct SiteView {
+    /// The site's name: the tool, with ` (error)` after a failed call.
+    pub name: String,
+    pub tool: String,
+    pub failed: bool,
+    /// The agent's steps just after such a call in training.
+    pub steps: usize,
+    pub weighed_by: WeighedBy,
+    /// What the agent did next in training: each action's share of `steps`,
+    /// largest first. `respond` is a message to the customer.
+    pub next: Vec<NextShare>,
+    /// The lookups the flow may make here.
+    pub lookups: Vec<LookupView>,
+    /// The share of those steps that were none of the lookups, which the
+    /// flow can only hand back for.
+    pub hand_back_share: f64,
+    /// The likeliest lookup, as `weighed_by` weighs it, and whether the flow
+    /// makes it at the threshold; `None` where no lookup is offered.
+    pub choice: Option<Choice>,
+    /// The site's record, if the flow was promoted and the site scored.
+    pub promoted: Option<SiteRecord>,
+    /// The site's own threshold, if a search set one; above 1 the site is
+    /// switched off.
+    pub threshold: Option<f64>,
+    /// Whether the flow may act here at all: false after a site a promotion
+    /// left out, or one a search switched off.
+    pub active: bool,
+    /// What the flow does here, as `stretto flow-show` words it.
+    pub verdict: String,
+}
+
+/// An action's share of the steps after a site.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+pub struct NextShare {
+    pub action: String,
+    pub share: f64,
+}
+
+/// A lookup offered at a site.
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+pub struct LookupView {
+    pub tool: String,
+    /// How often the agent made it next here in training.
+    pub count: usize,
+    /// Its share of what the agent did next here.
+    pub share: f64,
+    /// Its share as the site is weighed: with `reach`, of the times the agent
+    /// made the call before its next write; else `share`.
+    pub weighed_share: f64,
+    /// The chance that the arguments the flow binds are the agent's, if it
+    /// can bind them.
+    pub binding_chance: Option<f64>,
+    pub bindable: bool,
+    /// `weighed_share` times `binding_chance`: what the flow compares with
+    /// the threshold.
+    pub prob: f64,
+    /// Whether the flow makes this lookup here at the threshold: it is the
+    /// site's choice, clears the threshold, and the site is active.
+    pub acts: bool,
+}
+
+/// What the flow picks at a site.
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+pub struct Choice {
+    /// The likeliest lookup.
+    pub tool: Option<String>,
+    /// Its probability, as [`LookupView::prob`].
+    pub prob: f64,
+    /// Whether the flow makes it; otherwise it hands back.
+    pub acts: bool,
+}
+
+/// How a lookup's arguments are bound.
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+pub struct BindingView {
+    /// The lookup.
+    pub tool: String,
+    /// The agent's calls to it in training.
+    pub calls: usize,
+    /// The chance that the bound arguments are the agent's: when the
+    /// customer had not mentioned the values picked, when they had, and
+    /// over both; `None` where the flow cannot bind them.
+    pub chance: Option<[f64; 3]>,
+    /// `[agreed, tried]` behind the chances, not mentioned and mentioned.
+    pub agreed: [[usize; 2]; 2],
+    /// Every argument the agent passed.
+    pub args: Vec<ArgView>,
+}
+
+/// One argument of a lookup.
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+pub struct ArgView {
+    pub name: String,
+    /// Whether the flow passes it: the agent passed it in at least 90% of
+    /// its calls.
+    pub required: bool,
+    /// The agent's calls that passed it.
+    pub calls: usize,
+    /// The value the binding passes as the agent always did
+    /// (`learn --constants`).
+    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
+    pub constant: Option<Value>,
+    /// Where the flow binds a required argument from.
+    pub sources: Vec<SourceView>,
+}
+
+/// A source of an argument's values: an earlier output of `tool`, at `path`.
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+pub struct SourceView {
+    pub tool: String,
+    pub path: String,
+    /// Training values found there.
+    pub count: usize,
+    /// Their share of the argument's values.
+    pub share: f64,
+}
+
+/// A promotion, in short.
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+pub struct PromotionView {
+    /// The bar each site had to meet.
+    pub bar: Bar,
+    pub sites_promoted: usize,
+    pub sites_scored: usize,
+}
+
+/// `flow` as a reviewer reads it, as data ([`FlowView`]), judged at
+/// `threshold`, the one it will be served with.
+pub fn view(flow: &Flow, threshold: f64) -> FlowView {
+    let bound = bindings(flow);
+    let weighed_by = if weighs_reach(flow) {
+        WeighedBy::Reach
+    } else {
+        WeighedBy::Habit
+    };
+    let sites = flow
+        .sites
+        .next()
+        .iter()
+        .map(|((tool, failed), seen)| {
+            let failed = *failed;
+            let name = Sites::name(tool, failed);
+            let (shares, total) = followed(flow, tool, failed);
+            let weighs = weighed(flow, tool, failed, &shares);
+            let best = likely(flow, tool, failed, &weighs, &bound);
+            let active = acts(flow, tool, failed);
+            let at = threshold_at(flow, tool, failed, threshold);
+            let choice = best.as_ref().map(|l| Choice {
+                tool: Some(l.tool.clone()),
+                prob: l.prob(),
+                acts: active && l.prob() >= at,
+            });
+            let options = flow.sites.options(tool, failed);
+            let lookups: Vec<LookupView> = options
+                .iter()
+                .map(|o| {
+                    let chance = binding_chance(flow, o, &bound);
+                    let weighed_share = weighs.get(o).copied().unwrap_or(0.0);
+                    LookupView {
+                        tool: o.clone(),
+                        count: seen.get(o).copied().unwrap_or(0),
+                        share: shares.get(o).copied().unwrap_or(0.0),
+                        weighed_share,
+                        binding_chance: chance,
+                        bindable: chance.is_some(),
+                        prob: weighed_share * chance.unwrap_or(0.0),
+                        acts: choice
+                            .as_ref()
+                            .is_some_and(|c| c.acts && c.tool.as_deref() == Some(o.as_str())),
+                    }
+                })
+                .collect();
+            let looked: f64 = options
+                .iter()
+                .map(|o| shares.get(o).copied().unwrap_or(0.0))
+                .sum();
+            SiteView {
+                tool: tool.clone(),
+                failed,
+                steps: total.round() as usize,
+                weighed_by,
+                next: by_share(&shares),
+                lookups,
+                hand_back_share: (1.0 - looked).max(0.0),
+                promoted: flow.promotion().and_then(|p| p.sites.get(&name).cloned()),
+                threshold: flow.thresholds().get(&name).copied(),
+                active,
+                verdict: action(flow, tool, failed, best.as_ref(), threshold),
+                choice,
+                name,
+            }
+        })
+        .collect();
+    let bindings = bound
+        .values()
+        .map(|b| {
+            let (calls, passed) = flow
+                .bindings
+                .passed(&b.tool)
+                .map_or((b.calls, BTreeMap::new()), |(n, args)| (n, args.clone()));
+            let args = passed
+                .iter()
+                .map(|(arg, n)| {
+                    let required = b.arguments.iter().find(|a| a.name == *arg);
+                    ArgView {
+                        name: arg.clone(),
+                        required: required.is_some(),
+                        calls: *n,
+                        constant: flow
+                            .bindings
+                            .constants()
+                            .get(&(b.tool.clone(), arg.clone()))
+                            .cloned(),
+                        sources: required
+                            .map(|a| {
+                                a.sources
+                                    .iter()
+                                    .map(|(t, path, count)| SourceView {
+                                        tool: t.clone(),
+                                        path: path.clone(),
+                                        count: *count,
+                                        share: if a.values > 0 {
+                                            *count as f64 / a.values as f64
+                                        } else {
+                                            0.0
+                                        },
+                                    })
+                                    .collect()
+                            })
+                            .unwrap_or_default(),
+                    }
+                })
+                .collect();
+            let [(a, n), (c, m)] = b.agreed;
+            BindingView {
+                tool: b.tool.clone(),
+                calls,
+                chance: b.bindable().then(|| b.chance()),
+                agreed: [[a, n], [c, m]],
+                args,
+            }
+        })
+        .collect();
+    let tools = flow
+        .manifest
+        .tools
+        .iter()
+        .map(|(name, kind)| {
+            let doc = flow.manifest.docs.get(name);
+            FlowTool {
+                name: name.clone(),
+                kind: *kind,
+                summary: doc.map(|d| d.summary.clone()).filter(|s| !s.is_empty()),
+                args: doc.map(|d| d.args.clone()).unwrap_or_default(),
+                contract: flow.contracts().get(name).cloned(),
+            }
+        })
+        .collect();
+    FlowView {
+        threshold,
+        tools,
+        sites,
+        bindings,
+        provenance: flow.provenance.clone(),
+        promotion: flow.promotion().map(|p| PromotionView {
+            bar: p.bar,
+            sites_promoted: p.sites.values().filter(|r| r.promoted).count(),
+            sites_scored: p.sites.len(),
+        }),
+    }
 }
 
 /// One flow, as a reviewer reads it (Markdown). `threshold` is the one the
@@ -400,36 +754,26 @@ pub fn show(flow: &Flow, threshold: f64) -> String {
         "| After | Lookups it may make next (times seen) | What the agent did next in training | With {} |\n|---|---|---|---|",
         weighed_by(flow)
     );
-    let bound = bindings(flow);
-    for ((tool, failed), lookups) in flow.sites.next() {
-        let (shares, total) = followed(flow, tool, *failed);
-        let offered: Vec<String> = lookups
+    for site in view(flow, threshold).sites {
+        // The lookups training showed; with every read offered, the others
+        // were never seen here.
+        let offered: Vec<String> = site
+            .lookups
             .iter()
-            .map(|(l, n)| format!("`{l}` ({n})"))
+            .filter(|l| l.count > 0)
+            .map(|l| format!("`{}` ({})", l.tool, l.count))
             .collect();
         let _ = writeln!(
             md,
             "| {} | {} | {} (of {}) | {} |",
-            site_name(tool, *failed),
+            site_name(&site.tool, site.failed),
             offered.join(", "),
-            top_shares(&shares, 4),
-            thousands(total.round() as usize),
-            action(
-                flow,
-                tool,
-                *failed,
-                likely(
-                    flow,
-                    tool,
-                    *failed,
-                    &weighed(flow, tool, *failed, &shares),
-                    &bound
-                )
-                .as_ref(),
-                threshold
-            )
+            top_shares(&site.next, 4),
+            thousands(site.steps),
+            site.verdict
         );
     }
+    let bound = bindings(flow);
     if let Some(p) = flow.promotion() {
         let _ = writeln!(md, "\n## Promotion\n");
         let _ = writeln!(
@@ -626,7 +970,8 @@ fn binding_rows(md: &mut String, b: &LookupBinding, named_other: bool, described
 }
 
 /// What changed between two flows.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct FlowDiff {
     /// The change list (Markdown).
     pub markdown: String,
@@ -634,6 +979,27 @@ pub struct FlowDiff {
     /// or may call a tool, make a lookup, bind an argument from a source, or
     /// ask a model or a question it did not before.
     pub needs_review: Vec<String>,
+    /// Every change, under the headings the change list gives them; only
+    /// the headings with changes.
+    pub sections: Vec<DiffSection>,
+}
+
+/// The changes under one heading of a change list.
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+pub struct DiffSection {
+    pub title: String,
+    pub changes: Vec<String>,
+}
+
+impl FlowDiff {
+    /// Every change, heading by heading.
+    pub fn changes(&self) -> Vec<String> {
+        self.sections
+            .iter()
+            .flat_map(|s| s.changes.iter().cloned())
+            .collect()
+    }
 }
 
 /// What changed from `old` to `new`. Shares, chances and weights that moved
@@ -1099,17 +1465,21 @@ pub fn diff(old: &Flow, new: &Flow, tolerance: f64, threshold: f64) -> FlowDiff 
             let _ = writeln!(md, "- {r}");
         }
     }
-    for (title, items) in sections {
-        if !items.is_empty() {
-            let _ = writeln!(md, "\n## {title}\n");
-            for i in items {
-                let _ = writeln!(md, "- {i}");
-            }
+    let sections: Vec<DiffSection> = sections
+        .into_iter()
+        .filter(|(_, items)| !items.is_empty())
+        .map(|(title, changes)| DiffSection { title, changes })
+        .collect();
+    for section in &sections {
+        let _ = writeln!(md, "\n## {}\n", section.title);
+        for i in &section.changes {
+            let _ = writeln!(md, "- {i}");
         }
     }
     FlowDiff {
         markdown: md,
         needs_review: review,
+        sections,
     }
 }
 
@@ -1216,6 +1586,144 @@ mod tests {
         let back = diff(&new, &old, 0.05, 0.3);
         assert!(back.needs_review.is_empty(), "{:?}", back.needs_review);
         assert!(back.markdown.contains("no longer passes `100`"));
+    }
+
+    #[test]
+    fn the_view_and_the_review_agree() {
+        for (name, threshold) in [
+            ("retail-5-sessions", 0.3),
+            ("retail-10-sessions", 0.3),
+            ("retail-10-sessions", 0.9),
+            ("retail-5-sessions-shipped-arbiter", 0.3),
+        ] {
+            let flow = example(name);
+            let v = view(&flow, threshold);
+            let md = show(&flow, threshold);
+            assert_eq!(v.threshold, threshold);
+            assert_eq!(
+                v.sites.iter().map(|s| s.name.clone()).collect::<Vec<_>>(),
+                flow.sites
+                    .next()
+                    .keys()
+                    .map(|(t, f)| Sites::name(t, *f))
+                    .collect::<Vec<_>>()
+            );
+            for site in &v.sites {
+                // Each site's row in the review ends with the view's verdict.
+                let row = md
+                    .lines()
+                    .find(|l| l.starts_with(&format!("| {} |", site_name(&site.tool, site.failed))))
+                    .unwrap_or_else(|| panic!("{name}: no row for {}\n{md}", site.name));
+                assert!(row.ends_with(&format!("| {} |", site.verdict)), "{row}");
+                let acting: Vec<&LookupView> = site.lookups.iter().filter(|l| l.acts).collect();
+                match &site.choice {
+                    Some(c) if c.acts => {
+                        assert!(site.verdict.starts_with("looks up"), "{}", site.verdict);
+                        assert_eq!(acting.len(), 1);
+                        assert_eq!(Some(&acting[0].tool), c.tool.as_ref());
+                        assert!(c.prob >= threshold);
+                    }
+                    _ => {
+                        assert!(site.verdict.starts_with("hands back"), "{}", site.verdict);
+                        assert!(acting.is_empty());
+                    }
+                }
+                for l in &site.lookups {
+                    let expected = l.weighed_share * l.binding_chance.unwrap_or(0.0);
+                    assert!((l.prob - expected).abs() < 1e-12);
+                    assert_eq!(l.bindable, l.binding_chance.is_some());
+                }
+                let shares: f64 = site.next.iter().map(|n| n.share).sum();
+                assert!(site.steps == 0 || (shares - 1.0).abs() < 1e-9, "{shares}");
+                assert!(site.next.windows(2).all(|w| w[0].share >= w[1].share));
+                assert!((0.0..=1.0).contains(&site.hand_back_share));
+                assert!(site.active && site.promoted.is_none() && site.threshold.is_none());
+            }
+            // Every lookup the review lists a binding for, with its required
+            // arguments' sources.
+            for b in &v.bindings {
+                assert!(md.contains(&format!("| `{}` |", b.tool)), "{}", b.tool);
+                assert!(b.args.iter().all(|a| a.required || a.sources.is_empty()));
+            }
+            assert_eq!(v.tools.len(), flow.manifest.tools.len());
+            assert_eq!(v.provenance, flow.provenance);
+            assert!(v.promotion.is_none());
+        }
+    }
+
+    #[test]
+    fn the_view_of_a_promoted_flow_and_of_a_site_switched_off() {
+        let flow = example("retail-5-sessions");
+        let site = "get_user_details".to_string();
+        let record = |promoted| SiteRecord {
+            decisions: 4,
+            lookups: 3,
+            used: 3,
+            tasks: 3,
+            lower: 0.5,
+            promoted,
+        };
+        let promoted = flow.clone().with_promotion(Some(crate::flow::Promotion {
+            bar: Bar {
+                threshold: 0.3,
+                min_used: 0.7,
+                min_lower: 0.5,
+                min_tasks: 3,
+            },
+            sites: BTreeMap::from([
+                (site.clone(), record(true)),
+                ("get_order_details".to_string(), record(false)),
+            ]),
+        }));
+        let v = view(&promoted, 0.3);
+        let p = v.promotion.as_ref().unwrap();
+        assert_eq!((p.sites_promoted, p.sites_scored), (1, 2));
+        for s in &v.sites {
+            assert_eq!(s.active, s.name == site, "{}", s.name);
+            assert_eq!(
+                s.promoted.as_ref().map(|r| r.promoted),
+                match s.name.as_str() {
+                    "get_user_details" => Some(true),
+                    "get_order_details" => Some(false),
+                    _ => None,
+                }
+            );
+            if !s.active {
+                assert_eq!(s.verdict, "hands back: not promoted");
+                assert!(s.lookups.iter().all(|l| !l.acts));
+            }
+        }
+        let off = flow.with_thresholds(BTreeMap::from([(site.clone(), 2.0)]));
+        let s = view(&off, 0.3)
+            .sites
+            .into_iter()
+            .find(|s| s.name == site)
+            .unwrap();
+        assert_eq!((s.active, s.threshold), (false, Some(2.0)));
+        assert_eq!(s.verdict, "hands back: switched off");
+        assert!(!s.choice.unwrap().acts);
+    }
+
+    #[test]
+    fn a_diff_lists_its_changes_by_heading() {
+        let old = example("retail-5-sessions");
+        let new = example("retail-10-sessions");
+        let d = diff(&old, &new, 0.05, 0.3);
+        assert!(!d.sections.is_empty());
+        for section in &d.sections {
+            assert!(!section.changes.is_empty());
+            assert!(d.markdown.contains(&format!("\n## {}\n", section.title)));
+            for c in &section.changes {
+                assert!(d.markdown.contains(&format!("- {c}\n")), "{c}");
+            }
+        }
+        assert_eq!(
+            d.changes().len(),
+            d.sections.iter().map(|s| s.changes.len()).sum::<usize>()
+        );
+        let json = serde_json::to_value(&d).unwrap();
+        assert_eq!(json["needs_review"], serde_json::json!(d.needs_review));
+        assert!(diff(&old, &old, 0.05, 0.3).sections.is_empty());
     }
 
     #[test]

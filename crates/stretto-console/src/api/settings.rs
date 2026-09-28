@@ -1,0 +1,155 @@
+//! Settings: the data directory and what it holds, the binaries, the key,
+//! and how the console runs.
+
+use super::{blocking, ApiResult};
+use crate::data::{self, paths};
+use crate::{Shared, State, VERSION};
+use axum::extract::State as AxumState;
+use axum::Json;
+use serde::Serialize;
+use std::path::Path;
+#[cfg(feature = "ts")]
+use ts_rs::TS;
+
+/// The data directory's size, by what its files are.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
+pub struct Disk {
+    /// Session logs and the flow and confirmation logs beside them.
+    pub logs_bytes: u64,
+    /// `*.flow.json`
+    pub flows_bytes: u64,
+    /// The System-One model's answers, `oracle-cache/`.
+    pub cache_bytes: u64,
+    /// Everything else, the console's jobs and trash included.
+    pub other_bytes: u64,
+    pub total_bytes: u64,
+}
+
+/// A binary of stretto's, found or not.
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
+pub struct BinaryStatus {
+    pub name: String,
+    pub path: Option<String>,
+    pub version: Option<String>,
+}
+
+/// `GET /api/settings`
+#[derive(Clone, Debug, Serialize)]
+#[cfg_attr(feature = "ts", derive(TS))]
+pub struct Settings {
+    pub data_dir: String,
+    pub disk: Disk,
+    pub sessions: usize,
+    pub flows: usize,
+    /// Whether `TYPESAFE_API_KEY` or `TYPESAFE_API_KEY_FILE` is set; never
+    /// its value.
+    pub key_set: bool,
+    /// What is kept, and for how long.
+    pub retention_note: String,
+    pub binaries: Vec<BinaryStatus>,
+    pub version: String,
+    pub read_only: bool,
+    pub auth: bool,
+}
+
+/// What the console says about keeping data.
+pub const RETENTION_NOTE: &str = "stretto-proxy --retain-days N deletes, when it starts, the \
+    session logs (with the flow and confirmation logs beside them) and the cached answers older \
+    than N days in its --record and --oracle-cache directories. The console deletes nothing: a \
+    session or flow deleted here is moved to console/trash/ in the data directory, to empty \
+    when you choose. docs/privacy.md lists what each file holds.";
+
+pub async fn settings(AxumState(state): AxumState<Shared>) -> ApiResult<Json<Settings>> {
+    blocking(&state, |state| Ok(Json(build(state)))).await
+}
+
+fn build(state: &State) -> Settings {
+    let catalog = data::catalog(state.data_dir());
+    let b = &state.config.binaries;
+    let binaries = [
+        ("stretto", &b.stretto),
+        ("stretto-proxy", &b.proxy),
+        ("stretto-procedure", &b.procedure),
+        ("stretto-mcp-demo", &b.demo),
+    ]
+    .into_iter()
+    .map(|(name, found)| BinaryStatus {
+        name: name.to_string(),
+        path: found.as_ref().map(|f| f.path.clone()),
+        version: found.as_ref().and_then(|f| f.version.clone()),
+    })
+    .collect();
+    Settings {
+        data_dir: state.data_dir().display().to_string(),
+        disk: disk(state.data_dir()),
+        sessions: catalog.sessions.len(),
+        flows: catalog.flows.len(),
+        key_set: state.key_set(),
+        retention_note: RETENTION_NOTE.to_string(),
+        binaries,
+        version: VERSION.to_string(),
+        read_only: state.config.read_only,
+        auth: state.config.token.is_some(),
+    }
+}
+
+/// The size of everything under `root`, by kind. Symbolic links are not
+/// followed.
+pub fn disk(root: &Path) -> Disk {
+    fn walk(root: &Path, dir: &Path, disk: &mut Disk) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let Ok(meta) = std::fs::symlink_metadata(&path) else {
+                continue;
+            };
+            if meta.is_dir() {
+                walk(root, &path, disk);
+                continue;
+            }
+            if !meta.is_file() {
+                continue;
+            }
+            let rel = paths::rel(root, &path);
+            let size = meta.len();
+            if rel.starts_with("oracle-cache/") {
+                disk.cache_bytes += size;
+            } else if rel.starts_with(&format!("{}/", data::CONSOLE_DIR)) {
+                disk.other_bytes += size;
+            } else if rel.ends_with(".flow.json") {
+                disk.flows_bytes += size;
+            } else if rel.ends_with(".jsonl") {
+                disk.logs_bytes += size;
+            } else {
+                disk.other_bytes += size;
+            }
+            disk.total_bytes += size;
+        }
+    }
+    let mut out = Disk::default();
+    walk(root, root, &mut out);
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_fixtures_disk() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/home");
+        let d = disk(&root);
+        assert!(d.logs_bytes > 50_000 && d.flows_bytes > 10_000, "{d:?}");
+        assert_eq!(d.cache_bytes, 0);
+        assert_eq!(
+            d.total_bytes,
+            d.logs_bytes + d.flows_bytes + d.cache_bytes + d.other_bytes
+        );
+        // servers.json
+        assert!(d.other_bytes > 0);
+    }
+}

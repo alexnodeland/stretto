@@ -211,6 +211,7 @@ pub struct Flow {
 /// Where a flow may act (RFC-001 §3.7), from `stretto promote`: each site
 /// scored on recorded sessions, and the bar a site had to meet.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct Promotion {
     /// The bar.
     pub bar: Bar,
@@ -227,6 +228,7 @@ impl Promotion {
 
 /// What a site's record must show for the flow to act there.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct Bar {
     /// The threshold the flow was scored at, as it will be served.
     pub threshold: f64,
@@ -242,6 +244,7 @@ pub struct Bar {
 
 /// One site's record on the sessions a flow was promoted on.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct SiteRecord {
     /// Decisions the flow made there.
     pub decisions: usize,
@@ -1170,6 +1173,7 @@ impl Flow {
 
 /// What a flow was compiled from.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct Provenance {
     /// The stretto version that compiled it.
     pub stretto: String,
@@ -1473,6 +1477,12 @@ impl Bindings {
                 }
             })
             .collect()
+    }
+
+    /// The agent's calls to `tool` in training, and how many of them passed
+    /// each argument: required or not, as [`Bindings::review`] reads them.
+    pub fn passed(&self, tool: &str) -> Option<(usize, &BTreeMap<String, usize>)> {
+        self.args.get(tool).map(|(calls, args)| (*calls, args))
     }
 
     /// Learn from training episodes: each string argument of each lookup is

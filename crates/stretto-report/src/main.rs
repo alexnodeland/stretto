@@ -912,8 +912,26 @@ struct InitArgs {
     /// With --write, replace an existing file, with any other servers in it.
     #[arg(long, requires = "write")]
     force: bool,
+    /// A Streamable HTTP server, such as `https://example.com/mcp`, in place
+    /// of a server command: the proxy connects to it (`stretto-proxy
+    /// --upstream`).
+    #[arg(long, value_name = "URL", conflicts_with = "server")]
+    upstream: Option<String>,
+    /// With --upstream: send header NAME with the value of environment
+    /// variable VAR, which the host gives the proxy in its `env`
+    /// (`stretto-proxy --upstream-header`). The value is not written.
+    #[arg(
+        long = "upstream-header",
+        value_name = "NAME=VAR",
+        requires = "upstream"
+    )]
+    upstream_headers: Vec<String>,
     /// The MCP server's command and its arguments, after `--`.
-    #[arg(value_name = "SERVER_COMMAND", last = true, required = true)]
+    #[arg(
+        value_name = "SERVER_COMMAND",
+        last = true,
+        required_unless_present = "upstream"
+    )]
     server: Vec<String>,
 }
 
@@ -2197,6 +2215,29 @@ fn init(args: InitArgs) -> Result<()> {
             *program = std::path::absolute(path)?.display().to_string();
         }
     }
+    let upstream = match args.upstream {
+        Some(url) => {
+            if !url.starts_with("http://") && !url.starts_with("https://") {
+                anyhow::bail!(
+                    "--upstream {url:?}: the server's URL starts with http:// or https://"
+                );
+            }
+            let mut headers = Vec::new();
+            for spec in &args.upstream_headers {
+                match spec.split_once('=') {
+                    Some((name, var)) if !name.is_empty() && !var.is_empty() => {
+                        headers.push((name.to_string(), var.to_string()))
+                    }
+                    _ => anyhow::bail!(
+                        "--upstream-header takes NAME=VAR, the header and the environment \
+                         variable holding its value"
+                    ),
+                }
+            }
+            Some(init::Upstream { url, headers })
+        }
+        None => None,
+    };
     let host = Host::from(args.host);
     let setup = Setup {
         flow: flow.map(|(path, loaded)| Served {
@@ -2204,11 +2245,14 @@ fn init(args: InitArgs) -> Result<()> {
             arbiter: loaded.has_arbiter(),
             reach: loaded.has_reach(),
             shadow: args.shadow,
+            decide_with: None,
+            threshold: None,
         }),
         domain,
         record,
         proxy: proxy_command(host),
         server,
+        upstream,
     };
     match &args.write {
         Some(path) => {
