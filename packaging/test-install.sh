@@ -98,7 +98,10 @@ if grep -q "not on your PATH" "$work/out"; then fail "it asked to add a director
 echo "test-install: a second install replaces the first"
 
 cp "$work/release/SHA256SUMS" "$work/sums"
-sed 's/^[0-9a-f]/0/' "$work/sums" >"$work/release/SHA256SUMS"
+# The checksum with its first digit changed: to 1 if it was 0, else to 0.
+# (Always to 0 left one checksum in 16 as it was, and that install passed.)
+sed -e 's/^0/1/' -e t -e 's/^./0/' "$work/sums" >"$work/release/SHA256SUMS"
+if cmp -s "$work/sums" "$work/release/SHA256SUMS"; then fail "the checksum was not changed"; fi
 if install; then fail "it installed an archive whose checksum does not match"; fi
 grep -q "does not match its checksum" "$work/out" || fail "wrong error: $(cat "$work/out")"
 printf '%s  stretto-some-other-target.tar.gz\n' "$(cut -d ' ' -f 1 "$work/sums")" >"$work/release/SHA256SUMS"
