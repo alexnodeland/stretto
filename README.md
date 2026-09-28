@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://alexnodeland.github.io/stretto/">
+  <a href="https://stretto.alexnodeland.com/">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="brand/logo/stretto-lockup-dark.svg">
       <img src="brand/logo/stretto-lockup.svg" alt="stretto" width="300">
@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/alexnodeland/stretto/actions/workflows/ci.yml"><img src="https://github.com/alexnodeland/stretto/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
-  <a href="https://alexnodeland.github.io/stretto/"><img src="https://img.shields.io/badge/docs-guide%20%C2%B7%20reference%20%C2%B7%20research-02767b" alt="Documentation"></a>
+  <a href="https://stretto.alexnodeland.com/"><img src="https://img.shields.io/badge/docs-guide%20%C2%B7%20reference%20%C2%B7%20research-02767b" alt="Documentation"></a>
   <a href="paper/stretto.md"><img src="https://img.shields.io/badge/paper-Compile%20What%20the%20Environment%20Decides-4a5557" alt="Paper"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-4a5557" alt="MIT license"></a>
 </p>
@@ -19,9 +19,9 @@
 stretto learns, from your agent's recorded tool calls, which reads it makes next and where their arguments come from, and serves them through an MCP proxy in the same tool result, so the agent needs fewer LLM turns.
 
 <p align="center">
-  <a href="https://alexnodeland.github.io/stretto/"><img src="brand/media/explainer-teaser.gif" alt="An agent's call comes back with the reads it would have asked for next" width="720"></a>
+  <a href="https://stretto.alexnodeland.com/"><img src="brand/media/explainer-teaser.gif" alt="An agent's call comes back with the reads it would have asked for next" width="720"></a>
   <br>
-  <sub><a href="https://alexnodeland.github.io/stretto/">The explainer video</a> · <a href="https://alexnodeland.github.io/stretto/explainer/">the interactive explainer</a> · <a href="https://alexnodeland.github.io/stretto/guide/quick-start">the walkthrough video</a></sub>
+  <sub><a href="https://stretto.alexnodeland.com/">The explainer video</a> · <a href="https://stretto.alexnodeland.com/explainer/">the interactive explainer</a> · <a href="https://stretto.alexnodeland.com/guide/quick-start">the walkthrough video</a></sub>
 </p>
 
 - **Any agent, any MCP server.** `stretto-proxy` wraps a server run as a command or reached over Streamable HTTP. The agent, the host and the server stay as they are.
@@ -80,7 +80,7 @@ stretto init --host claude-code --flow orders.flow.json --shadow -- npx -y @your
 ```
 
 - `--host` also takes `claude-desktop`, `cursor` and `vscode`.
-- [The guide](https://alexnodeland.github.io/stretto/guide/) walks through each step.
+- [The guide](https://stretto.alexnodeland.com/guide/) walks through each step.
 - [The walkthrough](docs/walkthrough.md) runs the loop on the official MCP filesystem server.
 
 ## The console
@@ -104,13 +104,13 @@ From a checkout, `make console` builds the UI and serves `~/.stretto` on 127.0.0
 
 | | |
 |---|---|
-| [Guide](https://alexnodeland.github.io/stretto/guide/) | What stretto is and the quick start. The concepts: sessions, flows, lookups and detours, deciders, bindings, shadow mode, procedures |
-| [Integrations](https://alexnodeland.github.io/stretto/integrations/) | Claude Code, Claude Desktop, Cursor and VS Code, and servers over Streamable HTTP |
+| [Guide](https://stretto.alexnodeland.com/guide/) | What stretto is and the quick start. The concepts: sessions, flows, lookups and detours, deciders, bindings, shadow mode, procedures |
+| [Integrations](https://stretto.alexnodeland.com/integrations/) | Claude Code, Claude Desktop, Cursor and VS Code, and servers over Streamable HTTP |
 | [The console](docs/console.md) | The web app over `~/.stretto`: running it, signing in, and each page |
 | [CLI reference](docs/cli.md) | Every command and option, generated from the code |
 | [File formats](docs/formats.md) | The flow IR, arbiters, procedures and session logs, field by field |
 | [Privacy](docs/privacy.md) | What each file keeps, what is sent where, and `stretto redact` |
-| [Research](https://alexnodeland.github.io/stretto/research/) | The paper, every results page, and how to reproduce each number |
+| [Research](https://stretto.alexnodeland.com/research/) | The paper, every results page, and how to reproduce each number |
 
 ## Research
 

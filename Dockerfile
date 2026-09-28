@@ -80,7 +80,7 @@ COPY --from=builder /out/ /usr/local/bin/
 COPY --chmod=0755 examples/quickstart/run.sh /usr/local/share/stretto/quickstart/run.sh
 COPY LICENSE README.md /usr/local/share/doc/stretto/
 LABEL org.opencontainers.image.source="https://github.com/alexnodeland/stretto" \
-      org.opencontainers.image.url="https://alexnodeland.github.io/stretto/" \
+      org.opencontainers.image.url="https://stretto.alexnodeland.com/" \
       org.opencontainers.image.licenses="MIT"
 # ~/.stretto is /data/.stretto: mount a volume on /data (or your own
 # ~/.stretto on /data/.stretto) to keep the logs, the answer cache and the
