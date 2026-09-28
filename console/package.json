@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
+    "e2e:real": "vite build && playwright test --config playwright.real.config.ts",
     "shots": "playwright test --config playwright.shots.config.ts"
   },
   "engines": {

@@ -5,7 +5,7 @@ import base from './playwright.config.ts'
 // SHOTS_DIR (default test-results/shots), for looking at the design.
 export default defineConfig({
   ...base,
-  testIgnore: [],
+  testIgnore: ['real/**'],
   testMatch: ['shots.spec.ts'],
   timeout: 180_000,
   projects: [{ name: 'shots' }],

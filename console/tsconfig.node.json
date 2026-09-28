@@ -15,6 +15,7 @@
     "vitest.config.ts",
     "playwright.config.ts",
     "playwright.shots.config.ts",
+    "playwright.real.config.ts",
     "mock/**/*.ts",
     "e2e/**/*.ts",
     "src/api/types.ts"
