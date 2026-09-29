@@ -917,7 +917,7 @@ Five findings, one of them a correction; §3.6, §3.11, §4, §6 and §7 are upd
 **4. A second confirmation question catches the costly lapses, and half its flags are false.** Asked on its own about the same three fields, a second yes/no question fails a write unless both answers are yes.
 
 - The first wording, "did the agent's message describe this exact change?", was too literal. It failed 18% of the accepted writes in successful retail episodes, and 3 of 30 random writes it newly failed were lapses.
-- The second, "had the agent proposed this change?", fails 113 more accepted writes: 6.6% in successful retail episodes, 13.4% in failed ones. Of 30 labelled blind, 16 were lapses (53%, 95% interval 36–70%).
+- The second, "had the agent proposed this change?", fails 113 more accepted writes: 6.6% in successful retail episodes, 13.4% in failed ones. Of 30 labelled blind, 16 were lapses (53%, 95% interval 36–70%). Relabelled by two more annotators (GLM-5.3 and Claude Sonnet 5.5, 2026-09-29), 11 were by the majority of three, all five differences being addresses the customer supplied and the agent had offered to update but never read back. Under the stricter reading, 19 were.
 - Seven of those are calls that differ from what the customer agreed to, such as a whole order cancelled where three items were to go, or a refund to a gift card instead of the Mastercard the customer named.
 - It is logged, not enforced. The labels come from one annotator, the model that ran the analysis, and a write labelled confirmed in §3.17 was labelled a lapse this time, so both readings are reported.
 

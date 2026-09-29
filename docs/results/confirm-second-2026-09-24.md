@@ -51,6 +51,14 @@
   - **An address the customer supplied that the agent never read back (6).** For example, the customer says "Please update everything to 101 Highway, New York, 10001", and the agent updates it.
   - **A change the customer added that the agent never proposed (3):** a checked bag added along with a flight change, and a new default address.
 
+*Relabelled, 2026-09-29 ([#11](https://github.com/alexnodeland/stretto/issues/11)).* GLM-5.3 and Claude Sonnet 5.5 labelled the 60 writes of both sets under the rule and the stricter reading. Each saw exactly the fields shown, blind to both judges and to the first labels ([their labels](confirm-labels-2026-09-29.json)). They are models; no person has labelled these writes.
+
+- **The fresh test.** By the majority of the three annotators, **11 of the 30 are lapses** (37%; 95% interval 22–54%), not 16. Under the stricter reading 19 are, as before (46–78%).
+- **Where the majority differs.** The five writes the majority reads otherwise are all addresses the customer supplied and the agent never read back. In each, the agent had offered to update the address. The two new annotators count that offer as describing the change, which the rule allows. The stricter reading asks for the change in the agent's own message, and under it all three annotators call these lapses.
+- **What stays a lapse.** The mismatched calls, the unproposed changes and one of the six addresses stay lapses under both readings.
+- **The first wording's 30.** By the majority, 1 is a lapse, not 3, and 8 are under the stricter reading, as before.
+- **Agreement.** Between annotators, κ is 0.61–0.93 on the fresh test's 30, and 0.73–0.93 under the stricter reading. The first wording's 30 hold only 1 to 5 lapses. There κ is 0.14–0.47 under the rule, too few lapses to measure agreement on, and 0.68–1.00 under the stricter reading.
+
 ## What this means for the guards
 
 - **The second question finds what matters most.** The lapses it finds include calls that differ from what the customer agreed to. That is a wrong refund, order or flight, made after a yes to something else. The first question and the word list both passed these writes.
