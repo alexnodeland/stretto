@@ -382,6 +382,8 @@ Telecom & the agent's own sessions & 12.4\% · 0.56 & 15.1\% · 1.17 & 15.2\% ·
 \caption{Turns saved (top) and detours per episode (bottom) against the sessions learned from, on a log scale: mean over three agents and three orders. The dotted line learns from 100 of the other agents' sessions, drawn at random, and the agent's first \(n\).}
 \end{figure}
 
+\textbf{Which sessions come first.} Table 4 averages three orders. Twenty random draws of five and of ten sessions per agent and domain, for Qwen3.5-397B, Claude Sonnet 4.5 and Claude Opus 4.5, show how much a start depends on which sessions it sees. They were run with the earlier flow's deciders \citep{nodeland2026rfc}. With the next-step habit alone, one five-session start in eight saved less than half of what every training session gives (16 of 120), and one ten-session start in 120 did. The earlier flow's arbiter, which weighs an LLM's answers about the state, gave two different starts. Fitted elsewhere and shipped, it lifted 13 of the 17 narrow starts above half, at no more than 3.3 points of the median. Fitted on the draw's own sessions, it saved under half in 27 of the 120 five-session draws.
+
 \hypertarget{live}{%
 \subsection{Live}\label{live}}
 
