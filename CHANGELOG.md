@@ -4,6 +4,11 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ## Unreleased
 
+### The cold start on more agents
+
+- `scripts/cold_draws.py run` learns three flows from random draws of an agent's first sessions (the habit alone, the draw's own arbiter, a shipped arbiter) and replays each on the agent's test episodes; `report` gives each flow's spread across draws, how many draws save under half of what every training task gives, and the shipped arbiter's paired difference ([#9](https://github.com/alexnodeland/stretto/issues/9)).
+- **Measured** ([results](docs/results/cold-draws-2026-09-29.md)): on Qwen3.5-397B, Claude Sonnet 4.5 and Claude Opus 4.5, twenty draws of 5 and 10 sessions each. From five sessions the habit alone saved under half in 16 of 120 draws; a shipped arbiter lifted 13 of the 17 narrow draws above half, at no more than 3.3 points of the median. Jev's 39,541 new answers are published.
+
 ### Flows and guards together
 
 - `pilot/run_episode.py --arm reach-guards` serves a flow on the reach decider with the guards in the proxy, the design's arm E ([#8](https://github.com/alexnodeland/stretto/issues/8)). `pilot/run_paired.py --model` runs another agent model, and `--flow-oracle mock` spares Jev's key for flows that ask no model.
