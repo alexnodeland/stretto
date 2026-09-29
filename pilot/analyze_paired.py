@@ -69,15 +69,57 @@ def clustered(tasks: dict, stat, seed: int = 7) -> list[float]:
     return [round(x, 4) for x in (point, draws[int(0.025 * DRAWS)], draws[int(0.975 * DRAWS) - 1])]
 
 
+def archive_key(episode: Path) -> str:
+    """An episode's path from its archive's top folder (`*-episodes`) on, as
+    `scripts/basis_report.py --rows` keys it."""
+    parts = episode.resolve().parts
+    tops = [i for i, p in enumerate(parts) if p.endswith("-episodes")]
+    return "/".join(parts[tops[-1]:]) if tops else str(episode.resolve())
+
+
+def load_basis(path: Path):
+    """Whether an episode passed every check in its task's reward basis.
+
+    Takes `rescore.py --scoring basis --json` rows, keyed by the episode's
+    path, or `scripts/basis_report.py --rows`, keyed by its path in the
+    archive, whose `basis` is the majority of the judgings. An episode the
+    rows leave out is an error, not a failure."""
+    verdicts = {}
+    for r in json.loads(path.read_text()):
+        if "judgings" in r:
+            verdicts[r["episode"]] = r["basis"]
+        elif r.get("scoring") == "basis":
+            verdicts[str(Path(r["episode"]).resolve())] = r["reward"]
+        else:
+            sys.exit(f"{path}: rows scored with --scoring {r.get('scoring')}, not basis")
+
+    def passed(episode: Path) -> bool:
+        for k in (str(episode.resolve()), archive_key(episode)):
+            if k in verdicts:
+                return verdicts[k] >= 1 - 1e-9
+        sys.exit(f"{path} has no row for {episode}")
+
+    return passed
+
+
+def basis_passes(ps: list[dict]) -> dict:
+    """Passes under the full reward basis, the pairs that disagree, and McNemar's p."""
+    b_only = sum(p["basis_b"] and not p["basis_a"] for p in ps)
+    a_only = sum(p["basis_a"] and not p["basis_b"] for p in ps)
+    return {
+        "basis_pass": {"baseline": sum(p["basis_a"] for p in ps), "flows": sum(p["basis_b"] for p in ps)},
+        "basis_discordant": {"flows_only": b_only, "baseline_only": a_only},
+        "basis_mcnemar_p": round(mcnemar_p(b_only, a_only), 4),
+    }
+
+
 def test_tasks(tau2: Path, domain: str) -> list[str]:
     split = json.loads((tau2 / "data" / "tau2" / "domains" / domain / "split_tasks.json").read_text())
     return [str(t) for t in split["test"]]
 
 
 def pairs(args) -> None:
-    basis = None
-    if args.basis:
-        basis = {Path(r["episode"]).resolve(): r["reward"] for r in json.loads(args.basis.read_text())}
+    basis = load_basis(args.basis) if args.basis else None
     run_pilot.ARMS[:] = ["baseline", "flows"]
     run_pilot.summarize(args.out, test_tasks(args.tau2, args.domain), args.trials)
     report = json.loads((args.out / "pilot.json").read_text())
@@ -94,10 +136,8 @@ def pairs(args) -> None:
                 "calls_a": a["agent_calls"], "calls_b": b["agent_calls"],
                 "lookups": b["flow_lookups"], "repeats": b["repeats"]}
         if basis is not None:
-            da = episode_dir(args.out, "baseline", r["task_id"], r["trial"]).resolve()
-            db = episode_dir(args.out, "flows", r["task_id"], r["trial"]).resolve()
-            pair["basis_a"] = basis.get(da, 0.0) >= 1 - 1e-9
-            pair["basis_b"] = basis.get(db, 0.0) >= 1 - 1e-9
+            pair["basis_a"] = basis(episode_dir(args.out, "baseline", r["task_id"], r["trial"]))
+            pair["basis_b"] = basis(episode_dir(args.out, "flows", r["task_id"], r["trial"]))
         by_task.setdefault(r["task_id"], []).append(pair)
     ps = [p for group in by_task.values() for p in group]
     total = lambda k: sum(p[k] for p in ps)
@@ -125,7 +165,7 @@ def pairs(args) -> None:
         "episodes_with_lookups": sum(p["lookups"] > 0 for p in ps),
     }
     if basis is not None:
-        res["basis_pass"] = {"baseline": total("basis_a"), "flows": total("basis_b")}
+        res |= basis_passes(ps)
         res["basis_pass_difference"] = clustered(by_task, diff("basis_a", "basis_b"))
     (args.out / "analysis.json").write_text(json.dumps({"result": res, "pairs": ps}, indent=1) + "\n")
     print(json.dumps(res, indent=1))
@@ -237,14 +277,19 @@ def pool(args) -> None:
         for p in json.loads((out / "analysis.json").read_text())["pairs"]:
             by_task.setdefault(p["task"], []).append(p)
         domains.append(by_task)
+    # Every domain scored with `pairs --basis` as well.
+    basis = all("basis_a" in p for d in domains for group in d.values() for p in group)
 
     def stats(sample: list[list[list[dict]]]) -> dict:
         ps = [p for d in sample for group in d for p in group]
-        return {
+        out = {
             "pass_difference": (sum(p["pass_b"] for p in ps) - sum(p["pass_a"] for p in ps)) / len(ps),
             "turns_saved_share": 1 - sum(p["turns_b"] for p in ps) / sum(p["turns_a"] for p in ps),
             "input_tokens_saved_share": 1 - sum(p["tok_b"] for p in ps) / sum(p["tok_a"] for p in ps),
         }
+        if basis:
+            out["basis_pass_difference"] = (sum(p["basis_b"] for p in ps) - sum(p["basis_a"] for p in ps)) / len(ps)
+        return out
 
     point = stats([list(d.values()) for d in domains])
     rng = random.Random(7)
@@ -265,6 +310,8 @@ def pool(args) -> None:
            "mcnemar_p": round(mcnemar_p(b_only, a_only), 4),
            "turns": {"baseline": sum(p["turns_a"] for p in ps), "flows": sum(p["turns_b"] for p in ps)},
            "input_tokens": {"baseline": sum(p["tok_a"] for p in ps), "flows": sum(p["tok_b"] for p in ps)}}
+    if basis:
+        res |= basis_passes(ps)
     for k, v in point.items():
         d = sorted(draws[k])
         res[k] = [round(v, 4), round(d[int(0.025 * DRAWS)], 4), round(d[int(0.975 * DRAWS) - 1], 4)]

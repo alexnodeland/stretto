@@ -33,6 +33,7 @@ Before they ran live, both flows replayed GLM-5's 40 trial-0 retail test episode
 | Fewer than with no flow (95% interval) | | 23.6% (14.3% to 32.8%) | 28.2% (20.8% to 36.7%) | 28.2% (19.0% to 36.9%) | 36.4% (26.3% to 44.5%) |
 | Agent input tokens | 723,926 | 571,528 | 550,910 | 552,523 | 477,557 |
 | Passed the database check | 8 | 8 | 9 | 8 | 8 |
+| Passed every check ([rescored](scoring-2026-09-29.md) 2026-09-29) | 7 | 8 | 8 | 7 | 7 |
 | Flow lookups: the agent's own, detours | | 26, 0 | 31, 6 | 31, 6 | 32, 2 |
 | Lookups the agent repeated | | 3 | 0 | 0 | 4 |
 | Z.ai credits | 128.5 | 108.0 | 109.1 | 109.0 | 95.6 |
@@ -42,7 +43,7 @@ A lookup is the agent's own when the agent made the same call in the task's epis
 - **Five sessions teach the habit what four agents' episodes do.** The habit learned from GLM-5.3's five sessions made exactly the lookups, tools and arguments alike, that the habit learned from four other agents' 2025 episodes made, on all ten tasks. Both took 79 turns, 28.2% fewer than without a flow, and fewer than D0's 84.
 - **So the two habit arms differ only by chance.** Their flows did the same, yet their turns differ on six tasks, and the four-agent habit passed task 27 where the five-session habit failed it. That is how much the agent and the simulated customer vary from one episode to the next.
 - **The shipped arbiter on top saved the most.** It took 70 turns, 36.4% fewer than without a flow. That is 0.9 fewer per episode than the habit alone (95% interval −2.3 to +0.2), with fewer turns on 6 tasks and more on 2. It made 2 detours where the habit alone made 6. Ten tasks, one episode each, cannot separate the two.
-- **Passes.** Both new flows passed 8 of 10. They failed tasks 27 and 64, as the arms without a flow and with D0 did, with the same agent errors: on task 27 the agent filed a return before the exchange the task expects, and on task 64 it chose the wrong variant.
+- **Passes.** Both new flows passed 8 of 10 (7 with every check in τ²-bench's reward basis: on task 68 both listed every order's total without saying which order was the most recent, [scoring](scoring-2026-09-29.md)). They failed tasks 27 and 64, as the arms without a flow and with D0 did, with the same agent errors: on task 27 the agent filed a return before the exchange the task expects, and on task 64 it chose the wrong variant.
 - **Offline and live.** Offline, the arbiter flow saved a little less than the habit alone (19.6% against 20.5%) with fewer detours. Live it saved more, which is within what one episode per task can show. The new arms ran a day after the pilot's, with the same model and harness, so a change in how the model is served cannot be ruled out.
 
 <details><summary>Every task</summary>

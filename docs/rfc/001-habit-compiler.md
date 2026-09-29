@@ -626,7 +626,7 @@ What this changes:
 
 stretto ran flows live for the first time, in τ²-bench retail:
 
-- **Agent:** GLM-5.3, in Claude Code on Z.ai's GLM Coding Plan (§6, question 8). GLM-5.3 also plays the customer, from τ²-bench's user-simulator prompt. The reward is τ²-bench's database check; its natural-language assertions need an LLM judge and were left out.
+- **Agent:** GLM-5.3, in Claude Code on Z.ai's GLM Coding Plan (§6, question 8). GLM-5.3 also plays the customer, from τ²-bench's user-simulator prompt. The reward is τ²-bench's database check; its natural-language assertions need an LLM judge and were left out. [Rescored](../results/scoring-2026-09-29.md) with them on 2026-09-29, judged by Claude Haiku 4.5, the pilot's two arms pass 7 and 8 of 10.
 - **Tools:** τ²-bench's, served over MCP behind stretto's recording proxy.
 - **Flow:** compiled from the 2025 baselines without a goal, and served by `stretto flow-serve`. It asks Jev live, through the replay cache.
 - **Details:** stretto's [pilot results](../../pilot/README.md#results-so-far) and [goal-free summary](../results/phase0b-v2-goal-free-2026-09-24-summary.md).
@@ -979,6 +979,8 @@ The pilots' ten pairs per domain could not bound a loss of pass^1, the second ha
 | Input tokens saved | 24.8% (18.5% to 30.7%) | 18.0% (7.5% to 28.4%) | 21.0% (14.7% to 27.4%) |
 | Passed, without the flow and with it | 37 and 34 | 34 and 36 | 71 and 70 |
 | Pass-rate difference, in points | −7.5 (−17.5 to 0.0) | +5.0 (−5.0 to +17.5) | −1.25 (−7.5 to +6.25) |
+
+[Rescored](../results/scoring-2026-09-29.md) on 2026-09-29 with every check in τ²-bench's reward basis, the natural-language assertions judged by Claude Haiku 4.5, retail passes 36 and 34 (−5.0 points, −15.0 to +5.0), and both domains 70 and 70 (0.0, −7.5 to +7.5).
 
 - **The turns half of the gate is met,** live and on held-out tasks: the pooled interval's lower end is 20.5%.
 - **The pass^1 half is not shown.**

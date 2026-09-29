@@ -14,6 +14,7 @@ Replayed on recorded episodes, a flow that decides on the habit alone saves as m
 | Agent input tokens | 723,926 | 571,528 (−21.1%) | 550,910 (−23.9%) |
 | Flow lookups (the agent repeated) | | 26 (3) | 37 (0) |
 | Passed the database check | 8 of 10 | 8 of 10 | 9 of 10 |
+| Passed every check ([rescored](scoring-2026-09-29.md) 2026-09-29) | 7 of 10 | 8 of 10 | 8 of 10 |
 | Z.ai credits, off-peak | 128.5 | 108.0 | 109.1 |
 
 - **Live, the habit alone does what D0 does.** Against D0 it changed the turns per episode by −0.5 (95% interval −1.4 to +0.4). That is no difference that ten tasks can resolve, and it matches the replay.

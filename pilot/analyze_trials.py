@@ -1,13 +1,15 @@
 """Report on a run of paired trials (run_trials.py): each arm, and each pair of arms.
 
-    python analyze_trials.py OUT [OUT...] [--json FILE] [--markdown]
+    python analyze_trials.py OUT [OUT...] [--json FILE] [--markdown] [--basis ROWS]
 
 OUT is run_trials.py's output: OUT/DOMAIN/trial-K/ARM/task-ID episodes (an
 attempt kept as `task-ID.failed-N` is left out). Several OUTs are read as one
 design, as when a model's later arms were run into a directory of their own.
 For each arm, in each domain and in both:
 
-- pass^1, the share of episodes that passed τ²-bench's database check, and
+- pass^1, the share of episodes that passed τ²-bench's database check (with
+  `--basis`, every check in the task's reward basis, from `rescore.py
+  --scoring basis --json` or `scripts/basis_report.py --rows`), and
   pass^k for every k up to the trials each task ran: the chance that k
   trials of a task drawn at random all pass (τ²-bench's estimator, averaged
   over tasks);
@@ -36,7 +38,7 @@ import random
 import sys
 from pathlib import Path
 
-from analyze_paired import DRAWS, appended, mcnemar_p, session_calls
+from analyze_paired import DRAWS, appended, load_basis, mcnemar_p, session_calls
 from run_pilot import episode_summary, repeats
 
 # The comparisons reported, when both arms ran: (without, with).
@@ -210,7 +212,7 @@ def pct(x: float) -> str:
 
 
 def markdown(report: dict) -> str:
-    lines = []
+    lines = [] if report["scoring"] == "the database check" else [f"Passed: by {report['scoring']}.", ""]
     for scope, s in report["scopes"].items():
         lines += [f"### {scope}", "", "| Arm | Episodes | pass^1 | pass^k (k = trials) | Turns/episode | Calls/tool turn | Input tokens | Agent $ | Customer $ | Wall-clock s |",
                   "|---|---|---|---|---|---|---|---|---|---|"]
@@ -243,14 +245,20 @@ def main() -> None:
     parser.add_argument("out", type=Path, nargs="+")
     parser.add_argument("--json", type=Path, help="write the report here (default: the first OUT's analysis.json)")
     parser.add_argument("--markdown", action="store_true", help="print the tables as Markdown")
+    parser.add_argument("--basis", type=Path, help="score passes by every check in the reward basis, from these rows")
     args = parser.parse_args()
     rows = [r for out in args.out for r in episodes(out)]
     if not rows:
         sys.exit(f"no episodes under {' '.join(map(str, args.out))}")
+    if args.basis:
+        passed = load_basis(args.basis)
+        for r in rows:
+            r["passed_db"], r["passed"] = r["passed"], passed(Path(r["episode"]))
     arms = [a for a in ("baseline", "reach", "batch", "batch-reach") if any(r["arm"] == a for r in rows)]
     scopes = {d: [r for r in rows if r["domain"] == d] for d in sorted({r["domain"] for r in rows})}
     scopes["both"] = rows
     report = {
+        "scoring": f"every check in the reward basis ({args.basis.name})" if args.basis else "the database check",
         "models": sorted({r["model"] for r in rows}),
         "customer_models": sorted({r["customer_model"] for r in rows}),
         "scopes": {

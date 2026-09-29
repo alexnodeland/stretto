@@ -78,6 +78,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import customer
+import judge as nl_judge
 from tau2.agent.llm_agent import AGENT_INSTRUCTION, AGENT_SOLO_INSTRUCTION, SYSTEM_PROMPT, SYSTEM_PROMPT_SOLO
 from tau2.data_model.message import AssistantMessage, ToolMessage, UserMessage
 from tau2.data_model.simulation import SimulationRun, TerminationReason
@@ -272,7 +273,13 @@ def main() -> None:
         help="mark τ²-bench's read tools readOnlyHint: true (writes false) in tools/list, as a real "
         "server would, so `stretto learn` needs no --manifest (off in the pilots)",
     )
+    parser.add_argument(
+        "--judge", metavar="claude:MODEL",
+        help="judge the task's natural-language assertions with this model (judge.py) for the reward "
+        "τ²-bench's leaderboard gives (reward_basis); without it, a task that counts them has none",
+    )
     args = parser.parse_args()
+    judged_by = nl_judge.use(args.judge) if args.judge else None
     # The mock oracle never reads a cache; nor is it asked by the habit or
     # reach decider, so a served flow file needs no cache with it.
     if args.arm in FLOW_ARMS and not args.oracle_cache and args.flow_oracle != "mock":
@@ -534,6 +541,17 @@ def main() -> None:
     reward = evaluate_simulation(
         simulation, task, EvaluationType.ALL if args.solo else EvaluationType.ENV, solo_mode=args.solo, domain=args.domain
     )
+    # And as τ²-bench's leaderboard does: every check in the task's reward
+    # basis. Natural-language assertions need a judge (--judge); without one,
+    # a task that counts them has no such reward.
+    basis = [str(getattr(b, "value", b)) for b in (task.evaluation_criteria.reward_basis or [])]
+    basis_reward = None
+    if args.solo:
+        basis_reward = reward
+    elif judged_by or "NL_ASSERTION" not in basis:
+        basis_reward = evaluate_simulation(
+            simulation, task, EvaluationType.ALL, solo_mode=False, domain=args.domain
+        )
     simulation.reward_info = reward
     (episode / "simulation.json").write_text(simulation.model_dump_json(indent=1))
 
@@ -595,6 +613,13 @@ def main() -> None:
             "second_shadow": args.confirm_second_shadow, "oracle": args.judge_oracle,
         } if args.confirm_judge else None,
         "reward": reward.reward,
+        "reward_basis": basis_reward.reward if basis_reward else None,
+        "basis": basis,
+        "basis_judge": judged_by if basis_reward and basis_reward.nl_assertions else None,
+        "nl_assertions": [
+            {"assertion": c.nl_assertion, "met": c.met, "justification": c.justification}
+            for c in (basis_reward.nl_assertions or [])
+        ] if basis_reward else None,
         "termination": termination.value,
         "ending": ending,
         "solo": args.solo,
@@ -627,7 +652,7 @@ def main() -> None:
     print(
         "RESULT",
         json.dumps(
-            {k: result[k] for k in ("task_id", "arm", "reward", "termination", "llm_turns", "tool_calls", "flow_lookups", "customer_turns", "duration_s")}
+            {k: result[k] for k in ("task_id", "arm", "reward", "reward_basis", "termination", "llm_turns", "tool_calls", "flow_lookups", "customer_turns", "duration_s")}
             | {"refusals": len(refusals)}
         ),
     )

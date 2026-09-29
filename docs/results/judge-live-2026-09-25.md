@@ -6,7 +6,7 @@ Offline, Jev judged a customer's confirmation better than the guards' word list 
 - **Arms:** the guards as in [the guards pilot](pilot-guards-2026-09-24.md), with the judge's first question logged only (arm B), against the same guards with it enforced. The second question is asked and logged in both, never enforced (`--confirm-second proposed --confirm-second-shadow`). A write fails when Jev's probability of a yes is below 0.5.
 - **Tasks:** ten test tasks per domain. Five are the tasks where Jev failed the most writes in τ²-bench's published trajectories: 111, 55, 74, 39 and 100 in retail, and 18, 22, 44, 37 and 35 in airline. Five more were drawn at random from the rest (seed 6): 5, 12, 26, 53 and 97, and 6, 16, 25, 29 and 32. Each task ran once per arm.
 - **The key.** The proxy that judges runs under the agent's process, so the harness hands it Jev's key in a file that only the proxy opens: mode 0600, outside the episode directory, and deleted when the agent exits (`TYPESAFE_API_KEY_FILE`). The agent's process gets the file's path, never the key.
-- **Reward:** τ²-bench's database check.
+- **Reward:** τ²-bench's database check. *Rescored (2026-09-29):* with every check in τ²-bench's reward basis, the assertions judged by Claude Haiku 4.5, every episode keeps its reward ([scoring](scoring-2026-09-29.md)).
 
 ## Findings
 
