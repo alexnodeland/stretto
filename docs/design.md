@@ -88,7 +88,7 @@ stretto-proxy session logs ─┼─► stretto-trace (Episode) ─► stretto-m
 | System-One questions and the arbiter (Phase 0b, v2) | Built | `stretto phase0 --oracle … --questions v2`; `shadow.rs`, `arbitrate.rs` |
 | Flow IR: compile from τ²-bench, learn from sessions, serve | Built; fields documented in [formats.md](formats.md) | `stretto compile`, `learn`, `serve`; `flow.rs` |
 | Read-only flows live (arm D0) | Built. Paired pilots ran in retail and airline, then every test task: 80 pairs, 25.5% fewer LLM turns (95% interval 20.5% to 30.4%), and a pass-rate change of −1.25 points (−7.5 to +6.25) ([results](results/paired-2026-09-25.md)) | `stretto-proxy --flow`; the pilot harness (`pilot/`, `run_paired.py`) |
-| Policy guards (arms B and E) | Built, audited against τ²-bench; arm B live in airline (GLM-5.3 gave them nothing to refuse) | `guards.rs`; `stretto guards`; `stretto-proxy --guards`; `pilot/run_episode.py --arm guards` |
+| Policy guards (arms B and E) | Built, audited against τ²-bench; arm B live in airline (GLM-5.3 gave them nothing to refuse); arm E live with `glm-5.3-flash` and a flow from frontier traces: 20.8% fewer LLM turns, passes unchanged, one write refused ([results](results/smaller-agent-2026-09-29.md)) | `guards.rs`; `stretto guards`; `stretto-proxy --guards`; `pilot/run_episode.py --arm guards`, `--arm reach-guards` |
 | Confirmed writes in one call | Built; no live run has used it yet ([#7](https://github.com/alexnodeland/stretto/issues/7)) | `stretto-proxy --commit` (`stretto_commit`) |
 | The conversation for flows and guards | Built | `stretto-proxy --context` |
 | Record, learn, serve from any MCP server | Built, tested end to end | `crates/stretto-proxy/tests/active.rs` |

@@ -22,7 +22,9 @@ episode is booked at its estimate. Three failures in a row stop the run.
 serves), such as a flow on the arbiter against another on the habit alone:
 `--arms flows=d0.flow.json habit=d0-named.flow.json`. `--tasks` runs some of
 the test tasks, and `--judge claude:MODEL` has each episode record τ²-bench's
-full reward too (run_episode.py's `reward_basis`).
+full reward too (run_episode.py's `reward_basis`). `--model` runs another
+agent model, and `--flow-oracle mock` spares a key for flows that ask no
+model.
 
 Run it in τ²-bench's Python environment. `analyze_paired.py` reports on the
 output.
@@ -114,6 +116,10 @@ def run_one(args, ledger: Ledger, out: Path, arm: str, task: str, trial: int, co
         command += ["--flow", str(args.flows[arm])]
     if args.judge:
         command += ["--judge", args.judge]
+    if args.model:
+        command += ["--model", args.model]
+    if args.flow_oracle:
+        command += ["--flow-oracle", args.flow_oracle]
     # run_episode.py hands the MCP server `which python`: the τ²-bench
     # environment must come first on PATH.
     env = dict(os.environ, PATH=f"{Path(sys.executable).parent}:{os.environ.get('PATH', '')}")
@@ -154,6 +160,9 @@ def main() -> None:
                         help="the two arms (run_episode.py's --arm), each with the flow file it serves, if any")
     parser.add_argument("--tasks", nargs="+", help="these test tasks only (default: every one)")
     parser.add_argument("--judge", metavar="claude:MODEL", help="each episode's natural-language judge (run_episode.py --judge)")
+    parser.add_argument("--model", help="the agent's model in every episode (run_episode.py --model; default glm-5.3)")
+    parser.add_argument("--flow-oracle", choices=["jev", "mock"],
+                        help="who answers the flow's questions (run_episode.py --flow-oracle); the habit and reach deciders ask none")
     args = parser.parse_args()
     specs = [a.partition("=") for a in args.arms]
     arms = tuple(name for name, _, _ in specs)

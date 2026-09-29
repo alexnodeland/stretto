@@ -25,7 +25,7 @@ use serde_json::json;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt::Write as _;
 use stretto_oracle::{request_key, Answer, NoulCriteria, Oracle, Question, Request, Response};
-use stretto_trace::{Episode, Event, ToolCall};
+use stretto_trace::{mcp, Episode, Event, ToolCall};
 
 /// The question's id.
 pub const QUESTION: &str = "confirmed";
@@ -653,14 +653,18 @@ pub fn contradicted(episode: &Episode, call: &ToolCall) -> Vec<(String, String)>
     let (proposal, customer) = (proposal.to_lowercase(), customer.to_lowercase());
     let mut groups: Vec<Vec<Record>> = Vec::new();
     for e in &episode.events {
-        if let Event::ToolResult {
-            content,
-            error: false,
-            ..
-        } = e
-        {
-            if let Ok(value) = serde_json::from_str::<serde_json::Value>(content) {
-                record_lists(&value, &mut groups);
+        if let Event::ToolResult { content, error, .. } = e {
+            // The result, then the lookups a flow appended to it.
+            let (own, lookups) = mcp::appended(content);
+            let appended = lookups.iter().filter(|l| !l.error);
+            for text in (!error)
+                .then_some(own)
+                .into_iter()
+                .chain(appended.map(|l| l.content.as_str()))
+            {
+                if let Ok(value) = serde_json::from_str::<serde_json::Value>(text) {
+                    record_lists(&value, &mut groups);
+                }
             }
         }
     }
@@ -1156,5 +1160,18 @@ mod tests {
         assert!(contradicted(&ep, &cancel("#W1111")).is_empty());
         let other = contradicted(&ep, &cancel("#W2222"));
         assert_eq!(other, vec![("order_id".to_string(), "#w2222".to_string())]);
+        // The same list, looked up by a flow and appended to a failed call's
+        // result.
+        let mut looked_up = ep.clone();
+        looked_up.events[0] = Event::ToolResult {
+            call_id: "a".to_string(),
+            name: "find_user_id_by_email".to_string(),
+            error: true,
+            content: format!(
+                "not found\n\n{}\n\nget_orders {{}}:\n{orders}\n\nget_orders {{\"page\": 2}} (error):\n[]",
+                mcp::APPENDIX
+            ),
+        };
+        assert_eq!(contradicted(&looked_up, &cancel("#W2222")), other);
     }
 }

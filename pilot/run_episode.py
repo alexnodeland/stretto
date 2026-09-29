@@ -27,7 +27,9 @@ The habit arm (`--arm habit`) is the flows arm with the flow deciding on the
 habit's prediction alone (`--decider habit`): it never asks the System-One
 model. The reach arm (`--arm reach`) decides on the probability that the agent
 makes a lookup before its next write (`--decider reach`), with no model either;
-it needs a flow learned with those counts (`--flow`).
+it needs a flow learned with those counts (`--flow`). The reach-and-guards arm
+(`--arm reach-guards`, the design's arm E) serves the reach flow with the
+guards arm's guards in the proxy.
 
 `--confirm-judge log|enforce` adds the confirmation judge to the guards arm:
 the proxy puts each write the guards check for a confirmation to Jev as
@@ -97,7 +99,9 @@ TAU2 = Path(os.environ.get("TAU2_DIR", HERE.parent.parent / "sierra-research" / 
 GREETING = "Hi! How can I help you today?"
 STOPS = (STOP, TRANSFER, OUT_OF_SCOPE)
 # The arms with a flow behind the tools, and who decides in each.
-FLOW_ARMS = {"flows": "arbiter", "habit": "habit", "reach": "reach"}
+FLOW_ARMS = {"flows": "arbiter", "habit": "habit", "reach": "reach", "reach-guards": "reach"}
+# The arms whose proxy checks the agent's calls against the policy guards.
+GUARD_ARMS = {"guards", "reach-guards"}
 # τ²-bench's solo agent never speaks; its first turn has no message to answer.
 SOLO_START = "Start on the ticket."
 # `--batch-reads`: the sample prompt for maximum parallel efficiency in
@@ -215,7 +219,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--domain", default="retail")
     parser.add_argument("--task-id", required=True)
-    parser.add_argument("--arm", default="baseline", choices=["baseline", "flows", "habit", "reach", "guards"])
+    parser.add_argument("--arm", default="baseline", choices=["baseline", "flows", "habit", "reach", "guards", "reach-guards"])
     parser.add_argument("--out", type=Path, default=Path("runs/pilot"))
     parser.add_argument("--model", default="glm-5.3", help="the agent's model")
     parser.add_argument(
@@ -287,8 +291,8 @@ def main() -> None:
         parser.error(f"the {args.arm} arm needs --oracle-cache, or --flow-oracle mock")
     if args.arm in FLOW_ARMS and not args.oracle_cache and not args.flow:
         parser.error(f"the {args.arm} arm compiles a flow here: give it --oracle-cache, or a --flow")
-    if args.confirm_judge and (args.arm != "guards" or not args.oracle_cache):
-        parser.error("--confirm-judge needs --arm guards and --oracle-cache")
+    if args.confirm_judge and (args.arm not in GUARD_ARMS or not args.oracle_cache):
+        parser.error("--confirm-judge needs --arm guards or reach-guards, and --oracle-cache")
     if args.confirm_second and not args.confirm_judge:
         parser.error("--confirm-second needs --confirm-judge")
     if args.confirm_second_shadow and not args.confirm_second:
@@ -299,7 +303,7 @@ def main() -> None:
         parser.error("--customer-cli claude needs --customer-model")
     if args.handback and not args.solo:
         parser.error("--handback needs --solo")
-    if args.solo and (args.arm == "guards" or args.record_context):
+    if args.solo and (args.arm in GUARD_ARMS or args.record_context):
         parser.error("--solo has no conversation for the guards arm or --record-context")
     if args.solo and args.batch_reads:
         parser.error("--batch-reads adds to the conversational system prompt, not --solo's")
@@ -315,7 +319,7 @@ def main() -> None:
 
     def say(role: str, text: str) -> None:
         """Hand the proxy a message of the conversation (guards arm, or when recording it)."""
-        if args.arm == "guards" or args.record_context:
+        if args.arm in GUARD_ARMS or args.record_context:
             with open(context, "a") as f:
                 f.write(json.dumps({"role": role, "content": text}) + "\n")
     serve, flow_address = start_flow(args, episode) if args.arm in FLOW_ARMS else (None, None)
@@ -382,8 +386,8 @@ def main() -> None:
                     "--record", str(episode / "log"),
                     "--domain", args.domain,
                     "--agent-model", args.model,
-                ] + (["--guards"] if args.arm == "guards" else [])
-                + (["--context", str(context)] if args.arm == "guards" or args.record_context else [])
+                ] + (["--guards"] if args.arm in GUARD_ARMS else [])
+                + (["--context", str(context)] if args.arm in GUARD_ARMS or args.record_context else [])
                 + judge + [
                     "--",
                     str(python), str(HERE / "tau2_mcp.py"),

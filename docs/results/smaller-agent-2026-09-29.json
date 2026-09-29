@@ -1,0 +1,671 @@
+{
+ "agent": "glm-5.3-flash",
+ "customer": "glm-5.3",
+ "arms": {
+  "A": "baseline",
+  "E": "reach-guards"
+ },
+ "flows": {
+  "retail": "smaller-agent-2026-09-29-retail.flow.json",
+  "airline": "smaller-agent-2026-09-29-airline.flow.json"
+ },
+ "pooled": {
+  "turns": [
+   240,
+   190
+  ],
+  "turns_saved_share": [
+   0.2083,
+   0.1101,
+   0.2992
+  ],
+  "input_tokens": [
+   1736987,
+   1489547
+  ],
+  "input_tokens_saved_share": [
+   0.1425,
+   -0.0128,
+   0.251
+  ],
+  "fewer_turns": 16,
+  "more_turns": 3,
+  "passed": [
+   18,
+   18
+  ],
+  "discordant": {
+   "E_only": 2,
+   "A_only": 2
+  }
+ },
+ "domains": {
+  "retail": {
+   "baseline": {
+    "passed": 9,
+    "failed_tasks": [
+     "64"
+    ],
+    "turns": 111,
+    "input_tokens": 706355,
+    "credits": 133.7,
+    "agent_calls": 66,
+    "flow_lookups": 0,
+    "repeats": 0,
+    "own": 0,
+    "detours": 0,
+    "turns_saved_share": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turn_difference_per_episode": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "input_tokens_saved_share": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fewer_turns": 0,
+    "more_turns": 0,
+    "passed_only_here": 0,
+    "passed_only_in_base": 0,
+    "passed_basis": 8,
+    "refusals": 0,
+    "episodes_refused": 0,
+    "refusal_rules": {},
+    "per_task": {
+     "17": {
+      "reward": 1.0,
+      "llm_turns": 8,
+      "agent_input_tokens": 41469,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 8.11,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "18": {
+      "reward": 1.0,
+      "llm_turns": 11,
+      "agent_input_tokens": 69636,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 13.32,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "27": {
+      "reward": 1.0,
+      "llm_turns": 12,
+      "agent_input_tokens": 86860,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 17.53,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "36": {
+      "reward": 1.0,
+      "llm_turns": 15,
+      "agent_input_tokens": 109861,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 19.98,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "51": {
+      "reward": 1.0,
+      "llm_turns": 10,
+      "agent_input_tokens": 57907,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 9.84,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "60": {
+      "reward": 1.0,
+      "llm_turns": 7,
+      "agent_input_tokens": 41882,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 9.06,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "64": {
+      "reward": 0.0,
+      "llm_turns": 12,
+      "agent_input_tokens": 73864,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 13.91,
+      "reward_basis": 0.0,
+      "refusals": []
+     },
+     "68": {
+      "reward": 1.0,
+      "llm_turns": 12,
+      "agent_input_tokens": 68680,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 14.22,
+      "reward_basis": 0.0,
+      "refusals": []
+     },
+     "77": {
+      "reward": 1.0,
+      "llm_turns": 8,
+      "agent_input_tokens": 44876,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 9.24,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "101": {
+      "reward": 1.0,
+      "llm_turns": 16,
+      "agent_input_tokens": 111320,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 18.46,
+      "reward_basis": 1.0,
+      "refusals": []
+     }
+    }
+   },
+   "reach-guards": {
+    "passed": 9,
+    "failed_tasks": [
+     "27"
+    ],
+    "turns": 74,
+    "input_tokens": 520461,
+    "credits": 109.0,
+    "agent_calls": 35,
+    "flow_lookups": 39,
+    "repeats": 0,
+    "own": 33,
+    "detours": 6,
+    "turns_saved_share": [
+     0.3333,
+     0.2564,
+     0.4151
+    ],
+    "turn_difference_per_episode": [
+     -3.7,
+     -4.6,
+     -2.9
+    ],
+    "input_tokens_saved_share": [
+     0.2632,
+     0.1732,
+     0.3714
+    ],
+    "fewer_turns": 10,
+    "more_turns": 0,
+    "passed_only_here": 1,
+    "passed_only_in_base": 1,
+    "passed_basis": 8,
+    "refusals": 1,
+    "episodes_refused": 1,
+    "refusal_rules": {
+     "retail.delivered": 1
+    },
+    "per_task": {
+     "17": {
+      "reward": 1.0,
+      "llm_turns": 6,
+      "agent_input_tokens": 36522,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 7.51,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "18": {
+      "reward": 1.0,
+      "llm_turns": 7,
+      "agent_input_tokens": 47657,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 10.05,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "27": {
+      "reward": 0.0,
+      "llm_turns": 8,
+      "agent_input_tokens": 70388,
+      "flow_lookups": 6,
+      "repeats": 0,
+      "credits_billed": 13.97,
+      "reward_basis": 0.0,
+      "refusals": [
+       "Refused by the policy check, so exchange_delivered_order_items was not run and nothing changed: the order is return requested, not delivered (policy check retail.delivered)."
+      ]
+     },
+     "36": {
+      "reward": 1.0,
+      "llm_turns": 13,
+      "agent_input_tokens": 103334,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 18.06,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "51": {
+      "reward": 1.0,
+      "llm_turns": 5,
+      "agent_input_tokens": 32998,
+      "flow_lookups": 6,
+      "repeats": 0,
+      "credits_billed": 7.99,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "60": {
+      "reward": 1.0,
+      "llm_turns": 4,
+      "agent_input_tokens": 25164,
+      "flow_lookups": 3,
+      "repeats": 0,
+      "credits_billed": 7.24,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "64": {
+      "reward": 1.0,
+      "llm_turns": 6,
+      "agent_input_tokens": 37678,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 7.51,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "68": {
+      "reward": 1.0,
+      "llm_turns": 7,
+      "agent_input_tokens": 38988,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 11.51,
+      "reward_basis": 0.0,
+      "refusals": []
+     },
+     "77": {
+      "reward": 1.0,
+      "llm_turns": 6,
+      "agent_input_tokens": 33770,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 7.9,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "101": {
+      "reward": 1.0,
+      "llm_turns": 12,
+      "agent_input_tokens": 93962,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 17.29,
+      "reward_basis": 1.0,
+      "refusals": []
+     }
+    }
+   }
+  },
+  "airline": {
+   "baseline": {
+    "passed": 9,
+    "failed_tasks": [
+     "6"
+    ],
+    "turns": 129,
+    "input_tokens": 1030632,
+    "credits": 195.2,
+    "agent_calls": 79,
+    "flow_lookups": 0,
+    "repeats": 0,
+    "own": 0,
+    "detours": 0,
+    "turns_saved_share": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turn_difference_per_episode": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "input_tokens_saved_share": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fewer_turns": 0,
+    "more_turns": 0,
+    "passed_only_here": 0,
+    "passed_only_in_base": 0,
+    "passed_basis": 9,
+    "refusals": 0,
+    "episodes_refused": 0,
+    "refusal_rules": {},
+    "per_task": {
+     "6": {
+      "reward": 0.0,
+      "llm_turns": 15,
+      "agent_input_tokens": 127629,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 35.25,
+      "reward_basis": 0.0,
+      "refusals": []
+     },
+     "8": {
+      "reward": 1.0,
+      "llm_turns": 12,
+      "agent_input_tokens": 80263,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 14.56,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "16": {
+      "reward": 1.0,
+      "llm_turns": 10,
+      "agent_input_tokens": 67322,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 12.88,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "18": {
+      "reward": 1.0,
+      "llm_turns": 29,
+      "agent_input_tokens": 329636,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 47.91,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "24": {
+      "reward": 1.0,
+      "llm_turns": 22,
+      "agent_input_tokens": 165595,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 25.31,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "25": {
+      "reward": 1.0,
+      "llm_turns": 8,
+      "agent_input_tokens": 55518,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 12.1,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "26": {
+      "reward": 1.0,
+      "llm_turns": 8,
+      "agent_input_tokens": 47211,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 12.93,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "30": {
+      "reward": 1.0,
+      "llm_turns": 7,
+      "agent_input_tokens": 40892,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 10.22,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "31": {
+      "reward": 1.0,
+      "llm_turns": 7,
+      "agent_input_tokens": 39593,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 8.66,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "37": {
+      "reward": 1.0,
+      "llm_turns": 11,
+      "agent_input_tokens": 76973,
+      "flow_lookups": 0,
+      "repeats": 0,
+      "credits_billed": 15.42,
+      "reward_basis": 1.0,
+      "refusals": []
+     }
+    }
+   },
+   "reach-guards": {
+    "passed": 9,
+    "failed_tasks": [
+     "31"
+    ],
+    "turns": 116,
+    "input_tokens": 969086,
+    "credits": 190.6,
+    "agent_calls": 67,
+    "flow_lookups": 26,
+    "repeats": 3,
+    "own": 25,
+    "detours": 1,
+    "turns_saved_share": [
+     0.1008,
+     -0.0792,
+     0.2263
+    ],
+    "turn_difference_per_episode": [
+     -1.3,
+     -3.5,
+     0.8
+    ],
+    "input_tokens_saved_share": [
+     0.0597,
+     -0.2593,
+     0.2122
+    ],
+    "fewer_turns": 6,
+    "more_turns": 3,
+    "passed_only_here": 1,
+    "passed_only_in_base": 1,
+    "passed_basis": 9,
+    "refusals": 0,
+    "episodes_refused": 0,
+    "refusal_rules": {},
+    "per_task": {
+     "6": {
+      "reward": 1.0,
+      "llm_turns": 12,
+      "agent_input_tokens": 88017,
+      "flow_lookups": 1,
+      "repeats": 1,
+      "credits_billed": 25.06,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "8": {
+      "reward": 1.0,
+      "llm_turns": 7,
+      "agent_input_tokens": 48612,
+      "flow_lookups": 5,
+      "repeats": 0,
+      "credits_billed": 10.57,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "16": {
+      "reward": 1.0,
+      "llm_turns": 8,
+      "agent_input_tokens": 57061,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 12.94,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "18": {
+      "reward": 1.0,
+      "llm_turns": 21,
+      "agent_input_tokens": 251864,
+      "flow_lookups": 6,
+      "repeats": 0,
+      "credits_billed": 35.14,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "24": {
+      "reward": 1.0,
+      "llm_turns": 22,
+      "agent_input_tokens": 172717,
+      "flow_lookups": 1,
+      "repeats": 1,
+      "credits_billed": 26.74,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "25": {
+      "reward": 1.0,
+      "llm_turns": 9,
+      "agent_input_tokens": 59627,
+      "flow_lookups": 1,
+      "repeats": 0,
+      "credits_billed": 12.46,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "26": {
+      "reward": 1.0,
+      "llm_turns": 7,
+      "agent_input_tokens": 43583,
+      "flow_lookups": 2,
+      "repeats": 0,
+      "credits_billed": 13.39,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "30": {
+      "reward": 1.0,
+      "llm_turns": 9,
+      "agent_input_tokens": 57352,
+      "flow_lookups": 1,
+      "repeats": 1,
+      "credits_billed": 12.27,
+      "reward_basis": 1.0,
+      "refusals": []
+     },
+     "31": {
+      "reward": 0.0,
+      "llm_turns": 12,
+      "agent_input_tokens": 118607,
+      "flow_lookups": 3,
+      "repeats": 0,
+      "credits_billed": 25.9,
+      "reward_basis": 0.0,
+      "refusals": []
+     },
+     "37": {
+      "reward": 1.0,
+      "llm_turns": 9,
+      "agent_input_tokens": 71646,
+      "flow_lookups": 4,
+      "repeats": 0,
+      "credits_billed": 16.15,
+      "reward_basis": 1.0,
+      "refusals": []
+     }
+    }
+   }
+  }
+ },
+ "first_attempt": {
+  "note": "retail, arm E with guards that could not see the flow's appended lookups (fixed before the run above)",
+  "episodes": {
+   "17": {
+    "reward": 1.0,
+    "llm_turns": 10,
+    "refusals": [
+     "Refused by the policy check, so modify_pending_order_address was not run and nothing changed: the order's status was not checked first (policy check retail.status_checked).",
+     "Refused by the policy check, so modify_pending_order_address was not run and nothing changed: the order belongs to fatima_johnson_7581, not the authenticated user (policy check retail.own_order)."
+    ]
+   },
+   "18": {
+    "reward": 1.0,
+    "llm_turns": 11,
+    "refusals": [
+     "Refused by the policy check, so exchange_delivered_order_items was not run and nothing changed: the order's status was not checked first (policy check retail.status_checked).",
+     "Refused by the policy check, so exchange_delivered_order_items was not run and nothing changed: the order belongs to mei_davis_8935, not the authenticated user (policy check retail.own_order)."
+    ]
+   },
+   "27": {
+    "reward": 0.0,
+    "llm_turns": 12,
+    "refusals": [
+     "Refused by the policy check, so return_delivered_order_items was not run and nothing changed: the order's status was not checked first (policy check retail.status_checked).",
+     "Refused by the policy check, so return_delivered_order_items was not run and nothing changed: the order belongs to isabella_johansson_2152, not the authenticated user (policy check retail.own_order).",
+     "Refused by the policy check, so exchange_delivered_order_items was not run and nothing changed: the order is return requested, not delivered (policy check retail.delivered)."
+    ]
+   },
+   "36": {
+    "reward": 1.0,
+    "llm_turns": 18,
+    "refusals": [
+     "Refused by the policy check, so modify_pending_order_items was not run and nothing changed: the order's status was not checked first (policy check retail.status_checked).",
+     "Refused by the policy check, so modify_pending_order_items was not run and nothing changed: the order belongs to daiki_sanchez_3253, not the authenticated user (policy check retail.own_order)."
+    ]
+   },
+   "51": {
+    "reward": 1.0,
+    "llm_turns": 14,
+    "refusals": [
+     "Refused by the policy check, so return_delivered_order_items was not run and nothing changed: the order's status was not checked first (policy check retail.status_checked).",
+     "Refused by the policy check, so return_delivered_order_items was not run and nothing changed: the order belongs to sofia_li_9219, not the authenticated user (policy check retail.own_order).",
+     "Refused by the policy check, so return_delivered_order_items was not run and nothing changed: the order belongs to sofia_li_9219, not the authenticated user (policy check retail.own_order).",
+     "Refused by the policy check, so return_delivered_order_items was not run and nothing changed: the order's status was not checked first (policy check retail.status_checked)."
+    ]
+   },
+   "60": {
+    "reward": 1.0,
+    "llm_turns": 11,
+    "refusals": [
+     "Refused by the policy check, so modify_pending_order_items was not run and nothing changed: the order's status was not checked first (policy check retail.status_checked).",
+     "Refused by the policy check, so modify_pending_order_items was not run and nothing changed: the order belongs to chen_johnson_4204, not the authenticated user (policy check retail.own_order).",
+     "Refused by the policy check, so modify_pending_order_items was not run and nothing changed: the order belongs to chen_johnson_4204, not the authenticated user (policy check retail.own_order)."
+    ]
+   }
+  }
+ },
+ "credits": {
+  "episodes": 628.6,
+  "first_attempt": 118.0,
+  "smoke": 19.1,
+  "total": 765.7
+ }
+}

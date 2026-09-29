@@ -75,9 +75,9 @@ pub const COMMIT_NOTE: &str = "When the user has confirmed several changes, make
     to stretto_commit rather than one call each: it makes them in order, and stops at the first \
     that is refused or fails.";
 
-/// The first line of the flow's results, appended to the agent's own.
-pub const APPENDIX: &str =
-    "--- Also looked up automatically (current results; no need to repeat these calls) ---";
+/// The first line of the flow's results, appended to the agent's own
+/// ([`mcp::APPENDIX`], where the guards read them back).
+pub const APPENDIX: &str = mcp::APPENDIX;
 
 /// How long a request of the proxy's own may wait for the server.
 const PATIENCE: Duration = Duration::from_secs(60);
