@@ -3,9 +3,10 @@
 //! Each guard is one rule of a domain's written policy, compiled into a
 //! check a proxy can run before a write reaches the server. A check reads
 //! only what the episode has already shown: the user the agent
-//! authenticated, the records it looked up, and what the customer said. So
-//! a guard can pass, fail, or not know (a record it needs was never looked
-//! up); only a known failure refuses the write.
+//! authenticated, the records it looked up (or a flow did, appended to a
+//! result), and what the customer said. So a guard can pass, fail, or not
+//! know (a record it needs was never looked up); only a known failure
+//! refuses the write.
 //!
 //! The rules come from τ²-bench's retail and airline policies. An LLM
 //! (Claude, in drafting this module) compiled them from the policy text, and
@@ -23,7 +24,7 @@
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::{BTreeMap, HashMap, HashSet};
-use stretto_trace::{Episode, Event, ToolCall};
+use stretto_trace::{mcp, Episode, Event, ToolCall};
 
 /// The time τ²-bench's airline policy says it is.
 const AIRLINE_NOW: &str = "2024-05-15T15:00:00";
@@ -148,63 +149,75 @@ impl Facts {
                 Event::ToolResult {
                     call_id,
                     name,
-                    error: false,
+                    error,
                     content,
                 } => {
-                    let parsed: Value = serde_json::from_str(content)
-                        .unwrap_or_else(|_| Value::String(content.trim().to_string()));
-                    let text =
-                        |v: &Value, k: &str| v.get(k).and_then(Value::as_str).map(str::to_string);
-                    match name.as_str() {
-                        "find_user_id_by_email" | "find_user_id_by_name_zip" => {
-                            if let Value::String(id) = &parsed {
-                                f.authenticated.push(id.trim_matches('"').to_string());
+                    // A flow may have appended its lookups to the result: the
+                    // agent was shown them, as its own reads.
+                    let (own, lookups) = mcp::appended(content);
+                    let call = args.get(call_id.as_str()).copied();
+                    if !error {
+                        f.read(name, call.map(|(_, a)| a), own);
+                        if let Some((tool, a)) = call {
+                            if !tool.starts_with("get_")
+                                && !tool.starts_with("find_")
+                                && !tool.starts_with("list_")
+                                && !tool.starts_with("search_")
+                                && tool != "calculate"
+                            {
+                                f.writes.push((tool.to_string(), a.clone()));
                             }
                         }
-                        "get_user_details" => {
-                            if let Some(id) = text(&parsed, "user_id") {
-                                f.users.insert(id, parsed.clone());
-                            }
-                        }
-                        "get_product_details" => {
-                            if let Some(id) = text(&parsed, "product_id") {
-                                f.products.insert(id, parsed.clone());
-                            }
-                        }
-                        "get_flight_status" => {
-                            if let Some((_, a)) = args.get(call_id.as_str()) {
-                                if let (Some(n), Some(d), Value::String(s)) =
-                                    (text(a, "flight_number"), text(a, "date"), &parsed)
-                                {
-                                    f.flights.insert((n, d), s.clone());
-                                }
-                            }
-                        }
-                        _ => {}
                     }
-                    // Orders and reservations come back from lookups and from
-                    // the writes that change them.
-                    if let Some(id) = text(&parsed, "order_id") {
-                        f.orders.insert(id, parsed.clone());
-                    }
-                    if let Some(id) = text(&parsed, "reservation_id") {
-                        f.reservations.insert(id, parsed.clone());
-                    }
-                    if let Some((tool, a)) = args.get(call_id.as_str()) {
-                        if !tool.starts_with("get_")
-                            && !tool.starts_with("find_")
-                            && !tool.starts_with("list_")
-                            && !tool.starts_with("search_")
-                            && *tool != "calculate"
-                        {
-                            f.writes.push((tool.to_string(), (*a).clone()));
-                        }
+                    for lookup in lookups.iter().filter(|l| !l.error) {
+                        f.read(&lookup.tool, Some(&lookup.arguments), &lookup.content);
                     }
                 }
-                Event::ToolResult { .. } => {}
             }
         }
         f
+    }
+
+    /// What a result of `tool`, called with `arguments`, shows.
+    fn read(&mut self, tool: &str, arguments: Option<&Value>, content: &str) {
+        let parsed: Value = serde_json::from_str(content)
+            .unwrap_or_else(|_| Value::String(content.trim().to_string()));
+        let text = |v: &Value, k: &str| v.get(k).and_then(Value::as_str).map(str::to_string);
+        match tool {
+            "find_user_id_by_email" | "find_user_id_by_name_zip" => {
+                if let Value::String(id) = &parsed {
+                    self.authenticated.push(id.trim_matches('"').to_string());
+                }
+            }
+            "get_user_details" => {
+                if let Some(id) = text(&parsed, "user_id") {
+                    self.users.insert(id, parsed.clone());
+                }
+            }
+            "get_product_details" => {
+                if let Some(id) = text(&parsed, "product_id") {
+                    self.products.insert(id, parsed.clone());
+                }
+            }
+            "get_flight_status" => {
+                if let Some(a) = arguments {
+                    if let (Some(n), Some(d), Value::String(s)) =
+                        (text(a, "flight_number"), text(a, "date"), &parsed)
+                    {
+                        self.flights.insert((n, d), s.clone());
+                    }
+                }
+            }
+            _ => {}
+        }
+        // Orders and reservations come back from lookups and from the writes
+        // that change them.
+        if let Some(id) = text(&parsed, "order_id") {
+            self.orders.insert(id, parsed.clone());
+        }
+        if let Some(id) = text(&parsed, "reservation_id") {
+            self.reservations.insert(id, parsed);
+        }
     }
 
     /// The last thing the customer said, if anything.
@@ -1954,6 +1967,61 @@ mod tests {
         ]);
         assert!(f.writes.is_empty() && f.flights.is_empty());
         assert!(f.orders.contains_key("#W1") && !f.orders.contains_key("#W2"));
+    }
+
+    #[test]
+    fn a_flows_appended_lookups_count_as_reads() {
+        // As on the arm E pilot's retail task 51: a server that runs the flow
+        // appends its lookups to the agent's own result.
+        let appendix = format!(
+            "ann_1\n\n{}\n\nget_order_details {{\"order_id\": \"#W1\"}}:\n{}\n\n\
+             get_flight_status {{\"flight_number\": \"HAT1\", \"date\": \"2024-05-16\"}}:\n\"available\"\n\n\
+             get_order_details {{\"order_id\": \"#W2\"}} (error):\n{}",
+            mcp::APPENDIX,
+            order("delivered"),
+            json!({"order_id": "#W2", "user_id": "ann_1"})
+        );
+        let events = vec![
+            call("1", "find_user_id_by_email", json!({"email": "a@x.com"})),
+            result("1", "find_user_id_by_email", json!(appendix)),
+        ];
+        let f = Facts::of(&events);
+        assert_eq!(f.authenticated, ["ann_1"]);
+        assert!(f.orders.contains_key("#W1") && !f.orders.contains_key("#W2"));
+        assert_eq!(
+            f.flights
+                .get(&("HAT1".to_string(), "2024-05-16".to_string()))
+                .map(String::as_str),
+            Some("available")
+        );
+        // The return the guards refused there passes.
+        let ret =
+            json!({"order_id": "#W1", "item_ids": ["i1"], "payment_method_id": "credit_card_1"});
+        for rule in ["retail.own_order", "retail.status_checked"] {
+            let v = verdict(
+                "retail",
+                events.clone(),
+                "return_delivered_order_items",
+                ret.clone(),
+                rule,
+            );
+            assert_eq!(v, Verdict::Pass, "{rule}");
+        }
+        // A failed call's appended lookups still count; its own result does
+        // not.
+        let f = Facts::of(&[
+            call("2", "get_order_details", json!({"order_id": "#W3"})),
+            Event::ToolResult {
+                call_id: "2".to_string(),
+                name: "get_order_details".to_string(),
+                error: true,
+                content: format!(
+                    "{{\"order_id\": \"#W3\"}}\n\n{}\n\nget_user_details {{\"user_id\": \"ann_1\"}}:\n{{\"user_id\": \"ann_1\"}}",
+                    mcp::APPENDIX
+                ),
+            },
+        ]);
+        assert!(f.orders.is_empty() && f.users.contains_key("ann_1"));
     }
 
     /// What a rule cannot tell is counted apart, and an audit without a

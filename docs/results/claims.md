@@ -27,6 +27,7 @@ What the evidence does not show, in brief (the paper's §6 has the rest):
   - On τ²-bench, the use-before-write speculator ran live with GLM-5.3, once per task, and with Claude Sonnet 5 and Claude Haiku 4.5, three trials each ([results](frontier-2026-09-27.md)). In airline, the Claude models' savings (5.3% and 8.5%) are not distinguishable from none.
   - On AgentDojo and BFCL, it ran with GLM-5.3 and Claude Haiku 4.5, one run per arm ([results](live-benchmarks-2026-09-27.md)).
   - An earlier flow also ran with Claude Haiku 4.5 on ten retail tasks and with Claude Sonnet 5 on three ([results](claude-models-2026-09-25.md)).
+  - `glm-5.3-flash` ran it with the policy guards, learned from three frontier models' traces, once per task on 20 retail and airline tasks ([results](smaller-agent-2026-09-29.md)).
   - Every other agent is replayed.
 - **Live cost is at list prices.** On τ²-bench, three trials with the arms side by side put the flow's saving in the Claude agents' cost at 11.8% and 8.7%, less than in their input tokens, since nine tenths of the input is read from the prompt cache. The subscription those runs used bills no tokens. On AgentDojo and BFCL, with one run per arm, cost varied from run to run as much as it differed between the arms.
 - **Pass rates are underpowered**, and τ²-bench's users are LLMs. With 84 pairs per Claude model, a harm of about ten points would show; none did.

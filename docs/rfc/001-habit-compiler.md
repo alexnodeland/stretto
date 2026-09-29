@@ -755,7 +755,7 @@ Five findings; §3.11, §4, §6 and §7 are updated to match.
 What this changes:
 
 - **The Phase 2 gate is judged per agent model, harness and domain** (§3.11). A projection made in another harness can be wrong in either direction.
-- **Arms B and E can run, and B has.** The guards exist, are audited, and ran live; they matter for agents that make the writes they refuse, such as the cheaper models §3.11 plans to run on flows compiled from frontier traces. Arm D0 runs through the proxy for any MCP server.
+- **Arms B and E can run, and B has.** The guards exist, are audited, and ran live; they matter for agents that make the writes they refuse, such as the cheaper models §3.11 plans to run on flows compiled from frontier traces. Arm D0 runs through the proxy for any MCP server. *Arm E, live (2026-09-29, [#8](https://github.com/alexnodeland/stretto/issues/8), [results](../results/smaller-agent-2026-09-29.md)):* `glm-5.3-flash`, served a flow learned from Claude Opus 4.5's, Claude Sonnet 4.5's and Gemini 3 Pro's training episodes with the guards, took 20.8% fewer LLM turns (11.0% to 29.9%) on the pilots' twenty tasks; passes held at 18, and the guards refused one write, which the tool refuses too. This model was not weaker than GLM-5.3 on these tasks, so what guards do for an agent that makes the writes they refuse is still untested live. Guards beside a flow that the server runs must read the lookups it appends to results; the first attempt's did not, and refused 15 writes the policy allows.
 - **Drift has a check (§4):** audit new sessions before trusting a flow compiled from older ones.
 - **Next:**
   - a paired run large enough to bound pass^1;

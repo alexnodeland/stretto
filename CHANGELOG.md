@@ -4,6 +4,12 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ## Unreleased
 
+### Flows and guards together
+
+- `pilot/run_episode.py --arm reach-guards` serves a flow on the reach decider with the guards in the proxy, the design's arm E ([#8](https://github.com/alexnodeland/stretto/issues/8)). `pilot/run_paired.py --model` runs another agent model, and `--flow-oracle mock` spares Jev's key for flows that ask no model.
+- **Fixed:** the guards, and the confirmation judge's check of the records a write names, read the lookups a flow appended to a result as reads the agent was shown (`stretto_trace::mcp::appended`). When the server behind the proxy runs the flow, as the pilots' `tau2_mcp.py` does, its lookups reach the proxy inside the agent's own result. The guards read that result whole, so a user id with lookups after it authenticated nobody, and they refused writes the policy allows.
+- **Measured** ([results](docs/results/smaller-agent-2026-09-29.md)): `glm-5.3-flash`, served a flow learned from Claude Opus 4.5's, Claude Sonnet 4.5's and Gemini 3 Pro's training episodes with the guards, took 20.8% fewer LLM turns on the pilots' twenty tasks, 33.3% in retail and 10.1% in airline. Passes held at 18 of 20, and the guards refused one write, which the tool refuses too.
+
 ### Tickets no trace showed
 
 - `scripts/telecom_workflow.py --unseen N` runs the compiled procedure on tickets of τ²-bench's full telecom set whose faults no base task combines, N of them drawn with `--seed`, or all 2,171 ([#38](https://github.com/alexnodeland/stretto/issues/38)). `pilot/run_procedure.py --unseen N --seed S` runs the same draw through `stretto-procedure`. `pilot/tau2_mcp.py` and `run_episode.py` find a task in the domain's full split when its default tasks lack it, so a solo agent and the cascade's hand-backs run on those tickets too.

@@ -1021,6 +1021,66 @@ pub fn is_flow_lookup(call_id: &str) -> bool {
         .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
 }
 
+/// The first line of a flow's lookups, appended to the agent's own result.
+/// `stretto-proxy` appends them so; so does a server that runs a flow
+/// itself (the pilots' `tau2_mcp.py`), and then the log's result carries
+/// them.
+pub const APPENDIX: &str =
+    "--- Also looked up automatically (current results; no need to repeat these calls) ---";
+
+/// One of a flow's lookups, as appended to a result under [`APPENDIX`].
+#[derive(Clone, Debug, PartialEq)]
+pub struct Appended {
+    pub tool: String,
+    pub arguments: Value,
+    /// Whether the lookup failed (`tool {…} (error):`).
+    pub error: bool,
+    /// What it returned.
+    pub content: String,
+}
+
+/// A result's own text, and the lookups a flow appended to it: after
+/// [`APPENDIX`], each is a line `tool {arguments}:` (or `… (error):`), then
+/// what it returned.
+pub fn appended(content: &str) -> (&str, Vec<Appended>) {
+    let Some((own, rest)) = content.split_once(APPENDIX) else {
+        return (content, Vec::new());
+    };
+    let mut lookups: Vec<Appended> = Vec::new();
+    for line in rest.split('\n') {
+        if let Some(lookup) = appended_header(line) {
+            lookups.push(lookup);
+        } else if let Some(last) = lookups.last_mut() {
+            last.content.push_str(line);
+            last.content.push('\n');
+        }
+    }
+    for lookup in &mut lookups {
+        lookup.content = lookup.content.trim().to_string();
+    }
+    (own.trim_end(), lookups)
+}
+
+/// A lookup's first line under [`APPENDIX`]: the tool, then its arguments
+/// as a JSON object.
+fn appended_header(line: &str) -> Option<Appended> {
+    let line = line.strip_suffix(':')?;
+    let (line, error) = match line.strip_suffix(" (error)") {
+        Some(line) => (line, true),
+        None => (line, false),
+    };
+    let (tool, arguments) = line.split_once(' ')?;
+    let arguments = serde_json::from_str::<Value>(arguments)
+        .ok()
+        .filter(|a| a.is_object() && !tool.is_empty())?;
+    Some(Appended {
+        tool: tool.to_string(),
+        arguments,
+        error,
+        content: String::new(),
+    })
+}
+
 /// A tool call awaiting its response.
 struct Pending {
     call_id: String,
@@ -1760,6 +1820,56 @@ mod tests {
         for id in ["7", "stretto-", "stretto-x", "call_stretto-1", "stretto-1a"] {
             assert!(!is_flow_lookup(id), "{id}");
         }
+    }
+
+    #[test]
+    fn a_flows_appended_lookups_split_from_the_result() {
+        // As the pilots' server appends them: spaced JSON, a failed lookup,
+        // and a result over two lines.
+        let text = format!(
+            "sofia_li_9219\n\n{APPENDIX}\n\nget_user_details {{\"user_id\": \"sofia_li_9219\"}}:\n\
+             {{\"user_id\":\"sofia_li_9219\"}}\n\nget_order_details {{\"order_id\": \"#W9\"}} (error):\n\
+             Error: Order not found\n\ncalculate {{\"expression\": \"1+1\"}}:\nfirst: 2\nsecond: 2"
+        );
+        let (own, lookups) = appended(&text);
+        assert_eq!(own, "sofia_li_9219");
+        assert_eq!(
+            lookups,
+            [
+                Appended {
+                    tool: "get_user_details".to_string(),
+                    arguments: json!({"user_id": "sofia_li_9219"}),
+                    error: false,
+                    content: r#"{"user_id":"sofia_li_9219"}"#.to_string(),
+                },
+                Appended {
+                    tool: "get_order_details".to_string(),
+                    arguments: json!({"order_id": "#W9"}),
+                    error: true,
+                    content: "Error: Order not found".to_string(),
+                },
+                Appended {
+                    tool: "calculate".to_string(),
+                    arguments: json!({"expression": "1+1"}),
+                    error: false,
+                    content: "first: 2\nsecond: 2".to_string(),
+                },
+            ]
+        );
+        // No appendix: the result as it is.
+        assert_eq!(appended(" user_1\n"), (" user_1\n", vec![]));
+        // Lines that are not a lookup's first line: text before the first
+        // is dropped, and after one it is that lookup's.
+        let text = format!(
+            "x{APPENDIX}\nstray:\nget_user {{\"id\": 1}}:\nlist [1]:\n {{\"id\": 1}}:\nno_space:\nget_user [1]\nend"
+        );
+        let (own, lookups) = appended(&text);
+        assert_eq!(own, "x");
+        assert_eq!(lookups.len(), 1);
+        assert_eq!(
+            lookups[0].content,
+            "list [1]:\n {\"id\": 1}:\nno_space:\nget_user [1]\nend"
+        );
     }
 
     #[test]
