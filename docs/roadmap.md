@@ -25,7 +25,7 @@ Each of these spends the Z.ai coding-plan key, or Claude tokens where a Claude m
 | [#6](https://github.com/alexnodeland/stretto/issues/6) | The confirmation judge enforced | Done: enforced on 20 episodes, it refused none of 40 writes; logged on 20 more, it would have stopped 2 real lapses for 2 false alarms, and passes did not move. The recommended setting enforces the first question and logs the second ([results](results/judge-live-2026-09-25.md)) | 782 credits |
 | [#7](https://github.com/alexnodeland/stretto/issues/7) | `stretto_commit` live | Done offline: it could save at most 0.2–3.5% of LLM turns, too little for a ten-task pilot to see, so no live run for now ([results](results/commit-bound-2026-09-25.md)) | Free |
 | [#8](https://github.com/alexnodeland/stretto/issues/8) | Flows and guards from frontier traces, serving a smaller agent | Guards bit in 38% of failed airline episodes on published runs, and never with GLM-5.3 | Priced by a smoke episode first |
-| [#34](https://github.com/alexnodeland/stretto/issues/34) | The habit with the named-other count live, paired against D0 (in place of the searched flows) | Replayed on held-out tasks, the flow search found flows with far fewer detours than D0 ([results](results/search-2026-09-25.md)), and the named-other count matched them with no search: 6 airline detours, where D0 made 26 ([results](results/named-other-2026-09-26.md)). A replay assumes the agent acts the same with the flow's results in hand | About 240 credits for ten retail pairs and 340 for ten airline pairs |
+| [#34](https://github.com/alexnodeland/stretto/issues/34) | The habit with the named-other count live, paired against D0 (in place of the searched flows) | Done: on the pilots' ten tasks per domain, the habit with the count, asking no model, took 80 retail turns to D0's 78 and 95 airline turns to D0's 118, against 110 and 127 without a flow, and passed 9 of 10 in each domain (D0 9 and 7). Both made almost no detours live (2 and 0; D0 1 and 1), so the detours the count removes in replay were not there to remove [results](results/named-other-live-2026-09-29.md) | 554 credits |
 
 ## Evidence from offline runs
 
@@ -109,7 +109,7 @@ All six are built. A live flow now runs as a fugue program: the flow IR holds it
    - telecom (#10);
    - the cold start's other agents and draws (#9);
    - independent labels (#11).
-4. **Live runs, as budgets are approved.** The paired run (#2), the cold start live in both domains (#3), Claude models as the agent and the customer (#4, #5) and the confirmation judge enforced (#6) are done. The paired run puts the pass-rate change between −7.5 and +6.25 points, not within one (−7.5 to +7.5 with every check in τ²-bench's reward basis, #12). Next come the searched flows live (#34) and flows and guards serving a smaller agent (#8).
+4. **Live runs, as budgets are approved.** The paired run (#2), the cold start live in both domains (#3), Claude models as the agent and the customer (#4, #5) and the confirmation judge enforced (#6) are done. The paired run puts the pass-rate change between −7.5 and +6.25 points, not within one (−7.5 to +7.5 with every check in τ²-bench's reward basis, #12). The habit with the named-other count live against D0 (#34) is done too. Next come flows and guards serving a smaller agent (#8).
 5. **Phase 3 features** as the evidence calls for them:
    - counterfactual evaluation (#15), done;
    - predicate refinement (#16), done;
