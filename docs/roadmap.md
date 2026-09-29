@@ -9,8 +9,10 @@ Every piece of the first design is built: the flow compiler, the MCP proxy, the 
 - a flow deciding on the chance of use before the next write, with no model, on 28 of those tasks: 27.9% fewer LLM turns (19.1% to 35.9%) ([results](results/reach-2026-09-26.md#live)).
 - the same flow and tasks with Claude Sonnet 5 and Claude Haiku 4.5, three trials, pre-registered: 20.5% and 22.4% fewer LLM turns, where Anthropic's prompt for parallel tool calls saved 3.4% and 5.9% ([results](results/frontier-2026-09-27.md)).
 - the same flow live in AgentDojo's and BFCL's own environments, with GLM-5.3 and Claude Haiku 4.5: 10.1% fewer LLM turns (5.8% to 14.0%) in the AgentDojo suites where the replay found reads to take, with passes unchanged, and no effect in BFCL, as its replay projected ([results](results/live-benchmarks-2026-09-27.md)).
+- a smaller agent, `glm-5.3-flash`, served a flow learned from three frontier models' traces with the policy guards: 20.8% fewer LLM turns on the pilots' twenty tasks, with passes unchanged ([results](results/smaller-agent-2026-09-29.md)).
+- the cold start on three more agents, twenty draws each: one five-session start in eight is narrow for the habit alone, and a shipped arbiter lifts most of them ([results](results/cold-draws-2026-09-29.md)).
 
-What is left is tracked in GitHub issues, all of them sub-issues of [#1](https://github.com/alexnodeland/stretto/issues/1). This page groups them and says why each matters. The changes RFC-001 §3.9 asks of fugue itself are tracked in fugue's [#61](https://github.com/alexnodeland/fugue/issues/61).
+The work is tracked in GitHub issues, all of them sub-issues of [#1](https://github.com/alexnodeland/stretto/issues/1). This page groups them and says why each mattered. Every one is done except the first release ([#30](https://github.com/alexnodeland/stretto/issues/30)), which waits on the owner's tag. The changes RFC-001 §3.9 asks of fugue itself are tracked in fugue's [#61](https://github.com/alexnodeland/fugue/issues/61).
 
 ## Evidence from live runs
 
@@ -33,7 +35,7 @@ These cost Jev dollars, CPU time or people's time, and no LLM runs.
 
 | Issue | What | Why | Cost |
 |---|---|---|---|
-| [#9](https://github.com/alexnodeland/stretto/issues/9) | The cold start on other agents, with more draws | The finding rests on one agent and five draws | About $10–15; several hundred replays, so #28 first |
+| [#9](https://github.com/alexnodeland/stretto/issues/9) | The cold start on other agents, with more draws | Done: on Qwen3.5-397B, Claude Sonnet 4.5 and Claude Opus 4.5, twenty draws of 5 and of 10 sessions per agent and domain. From five sessions the habit alone saved under half of what every training task gives in 16 of 120 draws, and from ten in 1. A shipped arbiter lifted 13 of the 17 narrow draws above half, at no more than 3.3 points of the median; the draw's own arbiter was below half in 27 of 120 ([results](results/cold-draws-2026-09-29.md)) | $4.36 of Jev's answers; 726 replays |
 | [#10](https://github.com/alexnodeland/stretto/issues/10) | Telecom, and an arbiter fitted on retail and airline together | Done: telecom compresses like the others, but neither shipped arbiter nor one fitted on both carries to it; the habit alone does better there ([results](results/telecom-2026-09-25.md)). Replayed, the habit-only flow saves 12.8% of the nine leaderboard agents' telecom turns once bindings order their sources by site ([results](results/telecom-flows-2026-09-26.md)) | $0.48 What is left there: the bills, which four agents read too but with a `limit` that returns the same bills (counted as used, 298 detours are left, from 443), and data usage in MMS tickets, an agent's habit ([what is left](results/telecom-flows-2026-09-26.md#what-is-left-in-dual-control)). The habit already sees the line's status; a back-off to it alone changes nothing. Next: whether an agent that passes a `limit` repeats such a read live, which needs a live run with one of those agents |
 | [#11](https://github.com/alexnodeland/stretto/issues/11) | Independent labels for the confirmation judge | Done, with two model annotators, not people: the first question's tallies hold (Jev right on 30 of 40 by the majority of three); the second question's lapses are 11 of 30 by the majority, not 16, the difference being addresses the agent offered to update but never read back, and 19 under the stricter reading ([confirm-second](results/confirm-second-2026-09-24.md)) | None |
 | [#12](https://github.com/alexnodeland/stretto/issues/12) | Score the pilots as τ²-bench does | Done: with every check in τ²-bench's reward basis, the natural-language assertions judged three times by Claude Haiku 4.5, 18 of 1,101 published episodes lose their pass, 17 on retail task 68, as often with a flow as without; no comparison changes direction, and the paired run's 80 pairs pass 70 in each arm. `run_episode.py` records both rewards ([results](results/scoring-2026-09-29.md)) | None: the judge ran on the Claude subscription |
@@ -97,18 +99,20 @@ All six are built. A live flow now runs as a fugue program: the flow IR holds it
 
 ## A suggested order
 
-1. **What cannot wait.** Publish the pilots' episodes (#29) while the recordings exist.
+Every step below is done. What is left is the release (#30).
+
+1. **What cannot wait.** Publish the pilots' episodes (#29) while the recordings exist, done.
 2. **What costs nothing and unblocks the rest:**
-   - the bug (#26);
-   - the pilot's read-only hints (#27);
-   - faster replays (#28);
-   - the judge in the proxy (#14).
+   - the bug (#26), done;
+   - the pilot's read-only hints (#27), done;
+   - faster replays (#28), done;
+   - the judge in the proxy (#14), done.
 3. **Offline evidence**, cheapest first:
-   - airline's communication check (#12);
-   - prompt injection (#13);
-   - telecom (#10);
-   - the cold start's other agents and draws (#9);
-   - independent labels (#11).
+   - airline's communication check (#12), done;
+   - prompt injection (#13), done;
+   - telecom (#10), done;
+   - the cold start's other agents and draws (#9), done;
+   - independent labels (#11), done.
 4. **Live runs, as budgets are approved.** The paired run (#2), the cold start live in both domains (#3), Claude models as the agent and the customer (#4, #5) and the confirmation judge enforced (#6) are done. The paired run puts the pass-rate change between −7.5 and +6.25 points, not within one (−7.5 to +7.5 with every check in τ²-bench's reward basis, #12). The habit with the named-other count live against D0 (#34) and flows and guards serving a smaller agent (#8) are done too.
 5. **Phase 3 features** as the evidence calls for them:
    - counterfactual evaluation (#15), done;
