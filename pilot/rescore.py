@@ -11,7 +11,10 @@ simulation and prints both, one row per episode.
 - `--scoring basis` scores each task as τ²-bench's `ALL` does: the product
   of the checks in its reward basis. Natural-language assertions need an
   LLM judge, so a task whose basis includes them is refused unless
-  `--allow-judge` is given (τ²-bench then calls its configured judge model).
+  `--allow-judge` is given (τ²-bench then calls its configured judge model)
+  or `--judge claude:MODEL` names another (`judge.py`: a Claude model
+  through `claude-agent.sh`, with τ²-bench's prompt and rule). Each row then
+  lists the assertions, the judge's verdicts and the judge.
 
     python rescore.py runs/pilot/baseline/task-90
     python rescore.py --scoring basis --json out.json EPISODE_DIR...
@@ -29,6 +32,8 @@ from loguru import logger
 from tau2.data_model.simulation import SimulationRun
 from tau2.evaluator.evaluator import EvaluationType, evaluate_simulation
 from tau2.registry import registry
+
+import judge
 
 # τ²-bench logs every replayed tool response at DEBUG.
 logger.remove()
@@ -75,8 +80,12 @@ def main() -> None:
     parser.add_argument("--scoring", choices=sorted(SCORING), default="env")
     parser.add_argument("--domain", help="override the domain read from each episode's log")
     parser.add_argument("--allow-judge", action="store_true", help="let tasks with natural-language assertions call τ²-bench's LLM judge")
+    parser.add_argument("--judge", metavar="claude:MODEL", help="judge natural-language assertions with this model instead (implies --allow-judge)")
     parser.add_argument("--json", type=Path, help="also write the rows here")
     args = parser.parse_args()
+    judged_by = judge.use(args.judge) if args.judge else None
+    if judged_by:
+        args.allow_judge = True
 
     rows, mismatches = [], 0
     for episode in episodes(args.episodes):
@@ -89,7 +98,10 @@ def main() -> None:
                   "skipped (pass --allow-judge to call τ²-bench's judge)", file=sys.stderr)
             continue
         simulation = SimulationRun.model_validate_json((episode / "simulation.json").read_text())
-        info = evaluate_simulation(simulation, task, SCORING[args.scoring], solo_mode=False, domain=domain)
+        # A solo episode (telecom's no-user mode) is scored in that mode, where
+        # the phone's tools are the agent's.
+        solo = bool(result.get("solo"))
+        info = evaluate_simulation(simulation, task, SCORING[args.scoring], solo_mode=solo, domain=domain)
         row = {
             "episode": str(episode),
             "domain": domain,
@@ -100,6 +112,12 @@ def main() -> None:
             "basis": basis,
             "reward": info.reward,
         }
+        if info.nl_assertions:
+            row["judge"] = judged_by or "τ²-bench's configured judge"
+            row["nl_assertions"] = [
+                {"assertion": c.nl_assertion, "met": c.met, "justification": c.justification}
+                for c in info.nl_assertions
+            ]
         if args.scoring == "env" and row["recorded"] is not None and abs(row["reward"] - row["recorded"]) > 1e-9:
             mismatches += 1
             row["mismatch"] = True

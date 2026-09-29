@@ -4,6 +4,13 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ## Unreleased
 
+### τ²-bench's own reward
+
+- `pilot/run_episode.py` records τ²-bench's own reward beside the database check: `reward_basis` in `result.json`, the product of every check in the task's reward basis ([#12](https://github.com/alexnodeland/stretto/issues/12)). A task whose basis counts natural-language assertions needs a judge. `--judge claude:MODEL` has a Claude model judge them through `claude-agent.sh`, with τ²-bench's prompt and rule (`pilot/judge.py`), and `result.json` lists the assertions and the verdicts.
+- `pilot/rescore.py --scoring basis --judge claude:MODEL` rescores recorded episodes the same way, and scores solo episodes in solo mode. `scripts/basis_report.py` combines several judgings of the same episodes by majority. `pilot/analyze_paired.py pairs --basis` (and `pool`) and `pilot/analyze_trials.py --basis` report passes under every check, from either one's rows.
+- `pilot/run_paired.py` pairs any two arms, each serving its own flow (`--arms ARM[=FLOW] ARM[=FLOW]`), on some of the test tasks (`--tasks`), and passes `--judge` on.
+- **Rescored** ([results](docs/results/scoring-2026-09-29.md)): all 1,101 published τ²-bench episodes, the assertions judged three times by Claude Haiku 4.5. 18 lose their pass, 17 on one retail task, as often with a flow as without, and no comparison changes direction.
+
 ### Surprise
 
 - `stretto learn --surprise Q` gives a flow a surprise gate ([#17](https://github.com/alexnodeland/stretto/issues/17), RFC-001 §3.6). After each call where the flow decides, the gate scores the agent's next step by its surprise under the habit, −ln p. A step the flow does not offer counts as handing back, and the flow's own lookups (the proxy's `stretto-N` calls) are not the agent's. Once `--surprise-window` of the agent's steps in a row (default 5) average more than the gate's threshold, the flow hands back after every call for the rest of the session, with the reason `the session surprised the flow`.

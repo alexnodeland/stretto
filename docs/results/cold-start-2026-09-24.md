@@ -87,7 +87,7 @@ In airline, from five random sessions, the refitted flow saves 6.0% (40 detours)
 
 ## Live: GLM-5.3's first five sessions
 
-- **Recording.** GLM-5.3 in Claude Code ran five retail training tasks through the proxy, with the conversation handed to it (`pilot/run_episode.py --record-context`). They were tasks 15, 24, 76, 88 and 99, the five-task random sample. All five passed τ²-bench's database check.
+- **Recording.** GLM-5.3 in Claude Code ran five retail training tasks through the proxy, with the conversation handed to it (`pilot/run_episode.py --record-context`). They were tasks 15, 24, 76, 88 and 99, the five-task random sample. All five passed τ²-bench's database check. *Rescored (2026-09-29):* with every check in τ²-bench's reward basis, the five sessions and the three live episodes below keep their rewards ([scoring](scoring-2026-09-29.md)).
 - **Learning.** `stretto learn --sessions` learned a flow from the five proxy logs. Three sessions trained the habit, and two held out the 15 decisions its arbiter is fitted on. It knows 5 sites and 6 lookups ([the flow](cold-start-2026-09-24-live.flow.json)).
 - **Offline check.** Before it ran live, the flow replayed GLM-5's 40 trial-0 test episodes. It saved 66 of 347 turns (19.0%) with 14 detours. D0, compiled from 831 episodes of four other agents, saves 77 (22.2%) on the same episodes.
   - On those 40 episodes, the flows learned offline from GLM-5's own sessions on the same five tasks saved 8.6% with their arbiter and 18.7% on the habit alone.

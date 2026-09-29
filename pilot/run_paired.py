@@ -18,6 +18,12 @@ episode is booked at its estimate. Three failures in a row stop the run.
     python run_paired.py retail --oracle-cache ../.oracle-cache --reuse runs/pilot
     python run_paired.py airline --trials 2 --oracle-cache ../.oracle-cache --reuse runs/pilot-airline
 
+`--arms` pairs two other arms, each `ARM` or `ARM=FLOW` (a flow file that arm
+serves), such as a flow on the arbiter against another on the habit alone:
+`--arms flows=d0.flow.json habit=d0-named.flow.json`. `--tasks` runs some of
+the test tasks, and `--judge claude:MODEL` has each episode record τ²-bench's
+full reward too (run_episode.py's `reward_basis`).
+
 Run it in τ²-bench's Python environment. `analyze_paired.py` reports on the
 output.
 """
@@ -74,10 +80,10 @@ def test_tasks(tau2: Path, domain: str) -> list[str]:
     return [str(t) for t in split["test"]]
 
 
-def estimate(reuse: Path | None, domain: str, task: str) -> float:
+def estimate(reuse: Path | None, domain: str, task: str, arms=("baseline", "flows")) -> float:
     """1.3 times the costliest earlier episode of this task, else of the domain."""
     seen = []
-    for arm in ("baseline", "flows"):
+    for arm in arms:
         d = reuse / arm / f"task-{task}" if reuse else None
         if d and (d / "result.json").exists():
             seen.append(episode_summary(d)["credits_billed"])
@@ -104,10 +110,16 @@ def run_one(args, ledger: Ledger, out: Path, arm: str, task: str, trial: int, co
         "--domain", args.domain, "--task-id", task, "--out", str(episode.parent.parent),
         "--arm", arm, "--tau2", str(args.tau2), "--oracle-cache", str(args.oracle_cache),
     ]
+    if args.flows.get(arm):
+        command += ["--flow", str(args.flows[arm])]
+    if args.judge:
+        command += ["--judge", args.judge]
     # run_episode.py hands the MCP server `which python`: the τ²-bench
     # environment must come first on PATH.
     env = dict(os.environ, PATH=f"{Path(sys.executable).parent}:{os.environ.get('PATH', '')}")
     done = subprocess.run(command, cwd=HERE, env=env, capture_output=True, text=True, check=False)
+    # An episode that failed before starting leaves no directory of its own.
+    episode.parent.parent.mkdir(parents=True, exist_ok=True)
     (episode.parent.parent / f"{arm}-task-{task}.log").write_text(done.stdout + done.stderr)
     with lock:
         in_flight.pop(f"{arm}:{task}:{trial}", None)
@@ -138,23 +150,37 @@ def main() -> None:
     parser.add_argument("--week-cap", type=float, default=8700.0, help="credits in any seven days, at most")
     parser.add_argument("--window-cap", type=float, default=1700.0, help="credits in any five hours, at most")
     parser.add_argument("--dry-run", action="store_true", help="list what would run and the budget, then exit")
+    parser.add_argument("--arms", nargs=2, default=["baseline", "flows"], metavar="ARM[=FLOW]",
+                        help="the two arms (run_episode.py's --arm), each with the flow file it serves, if any")
+    parser.add_argument("--tasks", nargs="+", help="these test tasks only (default: every one)")
+    parser.add_argument("--judge", metavar="claude:MODEL", help="each episode's natural-language judge (run_episode.py --judge)")
     args = parser.parse_args()
+    specs = [a.partition("=") for a in args.arms]
+    arms = tuple(name for name, _, _ in specs)
+    if len(set(arms)) != 2:
+        parser.error("--arms needs two different arms")
+    args.flows = {name: Path(flow).resolve() for name, _, flow in specs if flow}
     out = (args.out or Path("runs") / f"paired-{args.domain}").resolve()
     ledger = Ledger(args.ledger)
     tasks = test_tasks(args.tau2, args.domain)
+    if args.tasks:
+        unknown = sorted(set(args.tasks) - set(tasks))
+        if unknown:
+            parser.error(f"not {args.domain} test tasks: {', '.join(unknown)}")
+        tasks = [t for t in tasks if t in set(args.tasks)]
     if args.reuse:
-        for arm in ("baseline", "flows"):
+        for arm in arms:
             for t in tasks:
                 src, dst = args.reuse / arm / f"task-{t}", episode_dir(out, arm, t, 0)
                 if (src / "result.json").exists() and not dst.exists():
                     shutil.copytree(src, dst)
-    todo = [(arm, t, trial) for trial in range(args.trials) for t in tasks for arm in ("baseline", "flows")
+    todo = [(arm, t, trial) for trial in range(args.trials) for t in tasks for arm in arms
             if not (episode_dir(out, arm, t, trial) / "result.json").exists()]
     week = ledger.spent(time.time() - 7 * 86400)
     log(f"{args.domain}: {len(tasks)} tasks, {args.trials} trial(s); {len(todo)} episodes to run; "
         f"week so far {week:.0f} of {args.week_cap:.0f}")
     if args.dry_run:
-        total = sum(estimate(args.reuse, args.domain, t) for _, t, _ in todo)
+        total = sum(estimate(args.reuse, args.domain, t, arms) for _, t, _ in todo)
         log(f"dry run: estimated {total:.0f} credits for {len(todo)} episodes; "
             f"window so far {ledger.spent(time.time() - WINDOW_S):.0f} of {args.window_cap:.0f}")
         return
@@ -165,7 +191,7 @@ def main() -> None:
             log("stop: three failures in a row")
             break
         arm, t, trial = todo[0]
-        cost = estimate(args.reuse, args.domain, t)
+        cost = estimate(args.reuse, args.domain, t, arms)
         with lock:
             why = may_start(args, ledger, cost) if len(in_flight) < WORKERS else "busy"
             if why is None:

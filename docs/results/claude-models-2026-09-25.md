@@ -10,7 +10,7 @@ Every live result so far had GLM-5.3 play both the agent and the simulated custo
   GLM-5.3 played the customer, as in the pilots.
 - **Customer:** Claude Sonnet 5, with GLM-5.3 as the agent, on five of the ten drawn at random (seed 4): 18, 36, 51, 60 and 101. Each episode is paired with the retail pilot's episode of the same task and arm, where GLM-5.3 played the customer too.
 - **Arms:** without a flow, and with D0, the pilot's flow, one episode per task and arm. D0 was compiled from four other agents' 2025 episodes, so no Claude session went into it.
-- **Reward:** τ²-bench's database check.
+- **Reward:** τ²-bench's database check. *Rescored (2026-09-29):* with every check in τ²-bench's reward basis, the assertions judged by Claude Haiku 4.5, Claude Haiku 4.5 as the agent passes 5 of 10 without a flow and 6 with D0, one fewer in each arm, both on task 68. The Claude Sonnet 5 episodes keep their rewards ([scoring](scoring-2026-09-29.md)).
 
 ## Findings
 

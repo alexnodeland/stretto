@@ -8,7 +8,7 @@
   - the same habit with the retail arbiter that ships in `data/arbiters/` (`--arbiter-from data/arbiters/retail.json`). That arbiter was fitted on four agents' retail decisions, so no airline decision went into it.
 - **Tasks:** the airline pilot's ten test tasks, one episode per flow. Each is paired with that pilot's episodes without a flow and with D0.
 - **Agent and customer:** GLM-5.3, both, as in the pilots.
-- **Reward:** τ²-bench's database check.
+- **Reward:** τ²-bench's database check. *Rescored (2026-09-29):* with airline's full reward basis, the database check times the communication check, every episode keeps its reward ([scoring](scoring-2026-09-29.md)).
 
 ## Findings
 
