@@ -1,0 +1,1335 @@
+{
+ "annotators": [
+  "glm:glm-5.3",
+  "claude:claude-sonnet-5-5"
+ ],
+ "sets": {
+  "first": [
+   {
+    "id": 1,
+    "key": "1dce7ba12c62ed281400b833fb47d0851598110eaa1eb4c0e68bd67d0550a07b",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 2,
+    "key": "da7d48110c7713813f4444b17d30e2059fd3acb6de05f636a2bf69f55f3779ef",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y"
+     }
+    }
+   },
+   {
+    "id": 3,
+    "key": "689dc56ac446e222e0b2c7109ab01da200c623e5a2e988ac5250c0b8b4205b80",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 4,
+    "key": "4b4d7e2ba119c01cee25cd879da19487df12f6758c5bd88b8dd1cb96531ee99a",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 5,
+    "key": "dfcef91e06a72711bff094558a80c75b411c990314c69709f672f9ffc011291c",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 6,
+    "key": "5b0605154368f10393c9b0e6306f159c57be974c10f4734811b048ec350c7ae7",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 7,
+    "key": "8effb39dff16fc7c75886c629ee81097b288f4fa16a052879a20d84833774443",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 8,
+    "key": "1594fae71d19f28bd18177f02ef043cc5a56649e10b7d70d64095d78809cbfe1",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 9,
+    "key": "0176076ebccfd546fb7abe232ffe8c8f2be861da253cff7361b9e2e2975912a9",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 10,
+    "key": "1675e325aa203642cc802b34e28d26e8224dc1b923fb3e4e7d4816f16bd8726a",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 11,
+    "key": "70079326e131e0635dede8a421b0fbf00c123467cc24c88afff1d493c2adbe09",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y"
+     }
+    }
+   },
+   {
+    "id": 12,
+    "key": "846d2ce6cb756dc4a0e0a5ba6d26c59761f760b0448b53726a9f7f34d1086e0d",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 13,
+    "key": "586d75672d13fb112709ffa3ef7a6a0d20be47e193f29a401c68da436ae08264",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y"
+     }
+    }
+   },
+   {
+    "id": 14,
+    "key": "3cd2ade07e7cd4d6d399108d966adc84bad567f3728ae63502ae9798ba42176b",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 15,
+    "key": "30b73a4553f72cbe89312ecb72349b661cfbdf2a324c8d90bdb4014c1374d0c9",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y"
+     }
+    }
+   },
+   {
+    "id": 16,
+    "key": "21bede0569a806f82d1d0d756e94871970f2fa3a7a71497384a4932994858661",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y"
+     }
+    }
+   },
+   {
+    "id": 17,
+    "key": "a238410e7cda2180f6857250a6ed5af7634ee319083cc184871ce6de79aa03bb",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 18,
+    "key": "6326d449bd429e9f4e420b38526f0eccaf0f39f291284218339d7e025db0bdf3",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y"
+     }
+    }
+   },
+   {
+    "id": 19,
+    "key": "028b7ebd923f73337c3d1aa74b8fe0a7d1662e0a53ff38e87735ebe1b518f67d",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 20,
+    "key": "03ae5d9c0d259b50575df71619e2a973890f72b7ed4331cf121d9877b09095de",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y"
+     }
+    }
+   },
+   {
+    "id": 21,
+    "key": "e4a3e177ef78bf3a98599f0009b80e487315c2f8bc6a0f8b7a98ea3920f5e672",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 22,
+    "key": "edd7b7d785c36d31caa6384a6204a786f504338fa8c166f13c81cf6c7f7bd3d6",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y"
+     }
+    }
+   },
+   {
+    "id": 23,
+    "key": "849d3d9922e26f97a1d1b844238b350f4c4220704cc560f4963f49bef331c528",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y"
+     }
+    }
+   },
+   {
+    "id": 24,
+    "key": "0c82f60f2f4e5fbc23a470e3eac5370d4d25bbaa9bf1154e447f0fca2b1ece4d",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y"
+     }
+    }
+   },
+   {
+    "id": 25,
+    "key": "f2e14d3d91cdd2fcf7a00d0d137ce5db849cafa060c9a46c2c484b7d1cd5781f",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y"
+     }
+    }
+   },
+   {
+    "id": 26,
+    "key": "232edfea8809bbbcd2ccc1058701a71ed43473cfbbccab68d45171f9745e2e78",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 27,
+    "key": "dce0bc3f4fabf7da68c356a44dded0a732d02b2630c515459c8f3b3f877ff98c",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 28,
+    "key": "6701d8bf98236c50fdd4bda5d7266b07e4895dc530550d508d8ee1f2e462e1ea",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 29,
+    "key": "503ae1d6bc8f32fd4ce94f4c74c1c38306f3bd8adaf1eae46564acf513d92d2a",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 30,
+    "key": "79cee8eebe406cf6aa35de126dedb788133cb594c2420cc26adc6e819b1ba868",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y"
+     }
+    }
+   },
+   {
+    "id": 31,
+    "key": "741a9846c5bd7483c3b04d1b266f80d727a56ff2610faef2d94fbad58f20d023",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 32,
+    "key": "2c8cfb9a67fea9c5d97b6af3f21bf303dcc2ea2878931d33d73ff88a29607a13",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 33,
+    "key": "ef0e61eaaaabe8f0dd07b886c0a779c1c52e9918016d41ab6f5526cdb765759b",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 34,
+    "key": "fc68a4777c3a802e54eba0ea2aae458504f67f1d647e00cc06acc9140a6bdbb6",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 35,
+    "key": "da8c1a72f8af3059d3fcbc636c7239594d9bbd9766d4f143deee849981019914",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 36,
+    "key": "12eb2c721ee5c16fa948a5cf75c81a15f523b0b83e98d0736bcad46ef344ed77",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 37,
+    "key": "44ac3cca5d51eb8943cabc10febc89a59734c069979a971542107b23dd37b00f",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y"
+     }
+    }
+   },
+   {
+    "id": 38,
+    "key": "8b0165adc2b92fef0628624e42caee48e82be52c60ba9cde2a3fb1c7319871b7",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 39,
+    "key": "7cebb0973484f4731e55e62ebb5e8e25005b189fb3c918c9ef09f0a13d22ab41",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   },
+   {
+    "id": 40,
+    "key": "455c5b5266cc944733787b84b38e5563bf471beefdbb50e8ac7d144a4bbad737",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N"
+     }
+    }
+   }
+  ],
+  "described": [
+   {
+    "id": 1,
+    "key": "4a51c6b9d91aa2c9ad12fad81aac9b3e56cfa09febfe26e29b9620771564914b",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 2,
+    "key": "2c8cfb9a67fea9c5d97b6af3f21bf303dcc2ea2878931d33d73ff88a29607a13",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 3,
+    "key": "81778368217a285784c309bd0e72a4af727adb4f0364000dfd540132d903048c",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 4,
+    "key": "3f9ff3aedd0dc744bcff3241319b70476d047e25489cb10536c350f076243bc0",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 5,
+    "key": "3390ce89c4fe734f0e5a5c1c4ccaa07b6becf0ceeff0fb9491d44a09175f68fa",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 6,
+    "key": "456d086631b7a33b0fc391c30dd39945c0939c55b9f5bc1ad7cfc69c66d0ab25",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 7,
+    "key": "a010ddf4593f928e35115bf6bd5a09e1da499e5a9bf5ed20f9af3487d9b54511",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 8,
+    "key": "ae1148ca5b608e687225f571689c5fb4f835552c073ebf68c07e6fc06c50e81e",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 9,
+    "key": "fb6804cd9ddc2e03f497a8c9c3d5a2b0bf18220217397d7ee1a382fadfb3fc6c",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 10,
+    "key": "0b72833bbb72e179e9eb99ccd1a84e1af76439abe65d11c825db3d18e6ae96c5",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 11,
+    "key": "82586cb9c009ba7eb0f386a1b8ee6533c973bfa7d802220c5ad9194f284fd84c",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 12,
+    "key": "a8439a24e09111415a9043de7869c545bc517bb73a49f920872794dc6cb3883d",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 13,
+    "key": "96ab6d133176a20375e64af862001c8b3479762889dde83bdb0f824fa3ba6def",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 14,
+    "key": "ff71f3753e8bbe7258236ce5aa3de40504bd12e83968095ff87fc45799365d6c",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 15,
+    "key": "abce9c13a1b075a3608f75fde1c8eebf15b14c8e6d337876ce23a3c91c8b2e3d",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 16,
+    "key": "25b95d657722b899695eea7f5b7079225493731140c292bbe36f3758426d137f",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 17,
+    "key": "44c6f34f1505cfb4e3c2ed07e13a72b6d7a49bc11591fc20273425c0103aad42",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 18,
+    "key": "9a30612e6f99f4e91d684f45327fc730d7efc1c553c8c3dd8d3b746620163f16",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 19,
+    "key": "856ba5a25c6d420c1b9afea0498b0fbad8d4f0595aea5df9f9fac797183c5f7c",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 20,
+    "key": "70985407634d0810b01804ba7f040547cd68a72761448caeba2d799240bcea3c",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 21,
+    "key": "6a4ca9eb36f98462f24cf572042dd4455eab760852917e0349f15597ef6b1942",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 22,
+    "key": "1c71ad946ab9e67c402d384d24ddae4bb6c54733172584c54d9618ce8ca33a49",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 23,
+    "key": "241dfb29f0e7227bbcb2f8d54c3f3473bf9d165694f4a36dd0379e7c070812a9",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 24,
+    "key": "ab4b766fc81fc0a8ba923a70fe6d8e7c6672c5e5dc3aa72aa0a91231b909ac99",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 25,
+    "key": "fe0cfc3e1a8416be0efadc8cfce3ed62493e9dd5c8404d155aac8c3386c59527",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 26,
+    "key": "2413b3f5beb2d77142ed17dd67e24fd4deffd1ff50c393c2dcd23a6334e5f770",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 27,
+    "key": "3b53762f5941fe2958048e2b69f23c02b99b8e38bd83fdcb3fcd9fcadcb5abbc",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 28,
+    "key": "3054b537d4f5bb364d6c5ee032d448cd90ff0d961b373559178b29b41c4b6d3f",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 29,
+    "key": "c9fb00ec9e0a6be8f740bb88320708695991b751711f59c0885850c45bd8245a",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 30,
+    "key": "261007caf8bd2d6d4aee44ee1964e18063a32957e6a6afdb431697867947f844",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "N"
+     }
+    }
+   }
+  ],
+  "proposed": [
+   {
+    "id": 1,
+    "key": "0c3fd263df8862a5354fc17d8b2f2ea6d5222e77dca6a110b553e73af297f84c",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 2,
+    "key": "19a732c4b1f81e6b7d21d189b9e5c6ee4c7a0cf903175272088342b527176ec1",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 3,
+    "key": "af3b3a4f7b919e8d4c6d9abc22a04d8a449aa432f5b4c4fad0828b8b885167df",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 4,
+    "key": "de3ea660ea02739803d04961f3ebc4697489f6e724bcd01faa6855a3f8589bd6",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 5,
+    "key": "bab9d0650063150472931a46c67af19f30195d8afcbfbf26b2be13e6130a7158",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 6,
+    "key": "a88df59d84cd3a94764db4095ad65179f09b8772bf488d8bf6879eeec3171179",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 7,
+    "key": "906ae1e834993dccf197e982cf7bc26dbbfef0496b533898b8f556ef8a47c8d7",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 8,
+    "key": "66a230b1be49f2a9532473e964f351d679b6e6bfb8dc57691717e409f444a51f",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 9,
+    "key": "378f46e9d72c060c3d0e1cc6d75c6b661abca84295f963e4e0a1af2334544607",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 10,
+    "key": "f03b7cce89fb6a5192890b04010b3a60ac6867c3c12d9b78269c5a75e6023ce9",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 11,
+    "key": "54dccc166eabd7829563fc9fd68095951595af155b1815f9e0993704b926df60",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 12,
+    "key": "4be7eacfa5362150d81188157333c9bc9505c5ed7925e586c6899587efee8f43",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 13,
+    "key": "ee26c103d4a117571e760b63cb213d5d8bbc462f7c0505e6c8bab23dd65e1ea2",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 14,
+    "key": "db5efbdb28c29d5c5f988a28488f58c2e9b1add594b52d2dcb9ade41ad7faef8",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 15,
+    "key": "97a62179c6eb24642f59084a93c9b61586a6cdfe1b056a18ffe0f5f95ab20baf",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 16,
+    "key": "35cc470aa4fda3678188af1431d9df77fbcecc37593e2ed8de8169e5a1084572",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 17,
+    "key": "21b07708793a024956d510ca4908caa7113972cab9f67b609944d20d735d7656",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 18,
+    "key": "3d65e7b94c7c3b8e9ab9d0aabbb9ff69c562ef84b601c7f0e17d37d260c603b3",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 19,
+    "key": "a9e358028695d34cf90e5dc368aa5fe93d359204db5ad0cc8fd0a0dd4bb82f72",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 20,
+    "key": "595c62b5a1b1eaa6b90bc510aed8b0722c497d4858b623b31c284da44951e663",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 21,
+    "key": "c0c819cad4c8faa50782c58d837ba5b8207f56e840783786e0bf1c306f4e7291",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 22,
+    "key": "9004b152d8731921b52dad23f57aabf333b4b2646a315c2927a7e6a1d2410a50",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 23,
+    "key": "4f1e39fc1e6f8e480004f71231475749d58fa18d77acaa2ac931cd2eaedac6aa",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 24,
+    "key": "cd7453c1c62723a922d45f1aea7a4c43ede971c11c8940e77a89ba2a5d4181c4",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 25,
+    "key": "ce52984b561984dfe5ed6448b3f3ffe0d854e0459229d6a094bdd97975377195",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 26,
+    "key": "cf1946b6bee5d984d482aceb07fc3447ae0edff0978fdc9aaf67f6ef66a5f625",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "N",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "N",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 27,
+    "key": "025c49cef35513db53cc8789b9558ca347e395b443fba7fe9323c7f769bfb67a",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "N"
+     }
+    }
+   },
+   {
+    "id": 28,
+    "key": "13957d9c793c1c306e6b169e4360886805cff481a41e16de449fc273afaa86c3",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 29,
+    "key": "6c046967e3f8a95979f70f24f276651abf124ead682225da9884a5f78335da3e",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "Y"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "Y"
+     }
+    }
+   },
+   {
+    "id": 30,
+    "key": "b68dfdfd7eea8a3b61240c05e989461f3c330b163d551c369c585b1620417522",
+    "labels": {
+     "glm:glm-5.3": {
+      "label": "Y",
+      "label_strict": "N"
+     },
+     "claude:claude-sonnet-5-5": {
+      "label": "Y",
+      "label_strict": "N"
+     }
+    }
+   }
+  ]
+ },
+ "note": "Labels from annotators other than the first (Claude, the model that ran the analysis), each given the published rule and exactly the fields `shown` in the labels files, blind to both judges and to the first labels (scripts/confirm_labels.py). They are models, not people."
+}
