@@ -79,6 +79,7 @@ from pathlib import Path
 
 import customer
 import judge as nl_judge
+from tau2_mcp import load_task
 from tau2.agent.llm_agent import AGENT_INSTRUCTION, AGENT_SOLO_INSTRUCTION, SYSTEM_PROMPT, SYSTEM_PROMPT_SOLO
 from tau2.data_model.message import AssistantMessage, ToolMessage, UserMessage
 from tau2.data_model.simulation import SimulationRun, TerminationReason
@@ -304,9 +305,7 @@ def main() -> None:
         parser.error("--batch-reads adds to the conversational system prompt, not --solo's")
     args.flow_decider = FLOW_ARMS.get(args.arm, "arbiter")
 
-    task = next(
-        t for t in registry.get_tasks_loader(args.domain)() if str(t.id) == args.task_id
-    )
+    task = load_task(args.domain, args.task_id)
     env = registry.get_env_constructor(args.domain)(solo_mode=args.solo)
     episode = (args.out / (args.label or args.arm) / f"task-{args.task_id}").resolve()
     episode.mkdir(parents=True, exist_ok=True)

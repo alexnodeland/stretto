@@ -55,9 +55,16 @@ STOP_TOOL, STOP_TOKEN = "done", "###STOP###"
 
 
 def load_task(domain: str, task_id: str):
-    for t in registry.get_tasks_loader(domain)():
-        if str(t.id) == str(task_id):
-            return t
+    """The task, from the domain's default tasks or, failing those, its full
+    split (telecom's 2,285 tickets; other domains have none)."""
+    loader = registry.get_tasks_loader(domain)
+    for tasks in (loader, lambda: loader("full")):
+        try:
+            found = next((t for t in tasks() if str(t.id) == str(task_id)), None)
+        except (ValueError, TypeError):  # no such split in this domain
+            continue
+        if found is not None:
+            return found
     raise SystemExit(f"no task {task_id} in {domain}")
 
 

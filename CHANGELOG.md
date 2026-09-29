@@ -4,6 +4,11 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ## Unreleased
 
+### Tickets no trace showed
+
+- `scripts/telecom_workflow.py --unseen N` runs the compiled procedure on tickets of τ²-bench's full telecom set whose faults no base task combines, N of them drawn with `--seed`, or all 2,171 ([#38](https://github.com/alexnodeland/stretto/issues/38)). `pilot/run_procedure.py --unseen N --seed S` runs the same draw through `stretto-procedure`. `pilot/tau2_mcp.py` and `run_episode.py` find a task in the domain's full split when its default tasks lack it, so a solo agent and the cascade's hand-backs run on those tickets too.
+- **Measured** ([results](docs/results/procedure-unseen-2026-09-29.md)): the procedure passed 84.3% of the 2,171 tickets with no model, the same tickets for a customer renamed throughout, and handed back 334, all failures. `stretto-procedure` matched the script on 100 of them. Claude Haiku 4.5 resolved 19 of 20 hand-backs, and passed 8 of 20 tickets alone.
+
 ### τ²-bench's own reward
 
 - `pilot/run_episode.py` records τ²-bench's own reward beside the database check: `reward_basis` in `result.json`, the product of every check in the task's reward basis ([#12](https://github.com/alexnodeland/stretto/issues/12)). A task whose basis counts natural-language assertions needs a judge. `--judge claude:MODEL` has a Claude model judge them through `claude-agent.sh`, with τ²-bench's prompt and rule (`pilot/judge.py`), and `result.json` lists the assertions and the verdicts.

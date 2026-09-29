@@ -647,6 +647,24 @@ def show(predict, sites):
     return "\n".join(lines) + "\n"
 
 
+def unseen(split, n, seed):
+    """Tickets of τ²-bench's full task set whose faults, the issue and every
+    fault in it, no base task has (the persona aside, which solo mode has no
+    use for): combinations no trace showed. n of them drawn at random, or all.
+
+    >>> split = {"base": ["[a]x|y[PERSONA:None]"],
+    ...          "full": ["[a]x|y[PERSONA:Hard]", "[a]x[PERSONA:None]", "[a]y|z[PERSONA:Easy]"]}
+    >>> sorted(unseen(split, 0, 0))
+    ['[a]x[PERSONA:None]', '[a]y|z[PERSONA:Easy]']
+    >>> len(unseen(split, 1, 0))
+    1
+    """
+    faults = lambda tid: tid.split("[PERSONA:")[0]  # noqa: E731
+    seen = {faults(t) for t in split["base"]}
+    pool = sorted(t for t in split["full"] if faults(t) not in seen)
+    return set(random.Random(f"unseen/{seed}").sample(pool, n)) if 0 < n < len(pool) else set(pool)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("results", nargs="+", help="τ²-bench telecom results in solo mode (no-user)")
@@ -676,15 +694,19 @@ def main():
                     help="per task, keep the shortest run kept in any round, or this round's first (as it stands, else the first draw)")
     ap.add_argument("--verifier", choices=["own", "evaluator"], default="own",
                     help="keep a run on its own check (the default), or on τ²-bench's evaluator, an oracle a deployment lacks")
+    ap.add_argument("--unseen", type=int, metavar="N",
+                    help="test on N tickets (0: all) of τ²-bench's full task set whose faults no base task has, drawn with --seed")
     args = ap.parse_args()
     global SYMBOLIC, RENAME
     SYMBOLIC = args.symbolic
     from tau2.data_model.tasks import Task
     from tau2.domains.telecom.environment import get_tasks
 
-    tasks = {t.id: t for t in get_tasks("base")}
+    tasks = {t.id: t for t in get_tasks("full" if args.unseen is not None else "base")}
     split = json.loads((Path(args.tau2) / "data/tau2/domains/telecom/split_tasks.json").read_text())
     train, test = set(split["train"]), set(split["test"])
+    if args.unseen is not None:
+        test = unseen(split, args.unseen, args.seed)
     tickets = sorted(train)  # every training task's ticket, for --self-train
     test_environment = None
     if args.rename:
@@ -784,6 +806,8 @@ def main():
                 agents[Path(path).name].append(ok)
                 trials[Path(path).name][s["task_id"]].append(ok)
     per_task = {k: {t: sum(v) / len(v) for t, v in ts.items()} for k, ts in trials.items()}
+    # Only agents that ran every test task (none ran the --unseen tickets).
+    per_task = {k: v for k, v in per_task.items() if all(r["task_id"] in v for r in rows)}
     report = {
         "test_tasks": len(rows),
         "passed": passed,
