@@ -333,6 +333,8 @@ The cascade gives the handed-back tickets to a model, which takes over from the 
 
 The procedure is a file stretto runs: `stretto-procedure` executes it against any MCP server, and on all 40 held-out tasks it made exactly the calls of the reference implementation, with the same rewards and verdicts.
 
+**Tickets no trace showed.** Besides its 114 base tasks, τ²-bench's telecom set holds 2,171 tickets that combine the same faults, one to nine at a time, in combinations no base task has. With no model the procedure passes 1,831 of them (84.3%). For a customer renamed throughout it passes the same tickets run for run, where constants pass 363. Its check hands back 334 tickets, all of them failures, and misses 5, all lines suspended at a contract's end. Claude Haiku 4.5 alone passed 8 of 20 drawn at random, at 21.5 LLM turns a ticket. Taking over 20 of the hand-backs it resolved 19, at 5.2 turns each, so the cascade projects to 99.0% of the 2,171 at 0.80 LLM turns a ticket.
+
 ## 5 Related work
 
 **Reusing traces with the model in the loop.** Workflow memory [AWM] and induced skills [ASI, WALT, SkillWeaver] give the agent text or callable routines mined from its own successes; they save 10–27% of steps on web tasks, and AWM's workflows offered as callable actions were used in 18.5% of tasks. Agentic plan caching reuses plan templates from earlier runs, matched by keywords and adapted to the new task by a small model, and halves the cost of several agent applications [APC]. They change what the model sees. We change neither the prompt nor the tool list: the speculator's reads arrive inside results the agent asked for.

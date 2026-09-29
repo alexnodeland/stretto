@@ -130,6 +130,7 @@ stretto is also a research project. The paper, [*Compile What the Environment De
 | Replay, nine agents it never saw, τ²-bench retail | 86.4% of the read-only ceiling, 10.2 points more than a next-step speculator |
 | Published trajectories of 89 more agents, six benchmarks | the ceiling runs from 3.5% of turns (WorkBench) to 47.1% (AgentDojo travel) |
 | A procedure compiled once, τ²-bench solo telecom | 39 of 40 held-out tasks, at 0.48 LLM turns per ticket against 15.9 |
+| The same procedure, on 2,171 telecom tickets no trace showed | 84.3% with no model; with Claude Haiku 4.5 on its hand-backs, 99.0% projected at 0.80 LLM turns per ticket, where Haiku alone passed 8 of 20 |
 
 - **The claims ledger.** [docs/results/claims.md](docs/results/claims.md) maps each headline number to its evidence: live, replayed against an environment, or counted from published trajectories. It also lists what the evidence does not show.
 - **Every round.** [docs/results](docs/results/README.md) has each round with its rows and its episodes.

@@ -8,11 +8,13 @@ state and the required actions where the task asks for them. The
 procedure's check of the ticket's outcome is a read made through the same
 server, after its last call.
 
-    python run_procedure.py PROCEDURE.json --out DIR [--compare RUNS.json]
+    python run_procedure.py PROCEDURE.json --out DIR [--compare RUNS.json] [--unseen N --seed S]
 
 With `--compare` (`scripts/telecom_workflow.py --json`), each run is checked
 against the reference implementation's: the same calls, the same reward and
-the same verdict. The summary goes to DIR/summary.json.
+the same verdict. `--unseen` runs tickets of the full task set whose faults
+no base task has, drawn as `telecom_workflow.py --unseen` draws them. The
+summary goes to DIR/summary.json.
 """
 
 import argparse
@@ -88,11 +90,14 @@ def main() -> None:
     ap.add_argument("--python", default=sys.executable, help="the Python with τ²-bench, for the tools")
     ap.add_argument("--tau2", type=Path, default=HERE.parent.parent / "sierra-research" / "tau2-bench")
     ap.add_argument("--jobs", type=int, default=4)
+    ap.add_argument("--unseen", type=int, metavar="N",
+                    help="run N tickets (0: all) whose faults no base task has, as telecom_workflow.py --unseen draws them")
+    ap.add_argument("--seed", type=int, default=0, help="the draw's seed for --unseen")
     args = ap.parse_args()
     args.procedure = args.procedure.resolve()
     split = json.loads((args.tau2 / "data/tau2/domains/telecom/split_tasks.json").read_text())
-    test = set(split["test"])
-    tasks = [t for t in registry.get_tasks_loader(DOMAIN)() if str(t.id) in test]
+    test = set(split["test"]) if args.unseen is None else telecom_workflow.unseen(split, args.unseen, args.seed)
+    tasks = [t for t in registry.get_tasks_loader(DOMAIN)("base" if args.unseen is None else "full") if str(t.id) in test]
     with ThreadPoolExecutor(args.jobs) as pool:
         rows = list(pool.map(lambda t: run_one(t, args), tasks))
     summary = {
