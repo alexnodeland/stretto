@@ -62,12 +62,12 @@ def legend(out: list[str], x: float, y: float, items: list[tuple[str, str, str]]
 
 
 def calibration(rows: dict, path: Path) -> None:
-    pw, ph, gap, left, top, bottom = 200, 200, 46, 56, 76, 48
+    pw, ph, gap, left, top, bottom = 170, 170, 38, 52, 76, 48
     w = left + 4 * pw + 3 * gap + 20
     h = top + ph + bottom
     out = svg_open(w, h)
-    legend(out, left, 16, [("a", "habit: chance the agent calls it next", ""),
-                           ("b", "reach: chance it calls it before its next write", "")])
+    legend(out, left, 16, [("a", "habit: chance the agent calls it next", "")])
+    legend(out, left + 300, 16, [("b", "reach: chance it calls it before its next write", "")])
     for i, (dom, title) in enumerate(DOMAINS):
         x0 = left + i * (pw + gap)
         sx = lambda v: x0 + pw * v  # noqa: E731
@@ -227,38 +227,44 @@ def ceilings(rows: list[dict], path: Path) -> None:
         doms = sorted((d for b, d in by if b == bench), key=lambda d: -by[(bench, d)][1] / by[(bench, d)][0])
         if doms:
             groups.append((label, [(d, *[100 * v / by[(bench, d)][0] for v in by[(bench, d)][1:]]) for d in doms]))
-    left, right, bar, gap, head, top = 150, 60, 14, 6, 22, 60
-    pw = 420
-    h = top + sum(head + len(ds) * (bar + gap) for _, ds in groups) + 36
-    w = left + pw + right
+    # Two panels side by side, the benchmarks split where the taller panel is shortest.
+    left, right, bar, gap, head, top = 112, 70, 14, 6, 22, 48
+    pw = 250
+    height = lambda gs: sum(head + len(ds) * (bar + gap) for _, ds in gs)  # noqa: E731
+    cut = min(range(1, len(groups)), key=lambda i: max(height(groups[:i]), height(groups[i:])), default=len(groups))
+    panels = [groups[:cut], groups[cut:]]
+    body = top + max(height(p) for p in panels)
+    pane = left + pw + right
+    w, h = 2 * pane, body + 36
     out = svg_open(w, h)
     for x, y, key, label in ((left, 10, "a", "bound from tool results"),
                              (left + 190, 10, "c", "the user's words a small model picks"),
-                             (left + 190, 28, "b", "the rest of the user's words")):
+                             (left + 450, 10, "b", "the rest of the user's words")):
         out.append(f'<rect x="{x}" y="{y}" width="14" height="10" fill="var(--{key})"/>')
         out.append(f'<text class="t" x="{x + 20}" y="{y + 9}">{label}</text>')
     xmax = 60
-    sx = lambda v: left + pw * v / xmax  # noqa: E731
-    body = top + sum(head + len(ds) * (bar + gap) for _, ds in groups)
-    for v in range(0, xmax + 1, 10):
-        out.append(f'<line x1="{sx(v):.1f}" x2="{sx(v):.1f}" y1="{top - 6}" y2="{body}" stroke="var(--grid)"/>')
-        out.append(f'<text class="m" x="{sx(v):.1f}" y="{body + 16}" text-anchor="middle">{v}</text>')
-    out.append(f'<text class="m" x="{left + pw / 2:.0f}" y="{h - 4}" text-anchor="middle">LLM turns a read-only speculator could save (%)</text>')
-    y = top
-    for label, doms in groups:
-        out.append(f'<text class="t" x="8" y="{y + 14}" font-weight="600">{label}</text>')
-        y += head
-        for d, tool, model, words in doms:
-            out.append(f'<text class="m" x="{left - 8}" y="{y + bar - 3}" text-anchor="end">{NAMES.get(d, d)}</text>')
-            if tool > 0:
-                out.append(f'<rect x="{left}" y="{y}" width="{max(sx(tool) - left - 1, 0.5):.1f}" height="{bar}" rx="2" fill="var(--a)"/>')
-            if model - tool > 0.05:
-                out.append(f'<rect x="{sx(tool) + 1:.1f}" y="{y}" width="{max(sx(model) - sx(tool) - 1, 0.5):.1f}" height="{bar}" rx="2" fill="var(--c)"/>')
-            if words - model > 0.05:
-                out.append(f'<rect x="{sx(model) + 1:.1f}" y="{y}" width="{max(sx(words) - sx(model) - 1, 0.5):.1f}" height="{bar}" rx="2" fill="var(--b)"/>')
-            value = f"{tool:.1f} + {words - tool:.1f}" if words - tool > 0.05 else f"{tool:.1f}"
-            out.append(f'<text class="t" x="{sx(words) + 6:.1f}" y="{y + bar - 3}">{value}</text>')
-            y += bar + gap
+    for p, panel in enumerate(panels):
+        x0 = p * pane + left
+        sx = lambda v: x0 + pw * v / xmax  # noqa: E731
+        for v in range(0, xmax + 1, 10):
+            out.append(f'<line x1="{sx(v):.1f}" x2="{sx(v):.1f}" y1="{top - 6}" y2="{body}" stroke="var(--grid)"/>')
+            out.append(f'<text class="m" x="{sx(v):.1f}" y="{body + 16}" text-anchor="middle">{v}</text>')
+        out.append(f'<text class="m" x="{x0 + pw / 2:.0f}" y="{h - 4}" text-anchor="middle">LLM turns a read-only speculator could save (%)</text>')
+        y = top
+        for label, doms in panel:
+            out.append(f'<text class="t" x="{p * pane + 8}" y="{y + 14}" font-weight="600">{label}</text>')
+            y += head
+            for d, tool, model, words in doms:
+                out.append(f'<text class="m" x="{x0 - 8}" y="{y + bar - 3}" text-anchor="end">{NAMES.get(d, d)}</text>')
+                if tool > 0:
+                    out.append(f'<rect x="{x0}" y="{y}" width="{max(sx(tool) - x0 - 1, 0.5):.1f}" height="{bar}" rx="2" fill="var(--a)"/>')
+                if model - tool > 0.05:
+                    out.append(f'<rect x="{sx(tool) + 1:.1f}" y="{y}" width="{max(sx(model) - sx(tool) - 1, 0.5):.1f}" height="{bar}" rx="2" fill="var(--c)"/>')
+                if words - model > 0.05:
+                    out.append(f'<rect x="{sx(model) + 1:.1f}" y="{y}" width="{max(sx(words) - sx(model) - 1, 0.5):.1f}" height="{bar}" rx="2" fill="var(--b)"/>')
+                value = f"{tool:.1f} + {words - tool:.1f}" if words - tool > 0.05 else f"{tool:.1f}"
+                out.append(f'<text class="t" x="{sx(words) + 6:.1f}" y="{y + bar - 3}">{value}</text>')
+                y += bar + gap
     out.append("</svg>")
     path.write_text("\n".join(out) + "\n")
 
