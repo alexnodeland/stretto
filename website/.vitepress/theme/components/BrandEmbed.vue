@@ -62,7 +62,7 @@ const file = (key: 'Video' | 'Poster' | 'Captions') => {
 
 const src = computed(() => file('Video') ?? false)
 const poster = computed(() => file('Poster'))
-/** The voice-over's captions, WebVTT, off until the viewer turns them on. */
+/** The voice-over's captions, WebVTT, off until the viewer turns them on (captionsOff). */
 const captions = computed(() => file('Captions'))
 /** The interactive explainer, a static page outside the router (so the link sets target). */
 const page = computed(() => (props.kind === 'explainer' && assets.value?.explainerPage ? withBase('/explainer/') : undefined))
@@ -79,12 +79,20 @@ const label = computed(
 )
 
 const isDev = import.meta.env.DEV
+/**
+ * The films set their captions in the picture, so the WebVTT track starts
+ * off even where the browser would show it by its own caption settings; the
+ * player's captions control still turns it on.
+ */
+function captionsOff(e: Event) {
+  for (const t of Array.from((e.target as HTMLVideoElement).textTracks)) t.mode = 'disabled'
+}
 </script>
 
 <template>
   <figure v-if="src" :id="`film-${kind}`" class="brand-embed" :class="`brand-embed--${kind}`">
     <div class="brand-embed__frame" :style="{ aspectRatio: aspect }">
-      <video :src="src" :poster="poster" :aria-label="label" controls playsinline preload="none">
+      <video :src="src" :poster="poster" :aria-label="label" controls playsinline preload="none" @loadedmetadata="captionsOff">
         <track v-if="captions" kind="captions" :src="captions" srclang="en" label="English" />
       </video>
     </div>

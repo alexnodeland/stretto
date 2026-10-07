@@ -2,7 +2,8 @@
 // The home page's films: the explainer, full width, straight under the hero's
 // words (the `home-hero-after` slot, set in theme/index.ts), and under it the
 // two deep dives, each playing where it is listed. A poster shows with one
-// play control; a click starts that video with its controls and captions.
+// play control; a click starts that video with its controls. The captions
+// are in the picture, so the WebVTT track starts off (captionsOff).
 // Renders nothing until the brand kit's files are in public/
 // (scripts/copy-brand.mjs), as BrandEmbed does.
 import { computed, ref } from 'vue'
@@ -50,6 +51,14 @@ function playDive(key: string, el: HTMLVideoElement | null) {
   }
 }
 const diveVideos = ref<Record<string, HTMLVideoElement | null>>({})
+/**
+ * The films set their captions in the picture, so the WebVTT track starts
+ * off even where the browser would show it by its own caption settings; the
+ * player's captions control still turns it on.
+ */
+function captionsOff(e: Event) {
+  for (const t of Array.from((e.target as HTMLVideoElement).textTracks)) t.mode = 'disabled'
+}
 </script>
 
 <template>
@@ -61,6 +70,7 @@ const diveVideos = ref<Record<string, HTMLVideoElement | null>>({})
         :poster="poster"
         preload="none"
         playsinline
+        @loadedmetadata="captionsOff"
         :controls="started"
         aria-label="How stretto works: the explainer video"
       >
@@ -88,6 +98,7 @@ const diveVideos = ref<Record<string, HTMLVideoElement | null>>({})
             :poster="d.poster"
             preload="none"
             playsinline
+            @loadedmetadata="captionsOff"
             :controls="playing === d.key"
             :aria-label="`Deep dive: ${d.title}`"
           >
