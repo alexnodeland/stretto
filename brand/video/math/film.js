@@ -739,8 +739,8 @@
       const nLab = box(layer, { x: 852, y: 560, cls: 'code', text: '', style: { fontSize: '19px', color: C.muted } });
       // The decision.
       const dec = tex(layer, String.raw`\htmlClass{tp k-q}{q} \;\approx\; \htmlClass{tp k-r}{r(t \mid h)} \cdot \htmlClass{tp k-rho2}{\rho} \;=\; 1.00 \times 0.81 \;=\; \htmlClass{tp}{0.81} \;\ge\; \htmlClass{tp}{\theta}=0.3`, { x: 120, y: 800, size: 42 });
-      const aR2 = annotate(layer, svg, dec, 'r', 'the read’s chance', { pos: 'above', dist: 22, color: T.p });
-      const aRho2 = annotate(layer, svg, dec, 'rho2', 'its arguments’', { pos: 'above', dist: 22, color: T.p, dx: 30 });
+      const aR2 = annotate(layer, svg, dec, 'r', 'the read’s chance', { pos: 'above', dist: 22, color: T.p, dx: -50 });
+      const aRho2 = annotate(layer, svg, dec, 'rho2', 'its arguments’', { pos: 'above', dist: 22, color: T.p, dx: 50, align: 0 });
       const decN = note(layer, 'flow-show’s own line for the walkthrough’s flow, on the official MCP filesystem server: after search_files, it looks up read_text_file (docs/walkthrough.md). The binding’s chance is crates/stretto-report/src/flow.rs.', { x: 120, y: 880, w: 1680, size: 16 });
       const tWhere = at('bind1', 'where'), tRight = at('bind2', 'right over tried'), tOne = at('bind2', 'one added'), tUni = at('bind2', 'uniform'), tEach = at('bind3', 'each binding'), tTwelve = at('bind3', 'twelve'), tGives = at('bind3', 'gives'), tMult = at('bind4', 'multiplies'), tArgs = at('bind4', 'arguments');
       return t => {
