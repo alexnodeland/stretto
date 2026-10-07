@@ -4,6 +4,12 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ## Unreleased
 
+### The explainer video, remade
+
+- The explainer video (`brand/media/explainer.mp4`) is a new film: ten chapters, one diagram each, on a still stage, from a cold open on the proxy's own output to the live results and how to start. It adds a chapter on the console, shown from its own screens. It shows the real thing: the reads a result carries as the proxy writes them, τ²-bench retail's tools, the counts of the flow in `docs/examples/`, and the commands of the docs. The line being spoken is set at the foot of the frame, each word lit as it is said. The poster and the README's teaser come from it.
+- The voice-over of both videos and of the interactive explainer is Kokoro-82M's `af_heart`, run locally (`brand/video/narrate.py`), in place of Chatterbox. Each line is checked by speech recognition as before. The videos have no sound effects now: the voice, the music bed under it, and its motif in and out.
+- `brand/video/PACING.md` records the pacing the film follows, measured from Auracle's films: one breath a sentence, one idea a line, and silence written into the script.
+
 ### The cold start on more agents
 
 - `scripts/cold_draws.py run` learns three flows from random draws of an agent's first sessions (the habit alone, the draw's own arbiter, a shipped arbiter) and replays each on the agent's test episodes; `report` gives each flow's spread across draws, how many draws save under half of what every training task gives, and the shipped arbiter's paired difference ([#9](https://github.com/alexnodeland/stretto/issues/9)).

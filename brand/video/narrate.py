@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Voice the brand kit's narration with Chatterbox, a local text-to-speech model.
+"""Voice the brand kit's narration with Kokoro, a local text-to-speech model.
 
     python3 brand/video/narrate.py [explainer-video] [walkthrough] [explainer]   # default: all three
 
-The scripts are video/explainer/narration.json (the explainer video),
-video/walkthrough/narration.json (with every caption in walkthrough.cast) and
-explainer/narration.json (the interactive explainer). Every line is spoken in
-one voice, Chatterbox's own, at one pace and one level, then transcribed back
-with faster-whisper and checked against its script; a line with a word missing,
-added or garbled is spoken again. The clips are written:
+The scripts are video/explainer/narration.json (the explainer video, as
+chapters of lines), video/walkthrough/narration.json (with every caption in
+walkthrough.cast) and explainer/narration.json (the interactive explainer).
+Every line is spoken in one voice, Kokoro-82M's `af_heart` at one pace, then
+transcribed back with faster-whisper and checked against its script; a line
+with a word missing, added or garbled is spoken again a touch slower or
+faster, which is enough to change Kokoro's take. The clips are written:
 
 - for the videos, as WAV clips and a manifest.json (each line's text, its
   length and the time of every word) in video/out/voice/NAME/, which
@@ -18,22 +19,19 @@ added or garbled is spoken again. The clips are written:
 
 A clip whose words and settings have not changed is kept. Text on screen is
 written for reading: a line's `say`, and SAY below, give what the voice says.
-"stretto" is left to the model, which says it the American way, STRED-oh.
+"stretto" is said the American way, STRED-oh, which misaki (Kokoro's
+grapheme-to-phoneme front end) gives it from its own rules; LEXICON pins it
+anyway, with any other word whose reading must not drift.
 
-The pace. Chatterbox has no speed setting, and its voice runs fast, about 210
-words a minute within a sentence, whatever its settings. So each line is
-spoken a sentence at a time (a long sentence split at the clause nearest its
-middle); each piece is trimmed of its own silence, slowed toward TARGET_WPM by
-no more than SLOWEST (further, speech smears), and joined to the next with a
-pause that fits its punctuation.
+The voice and the pace are those of the Auracle films (PACING.md): Kokoro's
+`af_heart` at speed 0.85, each line spoken whole so its commas keep their
+prosody. Kokoro runs a line in about half its length on a CPU.
 
 Needs: pip install -r brand/video/requirements-narrate.txt (its header gives
 the order, for torch's CPU build), and ffmpeg ($FFMPEG, else on PATH, else
-imageio-ffmpeg's). The models (Chatterbox, about 3.2 GB, MIT; faster-whisper's
-small.en, about 0.5 GB) come from Hugging Face on first use and are cached
-under $HF_HOME. On a machine busy with other work, set OMP_NUM_THREADS to the
-cores that are free: torch's threads contending for busy cores can make it
-thirty times slower.
+imageio-ffmpeg's) for the interactive explainer's MP3s. The models (Kokoro-82M
+and its voices, about 0.35 GB, Apache-2.0; faster-whisper's small.en, about
+0.5 GB) come from Hugging Face on first use and are cached under $HF_HOME.
 """
 
 import argparse
@@ -53,26 +51,17 @@ HERE = Path(__file__).resolve().parent
 BRAND = HERE.parent
 OUT = HERE / "out" / "voice"
 
-ENGINE = "chatterbox-tts 0.1.7"
-VOICE = "chatterbox-default"  # the model's own voice (conds.pt); nothing is cloned
+ENGINE = "kokoro 0.9.4 (Kokoro-82M v1.0, misaki 0.9.4)"
+VOICE = "af_heart"
+REPO_ID = "hexgrad/Kokoro-82M"
 RATE = 24000
-# Chatterbox's defaults. Lower cfg_weight or exaggeration did not slow this
-# voice (cfg_weight 0.15-0.35 with exaggeration 0.35-0.5 all ran within 5% of
-# each other), and lower cfg_weight let it change a word.
-EXAGGERATION = 0.5
-CFG_WEIGHT = 0.5
-TEMPERATURE = 0.8
-RETRY_TEMPERATURE = 0.6
-RETRIES = 3  # takes after the first, each from another seed, while a take fails its check
-
-TARGET_WPM = 160  # words a minute over the whole line, pauses included
-FASTEST_WPM = 185  # a take still faster than this, slowed as far as SLOWEST allows, is spoken again
-SLOWEST = 0.8  # the most a piece is slowed (ffmpeg atempo); 1 would leave it as spoken
-PAUSE_MS = {"sentence": 430, "clause": 210}
-LEAD_MS, TAIL_MS = 40, 100  # silence kept before and after each piece
+SPEED = 0.85  # between Auracle's launch film (0.82) and its films for engineers (0.9); PACING.md
+RETRY_SPEEDS = [0.83, 0.87, 0.81]  # a take that fails its check is spoken again at these
+# Words whose reading is pinned, in misaki's phoneme alphabet (US voices).
+LEXICON = {
+    "stretto": "stɹˈɛTO",
+}
 TRIM_MS = 60  # silence kept at each end of a line
-SPLIT_WORDS = 20  # a sentence longer than this is split at a clause: long takes slur names
-JOIN_WORDS = 5  # a sentence shorter than this is spoken with its neighbour: a word or two alone, it falters
 LEVEL = -19.0  # every clip's RMS, dBFS
 PEAK = -1.5  # and its peaks below this
 
@@ -105,7 +94,8 @@ def lines_of(name: str) -> list[dict]:
     """The lines to voice for `name`: each with a key, the text as written and as said."""
     if name == "explainer-video":
         doc = json.loads((HERE / "explainer" / "narration.json").read_text())
-        return [{"key": l["key"], "text": l["text"], "say": spoken(l.get("say", l["text"]))} for l in doc["lines"]]
+        return [{"key": l["key"], "text": l["text"], "say": spoken(l.get("say", l["text"]))}
+                for beat in doc["beats"] for l in beat["lines"]]
     if name == "walkthrough":
         doc = json.loads((HERE / "walkthrough" / "narration.json").read_text())
         out = [{"key": "intro", "text": doc["intro"], "say": spoken(doc["intro"])}]
@@ -129,35 +119,6 @@ def lines_of(name: str) -> list[dict]:
     raise SystemExit(f"narrate: no narration named {name!r}")
 
 
-def pieces(say: str) -> list[tuple[str, str]]:
-    """The line as the takes to speak, each with the pause after it ("sentence" or "clause")."""
-    sentences = []
-    for s in (s.strip() for s in re.split(r"(?<=[.!?])\s+", say.strip())):
-        if s and sentences and len(sentences[-1].split()) < JOIN_WORDS:
-            sentences[-1] += " " + s
-        elif s:
-            sentences.append(s)
-    if len(sentences) > 1 and len(sentences[-1].split()) < JOIN_WORDS:
-        last = sentences.pop()
-        sentences[-1] += " " + last
-    out = []
-    for sentence in sentences:
-        parts = split_long(sentence)
-        out += [(p, "clause") for p in parts[:-1]] + [(parts[-1], "sentence")]
-    return out
-
-
-def split_long(sentence: str) -> list[str]:
-    """A sentence over SPLIT_WORDS words, split at the clause nearest its middle, and again if need be."""
-    words = sentence.split()
-    if len(words) <= SPLIT_WORDS:
-        return [sentence]
-    ends = [i + 1 for i, w in enumerate(words[:-1]) if re.search(r"[,;:]$", w)]
-    if not ends:
-        return [sentence]
-    cut = min(ends, key=lambda i: abs(i - len(words) / 2))
-    return split_long(" ".join(words[:cut])) + split_long(" ".join(words[cut:]))
-
 
 def ffmpeg() -> str:
     if os.environ.get("FFMPEG"):
@@ -172,45 +133,38 @@ def ffmpeg() -> str:
         raise SystemExit("narrate: no ffmpeg: set FFMPEG, put ffmpeg on PATH, or pip install imageio-ffmpeg")
 
 
+
+
+def with_lexicon(text: str) -> str:
+    """The text with each LEXICON word as misaki's inline markup, [word](/phonemes/)."""
+    for word, ps in LEXICON.items():
+        text = re.sub(rf"\b{re.escape(word)}\b", lambda m: f"[{m.group(0)}](/{ps}/)", text, flags=re.I)
+    return text
+
+
 class Voice:
-    """Chatterbox, loaded once, and faster-whisper to check each take."""
+    """Kokoro, loaded once, and faster-whisper to check each take."""
 
     def __init__(self):
         try:
             import torch  # noqa: F401  (imported here, so --help works without it)
-            from chatterbox.tts import ChatterboxTTS
             from faster_whisper import WhisperModel
+            from kokoro import KPipeline
         except ImportError:
             raise SystemExit("narrate: pip install -r brand/video/requirements-narrate.txt")
         t0 = time.time()
-        self.model = ChatterboxTTS.from_pretrained(device="cpu")
+        self.pipeline = KPipeline(lang_code="a", repo_id=REPO_ID)
         self.whisper = WhisperModel("small.en", device="cpu", compute_type="int8")
         print(f"narrate: models loaded in {time.time() - t0:.0f} s", file=sys.stderr)
 
-    def take(self, text: str, seed: int, temperature: float):
-        import numpy as np
-        import torch
-
-        torch.manual_seed(seed)
-        wav = self.model.generate(text, exaggeration=EXAGGERATION, cfg_weight=CFG_WEIGHT, temperature=temperature)
-        return wav.squeeze(0).cpu().numpy().astype(np.float32)
-
-    def speak(self, say: str, seed: int, temperature: float):
-        """The line, spoken piece by piece, paced and joined; and how much it was slowed."""
+    def speak(self, say: str, speed: float):
+        """The line, spoken whole (Kokoro splits only past its 510-phoneme window), trimmed and levelled."""
         import numpy as np
 
-        parts = pieces(say)
-        takes = [trim(self.take(text, seed + i, temperature), LEAD_MS, TAIL_MS) for i, (text, _) in enumerate(parts)]
-        pauses = [PAUSE_MS[after] / 1000 for _, after in parts[:-1]]
-        spoken_s = sum(len(t) for t in takes) / RATE
-        target_s = len(say.split()) / TARGET_WPM * 60 - sum(pauses)
-        tempo = min(1.0, max(SLOWEST, spoken_s / target_s)) if target_s > 0 else 1.0
-        out = []
-        for i, t in enumerate(takes):
-            out.append(atempo(t, tempo))
-            if i < len(pauses):
-                out.append(np.zeros(int(pauses[i] * RATE), dtype=np.float32))
-        return normalize(trim(np.concatenate(out), TRIM_MS, TRIM_MS)), tempo
+        audio = [r.audio.numpy() for r in self.pipeline(with_lexicon(say), voice=VOICE, speed=speed) if r.audio is not None]
+        if not audio:
+            raise SystemExit(f"narrate: Kokoro said nothing for {say!r}")
+        return normalize(trim(np.concatenate(audio).astype(np.float32), TRIM_MS, TRIM_MS))
 
     def check(self, wav: Path, say: str) -> tuple[float, list[dict], str]:
         """Transcribes the clip and compares it with what it should say: (how far off, its words, what was heard).
@@ -254,7 +208,8 @@ NUMBERS = {"zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six
 
 
 # How small.en writes a few of the scripts' words, whoever says them.
-HEARD_AS = [(r"\bin it\b", "init"), (r"\bfile system\b", "filesystem"), (r"\b(clod|clawed)\b", "claude")]
+HEARD_AS = [(r"\bin it\b", "init"), (r"\bfile system\b", "filesystem"), (r"\b(clod|clawed)\b", "claude"),
+            (r"\bwalk through\b", "walkthrough"), (r"\bstrato ?proxy\b", "stretto proxy")]
 
 
 def comparable(text: str) -> list[str]:
@@ -308,28 +263,13 @@ def normalize(samples):
     return samples * gain
 
 
-def atempo(samples, tempo: float):
-    """The samples, slowed (tempo < 1) at the same pitch."""
-    import numpy as np
-    import soundfile as sf
-
-    if tempo > 0.995:
-        return samples
-    with tempfile.TemporaryDirectory() as d:
-        src, dst = Path(d) / "in.wav", Path(d) / "out.wav"
-        sf.write(src, samples, RATE, subtype="FLOAT")
-        subprocess.run([ffmpeg(), "-y", "-hide_banner", "-loglevel", "error", "-i", str(src),
-                        "-af", f"atempo={tempo:.4f}", "-c:a", "pcm_f32le", str(dst)], check=True)
-        return sf.read(dst, dtype="float32")[0].astype(np.float32)
-
 
 # Bump when the making of a clip changes, so every clip is made again.
-ENCODING = 3
+ENCODING = 4
 
 
 def fingerprint(line: dict) -> str:
-    settings = [line["say"], ENGINE, VOICE, EXAGGERATION, CFG_WEIGHT, TEMPERATURE, RETRY_TEMPERATURE, TARGET_WPM,
-                SLOWEST, PAUSE_MS, LEAD_MS, TAIL_MS, TRIM_MS, SPLIT_WORDS, LEVEL, PEAK, ENCODING]
+    settings = [line["say"], ENGINE, VOICE, SPEED, RETRY_SPEEDS, LEXICON, TRIM_MS, LEVEL, PEAK, ENCODING]
     return hashlib.sha256(json.dumps(settings, sort_keys=True).encode()).hexdigest()[:16]
 
 
@@ -337,17 +277,14 @@ def voice_line(voice: Voice, line: dict, wav: Path) -> list[dict]:
     """Speaks the line into `wav` until a take passes its check, else keeps the closest take; returns its words."""
     import soundfile as sf
 
-    seed = int(hashlib.sha256(line["key"].encode()).hexdigest()[:8], 16) % 1_000_000
     best = None
-    for attempt in range(1 + RETRIES):
-        samples, tempo = voice.speak(line["say"], seed + 1000 * attempt, TEMPERATURE if attempt == 0 else RETRY_TEMPERATURE)
+    for speed in [SPEED] + RETRY_SPEEDS:
+        samples = voice.speak(line["say"], speed)
         sf.write(wav, samples, RATE, subtype="PCM_16")
         off, words, heard = voice.check(wav, line["say"])
         wpm = len(line["say"].split()) / (len(samples) / RATE) * 60
-        off += max(0.0, wpm - FASTEST_WPM) / 100
-        print(f"narrate: {line['key']}: take {attempt + 1}, {len(samples) / RATE:.2f} s ({wpm:.0f} words a minute),"
-              f" slowed to {tempo:.2f}" + ("" if off < PASS else f"; failed its check ({off:.2f} off: heard {heard!r})"),
-              file=sys.stderr)
+        print(f"narrate: {line['key']}: speed {speed}, {len(samples) / RATE:.2f} s ({wpm:.0f} words a minute)"
+              + ("" if off < PASS else f"; failed its check ({off:.2f} off: heard {heard!r})"), file=sys.stderr)
         if off < PASS:
             return words
         if best is None or off < best[0]:

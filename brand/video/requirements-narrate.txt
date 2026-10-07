@@ -1,25 +1,38 @@
-# The voice-over (video/narrate.py): Chatterbox, run locally on CPU, and
-# faster-whisper, which checks every line and times its words. torch comes
-# from PyTorch's CPU index (the default index would pull the far larger CUDA
-# build), and chatterbox-tts goes in without its declared dependencies, which
-# add gradio for its demo app; the ones this needs are pinned below:
-#   python3 -m venv .venv-voice
-#   .venv-voice/bin/pip install --index-url https://download.pytorch.org/whl/cpu torch==2.6.0 torchaudio==2.6.0
-#   .venv-voice/bin/pip install --no-deps chatterbox-tts==0.1.7
+# The voice-over (video/narrate.py): Kokoro-82M, run locally on CPU, and
+# faster-whisper, which checks every line and times its words. The same
+# voice and versions as the Auracle films (PACING.md). Python 3.10 to 3.12:
+# kokoro 0.9.4 does not install on 3.13. torch comes from PyTorch's CPU index,
+# since PyPI's Linux wheel pulls about 3 GB of CUDA libraries CPU inference
+# never loads:
+#   python3.12 -m venv .venv-voice
 #   .venv-voice/bin/pip install -r brand/video/requirements-narrate.txt
-# The models (Chatterbox from huggingface.co/ResembleAI/chatterbox, MIT, about
-# 3.2 GB; faster-whisper's small.en, about 0.5 GB) are fetched on first use.
-numpy==1.26.4
+# The models (Kokoro-82M and its voices from huggingface.co/hexgrad/Kokoro-82M,
+# Apache-2.0, about 0.35 GB; faster-whisper's small.en, about 0.5 GB) are
+# fetched on first use.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.14.0+cpu ; sys_platform == "linux"
+torch==2.14.0 ; sys_platform != "linux"
+
+# Kokoro and misaki, the grapheme-to-phoneme front end it was trained on;
+# espeak-ng ships inside espeakng-loader, as misaki's fallback for words its
+# dictionary lacks.
+kokoro==0.9.4
+misaki[en]==0.9.4
+transformers==5.17.0
+huggingface-hub==1.33.0
+spacy==3.8.16
+phonemizer-fork==3.3.2
+espeakng-loader==0.2.4
+num2words==0.5.14
+loguru==0.7.3
+# misaki's part-of-speech tagger, from spaCy's own release.
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+
+# Audio, and the check.
+numpy==2.4.6
 soundfile==0.14.0
-transformers==5.2.0
-diffusers==0.29.0
-librosa==0.11.0
-s3tokenizer==0.3.0
-resemble-perth==1.0.1
-conformer==0.3.2
-safetensors==0.5.3
-spacy-pkuseg==1.0.1
-pykakasi==2.3.0
-pyloudnorm==0.2.0
-omegaconf==2.3.1
 faster-whisper==1.2.1
+ctranslate2==4.8.2
+onnxruntime==1.30.0
+tokenizers==0.23.2
+av==18.1.0
