@@ -111,7 +111,7 @@ It is 760 px tall at 1000 px wide and 876 px at 720 px, the same for every step;
 | `media/walkthrough.mp4` | 192.6 s, 1920 × 1080, 30 fps | 10.5 MB | H.264 High, faststart; the voice-over in AAC, at -16.5 LUFS |
 | `media/walkthrough.vtt` | 37 cues | 3 KB | The voice-over's captions (WebVTT) |
 | `media/walkthrough-poster.png` | 1920 × 1080 | 201 KB | The served session: the two reads riding in the search's result |
-| `media/math.mp4` | 208.9 s, 1920 × 1080, 30 fps | 9.6 MB | H.264 High, faststart; voice and music in AAC, at -16 LUFS |
+| `media/math.mp4` | 338.3 s, 1920 × 1080, 30 fps | 17.5 MB | H.264 High, faststart; voice and music in AAC, at -16 LUFS |
 | `media/math.vtt`, `media/math-poster.png` | 1920 × 1080 | | Captions; the poster is alpha's posterior, the chain's draws piled into it |
 | `media/console.mp4` | 122.3 s, 1920 × 1080, 30 fps | 8.5 MB | H.264 High, faststart; voice and music in AAC, at -16 LUFS |
 | `media/console.vtt`, `media/console-poster.png` | 1920 × 1080 | | Captions; the poster is a served session's three lookups |
