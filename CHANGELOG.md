@@ -4,6 +4,12 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ## Unreleased
 
+### The paper in two columns, with more figures
+
+- The paper's PDF (`paper/latex/`) is set in two columns, with the abstract boxed, the propositions boxed, run-in heads in the accent colour and running heads. A table or figure spans both columns only when it is too wide for one, and the note under a table travels with it.
+- Six new figures: how a lookup spares an LLM turn and the event the speculator estimates (Figure 1), a read's expected value against its probability of use at each domain's costs (Figure 2), what decides each turn across the benchmarks (Figure 4), the share of the ceiling each speculator takes in replay (Figure 8), every live comparison with its interval (Figure 10), and the cascade on solo telecom (Figure 11). `scripts/paper_diagrams.py` draws them, from numbers written as the paper writes them, and fails if `paper/stretto.md` does not hold one. The earlier figures are renumbered.
+- `scripts/paper_figures.py` sets the ceilings in two panels side by side and the reliability diagrams narrower, for the two-column page.
+
 ### The cold start on more agents
 
 - `scripts/cold_draws.py run` learns three flows from random draws of an agent's first sessions (the habit alone, the draw's own arbiter, a shipped arbiter) and replays each on the agent's test episodes; `report` gives each flow's spread across draws, how many draws save under half of what every training task gives, and the shipped arbiter's paired difference ([#9](https://github.com/alexnodeland/stretto/issues/9)).

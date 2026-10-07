@@ -9,7 +9,12 @@ figures/*.pdf (from ../*.svg). The Markdown is the source:
 - its citation labels ([AWM], [ASI, SkillWeaver]) become natbib citations of
   refs.bib (CITES);
 - each table becomes a float, captioned with the label the Markdown gives it
-  (Table 1b), and each figure a float;
+  (Table 1b), across both columns when it is too wide for one, with the note
+  after it (a dagger, or "Brackets give ...") kept under it;
+- each figure becomes a float, across both columns when its SVG is wider than
+  600 px;
+- each proposition is boxed, and each paragraph's bold lead-in is set as a
+  run-in head;
 - its Mermaid diagram becomes the TikZ picture in figure1.tex, and its
   Algorithm 1 algorithm1.tex;
 - its section numbers are dropped for LaTeX's, which are the same, and its
@@ -78,6 +83,9 @@ CITES = {
     "D0": ["nodeland2026rfc"],
 }
 MARK = "TABLELABEL{}ENDLABEL"
+WIDE_SVG = 600  # px: a figure wider than this spans both columns
+COLUMN_CHARS = 54  # a table whose rows run longer than this, at \small, spans both columns,
+WRAP_CHARS = 28  # its first column wrapped at this width
 
 
 def pandoc(markdown: str) -> str:
@@ -105,20 +113,16 @@ def prepare(text: str, body: bool) -> str:
     # The Mermaid diagram and its caption: the TikZ figure.
     def regimes(m: re.Match) -> str:
         caption = inline(cite(m.group(1)))
-        return ("```{=latex}\n\\begin{figure}[tbp]\n\\centering\n\\input{figure1}\n"
-                f"\\caption{{{caption}}}\n\\label{{fig:regimes}}\n\\end{{figure}}\n```\n")
+        return ("```{=latex}\n\\begin{figure*}[tp]\n\\centering\n\\adjustbox{max width=\\textwidth}{\\input{figure1}}\n"
+                f"\\caption{{{caption}}}\n\\label{{fig:regimes}}\n\\end{{figure*}}\n```\n")
 
-    text, n = re.subn(r"```mermaid\n.*?```\n\n\*Figure 1\. (.+?)\*\n", regimes, text, flags=re.S)
+    text, n = re.subn(r"```mermaid\n.*?```\n\n\*Figure \d+\. (.+?)\*\n", regimes, text, flags=re.S)
     assert n == body, "the Mermaid figure"
     text, n = re.subn(r"```text\nAlgorithm 1\..*?```\n", lambda m: "```{=latex}\n\\input{algorithm1}\n```\n", text, flags=re.S)
     assert n == body, "Algorithm 1"
     # Figures: the image, captioned by the paragraph after it.
-    text, n = re.subn(
-        r"!\[[^\]]*\]\(([\w-]+)\.svg\)\n\n\*Figure \d+\. (.+?)\*\n",
-        lambda m: f"![{m.group(2)}](figures/{m.group(1)}.pdf)\n",
-        text,
-    )
-    assert n == 4 * body, f"{n} figures"
+    text, n = re.subn(r"!\[[^\]]*\]\(([\w-]+)\.svg\)\n\n\*Figure \d+\. (.+?)\*\n", figure, text)
+    assert n == 10 * body, f"{n} figures"
     # Tables: the caption paragraph before each, with its label kept.
     text = re.sub(
         r"^\*Table (\w+)\. (.+?)\*\n\n(?=\|)",
@@ -129,6 +133,18 @@ def prepare(text: str, body: bool) -> str:
     text = re.sub(r"^## (?:Appendix [A-Z]\.|\d+) (.+)$", r"# \1", text, flags=re.M)
     text = re.sub(r"^### \d+\.\d+ (.+)$", r"## \1", text, flags=re.M)
     return cite(text)
+
+
+def figure(m: re.Match) -> str:
+    """A figure float, across both columns when the SVG is wide."""
+    # A caption that opens with "(a)" is not a list.
+    stem, caption = m.group(1), inline(cite(re.sub(r"^\(", r"\\(", m.group(2))))
+    width = float(re.search(r'viewBox="0 0 ([\d.]+)', (HERE.parent / f"{stem}.svg").read_text()).group(1))
+    env, size, where = ("figure*", "\\textwidth", "tp") if width > WIDE_SVG else ("figure", "\\columnwidth", "tbp")
+    return ("```{=latex}\n"
+            f"\\begin{{{env}}}[{where}]\n\\centering\n"
+            f"\\includegraphics[width={size},height=0.72\\textheight,keepaspectratio]{{figures/{stem}.pdf}}\n"
+            f"\\caption{{{caption}}}\n\\label{{fig:{stem}}}\n\\end{{{env}}}\n```\n")
 
 
 def inline(markdown: str) -> str:
@@ -187,17 +203,31 @@ def tables(tex: str) -> str:
         head = " & ".join([cells[0].strip()] + [two_lines(c) for c in cells[1:]]) + " \\\\\n"
         rows = block.split("\\endlastfoot\n", 1)[1].rsplit("\\end{longtable}", 1)[0]
         columns = head.count("&") + 1
+        # The note under a table travels with it.
+        note = re.match(r"\s*\n((?:†|Brackets give)[^\n]*)\n", tex[end:])
+        if note:
+            end += note.end()
+        widths = longest(head, rows)
+        wrap = widths[0] > WRAP_CHARS
+        wide = sum(widths) - (widths[0] - WRAP_CHARS if wrap else 0) > COLUMN_CHARS
         # A first column of long labels wraps, rather than shrinking the table.
         labels = [re.sub(r"\\[a-zA-Z]+|[{}]", "", row.split("&", 1)[0]).strip() for row in rows.split("\\\\")]
-        first = ">{\\raggedright\\arraybackslash}p{4.2cm}" if columns > 3 and max(map(len, labels)) > 32 else "l"
+        if wide:
+            first = ">{\\raggedright\\arraybackslash}p{4.2cm}" if columns > 3 and max(map(len, labels)) > 32 else "l"
+        else:
+            first = ">{\\raggedright\\arraybackslash}p{3.7cm}" if wrap else "l"
+        env = "table*" if wide else "table"
+        # A column of words is set left, a column of numbers centred.
+        body = [row.split("&") for row in rows.split("\\\\") if row.strip()]
+        align = "".join("l" if words(row[i] for row in body if i < len(row)) else "c" for i in range(1, columns))
         out += [tex[at:m.start()], "\n".join([
-            "\\begin{table}[tbp]",
+            f"\\begin{{{env}}}[{'tp' if wide else 'tbp'}]",
             "\\centering\\small",
             f"\\renewcommand{{\\thetable}}{{{label.group(1)}}}",
             f"\\caption{{{caption}}}",
             f"\\label{{tab:{label.group(1)}}}",
             "\\begin{adjustbox}{max width=\\linewidth}",
-            "\\begin{tabular}{" + first + "c" * (columns - 1) + "}",
+            "\\begin{tabular}{" + first + align + "}",
             "\\toprule",
             head.rstrip("\n"),
             "\\midrule",
@@ -205,19 +235,48 @@ def tables(tex: str) -> str:
             "\\bottomrule",
             "\\end{tabular}",
             "\\end{adjustbox}",
-            "\\end{table}",
+            *([f"\\par\\smallskip{{\\footnotesize\\color{{muted}}{note.group(1)}\\par}}"] if note else []),
+            f"\\end{{{env}}}",
         ])]
         at = end
     return "".join(out) + tex[at:]
 
 
-def figures(tex: str) -> str:
-    tex = tex.replace("\\begin{figure}\n", "\\begin{figure}[tbp]\n")
-    return re.sub(
-        r"\\includegraphics(\[[^\]]*\])?\{figures/",
-        r"\\includegraphics[width=\\linewidth,height=0.72\\textheight,keepaspectratio]{figures/",
-        tex,
-    )
+def words(cells) -> bool:
+    """Whether most of a column's cells are words, not numbers."""
+    plain = [re.sub(r"\\[a-zA-Z]+|[{}$\\]", "", c).strip() for c in cells]
+    plain = [c for c in plain if c]
+    return sum(c[0].isalpha() and not c.startswith(("n =",)) for c in plain) > len(plain) / 2
+
+
+def longest(head: str, rows: str) -> list[int]:
+    """The characters of each column's longest cell, as printed (a split header cell by
+    its longer line), plus two for the space between columns."""
+    def plain(cell: str) -> str:
+        cell = re.sub(r"\\begin\{tabular\}\[b\]\{[^}]*\}\}?|\\end\{tabular\}", "", cell)
+        lines = cell.split("\\\\")
+        return max((re.sub(r"\\[a-zA-Z]+|[{}$\\]", "", line).strip() for line in lines), key=len)
+
+    widths: list[int] = []
+    for row in [head] + rows.split("\\\\"):
+        for i, cell in enumerate(row.split("&")):
+            n = len(plain(cell))
+            widths += [0] * (i + 1 - len(widths))
+            widths[i] = max(widths[i], n)
+    return [w + 2 for w in widths]
+
+
+def styled(tex: str) -> str:
+    """Propositions boxed; a paragraph's (or a list item's) bold lead-in as a run-in head."""
+    tex = re.sub(r"(?m)^(\\textbf\{Proposition \d+ \([^)]*\)\.\}.*?)(?=\n\n)",
+                 lambda m: f"\\begin{{prop}}\n{m.group(1)}\n\\end{{prop}}", tex, flags=re.S)
+    # A display of two equations, side by side, is too wide for a column: one under the other.
+    tex = re.sub(r"\\\[([^\]]*?),\s*\\qquad\s*([^\]]*?)\\\]",
+                 lambda m: f"\\begin{{gather*}}{m.group(1)},\\\\ {m.group(2)}\\end{{gather*}}", tex)
+    tex = re.sub(r"(?m)^\\textbf\{([^{}]+)\}", r"\\runin{\1}", tex)
+    tex = re.sub(r"(\\item\s+)\\textbf\{([^{}]+)\}", r"\1\\runin{\2}", tex)
+    # τ-bench's pass^k, with a caret rather than a circumflex accent.
+    return tex.replace("pass\\^{}", "pass\\textasciicircum{}")
 
 
 def svg_to_pdf(svg: Path, pdf: Path) -> None:
@@ -227,7 +286,8 @@ def svg_to_pdf(svg: Path, pdf: Path) -> None:
     light["bg"] = "#ffffff"
     s = re.sub(r"@media \(prefers-color-scheme: dark\)\{svg\{[^}]*\}\}", "", s)
     s = re.sub(r"var\(--([\w-]+)\)", lambda m: light[m.group(1)], s)
-    s = re.sub(r'font-family="[^"]*"', 'font-family="Latin Modern Sans, DejaVu Sans, sans-serif"', s)
+    s = re.sub(r'font-family="([^"]*)"', lambda m: 'font-family="Latin Modern Mono, DejaVu Sans Mono, monospace"'
+               if "monospace" in m.group(1) else 'font-family="Latin Modern Sans, DejaVu Sans, sans-serif"', s)
     # Dated by the SVG's last commit, so an unchanged figure converts to the same bytes.
     env = dict(os.environ)
     if "SOURCE_DATE_EPOCH" not in env:
@@ -258,10 +318,11 @@ def main() -> None:
     tex = (HERE / "template.tex").read_text()
     parts = {
         "TITLE": inline(title),
+        "PLAINTITLE": title,
         "DATE": f"{day.day} {day:%B %Y}",
         "ABSTRACT": inline(cite(abstract)),
-        "BODY": figures(tables(pandoc(prepare(body, True)))),
-        "APPENDIX": figures(tables(pandoc(prepare(appendix, False)))),
+        "BODY": styled(tables(pandoc(prepare(body, True)))),
+        "APPENDIX": styled(tables(pandoc(prepare(appendix, False)))),
     }
     for key, value in parts.items():
         tex = tex.replace(f"%%{key}%%", value)
