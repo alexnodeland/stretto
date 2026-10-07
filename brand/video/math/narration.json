@@ -1,5 +1,5 @@
 {
-  "about": "The math film's script: what stretto estimates and why, the rule that decides a lookup, the counts behind it, alpha's posterior as a fugue program, the bindings, and how the estimate behaved: calibration, the threshold sweep, the ceiling, live turns and learning. Chapters (`beats`) of lines, as the explainer's: `text` is the caption, `say` what the voice says, `em` the phrases lit in petrol, `post` the pause after a line. Every formula is the paper's (paper/stretto.md) or the code's; every number is the paper's, the claims ledger's, a published row's (data/results.py) or fugue's own run on the console's fixtures (data/), with its scope on screen. narrate.py voices it (math-video).",
+  "about": "The math film's script: what stretto estimates and why, the rule that decides a lookup, the counts behind it, alpha's posterior as a fugue program, the bindings, and how the estimate behaved: calibration, the threshold sweep, the ceiling, live turns and learning. Chapters (`beats`) of lines, as the explainer's: `text` is the caption, `say` what the voice says, `em` the phrases lit in petrol, `post` the pause after a line. Every formula is the paper's (paper/stretto.md) or the code's; every number is the paper's, the claims ledger's, the walkthrough's, a published row's (data/results.py) or fugue's own run on the console's fixtures (data/), with its scope on screen. narrate.py voices it (math-video).",
   "beats": [
     {
       "key": "title",
@@ -302,7 +302,7 @@
         },
         {
           "key": "bind2",
-          "text": "A binding's chance is right over tried, with one added to each: a uniform prior.",
+          "text": "A binding's chance is right over tried, with one added to the right and two to the tried: a uniform prior.",
           "em": [
             "a uniform prior."
           ],
@@ -436,8 +436,8 @@
         },
         {
           "key": "live3",
-          "text": "And it learns fast: ten of an agent's own sessions give 96% of what all of them do in retail.",
-          "say": "And it learns fast: ten of an agent's own sessions give ninety-six percent of what all of them do in retail.",
+          "text": "And in replay, it learns fast: ten of an agent's own sessions give 96% of what all of them do in retail.",
+          "say": "And in replay, it learns fast: ten of an agent's own sessions give ninety-six percent of what all of them do in retail.",
           "em": [
             "ten of an agent's own sessions"
           ],

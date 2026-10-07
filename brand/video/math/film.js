@@ -216,7 +216,7 @@
       const ax_ = annotate(layer, svg, q, 'x', 'what the tools have returned', { pos: 'above', dist: 48, dx: 60 });
       const ineq = tex(layer, String.raw`\Pr\big(\, c \text{ next} \,\big|\, x \,\big) \;\le\; \htmlClass{tp k-q2 m-q}{q_c}`, { x: 960, y: 700, ax: 0.5, ay: 0.5, size: 54 });
       const qCopy = morph(layer, q, ineq, ['q'], { keep: true });
-      const inN = note(layer, 'Proposition 4: a read the agent makes after a reply is one the speculator must make before it.', { x: 960, y: 760, ax: 0.5, size: 19, color: C.subtle });
+      const inN = note(layer, 'Paper §2.3, after Proposition 4: a read the agent makes after a reply is one the speculator must make before it.', { x: 960, y: 760, ax: 0.5, size: 19, color: C.subtle });
 
       // The paper's two gaps (§4.2): next step against use before the write.
       const PX = 330, PW = 1100;
@@ -365,14 +365,14 @@
       const savL = box(layer, { x: pl.sx(0.86), y: pl.sy(beta * 0.86) - 18, ax: 1, ay: 1, cls: 'anno', html: 'saving&nbsp; q β', style: { color: T.b } });
       const costL = box(layer, { x: pl.sx(0.04), y: pl.sy(delta) - 14, ay: 1, cls: 'anno', html: 'detour&nbsp; (1 − q) δ', style: { color: T.d } });
       const pays = box(layer, { x: pl.sx(th), y: 250, w: pl.sx(1) - pl.sx(th), h: 400, style: { background: 'rgba(93,210,216,0.06)', borderLeft: `2px dashed ${T.p}` } });
-      const paysL = label(layer, 'a lookup pays', { x: pl.sx(0.97), y: 600, ax: 1, color: T.p });
+      const paysL = label(layer, 'a lookup pays', { x: pl.sx(0.97), y: pl.sy(3.2), ax: 1, color: T.p });
       const thL = box(layer, { x: pl.sx(th) + 12, y: 616, cls: 'code', html: `θ* = ${fmt(th)}`, style: { fontSize: '20px', color: T.p } });
       // A probe sweeping q; the expected value, its numbers following it.
       const probe = el('line', { x1: 0, x2: 0, y1: 250, y2: 650, stroke: C.subtle, 'stroke-width': 1.5, 'stroke-dasharray': '3 4' }, svg);
       const pdS = el('circle', { r: 7, fill: T.b }, svg), pdC = el('circle', { r: 7, fill: T.d }, svg);
       const evLive = box(layer, { x: 1060, y: 150, style: { fontSize: '34px', whiteSpace: 'nowrap' } });
       // The line per domain, on one axis (paper, Figure 2 and §3).
-      const NL = { x: 1060, y: 820, w: 700 };
+      const NL = { x: 1060, y: 778, w: 700 };
       const nl = el('line', { x1: NL.x, x2: NL.x + NL.w, y1: NL.y, y2: NL.y, stroke: C.borderStrong, 'stroke-width': 2 }, svg);
       const nlT = [0, 0.1, 0.2, 0.3, 0.4, 0.5].map(v => el('text', { x: NL.x + NL.w * v / 0.5, y: NL.y + 30, class: 'axis', 'text-anchor': 'middle' }, svg, v.toFixed(1)));
       const doms = [['telecom', 0.12, T.base, -1], ['airline', 0.13, C.subtle, 1], ['live, retail and airline', 0.30, T.p, -1]].map(([n, v, col, side]) => {
@@ -382,6 +382,7 @@
         return { d, l };
       });
       const nlL = label(layer, 'θ*, by domain', { x: NL.x - 20, y: NL.y, ax: 1, ay: 0.5 });
+      const nlN = note(layer, 'Airline and telecom: counted in recorded τ²-bench episodes at each domain’s own costs (paper §3, Appendix B).', { x: NL.x, y: NL.y + 86, w: 720, size: 15 });
 
       const tSaves = at('rule1', 'saves'), tUnused = at('rule1', 'unused'), tEV = at('rule2', 'expected value'), tSaving = at('rule2', 'saving'), tLess = at('rule2', 'less'), tRises = at('rule3', 'rises'), tBal = at('rule3', 'balance'), tDelta = at('rule3', 'delta over');
       const tLive = at('rule4', 'live'), tTurns = at('rule4', 'saved turns'), tDet = at('rule4', 'detours'), tThat = at('rule5', 'that is'), tLine = at('rule5', 'the line'), tCount = at('rule6', 'counted');
@@ -420,6 +421,7 @@
         nl.setAttribute('opacity', ramp(t, tCount - 0.3, tCount + 0.2).toFixed(3));
         nlT.forEach(n => n.setAttribute('opacity', ramp(t, tCount - 0.3, tCount + 0.2).toFixed(3)));
         show(nlL, t, tCount - 0.3, { d: 0.4, dy: 0 });
+        show(nlN, t, tCount + 1.2, { d: 0.5, dy: 0 });
         doms.forEach((d, i) => {
           const s = i === 2 ? tCount : tCount + 0.6 + i * 0.3;
           d.d.setAttribute('opacity', ramp(t, s, s + 0.3).toFixed(3));
@@ -760,7 +762,7 @@
         const m = a / (a + bb);
         mean.setAttribute('x1', pl.sx(m)); mean.setAttribute('x2', pl.sx(m)); mean.setAttribute('opacity', o.toFixed(3));
         mLab.style.left = `${pl.sx(m)}px`; mLab.textContent = `ρ = ${fmt(m)}`; show(mLab, t, tUni, { d: 0.4, dy: 0 });
-        nLab.textContent = nn === 0 ? 'nothing tried: Beta(1, 1)' : `${kk} right of ${nn}: Beta(${a}, ${bb})`;
+        nLab.innerHTML = nn === 0 ? 'nothing tried: Beta(1, 1)' : nn === 14 ? `12 right of 14: Beta(${a}, ${bb})` : `${kk} right of ${nn}: Beta(${a}, ${bb})<br><span style="color:${C.faint}">counted up at the walkthrough’s rate</span>`;
         show(nLab, t, tUni + 0.2, { d: 0.4, dy: 0 });
         show(dec, t, tMult, { d: 0.6, dy: 8 });
         aR2.set(t, tMult + 0.5); aRho2.set(t, tArgs);
@@ -797,7 +799,8 @@
       // One bin, read out: the next-step score's lookups rated about one half.
       const hb = R.habit.bins.reduce((a, c) => (Math.abs(c[0] - 0.52) < Math.abs(a[0] - 0.52) ? c : a));
       const ring = el('circle', { cx: pl.sx(hb[0]), cy: pl.sy(hb[1]), r: 20, fill: 'none', stroke: C.text, 'stroke-width': 2, opacity: 0 }, svg);
-      const ringL = box(layer, { x: pl.sx(hb[0]) + 30, y: pl.sy(hb[1]) + 22, cls: 'anno', html: `${hb[2].toLocaleString('en-US')} lookups scored ${hb[0].toFixed(2)}:<br>${(hb[1] * 100).toFixed(1)}% were used`, style: { color: C.text } });
+      const ringLead = arrow(svg, `M ${pl.sx(hb[0]) + 20} ${pl.sy(hb[1])} L ${pl.sx(1) + 34} ${pl.sy(hb[1])}`, { color: C.text, width: 1.3, head: false });
+      const ringL = box(layer, { x: pl.sx(1) + 44, y: pl.sy(hb[1]), ay: 0.5, cls: 'anno', html: `one bin of the next-step score:<br>${hb[2].toLocaleString('en-US')} lookups scored about ${hb[0].toFixed(2)},<br>${(hb[1] * 100).toFixed(1)}% of them used`, style: { color: C.text } });
       const sz = note(layer, 'τ²-bench retail, nine agents in replay: a dot per score bin of at least 100 lookups, its area by how many.', { x: 200, y: 830, w: 600, size: 16 });
 
       // ECE per domain: next step → use before the next write.
@@ -838,7 +841,8 @@
         hab.gaps.forEach((g, i) => g.setAttribute('opacity', (0.8 * ramp(t, tAbove + i * 0.05, tAbove + 0.3 + i * 0.05) * (1 - ramp(t, tUse, tUse + 0.4))).toFixed(3)));
         show(hL, t, tAbove, { d: 0.4, dy: 0 });
         ring.setAttribute('opacity', (ramp(t, tAbove + 0.5, tAbove + 0.8) * (1 - ramp(t, tUse, tUse + 0.3))).toFixed(3));
-        show(ringL, t, tAbove + 0.6, { d: 0.4, dy: 0, out: tUse });
+        ringLead.set(ramp(t, tAbove + 0.6, tAbove + 1.0), 1 - ramp(t, tUse, tUse + 0.3));
+        show(ringL, t, tAbove + 0.8, { d: 0.4, dy: 0, out: tUse });
         rea.ln.set(ramp(t, tUse, tUse + 1.0)); rea.ds.set(t, tUse, 0.08);
         rea.gaps.forEach((g, i) => g.setAttribute('opacity', (0.8 * ramp(t, tClose + i * 0.05, tClose + 0.3 + i * 0.05)).toFixed(3)));
         show(rL, t, tUse + 0.5, { d: 0.4, dy: 0 });
@@ -984,7 +988,7 @@
       const big = box(layer, { x: 880, y: 300, cls: 'big num', text: '', style: { fontSize: '88px', color: T.p } });
       const bigL = box(layer, { x: 884, y: 400, cls: 'note', html: `fewer LLM turns<br>${D('95% CI 19.1–35.9%')}<br>${D('310.5 → 224 turns')}`, style: { fontSize: '22px', color: C.muted, lineHeight: '1.5' } });
       const cnt = box(layer, { x: 884, y: 560, cls: 'note', html: `${P('23 of 28')} tasks took fewer turns`, style: { fontSize: '22px', color: C.muted } });
-      const scope = note(layer, 'Live: GLM-5.3 as agent and user on 20 retail and 8 airline τ²-bench test tasks, the speculator at θ = 0.3, against the recorded baseline (airline: the mean of its two trials). Paper, Table 5.', { x: 200, y: 810, w: 860, size: 16 });
+      const scope = note(layer, 'Live: GLM-5.3 as agent and user on 20 retail and 8 airline τ²-bench test tasks, the speculator at θ = 0.3, against the recorded baseline (airline: the mean of its two trials). 21 passed, against 24; twenty-eight tasks cannot separate an effect on passes from the agent’s own variance. Paper, Table 5 and §4.4.', { x: 200, y: 810, w: 860, size: 16 });
 
       // Learning: turns saved against the agent's own sessions, retail.
       const own = M.learning['retail/own'].filter(([n]) => n > 0);
