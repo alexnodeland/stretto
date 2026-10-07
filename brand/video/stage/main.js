@@ -125,7 +125,7 @@
   const chapters = [];
   const captions = [];
   function furniture(titles) {
-    const mark = box(over, { x: 1800, y: 74, ax: 1, ay: 0.5, html: window.Film.markSvg(30), style: { height: '30px' } });
+    const mark = box(over, { x: 1800, y: 74, ax: 1, ay: 0.5, html: window.ST.markSvg(30), style: { height: '30px' } });
     const numbered = ORDER.filter(b => titles[b.key]);
     numbered.forEach((b, i) => {
       const n = box(over, { x: 120, y: 74, ay: 0.5, cls: 'chapter', html: `<b>${String(i + 1).padStart(2, '0')}</b><i></i>${titles[b.key]}` });
@@ -171,8 +171,12 @@
     document.fonts.load('700 20px "JetBrains Mono"'),
     document.fonts.load('400 20px Inter'),
     document.fonts.load('600 20px Inter'),
+    // Any faces the film draws with besides these (the math film's KaTeX),
+    // loaded before it is built, since its chapters measure what they lay out.
+    ...((window.Film && window.Film.fonts) || []).map(f => document.fonts.load(f)),
   ]).then(() => document.fonts.ready).then(() => {
-    const built = CUT === 'teaser' ? window.Film.teaser(ctx) : window.Film.video(ctx);
+    window.__hasTeaser = typeof window.Film.teaser === 'function';
+    const built = CUT === 'teaser' ? (window.__hasTeaser ? window.Film.teaser(ctx) : { duration: 0 }) : window.Film.video(ctx);
     if (built && built.duration) duration = built.duration;
     if (CUT === 'video') furniture(window.Film.titles);
     return Promise.all(ctx.waits);

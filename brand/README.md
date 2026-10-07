@@ -13,6 +13,8 @@ Everything stretto shows the world, and the sources to make it again: the logo, 
 | Interactive explainer | [`explainer/index.html`](explainer/index.html), one self-contained file; its narration in `explainer/audio/` | by hand; fonts by `tools/embed_fonts.py` |
 | Explainer video | `media/explainer.mp4`, `explainer-poster.png`, `explainer.vtt`, `explainer-teaser.gif`, `explainer-teaser.webm` | [`video/explainer/`](video/explainer/README.md), with `video/music.py` |
 | Walkthrough video | `media/walkthrough.mp4`, `walkthrough-poster.png`, `walkthrough.vtt` | `video/walkthrough/` (capture, then render) |
+| The math film | `media/math.mp4`, `math-poster.png`, `math.vtt` | [`video/math/`](video/math/README.md) |
+| The console film | `media/console.mp4`, `console-poster.png`, `console.vtt` | [`video/console/`](video/console/README.md) (capture, then render) |
 | Console screenshots | `media/console/`: the overview, a server, a session, a flow and a job, each `-light.png` and `-dark.png` (1440 × 900, 256 colors) | Playwright, from the real console on its test fixtures |
 | Voice-over | the lines in `video/explainer/narration.json`, `video/walkthrough/narration.json` (with the walkthrough's captions) and `explainer/narration.json` | `video/narrate.py`, with Kokoro |
 
@@ -101,7 +103,7 @@ It is 760 px tall at 1000 px wide and 876 px at 720 px, the same for every step;
 
 | File | Length | Size | Notes |
 |---|---|---|---|
-| `media/explainer.mp4` | 209.5 s, 1920 × 1080, 30 fps | 11.3 MB | H.264 High, yuv420p, BT.709, faststart; voice and music in AAC, at -16 LUFS |
+| `media/explainer.mp4` | 200.5 s, 1920 × 1080, 30 fps | 10.9 MB | H.264 High, yuv420p, BT.709, faststart; voice and music in AAC, at -16 LUFS |
 | `media/explainer.vtt` | 45 cues | 4 KB | The voice-over's captions (WebVTT), each starting on its first spoken word |
 | `media/explainer-poster.png` | 1920 × 1080 | 0.5 MB | One tool result carrying the two reads stretto made, and the turns closed up from five to three |
 | `media/explainer-teaser.gif` | 8 s loop, 1280 × 720, 15 fps | 0.6 MB | For the README |
@@ -109,8 +111,14 @@ It is 760 px tall at 1000 px wide and 876 px at 720 px, the same for every step;
 | `media/walkthrough.mp4` | 192.6 s, 1920 × 1080, 30 fps | 10.5 MB | H.264 High, faststart; the voice-over in AAC, at -16.5 LUFS |
 | `media/walkthrough.vtt` | 37 cues | 3 KB | The voice-over's captions (WebVTT) |
 | `media/walkthrough-poster.png` | 1920 × 1080 | 201 KB | The served session: the two reads riding in the search's result |
+| `media/math.mp4` | 338.3 s, 1920 × 1080, 30 fps | 17.5 MB | H.264 High, faststart; voice and music in AAC, at -16 LUFS |
+| `media/math.vtt`, `media/math-poster.png` | 1920 × 1080 | | Captions; the poster is alpha's posterior, the chain's draws piled into it |
+| `media/console.mp4` | 122.3 s, 1920 × 1080, 30 fps | 8.5 MB | H.264 High, faststart; voice and music in AAC, at -16 LUFS |
+| `media/console.vtt`, `media/console-poster.png` | 1920 × 1080 | | Captions; the poster is a served session's three lookups |
 
-**The explainer video** tells the story in ten chapters between a cold open and an end card, one diagram each, on a still stage: an agent's turns and what they cost; the turns the tools had already decided; stretto making those reads, inside the result the agent asked for; why a flow only reads; how a flow is learned and reviewed; the console; the rule that decides a lookup; the live results; the prompt baseline; and how to start. It opens cold, on the proxy's own output, before any words. What it shows is the real thing: the proxy's wording for the reads it adds to a result, τ²-bench retail's tools, the counts of a flow in `docs/examples/`, the console's own screens and the commands of the docs. The line being spoken is set at the foot of the frame, each word lit as it is said, so the film reads with the sound off. Its pacing follows Auracle's films ([`video/PACING.md`](video/PACING.md)), and [`video/explainer/README.md`](video/explainer/README.md) lists the chapters and how the timing follows the voice.
+**The explainer video** tells the story in ten chapters between the title and an end card, one diagram each, on a still stage: an agent's turns and what they cost; the turns the tools had already decided; stretto making those reads, inside the result the agent asked for; why a flow only reads; how a flow is learned and reviewed; the console; the rule that decides a lookup; the live results; the prompt baseline; and how to start. What it shows is the real thing: the proxy's wording for the reads it adds to a result, τ²-bench retail's tools, the counts of a flow in `docs/examples/`, the console's own screens and the commands of the docs. The line being spoken is set at the foot of the frame, each word lit as it is said, so the film reads with the sound off. Its pacing follows Auracle's films ([`video/PACING.md`](video/PACING.md)), and [`video/explainer/README.md`](video/explainer/README.md) lists the chapters and how the timing follows the voice.
+
+**The deep dives** are drawn on the explainer's stage (`video/stage/`), at its pace and in its voice, and rendered by the same `video/film.mjs`. [The math film](video/math/README.md) is for engineers: the event a lookup is decided on, why a flow only reads, the rule and its costs, the counts, alpha's posterior as a fugue program, the bindings, and how the estimate held up in replay and live, with the code that computes them. Its formulas are typeset with KaTeX (`npm install` in `brand/`), its derivations worked in place, and its charts drawn from the published rows and from fugue's own run on the console's fixtures (`video/math/data/`). [The console film](video/console/README.md) tours `stretto-console`, from shots of the real console over its test fixtures, captured by driving it as a user does.
 
 **The walkthrough** is a real terminal session, with the release binaries on the official MCP filesystem server, a scripted agent standing in for the LLM, and no key: `stretto doctor`, then `stretto init` printing Claude Code's configuration, then the loop `docs/walkthrough.md` runs (record, learn, review, audit, serve, learn again). `video/walkthrough/script.sh` is the command list; `capture.py` runs it in a pseudo-terminal, with a small allowlisted environment and the working directory as `HOME` (the binaries copied into its `.cargo/bin`, where `cargo install` puts them), and records every byte of output with its timing to `walkthrough.cast` (asciicast v2, with markers for steps, captions and commands); `render.mjs` draws the cast as a terminal, with a title card per step, and pipes the frames to ffmpeg. The only change to the output is the working directory's path, shown as `/home/me` as in the docs. The voice says the intro, each caption as it appears (`video/walkthrough/narration.json` gives a spoken form where the text on screen has paths or flags), and the outro; `term.js` holds each caption until its line has finished.
 
@@ -146,8 +154,11 @@ python3.12 -m venv .venv-voice
 .venv-voice/bin/pip install -r video/requirements-narrate.txt
 .venv-voice/bin/python video/narrate.py
 
-# The explainer video: the render, which makes the music too.
-PYTHON=.venv-voice/bin/python node video/explainer/render.mjs
+# The films on the shared stage: each render makes its music too.
+PYTHON=.venv-voice/bin/python node video/film.mjs explainer
+PYTHON=.venv-voice/bin/python node video/film.mjs math
+sh video/console/capture.sh        # the console's shots, from the real console (see video/console/README.md)
+PYTHON=.venv-voice/bin/python node video/film.mjs console
 
 # The walkthrough: record it, then render it (about 7 minutes).
 python3 video/walkthrough/capture.py --bin /path/to/stretto/binaries

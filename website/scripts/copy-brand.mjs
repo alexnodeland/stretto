@@ -18,6 +18,12 @@ const files = [
   ['media/walkthrough.mp4', 'media/walkthrough.mp4'],
   ['media/walkthrough-poster.png', 'media/walkthrough-poster.png'],
   ['media/walkthrough.vtt', 'media/walkthrough.vtt'],
+  ['media/math.mp4', 'media/math.mp4'],
+  ['media/math-poster.png', 'media/math-poster.png'],
+  ['media/math.vtt', 'media/math.vtt'],
+  ['media/console.mp4', 'media/console.mp4'],
+  ['media/console-poster.png', 'media/console-poster.png'],
+  ['media/console.vtt', 'media/console.vtt'],
   // The explainer's narration, next to it (brand/video/narrate.py).
   ...Array.from({ length: 7 }, (_, i) => [`explainer/audio/step-${i + 1}.mp3`, `explainer/audio/step-${i + 1}.mp3`])
 ]

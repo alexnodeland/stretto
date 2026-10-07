@@ -1,181 +1,181 @@
 WEBVTT
 
 1
-00:00:11.800 --> 00:00:13.822
+00:00:02.600 --> 00:00:04.622
 stretto reads ahead of your agent.
 
 2
-00:00:14.372 --> 00:00:17.835
+00:00:05.172 --> 00:00:08.635
 Here's what it reads, where its lookups come from, and what it saves.
 
 3
-00:00:19.635 --> 00:00:21.379
+00:00:10.435 --> 00:00:12.177
 An agent works in turns.
 
 4
-00:00:21.879 --> 00:00:27.058
+00:00:12.677 --> 00:00:17.856
 On each turn, a model reads the whole conversation, then picks one next step.
 
 5
-00:00:27.408 --> 00:00:29.472
+00:00:18.206 --> 00:00:20.264
 It answers, or it calls a tool.
 
 6
-00:00:29.972 --> 00:00:33.492
+00:00:20.764 --> 00:00:24.284
 Each turn costs seconds and thousands of tokens.
 
 7
-00:00:33.492 --> 00:00:35.557
+00:00:24.284 --> 00:00:26.349
 A task can take ten or twenty.
 
 8
-00:00:37.157 --> 00:00:40.895
+00:00:27.949 --> 00:00:31.689
 Look closely, and many turns are decided before they begin.
 
 9
-00:00:41.395 --> 00:00:43.864
+00:00:32.189 --> 00:00:34.660
 This customer's record lists two orders.
 
 10
-00:00:44.164 --> 00:00:47.022
+00:00:34.960 --> 00:00:37.818
 So the next two turns will read those two orders.
 
 11
-00:00:47.522 --> 00:00:49.582
+00:00:38.318 --> 00:00:40.378
 The tools made that choice.
 
 12
-00:00:49.582 --> 00:00:51.588
+00:00:40.378 --> 00:00:42.384
 The model spends a turn typing it out.
 
 13
-00:00:53.188 --> 00:00:58.027
+00:00:43.984 --> 00:00:48.823
 stretto sits between the agent and its tools, as an MCP proxy.
 
 14
-00:00:58.477 --> 00:01:02.881
+00:00:49.273 --> 00:00:53.677
 When a result names what comes next, stretto makes those reads at once.
 
 15
-00:01:03.281 --> 00:01:06.635
+00:00:54.077 --> 00:00:57.431
 They ride back inside the result the agent asked for.
 
 16
-00:01:07.235 --> 00:01:09.515
+00:00:58.031 --> 00:01:00.311
 So the agent skips those turns.
 
 17
-00:01:09.515 --> 00:01:11.477
+00:01:00.311 --> 00:01:02.273
 No new tools, and the same prompt.
 
 18
-00:01:13.277 --> 00:01:15.217
+00:01:04.073 --> 00:01:06.013
 A flow only reads.
 
 19
-00:01:15.217 --> 00:01:17.829
+00:01:06.013 --> 00:01:08.625
 It calls no tool the server marks as a write.
 
 20
-00:01:18.379 --> 00:01:21.379
+00:01:09.175 --> 00:01:12.175
 A lookup the agent doesn't use is a detour.
 
 21
-00:01:21.379 --> 00:01:24.220
+00:01:12.175 --> 00:01:15.021
 It costs tokens, and changes no state.
 
 22
-00:01:25.920 --> 00:01:29.185
+00:01:16.721 --> 00:01:19.986
 The lookups come from your agent's own recorded sessions.
 
 23
-00:01:29.585 --> 00:01:34.366
+00:01:20.386 --> 00:01:25.167
 stretto counts which reads follow each call, and where each argument came from.
 
 24
-00:01:34.816 --> 00:01:39.355
+00:01:25.617 --> 00:01:30.153
 The result is a flow: a small file you can read, review and diff.
 
 25
-00:01:39.805 --> 00:01:44.884
+00:01:30.603 --> 00:01:35.682
 In replay, ten of an agent's own sessions give most of what all of them do.
 
 26
-00:01:46.584 --> 00:01:51.465
+00:01:37.382 --> 00:01:42.263
 The console puts your servers, sessions, flows and jobs in one place.
 
 27
-00:01:51.965 --> 00:01:56.200
+00:01:42.763 --> 00:01:46.993
 A session shows each call, the lookups the flow made after it, and why.
 
 28
-00:01:56.800 --> 00:02:00.884
+00:01:47.593 --> 00:01:51.665
 A flow shows its graph, and what would change at another threshold.
 
 29
-00:02:02.684 --> 00:02:06.817
+00:01:53.465 --> 00:01:57.595
 Each lookup weighs two costs: a turn saved, against a detour.
 
 30
-00:02:07.267 --> 00:02:12.029
+00:01:58.045 --> 00:02:02.807
 stretto makes it when the chance it's used before the next write clears the line.
 
 31
-00:02:12.479 --> 00:02:17.229
+00:02:03.257 --> 00:02:08.007
 Measured live on τ²-bench, that line sits at about thirty percent.
 
 32
-00:02:17.779 --> 00:02:19.519
+00:02:08.557 --> 00:02:10.297
 No model is asked.
 
 33
-00:02:19.519 --> 00:02:20.915
+00:02:10.297 --> 00:02:11.696
 The reach decider counts.
 
 34
-00:02:22.715 --> 00:02:27.016
+00:02:13.496 --> 00:02:17.925
 Live, on 28 τ²-bench retail and airline tasks:
 
 35
-00:02:27.366 --> 00:02:32.120
+00:02:18.275 --> 00:02:23.027
 Claude Sonnet 5 took 20.5% fewer LLM turns.
 
 36
-00:02:32.670 --> 00:02:41.937
+00:02:23.577 --> 00:02:32.843
 Claude Haiku 4.5 took 22.4% fewer, and GLM-5.3 27.9% fewer.
 
 37
-00:02:44.537 --> 00:02:52.162
+00:02:35.443 --> 00:02:43.071
 Asking the agent to batch its calls saved 3.4 to 7.6%, not all of it established.
 
 38
-00:02:52.612 --> 00:02:55.692
+00:02:43.521 --> 00:02:46.601
 A prompt batches what the agent already knows.
 
 39
-00:02:55.692 --> 00:02:57.945
+00:02:46.601 --> 00:02:48.852
 A flow reads what results reveal.
 
 40
-00:02:58.395 --> 00:03:06.464
+00:02:49.302 --> 00:02:57.375
 With the prompt in both arms, a flow still saved the Claude models 17.2 and 22.9%.
 
 41
-00:03:08.464 --> 00:03:13.193
+00:02:59.375 --> 00:03:04.104
 stretto is open source, written in Rust, under the MIT license.
 
 42
-00:03:13.593 --> 00:03:17.035
+00:03:04.504 --> 00:03:07.946
 Run stretto init in front of any MCP server.
 
 43
-00:03:17.435 --> 00:03:21.596
+00:03:08.346 --> 00:03:12.507
 It learns from your agent's own sessions, with no key and no model.
 
 44
-00:03:23.896 --> 00:03:24.716
+00:03:14.807 --> 00:03:15.627
 stretto.
 
 45
-00:03:24.716 --> 00:03:25.949
+00:03:15.627 --> 00:03:16.860
 Read ahead of your agent.

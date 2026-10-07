@@ -1,0 +1,105 @@
+WEBVTT
+
+1
+00:00:02.600 --> 00:00:07.124
+The console is stretto's management plane: a web app on your own machine.
+
+2
+00:00:07.624 --> 00:00:11.423
+It reads the files stretto writes, through stretto's own code.
+
+3
+00:00:13.223 --> 00:00:15.783
+The overview counts this week's sessions,
+
+4
+00:00:15.783 --> 00:00:18.668
+and the agent's calls and the lookups flows served.
+
+5
+00:00:19.118 --> 00:00:24.937
+Below, each domain: a server's name, with its sessions, flows and registry entry.
+
+6
+00:00:26.637 --> 00:00:30.377
+Servers lists the MCP servers stretto fronts:
+
+7
+00:00:30.377 --> 00:00:33.059
+recording, in shadow, or serving a flow.
+
+8
+00:00:33.509 --> 00:00:37.509
+Each shows what stretto init prints, to paste into your host.
+
+9
+00:00:37.509 --> 00:00:39.530
+The console never edits your host.
+
+10
+00:00:39.980 --> 00:00:44.911
+Test the connection, and it lists the server's tools, each marked read or write.
+
+11
+00:00:46.611 --> 00:00:51.114
+Sessions lists every recording: served, in shadow, or recorded.
+
+12
+00:00:51.564 --> 00:00:53.504
+Open a served one.
+
+13
+00:00:53.504 --> 00:00:57.063
+After the agent's first call, the flow read ahead three times.
+
+14
+00:00:57.513 --> 00:01:02.000
+Each lookup shows its chance, times its binding, against the threshold.
+
+15
+00:01:02.450 --> 00:01:06.323
+Decisions lists them all, with where the flow handed back, and why.
+
+16
+00:01:06.773 --> 00:01:10.996
+In shadow, it shows what the flow would have read, with nothing looked up.
+
+17
+00:01:12.696 --> 00:01:18.094
+A flow's page draws its graph: the calls it decides after, and the reads it makes.
+
+18
+00:01:18.544 --> 00:01:23.560
+Move the threshold to 0.5, and one of its three sites hands back.
+
+19
+00:01:24.010 --> 00:01:27.170
+Review renders the flow for a reviewer.
+
+20
+00:01:27.170 --> 00:01:29.358
+Compare shows what changed against another.
+
+21
+00:01:31.058 --> 00:01:36.427
+Jobs run the stretto CLI from the page: learn, promote, audit, and more.
+
+22
+00:01:36.877 --> 00:01:40.617
+Here, an audit of the shop flow on its served sessions.
+
+23
+00:01:40.617 --> 00:01:42.409
+The report opens in place.
+
+24
+00:01:44.109 --> 00:01:48.047
+Control K jumps to any page, server, session or flow.
+
+25
+00:01:48.497 --> 00:01:51.708
+Start it read-only, and it refuses every change.
+
+26
+00:01:53.708 --> 00:01:58.680
+Run it with make console in a checkout, or in a container with docker compose.

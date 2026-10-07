@@ -1,0 +1,313 @@
+WEBVTT
+
+1
+00:00:02.600 --> 00:00:05.789
+The math inside stretto, as the code computes it.
+
+2
+00:00:06.289 --> 00:00:10.891
+One event to estimate, one rule to act on it, and how well both held up.
+
+3
+00:00:12.691 --> 00:00:16.707
+A lookup pays off if the agent uses it before its next write.
+
+4
+00:00:17.157 --> 00:00:19.817
+So the quantity to estimate is q:
+
+5
+00:00:19.817 --> 00:00:23.744
+the chance a read is among those the agent makes before it writes.
+
+6
+00:00:24.244 --> 00:00:27.664
+It is never smaller than the chance the read comes next,
+
+7
+00:00:27.664 --> 00:00:29.768
+because a reply can come between.
+
+8
+00:00:30.268 --> 00:00:36.188
+After a user's details, the habit put an order next at 0.64.
+
+9
+00:00:36.188 --> 00:00:40.238
+The agents read one before the write 94% of the time.
+
+10
+00:00:40.688 --> 00:00:47.822
+After an order, a product came next at 0.08, but before the write 38% of the time.
+
+11
+00:00:49.622 --> 00:00:53.607
+A flow makes only reads, and reads leave the state as it was.
+
+12
+00:00:54.057 --> 00:00:58.430
+If the agent makes the same calls, every write lands on the same state.
+
+13
+00:00:58.880 --> 00:01:02.480
+A wrong lookup changes only what the agent reads.
+
+14
+00:01:02.480 --> 00:01:04.125
+Its worst case is a detour.
+
+15
+00:01:05.825 --> 00:01:09.145
+Used, a lookup saves a turn, worth beta.
+
+16
+00:01:09.145 --> 00:01:11.875
+Unused, it is a detour, which costs delta.
+
+17
+00:01:12.325 --> 00:01:16.125
+Its expected value is the saving, q times beta,
+
+18
+00:01:16.125 --> 00:01:19.892
+less the expected detour, one minus q, times delta.
+
+19
+00:01:20.392 --> 00:01:24.592
+As q rises, the saving grows and the detour shrinks.
+
+20
+00:01:24.592 --> 00:01:27.344
+They balance at delta over beta plus delta.
+
+21
+00:01:27.844 --> 00:01:35.924
+Live on τ²-bench, 260 saved turns saved 1.56 million input tokens,
+
+22
+00:01:35.924 --> 00:01:39.104
+and 17 detours carried 43,000.
+
+23
+00:01:39.554 --> 00:01:47.691
+That is about 6,000 a turn and 2,530 a detour, so the line sits at 0.30.
+
+24
+00:01:48.141 --> 00:01:55.785
+Counted in airline and telecom, where detours are shorter, it sits at 0.12 to 0.13.
+
+25
+00:01:57.685 --> 00:01:59.985
+The chances come from counts.
+
+26
+00:01:59.985 --> 00:02:04.515
+Each step becomes its tool, its outcome, and a feature of its result.
+
+27
+00:02:04.965 --> 00:02:07.605
+The habit predicts the next step from the last two,
+
+28
+00:02:07.605 --> 00:02:10.252
+and backs off to shorter contexts.
+
+29
+00:02:10.702 --> 00:02:15.242
+Each context is a Dirichlet–multinomial: its counts,
+
+30
+00:02:15.242 --> 00:02:18.315
+plus alpha times what the shorter context predicts.
+
+31
+00:02:18.765 --> 00:02:20.545
+In the quickstart's sessions,
+
+32
+00:02:20.545 --> 00:02:24.653
+each longer context sharpens the guess that an order comes next.
+
+33
+00:02:25.103 --> 00:02:27.143
+Turn alpha up, and the prior takes over.
+
+34
+00:02:27.143 --> 00:02:29.597
+Turn it down, and the counts do.
+
+35
+00:02:30.897 --> 00:02:35.537
+The probability of use counts the same contexts for a different event:
+
+36
+00:02:35.537 --> 00:02:37.762
+each read made before the next write.
+
+37
+00:02:38.212 --> 00:02:42.486
+Each tool is its own coin, so these chances need not sum to one.
+
+38
+00:02:44.286 --> 00:02:47.666
+Alpha sets how fast the counts outweigh the prior.
+
+39
+00:02:47.666 --> 00:02:49.399
+stretto doesn't tune it by hand.
+
+40
+00:02:49.849 --> 00:02:54.471
+It infers it with fugue, a probabilistic programming library for Rust.
+
+41
+00:02:54.921 --> 00:02:57.981
+The program draws log alpha from a normal prior,
+
+42
+00:02:57.981 --> 00:03:01.193
+and scores the sessions one step at a time.
+
+43
+00:03:01.643 --> 00:03:04.339
+Prior times likelihood is the posterior.
+
+44
+00:03:04.789 --> 00:03:09.114
+Metropolis–Hastings walks it, and the draws pile up into its shape.
+
+45
+00:03:09.564 --> 00:03:14.244
+On the quickstart's six sessions, the median is 0.70:
+
+46
+00:03:14.244 --> 00:03:16.333
+the alpha the flow was learned with.
+
+47
+00:03:18.333 --> 00:03:21.173
+A lookup also needs its arguments.
+
+48
+00:03:21.173 --> 00:03:23.190
+stretto counts where each one came from.
+
+49
+00:03:23.640 --> 00:03:26.380
+A binding's chance is right over tried,
+
+50
+00:03:26.380 --> 00:03:30.768
+with one added to the right and two to the tried: a uniform prior.
+
+51
+00:03:31.218 --> 00:03:36.653
+Each binding tried narrows it: 12 right of 14 gives 0.81.
+
+52
+00:03:37.103 --> 00:03:40.483
+The decision multiplies the two: the read's chance,
+
+53
+00:03:40.483 --> 00:03:42.977
+times its arguments', against the line.
+
+54
+00:03:44.777 --> 00:03:50.576
+A chance is calibrated if lookups scored 0.7 are used seven times in ten.
+
+55
+00:03:51.026 --> 00:03:55.266
+Scored on the next step, retail's lookups sit above the line.
+
+56
+00:03:55.266 --> 00:03:57.023
+The next step understates use.
+
+57
+00:03:57.473 --> 00:04:01.163
+Scored on use before the next write, they sit closer to it.
+
+58
+00:04:01.613 --> 00:04:04.613
+The calibration error fell in every domain.
+
+59
+00:04:04.613 --> 00:04:10.073
+In retail, from 0.164 to 0.083.
+
+60
+00:04:10.073 --> 00:04:10.879
+Lower is better.
+
+61
+00:04:12.779 --> 00:04:15.759
+Better chances make better decisions.
+
+62
+00:04:15.759 --> 00:04:20.311
+Here is each threshold's net saving, for GLM-5 in retail.
+
+63
+00:04:20.761 --> 00:04:24.161
+Deciding on use before the write peaks at the counted line,
+
+64
+00:04:24.161 --> 00:04:26.031
+and falls slowly past it.
+
+65
+00:04:26.481 --> 00:04:31.344
+The next-step rule falls away past one half, where its chances seldom reach.
+
+66
+00:04:31.794 --> 00:04:38.134
+Over nine agents it never saw, it takes 86.4% of retail's ceiling:
+
+67
+00:04:38.134 --> 00:04:41.074
+10.2 points more than the next-step rule.
+
+68
+00:04:42.974 --> 00:04:53.112
+Live, with no model of its own, it cut GLM-5.3's LLM turns by 27.9% over 28 tasks.
+
+69
+00:04:53.562 --> 00:04:56.402
+Each line is one task, before and after.
+
+70
+00:04:56.402 --> 00:04:59.514
+23 of the 28 took fewer turns.
+
+71
+00:04:59.964 --> 00:05:02.964
+And in replay, it learns fast:
+
+72
+00:05:02.964 --> 00:05:08.232
+ten of an agent's own sessions give 96% of what all of them do in retail.
+
+73
+00:05:10.132 --> 00:05:12.556
+A flow is audited as a program too.
+
+74
+00:05:12.956 --> 00:05:16.836
+Each decision is a categorical choice at its own address:
+
+75
+00:05:16.836 --> 00:05:19.483
+a lookup, handing back, or another step.
+
+76
+00:05:19.933 --> 00:05:25.250
+fugue scores the agent's real path under it, in nats of surprise per decision.
+
+77
+00:05:27.450 --> 00:05:31.390
+The paper gives the proofs and every benchmark number.
+
+78
+00:05:31.390 --> 00:05:34.677
+The worked examples are the walkthrough's and the quickstart's.

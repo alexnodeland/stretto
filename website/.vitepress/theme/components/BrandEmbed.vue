@@ -4,6 +4,8 @@
 //   kind="explainer"    public/media/explainer.mp4    (poster media/explainer-poster.png, captions media/explainer.vtt;
 //                       its caption links the interactive explainer, public/explainer/index.html, when it is there)
 //   kind="walkthrough"  public/media/walkthrough.mp4  (poster media/walkthrough-poster.png, captions media/walkthrough.vtt)
+//   kind="math"         public/media/math.mp4         (poster media/math-poster.png, captions media/math.vtt)
+//   kind="console"      public/media/console.mp4      (poster media/console-poster.png, captions media/console.vtt)
 //
 // config.mts checks for the files when the site builds. Until they are there, a
 // build renders nothing here and `npm run dev` shows where the file goes. Each
@@ -20,14 +22,20 @@ type BrandAssets = Partial<
     | 'explainerPage'
     | 'walkthroughVideo'
     | 'walkthroughPoster'
-    | 'walkthroughCaptions',
+    | 'walkthroughCaptions'
+    | 'mathVideo'
+    | 'mathPoster'
+    | 'mathCaptions'
+    | 'consoleVideo'
+    | 'consolePoster'
+    | 'consoleCaptions',
     string | false
   >
 >
 
 const props = withDefaults(
   defineProps<{
-    kind: 'explainer' | 'walkthrough'
+    kind: 'explainer' | 'walkthrough' | 'math' | 'console'
     title?: string
     caption?: string
     /** Width over height of the video's frame. */
@@ -41,7 +49,9 @@ const assets = computed(() => (theme.value as { brandAssets?: BrandAssets }).bra
 
 const expected = {
   explainer: 'media/explainer.mp4',
-  walkthrough: 'media/walkthrough.mp4'
+  walkthrough: 'media/walkthrough.mp4',
+  math: 'media/math.mp4',
+  console: 'media/console.mp4'
 }
 
 const file = (key: 'Video' | 'Poster' | 'Captions') => {
@@ -52,7 +62,7 @@ const file = (key: 'Video' | 'Poster' | 'Captions') => {
 
 const src = computed(() => file('Video') ?? false)
 const poster = computed(() => file('Poster'))
-/** The voice-over's captions, WebVTT, off until the viewer turns them on. */
+/** The voice-over's captions, WebVTT, off until the viewer turns them on (captionsOff). */
 const captions = computed(() => file('Captions'))
 /** The interactive explainer, a static page outside the router (so the link sets target). */
 const page = computed(() => (props.kind === 'explainer' && assets.value?.explainerPage ? withBase('/explainer/') : undefined))
@@ -61,18 +71,28 @@ const label = computed(
   () =>
     props.title ??
     {
-      explainer: 'How stretto works, explained in under three minutes',
-      walkthrough: 'The walkthrough, recorded'
+      explainer: 'How stretto works: the explainer video',
+      walkthrough: 'The walkthrough, recorded',
+      math: 'The math and the probabilistic programs inside stretto',
+      console: 'A tour of the console'
     }[props.kind]
 )
 
 const isDev = import.meta.env.DEV
+/**
+ * The films set their captions in the picture, so the WebVTT track starts
+ * off even where the browser would show it by its own caption settings; the
+ * player's captions control still turns it on.
+ */
+function captionsOff(e: Event) {
+  for (const t of Array.from((e.target as HTMLVideoElement).textTracks)) t.mode = 'disabled'
+}
 </script>
 
 <template>
-  <figure v-if="src" class="brand-embed" :class="`brand-embed--${kind}`">
+  <figure v-if="src" :id="`film-${kind}`" class="brand-embed" :class="`brand-embed--${kind}`">
     <div class="brand-embed__frame" :style="{ aspectRatio: aspect }">
-      <video :src="src" :poster="poster" :aria-label="label" controls playsinline preload="none">
+      <video :src="src" :poster="poster" :aria-label="label" controls playsinline preload="none" @loadedmetadata="captionsOff">
         <track v-if="captions" kind="captions" :src="captions" srclang="en" label="English" />
       </video>
     </div>

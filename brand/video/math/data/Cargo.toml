@@ -1,0 +1,19 @@
+# The math film's data from stretto's own code: alpha's posterior as
+# stretto-model's fugue program draws it, and the back-off model's counts,
+# on the console's test fixtures (the quickstart's six sessions). Its own
+# workspace, so the repository's CI never builds it. See README.md.
+[package]
+name = "math-film-data"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+anyhow = "1"
+fugue = { package = "fugue-ppl", git = "https://github.com/alexnodeland/fugue", rev = "3d65f3db3ce489d61125c217041a6cf980492f08", features = ["program"] }
+rand = "0.8"
+serde_json = { version = "1", features = ["float_roundtrip"] }
+stretto-model = { path = "../../../../crates/stretto-model" }
+stretto-trace = { path = "../../../../crates/stretto-trace" }

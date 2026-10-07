@@ -1,45 +1,55 @@
-// Render the explainer video, its captions, its poster and its teaser.
+// Render one of the brand kit's films: its video, captions and poster, and the
+// explainer's teaser.
 //
-//   node render.mjs                        # everything, into brand/media/
-//   node render.mjs --only video           # explainer.mp4, explainer.vtt, explainer-poster.png
-//   node render.mjs --only teaser          # explainer-teaser.gif and explainer-teaser.webm
-//   node render.mjs --audio-only           # the sound and captions again, into the explainer.mp4 there is
-//   node render.mjs --poster-only          # explainer-poster.png alone
-//   node render.mjs --stills 3,20.5 [--cut teaser] [--width 960] [--stills-dir DIR]
-//   node render.mjs --preview 40,52 [--cut teaser]   # a silent stretch, to video/out/preview.mp4
-//   node render.mjs --info                 # the timeline the voice sets: scene starts, cues, anchors not found
+//   node video/film.mjs FILM                        # everything, into brand/media/ (FILM: explainer, math or console)
+//   node video/film.mjs FILM --only video           # FILM.mp4, FILM.vtt, FILM-poster.png
+//   node video/film.mjs explainer --only teaser     # explainer-teaser.gif and explainer-teaser.webm
+//   node video/film.mjs FILM --audio-only           # the sound and captions again, into the FILM.mp4 there is
+//   node video/film.mjs FILM --poster-only          # FILM-poster.png alone
+//   node video/film.mjs FILM --stills 3,20.5 [--cut teaser] [--width 960] [--stills-dir DIR]
+//   node video/film.mjs FILM --preview 40,52 [--cut teaser]   # a silent stretch, to video/out/preview.mp4
+//   node video/film.mjs FILM --info                 # the timeline the voice sets: chapter starts, lines, anchors not found
 //   options: --workers N (parallel Chromium pages, default: CPUs - 1, at most 2), --fps 30, --crf 26, --poster T
 //
-// Each frame is drawn by window.__render(t) (main.js), screenshotted by
-// headless Chromium and piped into ffmpeg's stdin: no frame touches the disk.
-// Several pages draw frames at once and ffmpeg gets them in order.
+// A film is a directory, video/FILM/: its script (narration.json), its
+// chapters (film.js) and a page (index.html) that loads them on the shared
+// stage (video/stage/). Each frame is drawn by window.__render(t)
+// (stage/main.js), screenshotted by headless Chromium and piped into
+// ffmpeg's stdin: no frame touches the disk. Several pages draw frames at
+// once and ffmpeg gets them in order.
 //
-// The sound: the voice-over (video/out/voice/explainer-video/, from the
-// narration's clips), each line placed where its scene says (window.__lines);
-// and the music bed from video/music.py, called with the timeline's own times
-// for the mark's three bars and the closing motif (window.__music). There are
-// no sound effects (PACING.md). The music ducks under the voice (sidechaincompress), and the mix is
-// normalized in two passes to -16 LUFS with true peaks under -1.5 dBTP. Any
-// part that is missing is left out, with a warning. The captions
-// (media/explainer.vtt) are the lines' `text`, timed by the voice's words.
+// The sound: the voice-over (video/out/voice/FILM-video/, from narrate.py's
+// clips), each line placed where its chapter says (window.__lines), and the
+// music bed from video/music.py, called with the timeline's own times for the
+// mark's three bars and the closing motif (window.__music). There are no
+// sound effects (PACING.md). The music ducks under the voice
+// (sidechaincompress), and the mix is normalized in two passes to -16 LUFS
+// with true peaks under -1.5 dBTP. Any part that is missing is left out, with
+// a warning. The captions (media/FILM.vtt) are the lines' `text`, timed by the
+// voice's words.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn, execFileSync, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { launchBrowser, openPage, h264Args, report, option, loadVoice, writeVtt, writeVttWords, alignWords, remux, ffmpegPath } from '../lib.mjs';
+import { launchBrowser, openPage, h264Args, report, option, loadVoice, writeVtt, writeVttWords, alignWords, remux, ffmpegPath } from './lib.mjs';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const videoDir = path.resolve(here, '..');
-const root = path.resolve(here, '..', '..', '..');
-const media = path.resolve(here, '..', '..', 'media');
+const videoDir = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(videoDir, '..', '..');
+const media = path.resolve(videoDir, '..', 'media');
 const out = path.join(videoDir, 'out');
-const args = process.argv.slice(2);
+const FILM = process.argv[2];
+if (!FILM || FILM.startsWith('-') || !fs.existsSync(path.join(videoDir, FILM, 'narration.json'))) {
+  console.error('usage: node video/film.mjs FILM [options], where FILM is a directory of video/ with a narration.json');
+  process.exit(2);
+}
+const here = path.join(videoDir, FILM);
+const args = process.argv.slice(3);
 const only = option(args, '--only', 'all');
 const FPS = +option(args, '--fps', '30');
 const WORKERS = Math.max(1, +option(args, '--workers', String(Math.max(1, Math.min(2, os.cpus().length - 1)))));
-const NAME = 'explainer-video';
+const NAME = `${FILM}-video`;
 const CRF = +option(args, '--crf', '26');
 
 // H.264 as h264Args makes it (High, BT.709, yuv420p, faststart), at a CRF that
@@ -77,7 +87,7 @@ async function open(cut) {
   const opened = await openPage(browser, url, undefined, pageVoice);
   const info = await opened.page.evaluate(() => ({
     duration: window.__duration, marks: window.__marks, lines: window.__lines,
-    music: window.__music, poster: window.__poster, missing: window.__missing || [],
+    music: window.__music, poster: window.__poster, missing: window.__missing || [], hasTeaser: !!window.__hasTeaser,
   }));
   return { ...opened, ...info };
 }
@@ -131,13 +141,13 @@ function loudness(file) {
 // The music bed, made to the timeline's cues; null if music.py cannot run.
 function music(info) {
   const script = path.join(videoDir, 'music.py');
-  if (!fs.existsSync(script)) { console.warn('explainer: no video/music.py; the mix has no music'); return null; }
+  if (!fs.existsSync(script)) { console.warn(`${FILM}: no video/music.py; the mix has no music`); return null; }
   const file = path.join(out, 'music', `${NAME}.wav`);
   const py = process.env.PYTHON || 'python3';
   const { open: a, end } = info.music;
   const r = spawnSync(py, [script, '--duration', info.duration.toFixed(3), '--open', a.map(x => x.toFixed(3)).join(','), '--end', end.toFixed(3), '--out', file], { encoding: 'utf8' });
   if (r.status !== 0) {
-    console.warn(`explainer: music.py failed (${(r.stderr || r.error || '').toString().trim().split('\n').pop()}); the mix has no music. Set PYTHON to a Python with numpy and soundfile.`);
+    console.warn(`${FILM}: music.py failed (${(r.stderr || r.error || '').toString().trim().split('\n').pop()}); the mix has no music. Set PYTHON to a Python with numpy and soundfile.`);
     return null;
   }
   process.stdout.write(r.stdout);
@@ -193,33 +203,33 @@ function mix({ clips, duration, musicFile, file }) {
 function placed(info) {
   if (!voice) return [];
   const clips = voice.lines.map(l => {
-    if (!(l.key in info.lines)) throw new Error(`explainer: narration line ${l.key} names no scene`);
+    if (!(l.key in info.lines)) throw new Error(`${FILM}: narration line ${l.key} names no scene`);
     return { ...l, t: info.lines[l.key].t };
   }).sort((a, b) => a.t - b.t);
   clips.forEach((c, i) => {
     const next = clips[i + 1];
-    if (next && c.t + c.duration > next.t + 0.02) throw new Error(`explainer: line ${c.key} runs into ${next.key}`);
+    if (next && c.t + c.duration > next.t + 0.02) throw new Error(`${FILM}: line ${c.key} runs into ${next.key}`);
   });
   return clips;
 }
 
 function sound(info) {
-  if (info.missing.length) console.warn(`explainer: phrases not found in the voice's words, placed by estimate: ${info.missing.join('; ')}`);
+  if (info.missing.length) console.warn(`${FILM}: phrases not found in the voice's words, placed by estimate: ${info.missing.join('; ')}`);
   const clips = placed(info);
-  if (!voice) console.warn('explainer: no voice-over (video/out/voice/explainer-video/manifest.json); the video has no voice');
+  if (!voice) console.warn(`${FILM}: no voice-over (video/out/voice/${NAME}/manifest.json); the video has no voice`);
   const musicFile = music(info);
-  const file = path.join(out, 'explainer', 'mix.wav');
+  const file = path.join(out, FILM, 'mix.wav');
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const track = mix({ clips, duration: info.duration, musicFile, file });
   // Captions: the written text, timed by the voice.
   if (clips.length) {
     const byKey = Object.fromEntries(scriptLines.map(l => [l.key, l]));
     const lines = clips.map(c => ({ text: byKey[c.key].text, t: c.t, duration: c.duration, words: c.words }));
-    const vtt = path.join(media, 'explainer.vtt');
+    const vtt = path.join(media, `${FILM}.vtt`);
     if (lines.some(l => l.words && l.words.length)) writeVttWords(lines, vtt); else writeVtt(lines, vtt);
     report(vtt, root);
   }
-  console.log(`explainer: sound = ${[clips.length && 'voice', musicFile && 'music'].filter(Boolean).join(' + ') || 'none'}`);
+  console.log(`${FILM}: sound = ${[clips.length && 'voice', musicFile && 'music'].filter(Boolean).join(' + ') || 'none'}`);
   return track;
 }
 
@@ -246,7 +256,7 @@ if (stills) {
   // The timeline as the voice sets it, without rendering.
   const info = await open('video');
   const fmt = x => `${Math.floor(x / 60)}:${(x % 60).toFixed(1).padStart(4, '0')}`;
-  console.log(`explainer: ${info.duration.toFixed(2)} s; voice: ${voice ? NAME : 'none (estimates at 2.5 words/s)'}`);
+  console.log(`${FILM}: ${info.duration.toFixed(2)} s; voice: ${voice ? NAME : 'none (estimates at 2.5 words/s)'}`);
   const keysOf = Object.fromEntries(script.beats.map(b => [b.key, b.lines.map(l => l.key)]));
   for (const [k, t0] of Object.entries(info.marks)) {
     console.log(`  ${k.padEnd(9)} ${fmt(t0)}`);
@@ -264,41 +274,47 @@ if (stills) {
   report(file, root);
 } else if (args.includes('--poster-only')) {
   const info = await open('video');
-  const poster = path.join(media, 'explainer-poster.png');
+  const poster = path.join(media, `${FILM}-poster.png`);
   await info.page.evaluate(() => window.__captions(false));
   fs.writeFileSync(poster, await info.frame(+option(args, '--poster', String(info.poster))));
   report(poster, root);
 } else if (args.includes('--audio-only')) {
-  const mp4 = path.join(media, 'explainer.mp4');
+  const mp4 = path.join(media, `${FILM}.mp4`);
   const info = await open('video');
   const track = sound(info);
-  if (!track) throw new Error('explainer: nothing to mix');
+  if (!track) throw new Error(`${FILM}: nothing to mix`);
   if (fs.existsSync(mp4)) { remux(mp4, track); report(mp4, root); }
-  else console.log(`explainer: no media/explainer.mp4 yet; the mix is in ${path.relative(root, track)}`);
+  else console.log(`${FILM}: no media/${FILM}.mp4 yet; the mix is in ${path.relative(root, track)}`);
 } else {
   if (only === 'all' || only === 'video') {
     const first = await open('video');
     const pages = [first];
     for (let i = 1; i < WORKERS; i++) pages.push(await open('video'));
-    console.log(`explainer: ${first.duration.toFixed(2)} s, ${WORKERS} page${WORKERS > 1 ? 's' : ''}`);
+    console.log(`${FILM}: ${first.duration.toFixed(2)} s, ${WORKERS} page${WORKERS > 1 ? 's' : ''}`);
     const track = sound(first);
-    const mp4 = path.join(media, 'explainer.mp4');
-    const secs = await encodeParallel({ pages, fps: FPS, to: first.duration, label: 'explainer', sinks: [{ outArgs: videoArgs(mp4, track), audio: track }] });
+    const mp4 = path.join(media, `${FILM}.mp4`);
+    const secs = await encodeParallel({ pages, fps: FPS, to: first.duration, label: FILM, sinks: [{ outArgs: videoArgs(mp4, track), audio: track }] });
     report(mp4, root);
     const posterT = +option(args, '--poster', String(first.poster ?? first.marks.idea + 12));
-    const poster = path.join(media, 'explainer-poster.png');
+    const poster = path.join(media, `${FILM}-poster.png`);
     await first.page.evaluate(() => window.__captions(false));
     fs.writeFileSync(poster, await first.frame(posterT));
     report(poster, root);
-    console.log(`explainer: rendered in ${(secs / 60).toFixed(1)} min`);
+    console.log(`${FILM}: rendered in ${(secs / 60).toFixed(1)} min`);
     await closeAll();
   }
   if (only === 'all' || only === 'teaser') {
+    // Only a film whose film.js has a teaser cut (the explainer's) makes one.
     const first = await open('teaser');
+    if (!first.hasTeaser) {
+      if (only === 'teaser') console.warn(`${FILM}: no teaser cut in film.js`);
+      await closeAll();
+      process.exit(0);
+    }
     const pages = [first];
     for (let i = 1; i < WORKERS; i++) pages.push(await open('teaser'));
-    const gif = path.join(media, 'explainer-teaser.gif');
-    const webm = path.join(media, 'explainer-teaser.webm');
+    const gif = path.join(media, `${FILM}-teaser.gif`);
+    const webm = path.join(media, `${FILM}-teaser.webm`);
     await encodeParallel({
       pages, fps: FPS, to: first.duration, label: 'teaser', sinks: [
         // 64 colours, undithered: the flat palette keeps the GIF near 1 MB.

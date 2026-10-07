@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>stretto: the math</title>
+<!--
+  The math film: the event stretto estimates, the rule that acts on it, the
+  counts behind it, alpha's posterior as a fugue program, the bindings, and
+  how the estimate behaved. Drawn on the shared stage (../stage/), one chapter
+  at a time; ../film.mjs math renders it. narration.json is the script;
+  data.js the numbers its charts draw (data/results.py writes it); the
+  formulas are typeset with KaTeX (brand/node_modules, npm install in brand/).
+-->
+<link rel="stylesheet" href="../stage/style.css">
+<link rel="stylesheet" href="../../node_modules/katex/dist/katex.min.css">
+<style>
+  /* Each symbol keeps one color through the film: a probability is petrol,
+     a saved turn's value periwinkle, a detour's cost amber, the prior's
+     weight lavender, a count ink. */
+  :root { --t-p: #5dd2d8; --t-b: #9fb3f7; --t-d: #d9a35b; --t-a: #c3a8f0; }
+  .katex { font-size: 1em; color: var(--text); }
+  .tp { color: var(--t-p); }
+  .tb { color: var(--t-b); }
+  .td { color: var(--t-d); }
+  .ta { color: var(--t-a); }
+  .tn { color: var(--text); }
+  .tm { color: var(--subtle); }
+  .anno { font: 400 20px/1.3 var(--sans); white-space: nowrap; }
+  .anno.wrap { white-space: normal; }
+  .axis { font: 400 16px/1 var(--mono); fill: var(--faint); }
+  .axis.l { fill: var(--subtle); letter-spacing: 0.06em; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="grid"></div>
+  <div id="glow"></div>
+  <div id="scenes" class="layer"></div>
+  <div id="over" class="layer"></div>
+</div>
+<script src="../../node_modules/katex/dist/katex.min.js"></script>
+<script src="../stage/logo.js"></script>
+<script src="../stage/stage.js"></script>
+<script src="data.js"></script>
+<script src="film.js"></script>
+<script src="../stage/main.js"></script>
+</body>
+</html>

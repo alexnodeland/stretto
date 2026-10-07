@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Voice the brand kit's narration with Kokoro, a local text-to-speech model.
 
-    python3 brand/video/narrate.py [explainer-video] [walkthrough] [explainer]   # default: all three
+    python3 brand/video/narrate.py [explainer-video] [math-video] [console-video] [walkthrough] [explainer]   # default: all
 
-The scripts are video/explainer/narration.json (the explainer video, as
-chapters of lines), video/walkthrough/narration.json (with every caption in
+The scripts are video/FILM/narration.json for each film on the shared stage
+(the explainer, the math and the console films, as chapters of lines), video/walkthrough/narration.json (with every caption in
 walkthrough.cast) and explainer/narration.json (the interactive explainer).
 Every line is spoken in one voice, Kokoro-82M's `af_heart` at one pace, then
 transcribed back with faster-whisper and checked against its script; a line
@@ -60,6 +60,8 @@ RETRY_SPEEDS = [0.83, 0.87, 0.81]  # a take that fails its check is spoken again
 # Words whose reading is pinned, in misaki's phoneme alphabet (US voices).
 LEXICON = {
     "stretto": "stɹˈɛTO",
+    "Dirichlet": "dˌɪɹɪklˈA",  # deer-ih-KLAY; misaki's dictionary lacks it
+    "nats": "nˈæts",  # the unit, not an acronym
 }
 TRIM_MS = 60  # silence kept at each end of a line
 LEVEL = -19.0  # every clip's RMS, dBFS
@@ -92,8 +94,9 @@ def spoken(text: str) -> str:
 
 def lines_of(name: str) -> list[dict]:
     """The lines to voice for `name`: each with a key, the text as written and as said."""
-    if name == "explainer-video":
-        doc = json.loads((HERE / "explainer" / "narration.json").read_text())
+    if name.endswith("-video") and (HERE / name[: -len("-video")] / "narration.json").exists():
+        # A film on the shared stage (explainer, math, console): chapters of lines.
+        doc = json.loads((HERE / name[: -len("-video")] / "narration.json").read_text())
         return [{"key": l["key"], "text": l["text"], "say": spoken(l.get("say", l["text"]))}
                 for beat in doc["beats"] for l in beat["lines"]]
     if name == "walkthrough":
@@ -209,7 +212,8 @@ NUMBERS = {"zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six
 
 # How small.en writes a few of the scripts' words, whoever says them.
 HEARD_AS = [(r"\bin it\b", "init"), (r"\bfile system\b", "filesystem"), (r"\b(clod|clawed)\b", "claude"),
-            (r"\bwalk through\b", "walkthrough"), (r"\bstrato ?proxy\b", "stretto proxy")]
+            (r"\bwalk ?throughs\b", "walkthrough's"), (r"\bwalk through\b", "walkthrough"), (r"\bstrato ?proxy\b", "stretto proxy"),
+            (r"\breeds\b", "reads"), (r"\breed's\b", "read's"), (r"\btao ?2\b", "tau two"), (r"\bdiraclet\b", "dirichlet")]
 
 
 def comparable(text: str) -> list[str]:
@@ -239,7 +243,8 @@ def comparable(text: str) -> list[str]:
         elif w not in ("percent", "point"):
             out.append(w)
         i += 1
-    return out
+    # Numbers digit by digit, so "0.06" (as small.en writes it) and "zero point zero six" compare alike.
+    return [d for w in out for d in (list(w) if w.isdigit() else [w])]
 
 
 def trim(samples, lead_ms: float, tail_ms: float):
@@ -269,7 +274,9 @@ ENCODING = 4
 
 
 def fingerprint(line: dict) -> str:
-    settings = [line["say"], ENGINE, VOICE, SPEED, RETRY_SPEEDS, LEXICON, TRIM_MS, LEVEL, PEAK, ENCODING]
+    # Only the lexicon's words this line says: a new word re-voices only the lines that use it.
+    lexicon = {w: p for w, p in LEXICON.items() if re.search(rf"\b{re.escape(w)}\b", line["say"], re.I)}
+    settings = [line["say"], ENGINE, VOICE, SPEED, RETRY_SPEEDS, lexicon, TRIM_MS, LEVEL, PEAK, ENCODING]
     return hashlib.sha256(json.dumps(settings, sort_keys=True).encode()).hexdigest()[:16]
 
 
@@ -348,8 +355,9 @@ def narrate(name: str, voice_of) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0], epilog=__doc__.split("\n\n", 2)[2],
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("names", nargs="*", default=["explainer-video", "walkthrough", "explainer"],
-                    help="explainer-video, walkthrough or explainer (default: all three)")
+    ap.add_argument("names", nargs="*", default=["explainer-video", "math-video", "console-video", "walkthrough", "explainer"],
+                    help="FILM-video for a film in video/FILM/ (explainer, math, console), walkthrough, or explainer "
+                         "(the interactive explainer); default: all of them")
     args = ap.parse_args()
     voice = None
 

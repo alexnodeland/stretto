@@ -6,10 +6,13 @@
   "scripts": {
     "contrast": "node tools/contrast.mjs --check",
     "assets": "node tools/render_assets.mjs",
-    "explainer-video": "node video/explainer/render.mjs",
+    "explainer-video": "node video/film.mjs explainer",
+    "math-video": "node video/film.mjs math",
+    "console-video": "node video/film.mjs console",
     "walkthrough": "node video/walkthrough/render.mjs"
   },
   "devDependencies": {
+    "katex": "0.16.47",
     "playwright": "1.56.1"
   }
 }
