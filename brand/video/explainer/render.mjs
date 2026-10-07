@@ -4,6 +4,7 @@
 //   node render.mjs --only video           # explainer.mp4, explainer.vtt, explainer-poster.png
 //   node render.mjs --only teaser          # explainer-teaser.gif and explainer-teaser.webm
 //   node render.mjs --audio-only           # the sound and captions again, into the explainer.mp4 there is
+//   node render.mjs --poster-only          # explainer-poster.png alone
 //   node render.mjs --stills 3,20.5 [--cut teaser] [--width 960] [--stills-dir DIR]
 //   node render.mjs --preview 40,52 [--cut teaser]   # a silent stretch, to video/out/preview.mp4
 //   node render.mjs --info                 # the timeline the voice sets: scene starts, cues, anchors not found
@@ -15,10 +16,9 @@
 //
 // The sound: the voice-over (video/out/voice/explainer-video/, from the
 // narration's clips), each line placed where its scene says (window.__lines);
-// the music bed from video/music.py, called with the timeline's own times for
-// the mark's three bars and the closing motif (window.__music); the sound
-// effects from video/out/sfx/*.wav at the timeline's events (window.__events).
-// The music ducks under the voice (sidechaincompress), and the mix is
+// and the music bed from video/music.py, called with the timeline's own times
+// for the mark's three bars and the closing motif (window.__music). There are
+// no sound effects (PACING.md). The music ducks under the voice (sidechaincompress), and the mix is
 // normalized in two passes to -16 LUFS with true peaks under -1.5 dBTP. Any
 // part that is missing is left out, with a warning. The captions
 // (media/explainer.vtt) are the lines' `text`, timed by the voice's words.
@@ -59,7 +59,8 @@ const voice = loadVoice(NAME);
 // What the page gets as window.__voice: each voiced line's length, its
 // script's own words timed by the voice (alignWords, so the scenes' anchors
 // are the script's words however the aligner heard them), and the script.
-const said = Object.fromEntries(script.lines.map(l => [l.key, l.say || l.text]));
+const scriptLines = script.beats.flatMap(b => b.lines);
+const said = Object.fromEntries(scriptLines.map(l => [l.key, l.say || l.text]));
 const pageVoice = {
   lines: voice ? Object.fromEntries(voice.lines.map(l => [l.key, {
     duration: l.duration,
@@ -76,7 +77,7 @@ async function open(cut) {
   const opened = await openPage(browser, url, undefined, pageVoice);
   const info = await opened.page.evaluate(() => ({
     duration: window.__duration, marks: window.__marks, lines: window.__lines,
-    events: window.__events, music: window.__music, poster: window.__poster, missing: window.__missing || [],
+    music: window.__music, poster: window.__poster, missing: window.__missing || [],
   }));
   return { ...opened, ...info };
 }
@@ -143,13 +144,10 @@ function music(info) {
   return file;
 }
 
-// How loud each effect sits, on top of each event's own gain.
-const SFX_TRIM = { shimmer: 0.55, chime: 0.6, 'whoosh-soft': 0.8, 'whoosh-fast': 0.85, 'swoosh-in': 0.85, pop: 1, tick: 1, click: 1, thump: 1 };
 const MUSIC_LUFS = -30; // the bed's loudness before ducking; the voice sits near -19.5
 
-// Mix the voice, the music and the effects into `file`, `duration` long.
-function mix({ clips, duration, musicFile, events, file }) {
-  const sfxDir = path.join(out, 'sfx');
+// Mix the voice and the music into `file`, `duration` long.
+function mix({ clips, duration, musicFile, file }) {
   const inputs = [], graph = [], buses = [];
   const input = f => { inputs.push('-i', f); return inputs.length / 2 - 1; };
   const D = duration.toFixed(3);
@@ -174,24 +172,6 @@ function mix({ clips, duration, musicFile, events, file }) {
     buses.push('[music]');
   }
   if (clips.length) buses.unshift('[voice]');
-  // The effects: each file read once, split for each use.
-  const byName = {};
-  for (const e of events) (byName[e.sfx] = byName[e.sfx] || []).push(e);
-  const fx = [];
-  const missing = new Set();
-  for (const [name, list] of Object.entries(byName)) {
-    const f = path.join(sfxDir, `${name}.wav`);
-    if (!fs.existsSync(f)) { missing.add(name); continue; }
-    const k = input(f);
-    graph.push(`[${k}:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,asplit=${list.length}${list.map((_, j) => `[${name}${j}]`).join('')}`);
-    list.forEach((e, j) => {
-      const g = e.gain * (SFX_TRIM[name] ?? 1);
-      graph.push(`[${name}${j}]volume=${g.toFixed(4)},adelay=${Math.round(e.t * 1000)}:all=1[fx${fx.length}]`);
-      fx.push(`[fx${fx.length}]`);
-    });
-  }
-  if (missing.size) console.warn(`explainer: no sound effect for ${[...missing].join(', ')} (video/out/sfx/)`);
-  if (fx.length) { graph.push(`${fx.join('')}amix=inputs=${fx.length}:normalize=0:dropout_transition=0,apad=whole_dur=${D}[fx]`); buses.push('[fx]'); }
   if (!buses.length) return null;
   const pre = `${file}.pre.wav`;
   graph.push(`${buses.join('')}amix=inputs=${buses.length}:normalize=0:dropout_transition=0,atrim=0:${D}[mix]`);
@@ -230,16 +210,16 @@ function sound(info) {
   const musicFile = music(info);
   const file = path.join(out, 'explainer', 'mix.wav');
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  const track = mix({ clips, duration: info.duration, musicFile, events: info.events, file });
+  const track = mix({ clips, duration: info.duration, musicFile, file });
   // Captions: the written text, timed by the voice.
   if (clips.length) {
-    const byKey = Object.fromEntries(script.lines.map(l => [l.key, l]));
+    const byKey = Object.fromEntries(scriptLines.map(l => [l.key, l]));
     const lines = clips.map(c => ({ text: byKey[c.key].text, t: c.t, duration: c.duration, words: c.words }));
     const vtt = path.join(media, 'explainer.vtt');
     if (lines.some(l => l.words && l.words.length)) writeVttWords(lines, vtt); else writeVtt(lines, vtt);
     report(vtt, root);
   }
-  console.log(`explainer: sound = ${[clips.length && 'voice', musicFile && 'music', info.events.length && fs.existsSync(path.join(out, 'sfx')) && 'effects'].filter(Boolean).join(' + ') || 'none'}`);
+  console.log(`explainer: sound = ${[clips.length && 'voice', musicFile && 'music'].filter(Boolean).join(' + ') || 'none'}`);
   return track;
 }
 
@@ -267,8 +247,12 @@ if (stills) {
   const info = await open('video');
   const fmt = x => `${Math.floor(x / 60)}:${(x % 60).toFixed(1).padStart(4, '0')}`;
   console.log(`explainer: ${info.duration.toFixed(2)} s; voice: ${voice ? NAME : 'none (estimates at 2.5 words/s)'}`);
-  for (const [k, t0] of Object.entries(info.marks)) console.log(`  ${k.padEnd(8)} ${fmt(t0)}  line at ${fmt(info.lines[k].t)}, ${info.lines[k].duration.toFixed(2)} s${info.lines[k].voiced ? '' : ' (estimated)'}`);
-  console.log(`  music: entries ${info.music.open.join(', ')} s, closing motif ${info.music.end} s; ${info.events.length} sound effects; poster at ${info.poster?.toFixed(2)} s`);
+  const keysOf = Object.fromEntries(script.beats.map(b => [b.key, b.lines.map(l => l.key)]));
+  for (const [k, t0] of Object.entries(info.marks)) {
+    console.log(`  ${k.padEnd(9)} ${fmt(t0)}`);
+    for (const lk of keysOf[k] || []) console.log(`    ${lk.padEnd(10)} ${fmt(info.lines[lk].t)}, ${info.lines[lk].duration.toFixed(2)} s${info.lines[lk].voiced ? '' : ' (estimated)'}`);
+  }
+  console.log(`  music: entries ${info.music.open.join(', ')} s, closing motif ${info.music.end} s; poster at ${info.poster?.toFixed(2)} s`);
   if (info.missing.length) console.warn(`  not found, placed by estimate: ${info.missing.join('; ')}`);
 } else if (option(args, '--preview')) {
   // A stretch of the video, silent, to check motion: --preview FROM,TO
@@ -278,6 +262,12 @@ if (stills) {
   const file = path.join(out, 'preview.mp4');
   await encodeParallel({ pages, fps: FPS, from, to, label: 'preview', sinks: [{ outArgs: videoArgs(file, null) }] });
   report(file, root);
+} else if (args.includes('--poster-only')) {
+  const info = await open('video');
+  const poster = path.join(media, 'explainer-poster.png');
+  await info.page.evaluate(() => window.__captions(false));
+  fs.writeFileSync(poster, await info.frame(+option(args, '--poster', String(info.poster))));
+  report(poster, root);
 } else if (args.includes('--audio-only')) {
   const mp4 = path.join(media, 'explainer.mp4');
   const info = await open('video');
@@ -297,6 +287,7 @@ if (stills) {
     report(mp4, root);
     const posterT = +option(args, '--poster', String(first.poster ?? first.marks.idea + 12));
     const poster = path.join(media, 'explainer-poster.png');
+    await first.page.evaluate(() => window.__captions(false));
     fs.writeFileSync(poster, await first.frame(posterT));
     report(poster, root);
     console.log(`explainer: rendered in ${(secs / 60).toFixed(1)} min`);

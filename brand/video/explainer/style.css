@@ -1,18 +1,67 @@
-/* The explainer video's stage: 1920 x 1080, the brand's dark palette. */
+/* The explainer's stage: 1920 x 1080 in the brand's dark palette (tokens.css).
+   Ink on a near-black ground, petrol for what stretto adds, amber only for a
+   write and for a cost. Inter for words, JetBrains Mono for anything a
+   machine reads or prints. */
 @font-face { font-family: "Inter"; src: url("../../fonts/Inter-Variable.subset.woff2") format("woff2"); font-weight: 100 900; }
 @font-face { font-family: "JetBrains Mono"; src: url("../../fonts/JetBrainsMono-Regular.subset.woff2") format("woff2"); font-weight: 400; }
 @font-face { font-family: "JetBrains Mono"; src: url("../../fonts/JetBrainsMono-Bold.subset.woff2") format("woff2"); font-weight: 700; }
 
+:root {
+  --bg: #0b0f11; --surface: #121719; --surface-2: #191f21; --border: #272f32; --border-strong: #3b4649;
+  --text: #eceff0; --muted: #b3bcbf; --subtle: #909a9d; --faint: #606b6f; --dim: #384346;
+  --petrol: #5dd2d8; --petrol-g: #33c0c7; --petrol-soft: rgba(51, 192, 199, 0.10); --petrol-line: rgba(93, 210, 216, 0.55);
+  --amber: #d9a35b; --amber-soft: rgba(217, 163, 91, 0.10); --amber-line: rgba(217, 163, 91, 0.55);
+  --sans: "Inter", sans-serif; --mono: "JetBrains Mono", monospace;
+}
 * { box-sizing: border-box; }
-html, body { margin: 0; background: #0b0f11; }
-body { width: 1920px; height: 1080px; overflow: hidden; -webkit-font-smoothing: antialiased; }
-#stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #0b0f11; }
-#scene { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; }
-.cam { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; }
-.cam > svg { position: absolute; left: 0; top: 0; overflow: visible; }
-canvas { position: absolute; left: 0; top: 0; }
-#vignette { position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(ellipse 72% 70% at 50% 48%, rgba(0,0,0,0) 55%, rgba(3,5,6,0.42) 82%, rgba(2,3,4,0.72) 100%); }
-#ov { position: absolute; left: 0; top: 0; overflow: hidden; }
-text { font-kerning: normal; }
-text { white-space: pre; }
+html, body { margin: 0; background: var(--bg); }
+body { width: 1920px; height: 1080px; overflow: hidden; -webkit-font-smoothing: antialiased; color: var(--text); font-family: var(--sans); font-feature-settings: "cv11", "ss01"; }
+#stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+/* A faint dot grid: the drafting paper under every diagram. */
+#grid { position: absolute; inset: 0; background-image: radial-gradient(circle at 1px 1px, rgba(236, 239, 240, 0.055) 1.2px, transparent 1.6px); background-size: 40px 40px; background-position: 20px 20px; }
+#glow { position: absolute; inset: 0; background: radial-gradient(ellipse 60% 55% at 50% 44%, rgba(51, 192, 199, 0.035), rgba(0, 0, 0, 0) 70%); }
+.layer { position: absolute; inset: 0; }
+.layer > svg { position: absolute; left: 0; top: 0; overflow: visible; }
+
+/* The frame's furniture: the chapter, top left; the mark, top right. */
+.chapter { font: 500 19px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--subtle); display: flex; align-items: center; gap: 18px; white-space: nowrap; }
+.chapter b { color: var(--petrol); font-weight: 700; }
+.chapter i { display: inline-block; width: 36px; height: 1px; background: var(--border-strong); }
+
+/* The line, at the foot of the frame. */
+.cap { font: 450 40px/1.3 var(--sans); letter-spacing: -0.012em; text-align: center; text-wrap: balance; }
+.cap .w { --u: 0; color: color-mix(in oklab, var(--text) calc(var(--u) * 100%), #3a4447); }
+.cap .w.em { color: color-mix(in oklab, var(--petrol) calc(var(--u) * 100%), #2c4648); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 24px 48px -24px rgba(0, 0, 0, 0.6); overflow: hidden; }
+.card.petrol { border-color: var(--petrol-line); background: linear-gradient(180deg, rgba(51, 192, 199, 0.07), rgba(51, 192, 199, 0.02)), var(--surface); }
+.card.amber { border-color: var(--amber-line); }
+.card-h { display: flex; justify-content: space-between; align-items: center; height: 50px; padding: 0 20px; border-bottom: 1px solid var(--border); font: 400 18px/1 var(--mono); color: var(--subtle); background: rgba(255, 255, 255, 0.012); white-space: nowrap; }
+.card.petrol .card-h { border-bottom-color: rgba(93, 210, 216, 0.25); }
+.card-t { color: var(--muted); }
+.card-tag { color: var(--faint); font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; }
+.card-b { position: relative; padding: 18px 22px; }
+
+.chip { font: 400 22px/1 var(--mono); padding: 10px 16px 11px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+.chip.read { border-color: var(--petrol-line); background: rgba(51, 192, 199, 0.09); color: var(--petrol); }
+.chip.write { border-color: var(--amber-line); background: var(--amber-soft); color: var(--amber); }
+.chip.ghost { border-style: dashed; background: transparent; color: var(--faint); }
+.chip.plain { border-color: transparent; background: transparent; padding-left: 0; padding-right: 0; }
+.chip.solid { background: var(--petrol-g); border-color: var(--petrol-g); color: #071114; font-weight: 700; }
+
+.code { font-family: var(--mono); color: var(--muted); white-space: pre; }
+.code .k { color: var(--subtle); }
+.code .s { color: var(--text); }
+.code .p { color: var(--faint); }
+.code .c { color: var(--faint); }
+.code .hl { color: var(--petrol); background: rgba(51, 192, 199, 0.12); border-radius: 5px; box-shadow: 0 0 0 1px var(--petrol-line); }
+.code .pr { color: var(--petrol); }
+.code .am { color: var(--amber); }
+.caret { display: inline-block; width: 0.55em; height: 1.05em; vertical-align: -0.18em; background: var(--petrol); margin-left: 1px; }
+
+.label { font: 500 17px/1.2 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--subtle); white-space: nowrap; }
+.label.petrol { color: var(--petrol); }
+.label.amber { color: var(--amber); }
+.note { font: 400 21px/1.45 var(--sans); color: var(--subtle); }
+.big { font: 600 64px/1 var(--sans); letter-spacing: -0.03em; color: var(--text); font-variant-numeric: tabular-nums; }
+.num { font-variant-numeric: tabular-nums; }
