@@ -7,17 +7,18 @@
   The explainer video's source: one chapter at a time on a still stage, each a
   diagram that builds as the voice names its parts. Every property of every
   frame is a pure function of time, set by window.__render(t) (main.js);
-  render.mjs steps the clock frame by frame and pipes screenshots into ffmpeg.
+  ../film.mjs steps the clock frame by frame and pipes screenshots into ffmpeg.
 
-  logo.js     the wordmark's outline, from brand/logo/
-  stage.js    easing, a seeded generator, and the pieces: cards, chips, arrows, code, captions
-  film.js     the chapters, from the cold open to the end card, and the teaser
-  main.js     the timeline the voice sets, the frame's furniture, and window.__render
+  ../stage/   the stage the films share: logo.js (the wordmark's outline),
+              stage.js (easing, the pieces: cards, chips, arrows, code, bars,
+              captions), main.js (the timeline the voice sets, the frame's
+              furniture, window.__render) and style.css
+  film.js     this film's chapters, from the cold open to the end card, and the teaser
 
   narration.json is the script. Every number on screen is from
   docs/results/claims.md, brand/messaging.md or the files it names.
 -->
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="../stage/style.css">
 </head>
 <body>
 <div id="stage">
@@ -26,9 +27,9 @@
   <div id="scenes" class="layer"></div>
   <div id="over" class="layer"></div>
 </div>
-<script src="logo.js"></script>
-<script src="stage.js"></script>
+<script src="../stage/logo.js"></script>
+<script src="../stage/stage.js"></script>
 <script src="film.js"></script>
-<script src="main.js"></script>
+<script src="../stage/main.js"></script>
 </body>
 </html>

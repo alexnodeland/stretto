@@ -1,0 +1,341 @@
+{
+  "about": "The math film's script: what stretto estimates, why a flow is safe, the rule that decides a lookup, the counts behind it, alpha's posterior as a fugue program, the argument bindings, calibration and the audit. Chapters (`beats`) of lines, as the explainer's: `text` is the caption, `say` what the voice says, `em` the phrases lit in petrol, `post` the pause after a line. Every formula is the paper's (paper/stretto.md) or the code's, and every number has its scope on screen. narrate.py voices it (math-video).",
+  "beats": [
+    {
+      "key": "cold",
+      "min": 6.4,
+      "lines": []
+    },
+    {
+      "key": "title",
+      "lead": 4.0,
+      "tail": 0.8,
+      "lines": [
+        {
+          "key": "title1",
+          "text": "The math inside stretto, as the code computes it.",
+          "em": [
+            "as the code computes it."
+          ],
+          "post": 0.5
+        },
+        {
+          "key": "title2",
+          "text": "One event to estimate, one rule to act on it, and the counts between.",
+          "post": 0.3
+        }
+      ]
+    },
+    {
+      "key": "event",
+      "lead": 0.7,
+      "tail": 0.7,
+      "lines": [
+        {
+          "key": "event1",
+          "text": "A lookup pays off if the agent uses it before its next write.",
+          "em": [
+            "before its next write."
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "event2",
+          "text": "So stretto estimates q: the chance a read is among those the agent makes before it writes.",
+          "em": [
+            "q"
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "event3",
+          "text": "That chance is at least the chance the read comes next, and often far larger.",
+          "em": [
+            "often far larger."
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "event4",
+          "text": "After a user's details, the habit put an order next at 0.64. The agents read one before the write 94% of the time.",
+          "say": "After a user's details, the habit put an order next at zero point six four. The agents read one before the write ninety-four percent of the time.",
+          "em": [
+            "0.64.",
+            "94%"
+          ],
+          "post": 0.3
+        }
+      ]
+    },
+    {
+      "key": "safety",
+      "lead": 0.7,
+      "tail": 0.7,
+      "lines": [
+        {
+          "key": "safety1",
+          "text": "A flow makes only reads, and reads leave the state as it was.",
+          "em": [
+            "only reads"
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "safety2",
+          "text": "If the agent makes the same calls, every write lands on the same state.",
+          "em": [
+            "the same state."
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "safety3",
+          "text": "A wrong lookup changes only what the agent reads. Its worst case is a detour.",
+          "em": [
+            "a detour."
+          ],
+          "post": 0.3
+        }
+      ]
+    },
+    {
+      "key": "rule",
+      "lead": 0.7,
+      "tail": 0.8,
+      "lines": [
+        {
+          "key": "rule1",
+          "text": "Used, a lookup saves a turn, worth beta. Unused, it costs a detour, delta.",
+          "em": [
+            "beta.",
+            "delta."
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "rule2",
+          "text": "Its expected value is q times beta, minus one minus q, times delta.",
+          "post": 0.45
+        },
+        {
+          "key": "rule3",
+          "text": "That's positive exactly when q clears delta over beta plus delta.",
+          "em": [
+            "delta over beta plus delta."
+          ],
+          "post": 0.55
+        },
+        {
+          "key": "rule4",
+          "text": "Live on τ²-bench, beta was about 6,000 input tokens and delta about 2,530.",
+          "say": "Live on tau two bench, beta was about six thousand input tokens, and delta about twenty-five thirty.",
+          "em": [
+            "6,000",
+            "2,530."
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "rule5",
+          "text": "So the line sits at about 0.3. In airline and telecom, the counts put it lower.",
+          "say": "So the line sits at about zero point three. In airline and telecom, the counts put it lower.",
+          "em": [
+            "about 0.3."
+          ],
+          "post": 0.3
+        }
+      ]
+    },
+    {
+      "key": "habit",
+      "lead": 0.7,
+      "tail": 0.7,
+      "lines": [
+        {
+          "key": "habit1",
+          "text": "The chances come from counts. Each step becomes its tool, its outcome, and a feature of its result.",
+          "em": [
+            "counts."
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "habit2",
+          "text": "A back-off model predicts the next step from the last two.",
+          "em": [
+            "the last two."
+          ],
+          "post": 0.4
+        },
+        {
+          "key": "habit3",
+          "text": "Each context is a Dirichlet–multinomial, with the shorter context as its prior mean.",
+          "say": "Each context is a Dirichlet multinomial, with the shorter context as its prior mean.",
+          "em": [
+            "the shorter context as its prior mean."
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "habit4",
+          "text": "For the reach decider, the same contexts count each read used before the next write.",
+          "em": [
+            "used before the next write."
+          ],
+          "post": 0.3
+        }
+      ]
+    },
+    {
+      "key": "fugue",
+      "lead": 0.7,
+      "tail": 0.8,
+      "min": 16,
+      "lines": [
+        {
+          "key": "fugue1",
+          "text": "Alpha sets how fast the counts outweigh the prior. It isn't tuned by hand.",
+          "em": [
+            "Alpha"
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "fugue2",
+          "text": "It's inferred, with fugue, a probabilistic programming library for Rust.",
+          "em": [
+            "fugue,"
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "fugue3",
+          "text": "The program draws log alpha from a normal prior, and scores the episodes, one step at a time.",
+          "em": [
+            "one step at a time."
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "fugue4",
+          "text": "Metropolis–Hastings samples the posterior, and the flow keeps its median.",
+          "say": "Metropolis Hastings samples the posterior, and the flow keeps its median.",
+          "em": [
+            "its median."
+          ],
+          "post": 0.3
+        }
+      ]
+    },
+    {
+      "key": "bindings",
+      "lead": 0.7,
+      "tail": 0.7,
+      "lines": [
+        {
+          "key": "bind1",
+          "text": "A lookup also needs its arguments. stretto counts where each one came from.",
+          "em": [
+            "where each one came from."
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "bind2",
+          "text": "A binding's chance is right over tried, shrunk toward one half.",
+          "em": [
+            "shrunk toward one half."
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "bind3",
+          "text": "The decision multiplies the two: the read's chance, times its arguments'.",
+          "em": [
+            "times its arguments'."
+          ],
+          "post": 0.3
+        }
+      ]
+    },
+    {
+      "key": "calibration",
+      "lead": 0.7,
+      "tail": 0.9,
+      "lines": [
+        {
+          "key": "cal1",
+          "text": "Counting the right event calibrates the probability of use.",
+          "em": [
+            "calibrates"
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "cal2",
+          "text": "In replay, its calibration error was 0.01 to 0.08 in every τ²-bench domain.",
+          "say": "In replay, its calibration error was zero point zero one to zero point zero eight in every tau two bench domain.",
+          "em": [
+            "0.01 to 0.08"
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "cal3",
+          "text": "Scored on the next step instead, it was 0.06 to 0.16.",
+          "say": "Scored on the next step instead, it was zero point zero six to zero point one six.",
+          "em": [
+            "0.06 to 0.16."
+          ],
+          "post": 0.3
+        }
+      ]
+    },
+    {
+      "key": "audit",
+      "lead": 0.7,
+      "tail": 0.8,
+      "lines": [
+        {
+          "key": "audit1",
+          "text": "A flow is audited as a program too.",
+          "em": [
+            "as a program"
+          ],
+          "post": 0.4
+        },
+        {
+          "key": "audit2",
+          "text": "Each decision is a categorical choice at its own address: a lookup, handing back, or another step.",
+          "em": [
+            "its own address:"
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "audit3",
+          "text": "fugue scores the agent's real path under it, in nats of surprise per decision.",
+          "em": [
+            "nats of surprise"
+          ],
+          "post": 0.3
+        }
+      ]
+    },
+    {
+      "key": "end",
+      "lead": 1.0,
+      "tail": 3.6,
+      "lines": [
+        {
+          "key": "end1",
+          "text": "The paper gives the proofs and the benchmark numbers. The worked examples are the walkthrough's.",
+          "em": [
+            "the proofs and the benchmark numbers."
+          ],
+          "post": 0
+        }
+      ]
+    }
+  ]
+}

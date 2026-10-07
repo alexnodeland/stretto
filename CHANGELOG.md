@@ -4,6 +4,13 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 
 ## Unreleased
 
+### Two deep-dive films, and the explainer on the home page
+
+- The site's home page opens on the explainer video, full width under the hero's words, with a play button and a "Watch the explainer" action, and two deep dives beside it.
+- A film on the math and the probabilistic programs inside stretto (`brand/media/math.mp4`), on the research page beside the paper. It covers the event a lookup is decided on, Proposition 1, the rule and its live costs, the back-off counts, alpha's posterior as a fugue program, the bindings, calibration and the audit. The formulas are the paper's and the code's, and every number has its scope on screen.
+- A tour of the console (`brand/media/console.mp4`), on the console's guide page. It is made from the real console over its test fixtures: `brand/video/console/capture.sh` serves them, and `capture.mjs` drives the console as a user does and saves each shot.
+- The films share one stage (`brand/video/stage/`) and one renderer, `node brand/video/film.mjs FILM`. `narrate.py` voices any film on it, compares numbers digit by digit, and pins "Dirichlet" and "nats" in its lexicon.
+
 ### The explainer video, remade
 
 - The explainer video (`brand/media/explainer.mp4`) is a new film: ten chapters, one diagram each, on a still stage, from a cold open on the proxy's own output to the live results and how to start. It adds a chapter on the console, shown from its own screens. It shows the real thing: the reads a result carries as the proxy writes them, τ²-bench retail's tools, the counts of the flow in `docs/examples/`, and the commands of the docs. The line being spoken is set at the foot of the frame, each word lit as it is said. The poster and the README's teaser come from it.

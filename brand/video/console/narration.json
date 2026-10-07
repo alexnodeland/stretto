@@ -1,0 +1,225 @@
+{
+  "about": "The console film's script: stretto-console, driven over its test fixtures (capture.sh), page by page. Chapters (`beats`) of lines, as the explainer's: `text` is the caption, `say` what the voice says, `em` the phrases lit in petrol, `post` the pause after a line. Every line describes what its shot shows, and the console's own docs (docs/console.md) say. narrate.py voices it (console-video).",
+  "beats": [
+    {
+      "key": "cold",
+      "min": 6.8,
+      "lines": []
+    },
+    {
+      "key": "title",
+      "lead": 4.0,
+      "tail": 0.8,
+      "lines": [
+        {
+          "key": "title1",
+          "text": "The console is stretto's management plane: a web app on your own machine.",
+          "em": [
+            "management plane:"
+          ],
+          "post": 0.5
+        },
+        {
+          "key": "title2",
+          "text": "It reads the files stretto writes, through stretto's own code.",
+          "post": 0.3
+        }
+      ]
+    },
+    {
+      "key": "overview",
+      "lead": 0.7,
+      "tail": 0.7,
+      "lines": [
+        {
+          "key": "ov1",
+          "text": "The overview counts this week's sessions, and the agent's calls and the lookups flows served.",
+          "em": [
+            "the lookups flows served."
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "ov2",
+          "text": "Below, each domain: a server's name, with its sessions, flows and registry entry.",
+          "em": [
+            "each domain:"
+          ],
+          "post": 0.3
+        }
+      ]
+    },
+    {
+      "key": "servers",
+      "lead": 0.7,
+      "tail": 0.7,
+      "lines": [
+        {
+          "key": "sv1",
+          "text": "Servers lists the MCP servers stretto fronts: recording, in shadow, or serving a flow.",
+          "em": [
+            "the MCP servers stretto fronts,"
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "sv2",
+          "text": "Each shows what stretto init prints, to paste into your host. The console never edits your host.",
+          "em": [
+            "to paste into your host."
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "sv3",
+          "text": "Test the connection, and it lists the server's tools, each marked read or write.",
+          "em": [
+            "read or write."
+          ],
+          "post": 0.3
+        }
+      ]
+    },
+    {
+      "key": "sessions",
+      "lead": 0.7,
+      "tail": 0.7,
+      "lines": [
+        {
+          "key": "se1",
+          "text": "Sessions lists every recording: served, in shadow, or recorded.",
+          "em": [
+            "served, in shadow, or recorded."
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "se2",
+          "text": "Open a served one. After the agent's first call, the flow read ahead three times.",
+          "em": [
+            "read ahead three times."
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "se3",
+          "text": "Each lookup shows its chance, times its binding, against the threshold.",
+          "em": [
+            "against the threshold."
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "se4",
+          "text": "Decisions lists them all, with where the flow handed back, and why.",
+          "em": [
+            "handed back, and why."
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "se5",
+          "text": "In shadow, it shows what the flow would have read, with nothing looked up.",
+          "em": [
+            "nothing looked up."
+          ],
+          "post": 0.3
+        }
+      ]
+    },
+    {
+      "key": "flows",
+      "lead": 0.7,
+      "tail": 0.7,
+      "lines": [
+        {
+          "key": "fl1",
+          "text": "A flow's page draws its graph: the calls it decides after, and the reads it makes.",
+          "em": [
+            "its graph:"
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "fl2",
+          "text": "Move the threshold to 0.5, and one of its three sites hands back.",
+          "say": "Move the threshold to zero point five, and one of its three sites hands back.",
+          "em": [
+            "hands back."
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "fl3",
+          "text": "Review renders the flow for a reviewer. Compare shows what changed against another.",
+          "em": [
+            "Review",
+            "Compare"
+          ],
+          "post": 0.3
+        }
+      ]
+    },
+    {
+      "key": "jobs",
+      "lead": 0.7,
+      "tail": 0.7,
+      "lines": [
+        {
+          "key": "jb1",
+          "text": "Jobs run the stretto CLI from the page: learn, promote, audit, and more.",
+          "em": [
+            "from the page:"
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "jb2",
+          "text": "Here, an audit of the shop flow on its served sessions. The report opens in place.",
+          "em": [
+            "The report opens in place."
+          ],
+          "post": 0.3
+        }
+      ]
+    },
+    {
+      "key": "more",
+      "lead": 0.7,
+      "tail": 0.7,
+      "lines": [
+        {
+          "key": "mo1",
+          "text": "Control K jumps to any page, server, session or flow.",
+          "em": [
+            "Control K"
+          ],
+          "post": 0.45
+        },
+        {
+          "key": "mo2",
+          "text": "Start it read-only, and it refuses every change.",
+          "em": [
+            "read-only,"
+          ],
+          "post": 0.3
+        }
+      ]
+    },
+    {
+      "key": "end",
+      "lead": 1.0,
+      "tail": 3.6,
+      "lines": [
+        {
+          "key": "end1",
+          "text": "Run it with make console in a checkout, or in a container with docker compose.",
+          "em": [
+            "make console"
+          ],
+          "post": 0
+        }
+      ]
+    }
+  ]
+}

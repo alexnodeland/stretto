@@ -1,0 +1,169 @@
+WEBVTT
+
+1
+00:00:10.400 --> 00:00:13.589
+The math inside stretto, as the code computes it.
+
+2
+00:00:14.089 --> 00:00:18.384
+One event to estimate, one rule to act on it, and the counts between.
+
+3
+00:00:20.184 --> 00:00:24.200
+A lookup pays off if the agent uses it before its next write.
+
+4
+00:00:24.650 --> 00:00:30.750
+So stretto estimates q: the chance a read is among those the agent makes before it writes.
+
+5
+00:00:31.200 --> 00:00:35.844
+That chance is at least the chance the read comes next, and often far larger.
+
+6
+00:00:36.294 --> 00:00:42.214
+After a user's details, the habit put an order next at 0.64.
+
+7
+00:00:42.214 --> 00:00:46.264
+The agents read one before the write 94% of the time.
+
+8
+00:00:47.964 --> 00:00:51.949
+A flow makes only reads, and reads leave the state as it was.
+
+9
+00:00:52.399 --> 00:00:56.772
+If the agent makes the same calls, every write lands on the same state.
+
+10
+00:00:57.222 --> 00:01:00.822
+A wrong lookup changes only what the agent reads.
+
+11
+00:01:00.822 --> 00:01:02.467
+Its worst case is a detour.
+
+12
+00:01:04.167 --> 00:01:07.527
+Used, a lookup saves a turn, worth beta.
+
+13
+00:01:07.527 --> 00:01:09.813
+Unused, it costs a detour, delta.
+
+14
+00:01:10.263 --> 00:01:15.738
+Its expected value is q times beta, minus one minus q, times delta.
+
+15
+00:01:16.188 --> 00:01:21.084
+That's positive exactly when q clears delta over beta plus delta.
+
+16
+00:01:21.634 --> 00:01:28.899
+Live on τ²-bench, beta was about 6,000 input tokens and delta about 2,530.
+
+17
+00:01:29.349 --> 00:01:32.329
+So the line sits at about 0.3.
+
+18
+00:01:32.329 --> 00:01:35.361
+In airline and telecom, the counts put it lower.
+
+19
+00:01:37.161 --> 00:01:39.461
+The chances come from counts.
+
+20
+00:01:39.461 --> 00:01:43.991
+Each step becomes its tool, its outcome, and a feature of its result.
+
+21
+00:01:44.441 --> 00:01:47.802
+A back-off model predicts the next step from the last two.
+
+22
+00:01:48.202 --> 00:01:54.281
+Each context is a Dirichlet–multinomial, with the shorter context as its prior mean.
+
+23
+00:01:54.731 --> 00:02:00.065
+For the reach decider, the same contexts count each read used before the next write.
+
+24
+00:02:01.765 --> 00:02:04.865
+Alpha sets how fast the counts outweigh the prior.
+
+25
+00:02:04.865 --> 00:02:06.328
+It isn't tuned by hand.
+
+26
+00:02:06.778 --> 00:02:11.431
+It's inferred, with fugue, a probabilistic programming library for Rust.
+
+27
+00:02:11.881 --> 00:02:14.781
+The program draws log alpha from a normal prior,
+
+28
+00:02:14.781 --> 00:02:18.538
+and scores the episodes, one step at a time.
+
+29
+00:02:18.988 --> 00:02:24.025
+Metropolis–Hastings samples the posterior, and the flow keeps its median.
+
+30
+00:02:25.825 --> 00:02:28.665
+A lookup also needs its arguments.
+
+31
+00:02:28.665 --> 00:02:30.682
+stretto counts where each one came from.
+
+32
+00:02:31.132 --> 00:02:35.006
+A binding's chance is right over tried, shrunk toward one half.
+
+33
+00:02:35.456 --> 00:02:40.133
+The decision multiplies the two: the read's chance, times its arguments'.
+
+34
+00:02:41.833 --> 00:02:45.444
+Counting the right event calibrates the probability of use.
+
+35
+00:02:45.894 --> 00:02:54.090
+In replay, its calibration error was 0.01 to 0.08 in every τ²-bench domain.
+
+36
+00:02:54.540 --> 00:03:00.312
+Scored on the next step instead, it was 0.06 to 0.16.
+
+37
+00:03:02.212 --> 00:03:04.636
+A flow is audited as a program too.
+
+38
+00:03:05.036 --> 00:03:08.916
+Each decision is a categorical choice at its own address:
+
+39
+00:03:08.916 --> 00:03:11.563
+a lookup, handing back, or another step.
+
+40
+00:03:12.013 --> 00:03:17.330
+fugue scores the agent's real path under it, in nats of surprise per decision.
+
+41
+00:03:19.430 --> 00:03:23.070
+The paper gives the proofs and the benchmark numbers.
+
+42
+00:03:23.070 --> 00:03:25.267
+The worked examples are the walkthrough's.

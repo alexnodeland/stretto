@@ -46,7 +46,13 @@ const brandFiles = {
   explainerPage: 'explainer/index.html',
   walkthroughVideo: 'media/walkthrough.mp4',
   walkthroughPoster: 'media/walkthrough-poster.png',
-  walkthroughCaptions: 'media/walkthrough.vtt'
+  walkthroughCaptions: 'media/walkthrough.vtt',
+  mathVideo: 'media/math.mp4',
+  mathPoster: 'media/math-poster.png',
+  mathCaptions: 'media/math.vtt',
+  consoleVideo: 'media/console.mp4',
+  consolePoster: 'media/console-poster.png',
+  consoleCaptions: 'media/console.vtt'
 } as const
 
 export type BrandAssets = Record<keyof typeof brandFiles, string | false>

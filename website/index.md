@@ -13,11 +13,17 @@ hero:
     alt: ''
   actions:
     - theme: brand
+      text: Watch the explainer
+      link: '#film'
+    - theme: alt
       text: Get started
       link: /guide/quick-start
     - theme: alt
       text: Why stretto?
       link: /guide/why
+
+film:
+  label: Watch the explainer
 
 features:
   - title: Any MCP server, any host
@@ -51,9 +57,6 @@ features:
 <p class="home-lead">stretto sits where MCP already puts a server. It records what your agent does, learns which reads follow which calls, and serves those reads behind the agent's own calls.</p>
 
 <HowItWorks />
-
-<!-- BRAND SLOT: the explainer video (website/public/media/explainer.mp4). Embedded once; renders nothing until the file is there. -->
-<BrandEmbed kind="explainer" caption="stretto, explained in under three minutes." />
 
 ## What the agent sees
 

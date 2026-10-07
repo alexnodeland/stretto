@@ -34,3 +34,7 @@ From Auracle's `www/brand/voice.md` (the spoken voice) and its timelines:
 - **Script:** `explainer/narration.json` is a list of chapters (`beats`), each with its lines, a `lead` before its first line, a `post` pause after each line and a `tail` after its last. Every line is one or two sentences of at most 16 words. Its 37 lines run at 170 words a minute while speaking. Its chapters run longer than Auracle's, 12.6 to 24.0 seconds (median 18.8), since each holds three or four lines about one diagram; the diagram changes with each line instead.
 - **Picture:** one diagram per chapter on a still stage, built up as the words name its parts (`film.js`, timed by the voice's own words). The captions are set at the foot of the frame and lit word by word. What is shown is the real thing: the proxy's own wording for the reads it adds to a result, τ²-bench retail's tools, the counts of a flow in `docs/examples/`, and the console's own screens.
 - **Sound:** the voice and the music bed from `music.py`, with the mark's three entries at the start and the closing motif at the end. No effects.
+
+## The deep dives
+
+The math film and the console film (`math/`, `console/`) are drawn on the same stage, in the same voice and at the same pace, with the same grammar: a cold open, the lockup, chapters of one or two short lines each, and the end card. The console film's picture is the real console, captured by driving it (`console/capture.sh`); its camera moves in on what each line names, and a cursor goes to each control the capture clicked.

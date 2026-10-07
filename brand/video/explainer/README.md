@@ -18,19 +18,19 @@ cd brand
 PLAYWRIGHT_BROWSERS_PATH=/path/to/playwright-browsers \
 FFMPEG=/path/to/ffmpeg \
 PYTHON=/path/to/python-with-numpy-and-soundfile \
-node video/explainer/render.mjs
+node video/film.mjs explainer
 ```
 
 `PLAYWRIGHT_BROWSERS_PATH` is needed only if Playwright's Chromium is not in its default place; `FFMPEG` only if ffmpeg is not on PATH (else imageio-ffmpeg's is used); `PYTHON` is the Python that runs `video/music.py` (it needs numpy and soundfile; without it the mix has no music, and the renderer says so). On 4 CPUs it takes about 5 minutes for the video's 6,286 frames with the default two pages, and under half a minute for the teaser.
 
 ```sh
-node video/explainer/render.mjs --info                  # the timeline the voice sets, without rendering: scene starts, cues, anchors not found
-node video/explainer/render.mjs --only video            # explainer.mp4, explainer.vtt, explainer-poster.png
-node video/explainer/render.mjs --only teaser           # explainer-teaser.gif and explainer-teaser.webm
-node video/explainer/render.mjs --audio-only            # the sound and captions again, into the explainer.mp4 there is
-node video/explainer/render.mjs --poster-only           # explainer-poster.png alone, without a caption
-node video/explainer/render.mjs --stills 12,48.5 --width 960   # single frames, to video/out/stills/
-node video/explainer/render.mjs --preview 88,95         # a silent stretch, to video/out/preview.mp4
+node video/film.mjs explainer --info                  # the timeline the voice sets, without rendering: scene starts, cues, anchors not found
+node video/film.mjs explainer --only video            # explainer.mp4, explainer.vtt, explainer-poster.png
+node video/film.mjs explainer --only teaser           # explainer-teaser.gif and explainer-teaser.webm
+node video/film.mjs explainer --audio-only            # the sound and captions again, into the explainer.mp4 there is
+node video/film.mjs explainer --poster-only           # explainer-poster.png alone, without a caption
+node video/film.mjs explainer --stills 12,48.5 --width 960   # single frames, to video/out/stills/
+node video/film.mjs explainer --preview 88,95         # a silent stretch, to video/out/preview.mp4
 ```
 
 Options: `--workers N` (Chromium pages drawing frames at once; default CPUs − 1, at most 2), `--crf N` (default 26), `--fps`, `--poster T`, `--cut teaser` (for `--stills` and `--preview`). The mix is written to `video/out/explainer/mix.wav` and the music to `video/out/music/explainer-video.wav`; nothing is written into `video/out/voice/`.
@@ -44,12 +44,10 @@ Every frame is drawn by `window.__render(t)`, screenshotted by headless Chromium
 | File | What it holds |
 |---|---|
 | `narration.json` | The script: chapters (`beats`), each with a `lead`, a `tail`, a least length `min`, and its lines: `text` (captions), `say` (what the voice says), `em` (the phrases lit in petrol), `post` (the pause after) |
-| `index.html`, `style.css` | The stage: the dot grid, the chapters' layer and the overlay (the chapter's name, the mark, the captions), in the brand's dark palette |
-| `logo.js` | The wordmark's outline, from `brand/logo/stretto-wordmark-dark.svg` |
-| `stage.js` | Easing, a seeded generator, and the pieces every chapter draws with: cards, chips, arrows, packets, code, typing, captions |
+| `index.html` | The page: the shared stage (`../stage/`) with this film's chapters |
 | `film.js` | The chapters, from the cold open to the end card, and the teaser |
-| `main.js` | The timeline the voice sets, the frame's furniture, and `window.__render` |
-| `render.mjs` | The renderer: frames, the sound mix, captions, poster, teaser |
+| `../stage/` | What the films share: `style.css` (the dot grid, the layers, the brand's dark palette), `logo.js` (the wordmark's outline, from `brand/logo/stretto-wordmark-dark.svg`), `stage.js` (easing, a seeded generator, and the pieces: cards, chips, arrows, packets, code, typing, bar charts, captions) and `main.js` (the timeline the voice sets, the frame's furniture, and `window.__render`) |
+| `../film.mjs` | The renderer, for any film on the stage: frames, the sound mix, captions, poster, and this film's teaser |
 
 ## The chapters
 
@@ -71,9 +69,9 @@ Every frame is drawn by `window.__render(t)`, screenshotted by headless Chromium
 
 ## How timing follows the voice
 
-`main.js` lays the chapters end to end from the voice's own clips: each waits its `lead`, holds each line for as long as the voice takes to say it plus its `post`, then its `tail`, and lasts at least `min`. A longer line makes a longer chapter, and every chapter after it moves.
+`../stage/main.js` lays the chapters end to end from the voice's own clips: each waits its `lead`, holds each line for as long as the voice takes to say it plus its `post`, then its `tail`, and lasts at least `min`. A longer line makes a longer chapter, and every chapter after it moves.
 
-Beats inside a chapter are tied to words: `ctx.at('idea4', 'skips')` is when the voice says "skips", so the turns close up then. The manifest's words are what a speech recognizer heard; `render.mjs` aligns them to the spoken script by edit distance (`alignWords` in `../lib.mjs`) and passes the page the script's words with their times (`window.__voice`). A caption's written words take their times from the spoken ones, one for one where they match, else by their share of the line (a line whose numbers are written as digits). Before a line is voiced, it is estimated at 2.6 words a second, so the video can be built and checked without the voice; `--info` names any anchor placed by estimate.
+Beats inside a chapter are tied to words: `ctx.at('idea4', 'skips')` is when the voice says "skips", so the turns close up then. The manifest's words are what a speech recognizer heard; `../film.mjs` aligns them to the spoken script by edit distance (`alignWords` in `../lib.mjs`) and passes the page the script's words with their times (`window.__voice`). A caption's written words take their times from the spoken ones, one for one where they match, else by their share of the line (a line whose numbers are written as digits). Before a line is voiced, it is estimated at 2.6 words a second, so the video can be built and checked without the voice; `--info` names any anchor placed by estimate.
 
 The page publishes what the renderer needs: `window.__duration`, `__marks` (chapter starts), `__lines` (when each clip starts), `__music` (`{open: [a, b, c], end}`: the three bars' entries, and the closing motif just after the last word), `__poster`, and `__events`, which is empty: there are no sound effects.
 

@@ -15,8 +15,8 @@
   - its staged next version, how the two did on the sessions as they arrived, and every committed version: commit or roll back from there.
 - **Jobs.** `learn`, `promote`, `audit`, `stage`, `redact` and `doctor`, run from the page, with their output as it comes and the files they wrote.
 
-![The console's overview: this week's sessions, tool calls, lookups served and shadow decisions; the tool calls of the last 14 days; the health checks; and each domain](../brand/media/console/overview-light.png#gh-light-mode-only)
-![The console's overview: this week's sessions, tool calls, lookups served and shadow decisions; the tool calls of the last 14 days; the health checks; and each domain](../brand/media/console/overview-dark.png#gh-dark-mode-only)
+![The console's overview: this week's sessions, and the tool calls, lookups served and shadow decisions of every session; the tool calls of the last 14 days; the health checks; and each domain](../brand/media/console/overview-light.png#gh-light-mode-only)
+![The console's overview: this week's sessions, and the tool calls, lookups served and shadow decisions of every session; the tool calls of the last 14 days; the health checks; and each domain](../brand/media/console/overview-dark.png#gh-dark-mode-only)
 
 It reads everything through stretto's own code, so what it shows is what `stretto flow-show`, `stretto init`, `stretto flow-log` and `stretto doctor` say. The one file it owns is `servers.json`, the registry of servers. [The crate's README](../crates/stretto-console/README.md) documents its API.
 
@@ -113,7 +113,7 @@ The console follows the data directory as it changes: a new session, flow or job
 
 ### Overview
 
-This week's sessions, tool calls, lookups served and shadow decisions, and the tool calls of the last 14 days, as a chart or a table. Each domain, with its mode, flow, server and last session. The newest sessions and jobs, and the checks `stretto doctor` makes. The picture at the top of this page is one. With no data yet, it shows the three steps to get some: add a server, use your agent through it, learn a flow.
+This week's sessions, and every session's tool calls, lookups served and shadow decisions; the tool calls of the last 14 days, as a chart or a table. Each domain, with its mode, flow, server and last session. The newest sessions and jobs, and the checks `stretto doctor` makes. The picture at the top of this page is one. With no data yet, it shows the three steps to get some: add a server, use your agent through it, learn a flow.
 
 ### Servers
 

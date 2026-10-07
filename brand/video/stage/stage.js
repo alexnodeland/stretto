@@ -194,5 +194,47 @@
     });
   }
 
-  window.ST = { C, clamp, lerp, E, ramp, fade, rng, el, box, show, esc, card, chip, arrow, packet, code, type, caption, lightCaption };
+  // ------------------------------------------------------------- the brand
+  const markSvg = (h, ink = '#eceff0', acc = C.petrolG) => {
+    const w = (h * 31) / 30;
+    return `<svg width="${w}" height="${h}" viewBox="0 0 31 30" style="display:block"><rect x="0" y="0.5" width="20" height="7" rx="1.5" fill="${ink}"/><rect x="6" y="11.5" width="20" height="7" rx="1.5" fill="${acc}"/><rect x="11" y="22.5" width="20" height="7" rx="1.5" fill="${acc}"/></svg>`;
+  };
+  const wordmarkSvg = (h, fill = '#eceff0') => {
+    const W = window.STRETTO_WORDMARK;
+    const [, , vw, vh] = W.viewBox.split(' ').map(Number);
+    return `<svg width="${(h * vw) / vh}" height="${h}" viewBox="${W.viewBox}" style="display:block"><path fill="${fill}" transform="${W.transform}" d="${W.d}"/></svg>`;
+  };
+
+
+  /** A bar chart of fewer LLM turns: rows of [name, pct, ci]. */
+  function bars(layer, rows, { x, y, w, rowH = 104, max = 30, kind = 'petrol', label }) {
+    const head = box(layer, { x, y: y - 56, cls: 'label', text: label });
+    const els = rows.map(([name, pct, ci], i) => {
+      const yy = y + i * rowH;
+      const n = box(layer, { x, y: yy, cls: 'note', text: name, style: { color: C.text, fontSize: '25px', fontWeight: 500 } });
+      const track = box(layer, { x, y: yy + 42, w, h: 22, style: { borderRadius: '6px', background: C.surface2, border: `1px solid ${C.border}` } });
+      const fill = box(track, { x: 0, y: 0, h: 20, w: 0, style: { borderRadius: '5px', background: kind === 'petrol' ? C.petrolG : '#5d6a6e' } });
+      const v = box(layer, { x: x + w + 24, y: yy + 53, ay: 0.5, cls: 'big num', text: '', style: { fontSize: '40px', color: kind === 'petrol' ? C.petrol : C.muted } });
+      const c = ci ? box(layer, { x: x + w + 24, y: yy + 88, ay: 0.5, cls: 'code', text: `95% CI ${ci}`, style: { fontSize: '15px', color: C.faint } }) : null;
+      return { n, track, fill, v, c, pct };
+    });
+    return {
+      head, els,
+      set(t, starts) {
+        show(head, t, starts[0] - 0.4, { d: 0.4, dy: 0 });
+        els.forEach((e, i) => {
+          const s = starts[i];
+          show(e.n, t, s, { d: 0.4, dy: 6 });
+          show(e.track, t, s, { d: 0.4, dy: 6 });
+          const u = ramp(t, s + 0.15, s + 1.1, E.out3);
+          e.fill.style.width = `${((w - 2) * (e.pct / max) * u).toFixed(1)}px`;
+          e.v.textContent = `−${(e.pct * u).toFixed(1)}%`;
+          show(e.v, t, s + 0.15, { d: 0.3, dy: 0 });
+          if (e.c) show(e.c, t, s + 0.8, { d: 0.4, dy: 0 });
+        });
+      },
+    };
+  }
+
+  window.ST = { C, clamp, lerp, E, ramp, fade, rng, el, box, show, esc, card, chip, arrow, packet, code, type, caption, lightCaption, markSvg, wordmarkSvg, bars };
 })();
