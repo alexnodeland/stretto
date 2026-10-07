@@ -46,10 +46,10 @@
   /** Highlight a span of code (data-id) by adding the hl class from time `at`. */
   const hl = (n, on) => n && n.classList.toggle('hl', on);
 
-  // ============================================================== cold open
+  // ================================================================ teaser's picture
   // No words: a call goes out, its result comes back with the two reads the
   // agent would have made next riding in it, and the turns close up.
-  function coldOpen(ctx, layer, t0, { loop = null } = {}) {
+  function lookupLoop(ctx, layer, t0, { loop = null } = {}) {
     const svg = svgOf(layer);
     const res = card(layer, { x: 960, y: 190, w: 1000, h: 420, ax: 0.5, title: '← get_user_details <span style="color:#606b6f">{"user_id": "mei_tan_7"}</span>', tag: 'tool result' });
     const rec = code(res.body, [
@@ -101,10 +101,6 @@
       counter.style.opacity = ramp(tl, T + 1.2, T + 1.7).toFixed(3);
       void svg;
     };
-  }
-
-  function sceneCold(ctx) {
-    scene(ctx, 'cold', (layer, b) => coldOpen(ctx, layer, b.t0 + 0.3), { fin: 0, fout: 0.6 });
   }
 
   // ================================================================ title
@@ -679,7 +675,6 @@
 
   // ================================================================= cuts
   function video(ctx) {
-    sceneCold(ctx);
     sceneTitle(ctx);
     sceneTurns(ctx);
     sceneDecided(ctx);
@@ -694,11 +689,11 @@
     sceneEnd(ctx);
   }
 
-  // The teaser: the cold open alone, as an 8-second loop for the README.
+  // The teaser: a lookup riding in a result, as an 8-second loop for the README.
   function teaser(ctx) {
     const D = 8;
     ctx.scene({ key: 'teaser', t0: 0, t1: D, fin: 0, fout: 0, build: layer => {
-      const up = coldOpen(ctx, layer, 0, { loop: D });
+      const up = lookupLoop(ctx, layer, 0, { loop: D });
       return t => {
         up(t);
         // Fade out and back in across the loop's seam.

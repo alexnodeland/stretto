@@ -1,8 +1,9 @@
 <script setup lang="ts">
-// The home page's film: the explainer, full width, straight under the hero's
-// words (the `home-hero-after` slot, set in theme/index.ts). The poster shows
-// with one large play control; a click starts the video with its controls and
-// captions. Renders nothing until the brand kit's files are in public/
+// The home page's films: the explainer, full width, straight under the hero's
+// words (the `home-hero-after` slot, set in theme/index.ts), and under it the
+// two deep dives, each playing where it is listed. A poster shows with one
+// play control; a click starts that video with its controls and captions.
+// Renders nothing until the brand kit's files are in public/
 // (scripts/copy-brand.mjs), as BrandEmbed does.
 import { computed, ref } from 'vue'
 import { useData, withBase } from 'vitepress'
@@ -20,11 +21,13 @@ const page = computed(() => (assets.value?.explainerPage ? withBase('/explainer/
 /** The deep dives, under the film: each once its file is in public/. */
 const deeper = computed(() =>
   [
-    { key: 'math', title: 'The math', text: 'The event, the rule, the counts, and the probabilistic programs, as the code computes them.', href: '/research/paper#film-math' },
-    { key: 'console', title: 'The console', text: 'Servers, sessions, flows and jobs, on the real console.', href: '/guide/console#film-console' }
+    { key: 'math', title: 'The math, and the probabilistic programs', text: 'The event stretto estimates, the rule that acts on it, the counts and alpha’s posterior in fugue, and how the estimate held up in replay and live.', href: '/research/paper', more: 'The paper' },
+    { key: 'console', title: 'The console', text: 'Servers, sessions, flows and jobs, driven on the real console: a connection test, a session’s decisions, a threshold moved, an audit run from the page.', href: '/guide/console', more: 'The console guide' }
   ].flatMap(d => {
     const a = assets.value as Record<string, string | false> | undefined
-    return a?.[`${d.key}Video`] ? [{ ...d, poster: at(a[`${d.key}Poster`] as string | false), href: withBase(d.href) }] : []
+    return a?.[`${d.key}Video`]
+      ? [{ ...d, src: at(a[`${d.key}Video`] as string), poster: at(a[`${d.key}Poster`] as string | false), captions: at(a[`${d.key}Captions`] as string | false), href: withBase(d.href) }]
+      : []
   })
 )
 
@@ -37,10 +40,20 @@ function play() {
   v.controls = true
   void v.play()
 }
+/** A deep dive plays where it is listed, in place of its poster. */
+const playing = ref<string | null>(null)
+function playDive(key: string, el: HTMLVideoElement | null) {
+  playing.value = key
+  if (el) {
+    el.controls = true
+    void el.play()
+  }
+}
+const diveVideos = ref<Record<string, HTMLVideoElement | null>>({})
 </script>
 
 <template>
-  <section v-if="src && film" id="film" class="hero-film" aria-label="The explainer video">
+  <section v-if="src && film" id="film" class="hero-film" aria-label="The films">
     <div class="hero-film__frame">
       <video
         ref="video"
@@ -67,14 +80,32 @@ function play() {
       <a v-if="page" :href="page" target="_self">Or step through it at your own pace.</a>
     </p>
     <div v-if="deeper.length" class="hero-film__deeper" aria-label="Deep dives">
-      <a v-for="d in deeper" :key="d.key" class="hero-film__dive" :href="d.href">
-        <img v-if="d.poster" :src="d.poster" alt="" loading="lazy" />
-        <span class="hero-film__dive-text">
+      <article v-for="d in deeper" :key="d.key" class="hero-film__dive">
+        <div class="hero-film__dive-frame">
+          <video
+            :ref="el => (diveVideos[d.key] = el as HTMLVideoElement | null)"
+            :src="d.src"
+            :poster="d.poster"
+            preload="none"
+            playsinline
+            :controls="playing === d.key"
+            :aria-label="`Deep dive: ${d.title}`"
+          >
+            <track v-if="d.captions" kind="captions" :src="d.captions" srclang="en" label="English" />
+          </video>
+          <button v-if="playing !== d.key" class="hero-film__dive-play" type="button" :aria-label="`Play the deep dive: ${d.title}`" @click="playDive(d.key, diveVideos[d.key])">
+            <span class="hero-film__icon hero-film__icon--small" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="22" height="22"><path d="M8 5.5v13l11-6.5z" fill="currentColor" /></svg>
+            </span>
+          </button>
+        </div>
+        <div class="hero-film__dive-text">
           <span class="hero-film__dive-kicker">Deep dive</span>
           <strong>{{ d.title }}</strong>
           <span>{{ d.text }}</span>
-        </span>
-      </a>
+          <a :href="d.href">{{ d.more }} →</a>
+        </div>
+      </article>
     </div>
   </section>
 </template>
@@ -183,8 +214,8 @@ function play() {
 .hero-film__deeper {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 16px;
-  margin-top: 24px;
+  gap: 24px;
+  margin-top: 32px;
 }
 @media (min-width: 768px) {
   .hero-film__deeper {
@@ -193,32 +224,55 @@ function play() {
 }
 .hero-film__dive {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px;
+  flex-direction: column;
+  gap: 14px;
+}
+.hero-film__dive-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
   border: 1px solid var(--vp-c-divider);
   border-radius: 12px;
-  background: var(--vp-c-bg-soft);
-  color: inherit;
-  text-decoration: none;
-  transition: border-color 0.2s;
-}
-.hero-film__dive:hover {
-  border-color: var(--vp-c-brand-1);
-}
-.hero-film__dive img {
-  flex: none;
-  width: 168px;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
-  border-radius: 8px;
   background: #0b0f11;
+}
+.hero-film__dive-frame video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #0b0f11;
+}
+.hero-film__dive-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  border: 0;
+  cursor: pointer;
+  background: rgba(11, 15, 17, 0.28);
+  transition: background 0.2s;
+}
+.hero-film__dive-play:hover {
+  background: rgba(11, 15, 17, 0.12);
+}
+.hero-film__dive-play:focus-visible {
+  outline: 3px solid var(--vp-c-brand-1);
+  outline-offset: -3px;
+}
+.hero-film__dive-play:hover .hero-film__icon {
+  transform: scale(1.06);
+}
+.hero-film__icon--small {
+  width: 56px;
+  height: 56px;
+  box-shadow: 0 0 0 8px rgba(51, 192, 199, 0.18);
 }
 .hero-film__dive-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  line-height: 1.4;
+  gap: 4px;
+  line-height: 1.45;
 }
 .hero-film__dive-kicker {
   font-family: var(--vp-font-family-mono);
@@ -227,16 +281,20 @@ function play() {
   text-transform: uppercase;
   color: var(--vp-c-brand-1);
 }
-.hero-film__dive strong {
-  font-size: 16px;
+.hero-film__dive-text strong {
+  font-size: 17px;
 }
-.hero-film__dive-text > span:last-child {
+.hero-film__dive-text > span:last-of-type {
   font-size: 14px;
   color: var(--vp-c-text-2);
 }
-@media (max-width: 480px) {
-  .hero-film__dive img {
-    width: 112px;
-  }
+.hero-film__dive-text a {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--vp-c-brand-1);
+  text-decoration: none;
+}
+.hero-film__dive-text a:hover {
+  text-decoration: underline;
 }
 </style>

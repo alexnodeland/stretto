@@ -2,13 +2,8 @@
   "about": "The explainer video's script, in chapters (`beats`), each with its lines. `text` is what the captions show; `say`, where given, is what the voice says instead (numbers and names written for speaking); `em` lists the phrases the frame lights in petrol as they are spoken. `lead` is the silence before a chapter's first line, `post` the pause after a line, `tail` the hold after a chapter's last line, all in seconds; `min` is a chapter's least length. narrate.py voices the lines (Kokoro, af_heart); film.js draws each chapter and times its parts by the voice's own words. The pacing follows PACING.md: one breath a sentence, one idea a line.",
   "beats": [
     {
-      "key": "cold",
-      "min": 7.6,
-      "lines": []
-    },
-    {
       "key": "title",
-      "lead": 4.2,
+      "lead": 2.6,
       "tail": 0.9,
       "lines": [
         {

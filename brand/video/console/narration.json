@@ -2,13 +2,8 @@
   "about": "The console film's script: stretto-console, driven over its test fixtures (capture.sh), page by page. Chapters (`beats`) of lines, as the explainer's: `text` is the caption, `say` what the voice says, `em` the phrases lit in petrol, `post` the pause after a line. Every line describes what its shot shows, and the console's own docs (docs/console.md) say. narrate.py voices it (console-video).",
   "beats": [
     {
-      "key": "cold",
-      "min": 6.8,
-      "lines": []
-    },
-    {
       "key": "title",
-      "lead": 4.0,
+      "lead": 2.6,
       "tail": 0.8,
       "lines": [
         {

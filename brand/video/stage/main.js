@@ -171,6 +171,9 @@
     document.fonts.load('700 20px "JetBrains Mono"'),
     document.fonts.load('400 20px Inter'),
     document.fonts.load('600 20px Inter'),
+    // Any faces the film draws with besides these (the math film's KaTeX),
+    // loaded before it is built, since its chapters measure what they lay out.
+    ...((window.Film && window.Film.fonts) || []).map(f => document.fonts.load(f)),
   ]).then(() => document.fonts.ready).then(() => {
     window.__hasTeaser = typeof window.Film.teaser === 'function';
     const built = CUT === 'teaser' ? (window.__hasTeaser ? window.Film.teaser(ctx) : { duration: 0 }) : window.Film.video(ctx);

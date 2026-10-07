@@ -213,7 +213,7 @@ NUMBERS = {"zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six
 # How small.en writes a few of the scripts' words, whoever says them.
 HEARD_AS = [(r"\bin it\b", "init"), (r"\bfile system\b", "filesystem"), (r"\b(clod|clawed)\b", "claude"),
             (r"\bwalk ?throughs\b", "walkthrough's"), (r"\bwalk through\b", "walkthrough"), (r"\bstrato ?proxy\b", "stretto proxy"),
-            (r"\breeds\b", "reads"), (r"\breed's\b", "read's")]
+            (r"\breeds\b", "reads"), (r"\breed's\b", "read's"), (r"\btao ?2\b", "tau two"), (r"\bdiraclet\b", "dirichlet")]
 
 
 def comparable(text: str) -> list[str]:

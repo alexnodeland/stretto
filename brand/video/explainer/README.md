@@ -1,13 +1,13 @@
 # The explainer video
 
-A narrated explainer of stretto, 3 minutes 30 seconds long with the current voice-over: ten chapters between a cold open and an end card, each one diagram on a still stage, built up as the voice names its parts. Its pacing and look follow Auracle's films ([`../PACING.md`](../PACING.md)). It renders to `brand/media/`:
+A narrated explainer of stretto, 3 minutes 30 seconds long with the current voice-over: ten chapters between the title and an end card, each one diagram on a still stage, built up as the voice names its parts. Its pacing and look follow Auracle's films ([`../PACING.md`](../PACING.md)). It renders to `brand/media/`:
 
 | File | What it is |
 |---|---|
 | `explainer.mp4` | 1920 × 1080, 30 fps, H.264 High with faststart (`h264Args`, tuned below) and AAC sound: the voice and the music bed; 11.3 MB with the current voice-over (it must stay under 20 MB) |
 | `explainer.vtt` | Captions: each line's `text` from `narration.json`, timed by the voice's own words |
 | `explainer-poster.png` | The frame where the agent's one result carries the two reads stretto made, and its turns have closed up from five to three (`window.__poster`) |
-| `explainer-teaser.gif`, `.webm` | An 8-second loop at 1280 × 720: the cold open, a result with the two reads riding in it, the turns closing up |
+| `explainer-teaser.gif`, `.webm` | An 8-second loop at 1280 × 720, for the README: a `get_user_details` result comes back with the proxy's own block under it, `--- Also looked up automatically (current results; no need to repeat these calls) ---`, and the two `get_order_details` reads in it; the agent's five turns close up to three. It is drawn only for the teaser: the film opens on its title |
 
 ## Rendering
 
@@ -45,7 +45,7 @@ Every frame is drawn by `window.__render(t)`, screenshotted by headless Chromium
 |---|---|
 | `narration.json` | The script: chapters (`beats`), each with a `lead`, a `tail`, a least length `min`, and its lines: `text` (captions), `say` (what the voice says), `em` (the phrases lit in petrol), `post` (the pause after) |
 | `index.html` | The page: the shared stage (`../stage/`) with this film's chapters |
-| `film.js` | The chapters, from the cold open to the end card, and the teaser |
+| `film.js` | The chapters, from the title to the end card, and the teaser |
 | `../stage/` | What the films share: `style.css` (the dot grid, the layers, the brand's dark palette), `logo.js` (the wordmark's outline, from `brand/logo/stretto-wordmark-dark.svg`), `stage.js` (easing, a seeded generator, and the pieces: cards, chips, arrows, packets, code, typing, bar charts, captions) and `main.js` (the timeline the voice sets, the frame's furniture, and `window.__render`) |
 | `../film.mjs` | The renderer, for any film on the stage: frames, the sound mix, captions, poster, and this film's teaser |
 
@@ -53,7 +53,6 @@ Every frame is drawn by `window.__render(t)`, screenshotted by headless Chromium
 
 | # | Chapter | What the frame shows |
 |---|---|---|
-| | `cold` | No words. A `get_user_details` result comes back with the proxy's own block under it, `--- Also looked up automatically (current results; no need to repeat these calls) ---`, and the two `get_order_details` reads in it; the agent's five turns close up to three |
 | | `title` | The mark's three bars enter one after another, each before the last has finished, with the music's three entries; the wordmark; "Read ahead of your agent." |
 | 01 | `turns` | The conversation grows on the left; on the right, each LLM turn reads the whole conversation (a bar, longer each turn) and picks one step |
 | 02 | `decided` | The first result's record: the two order ids light, and arrows run to the next two turns, which read them; each is typed out again, one LLM turn each |

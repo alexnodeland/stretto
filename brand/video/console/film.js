@@ -130,21 +130,6 @@
     };
   }
 
-  // ============================================================ cold open
-  function sceneCold(ctx) {
-    const b = ctx.B.cold;
-    ctx.scene({ key: 'cold', t0: b.t0, t1: b.t1, fin: 0, fout: 0.6, build: layer => {
-      const w = browser(ctx, layer);
-      const T = b.t0 + 0.4;
-      const step = play(ctx, w, [
-        { t: T, shot: 'session', z: 1 },
-        { t: T + 1.6, z: 1.32, focus: bx('session', 'lookups', { h: 205 }), ring: bx('session', 'lookups', { h: 205 }) },
-        { t: T + 4.0, z: 1.75, focus: bx('session', 'score') },
-      ]);
-      return t => { show(w.frame, t, T - 0.3, { d: 0.8, dy: 16 }); step(t); };
-    } });
-  }
-
   // ================================================================ title
   function sceneTitle(ctx) {
     const b = ctx.B.title;
@@ -237,7 +222,6 @@
   }
 
   function video(ctx) {
-    sceneCold(ctx);
     sceneTitle(ctx);
     sceneTour(ctx);
     sceneEnd(ctx);
