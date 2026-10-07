@@ -1,10 +1,10 @@
 # The explainer video
 
-A narrated explainer of stretto, 3 minutes 30 seconds long with the current voice-over: ten chapters between the title and an end card, each one diagram on a still stage, built up as the voice names its parts. Its pacing and look follow Auracle's films ([`../PACING.md`](../PACING.md)). It renders to `brand/media/`:
+A narrated explainer of stretto, 3 minutes 20 seconds long with the current voice-over: ten chapters between the title and an end card, each one diagram on a still stage, built up as the voice names its parts. Its pacing and look follow Auracle's films ([`../PACING.md`](../PACING.md)). It renders to `brand/media/`:
 
 | File | What it is |
 |---|---|
-| `explainer.mp4` | 1920 × 1080, 30 fps, H.264 High with faststart (`h264Args`, tuned below) and AAC sound: the voice and the music bed; 11.3 MB with the current voice-over (it must stay under 20 MB) |
+| `explainer.mp4` | 1920 × 1080, 30 fps, H.264 High with faststart (`h264Args`, tuned below) and AAC sound: the voice and the music bed; 10.9 MB with the current voice-over (it must stay under 20 MB) |
 | `explainer.vtt` | Captions: each line's `text` from `narration.json`, timed by the voice's own words |
 | `explainer-poster.png` | The frame where the agent's one result carries the two reads stretto made, and its turns have closed up from five to three (`window.__poster`) |
 | `explainer-teaser.gif`, `.webm` | An 8-second loop at 1280 × 720, for the README: a `get_user_details` result comes back with the proxy's own block under it, `--- Also looked up automatically (current results; no need to repeat these calls) ---`, and the two `get_order_details` reads in it; the agent's five turns close up to three. It is drawn only for the teaser: the film opens on its title |
@@ -21,7 +21,7 @@ PYTHON=/path/to/python-with-numpy-and-soundfile \
 node video/film.mjs explainer
 ```
 
-`PLAYWRIGHT_BROWSERS_PATH` is needed only if Playwright's Chromium is not in its default place; `FFMPEG` only if ffmpeg is not on PATH (else imageio-ffmpeg's is used); `PYTHON` is the Python that runs `video/music.py` (it needs numpy and soundfile; without it the mix has no music, and the renderer says so). On 4 CPUs it takes about 5 minutes for the video's 6,286 frames with the default two pages, and under half a minute for the teaser.
+`PLAYWRIGHT_BROWSERS_PATH` is needed only if Playwright's Chromium is not in its default place; `FFMPEG` only if ffmpeg is not on PATH (else imageio-ffmpeg's is used); `PYTHON` is the Python that runs `video/music.py` (it needs numpy and soundfile; without it the mix has no music, and the renderer says so). On 4 CPUs it takes about 5 minutes for the video's 6,014 frames with the default two pages, and under half a minute for the teaser.
 
 ```sh
 node video/film.mjs explainer --info                  # the timeline the voice sets, without rendering: scene starts, cues, anchors not found

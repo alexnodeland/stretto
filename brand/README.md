@@ -103,7 +103,7 @@ It is 760 px tall at 1000 px wide and 876 px at 720 px, the same for every step;
 
 | File | Length | Size | Notes |
 |---|---|---|---|
-| `media/explainer.mp4` | 209.5 s, 1920 × 1080, 30 fps | 11.3 MB | H.264 High, yuv420p, BT.709, faststart; voice and music in AAC, at -16 LUFS |
+| `media/explainer.mp4` | 200.5 s, 1920 × 1080, 30 fps | 10.9 MB | H.264 High, yuv420p, BT.709, faststart; voice and music in AAC, at -16 LUFS |
 | `media/explainer.vtt` | 45 cues | 4 KB | The voice-over's captions (WebVTT), each starting on its first spoken word |
 | `media/explainer-poster.png` | 1920 × 1080 | 0.5 MB | One tool result carrying the two reads stretto made, and the turns closed up from five to three |
 | `media/explainer-teaser.gif` | 8 s loop, 1280 × 720, 15 fps | 0.6 MB | For the README |
