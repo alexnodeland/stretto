@@ -231,7 +231,7 @@ def ceilings(rows: list[dict], path: Path) -> None:
     left, right, bar, gap, head, top = 112, 70, 14, 6, 22, 48
     pw = 250
     height = lambda gs: sum(head + len(ds) * (bar + gap) for _, ds in gs)  # noqa: E731
-    cut = min(range(1, len(groups)), key=lambda i: max(height(groups[:i]), height(groups[i:])))
+    cut = min(range(1, len(groups)), key=lambda i: max(height(groups[:i]), height(groups[i:])), default=len(groups))
     panels = [groups[:cut], groups[cut:]]
     body = top + max(height(p) for p in panels)
     pane = left + pw + right

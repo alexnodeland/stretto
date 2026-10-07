@@ -67,4 +67,9 @@ The live pilots ran GLM-5.3 in Claude Code on a Z.ai coding plan, with τ²-benc
 
 ## Paper figures
 
-`scripts/paper_figures.py` draws the paper's figures from the round's published rows.
+`scripts/paper_figures.py` draws the paper's figures of published rows (Figures 5–7 and 9), and `scripts/paper_diagrams.py` its diagrams and the charts of its own tables (Figures 1, 2, 4, 8, 10 and 11), which it checks against the paper's text. `make` in `paper/latex/` then builds the PDF ([its README](../../paper/latex/README.md)):
+
+```bash
+python3 scripts/paper_figures.py docs/results/reach-2026-09-26.json --benchmarks docs/results/benchmarks-2026-09-27.json --out paper/
+python3 scripts/paper_diagrams.py --out paper/
+```

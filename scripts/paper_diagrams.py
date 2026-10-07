@@ -6,19 +6,23 @@
 - `lookup.svg`: how a lookup spares an LLM turn, and the event the
   speculator estimates (use before the next write, not the next step).
 - `threshold.svg`: a read's expected value against its probability of use, at
-  each domain's counted costs (Proposition 3, Appendix B).
+  the counted costs of retail, airline and telecom (Proposition 3, Appendix B).
 - `turns.svg`: what decides each LLM turn, per domain and benchmark (Tables 1
   and 1b).
 - `replay.svg`: the share of the read-only ceiling each speculator takes in
   replay (Table 3).
-- `live.svg`: the change in LLM turns in every live comparison, with 95%
-  intervals (Tables 5, 5b and 5c, and §4.4's smaller agent).
+- `live.svg`: the change in LLM turns in the live comparisons of the
+  speculator and of the prompt for parallel calls, with 95% intervals (Tables
+  5, 5b and 5c, and §4.4's text).
 - `cascade.svg`: the compiled procedure and its hand-backs on solo telecom's
   held-out tasks (§4.5, Table 6).
 
-Every number drawn is written here as the paper writes it, and the script
-fails if paper/stretto.md does not hold it, so a figure cannot drift from the
-text. The SVGs share paper_figures.py's palette, with its light and dark modes.
+Every number drawn is read from paper/stretto.md: from the cells of its
+tables, found by their row and column, or from the sentence that states it.
+The figures' own alt text and captions are left out of what is read, and the
+script fails when a table, a row or a sentence is not there, so a figure
+cannot drift from the text. The SVGs share paper_figures.py's palette, with
+its light and dark modes.
 """
 
 import argparse
@@ -72,29 +76,78 @@ def width(s: str, size: float = 12, mono: bool = False) -> float:
     return len(s) * size * (0.61 if mono else 0.53)
 
 
-def checked(numbers: list[str]) -> None:
-    """Fail unless the paper writes every number a figure draws."""
-    paper = PAPER.read_text().replace("**", "")
-    missing = [n for n in numbers if n not in paper]
-    if missing:
-        raise SystemExit(f"paper_diagrams.py: paper/stretto.md does not hold {missing}")
+NUM = r"[−+-]?\d+(?:\.\d+)?"
 
 
-def pct(s: str) -> float:
-    return float(s.replace("−", "-").rstrip("%"))
+def prose() -> str:
+    """The paper's text, its figures' alt text and captions left out, and bold unmarked."""
+    lines = PAPER.read_text().replace("**", "").splitlines()
+    return "\n".join(line for line in lines if not line.startswith(("![", "*Figure ")))
+
+
+def find(pattern: str) -> tuple[str, ...]:
+    """The groups of `pattern` in the paper's text; fails if the text does not hold it."""
+    m = re.search(pattern, prose())
+    if not m:
+        raise SystemExit(f"paper_diagrams.py: paper/stretto.md does not hold /{pattern}/")
+    return m.groups()
+
+
+def table(*header: str) -> list[dict[str, str]]:
+    """The rows of the first table whose header names every column in `header`: each
+    row's cells by column, the first column under "", a blank label taking the one above."""
+    lines = prose().splitlines()
+    cells = lambda line: [c.strip() for c in line.strip().strip("|").split("|")]  # noqa: E731
+    for i, line in enumerate(lines[:-1]):
+        if line.startswith("|") and lines[i + 1].startswith("|---") and all(h in cells(line) for h in header):
+            names, rows, label = [""] + cells(line)[1:], [], ""
+            for row in lines[i + 2:]:
+                if not row.startswith("|"):
+                    break
+                values = cells(row)
+                label = values[0] or label
+                rows.append(dict(zip(names, [label] + values[1:])))
+            return rows
+    raise SystemExit(f"paper_diagrams.py: paper/stretto.md has no table with the columns {header}")
+
+
+def cell(rows: list[dict[str, str]], label: str, column: str, **where: str) -> str:
+    """The cell under `column` in the row labelled `label` (and matching `where`)."""
+    for row in rows:
+        if row[""] == label and all(row.get(k.replace("_", " ")) == v for k, v in where.items()):
+            return row[column]
+    raise SystemExit(f"paper_diagrams.py: no row {label!r} {where} in the table of {list(rows[0])}")
+
+
+def number(s: str) -> float:
+    """The first number in `s`, read with its sign."""
+    return float(re.search(NUM, s).group().replace("−", "-"))
+
+
+def interval(s: str) -> tuple[float, float, float]:
+    """A value and its interval, as a cell writes them: "−20.5% [−24.4, −16.5]"."""
+    m = re.search(rf"({NUM})%? \[({NUM}), ({NUM})\]", s)
+    if not m:
+        raise SystemExit(f"paper_diagrams.py: no value and interval in {s!r}")
+    return tuple(number(g) for g in m.groups())
+
+
+def signed(v: float) -> str:
+    return f"{v:+.1f}%".replace("-", "−")
 
 
 # --- Figure: a lookup spares a turn; the event to estimate -----------------------------------
 
 def lookup(path: Path) -> None:
-    checked(["0.64", "94% of the time"])
-    w, h = 872, 262
+    nxt, used = find(r"read an order \*next\* with probability (\d+(?:\.\d+)?) under the habit, "
+                     r"but read it before their next write (\d+)% of the time")
+    w, h = 878, 262
     out = svg_open(w, h)
     mono = 11.5
 
     # (a) Two lanes: the same episode without and with the speculator.
-    text(out, 0, 16, "(a) A lookup spares an LLM turn", weight="700", size=13)
-    lanes = [(0, "Without stretto"), (240, "With stretto")]
+    text(out, 6, 16, "(a) A lookup spares an LLM turn", weight="700", size=13)
+    lanes = [(6, "Without stretto"), (246, "With stretto")]
     row = 27
 
     def turn(x: float, y: float, n: int, call: str, sans: bool = False) -> None:
@@ -139,8 +192,8 @@ def lookup(path: Path) -> None:
     text(out, end + 8, y0 + row - 8, "bound from this result", cls="m", size=10.5)
 
     # (b) The event the speculator estimates.
-    x0 = 540
-    text(out, x0, 16, "(b) Which reads to make", weight="700", size=13)
+    x0 = 546
+    text(out, x0, 16, "(b) The event to estimate", weight="700", size=13)
     text(out, x0, 44, "After the user's details: will the agent read the order?", cls="m", size=11.5)
     chips = [("user", "read"), ("reply", "reply"), ("order", "read"), ("reply", "reply"), ("product", "read"), ("cancel", "write")]
     cy, ch, gap = 74, 22, 7
@@ -175,8 +228,8 @@ def lookup(path: Path) -> None:
     bracket(1, 4, cy + ch + 46, "b", "before the next write: U(x), where the order is")
     # The two estimates, as the paper reports them (§4.2).
     by0, L = 188, 300
-    for k, (key, label, v, shown) in enumerate((("a", "read next, under the habit", 0.64, "0.64"),
-                                                ("b", "read before the next write, observed", 0.94, "94%"))):
+    for k, (key, label, v, shown) in enumerate((("a", "read next, under the habit", float(nxt), nxt),
+                                                ("b", "read before the next write, observed", int(used) / 100, f"{used}%"))):
         y = by0 + k * 36
         text(out, x0, y - 4, label, size=11.5)
         bx0 = x0
@@ -189,13 +242,20 @@ def lookup(path: Path) -> None:
 
 # --- Figure: the threshold -------------------------------------------------------------------
 
-COSTS = [("retail", 5820, 2470, "5{,}820", "2{,}470", ""),
-         ("airline", 7050, 1020, "7{,}050", "1{,}020", ' stroke-dasharray="7 4"'),
-         ("telecom", 8930, 1180, "8{,}930", "1{,}180", ' stroke-dasharray="2 3"')]
+def costs() -> list[tuple[str, int, int, str]]:
+    """Each domain's counted β and δ, as Appendix B gives them, and its line's dashes."""
+    tokens = r"\$?([\d{},]+)\$?"
+    retail = find(r"retail's count gives \$\\beta = ([\d{},]+)\$ and \$\\delta = ([\d{},]+)\$")
+    rest = find(rf"\(\$\\beta = ([\d{{}},]+)\$, \$\\delta = ([\d{{}},]+)\$\) and \$[\d.]+\$ \({tokens} and {tokens}\)")
+    n = lambda s: int(s.replace("{,}", "").replace(",", ""))  # noqa: E731
+    return [("retail", n(retail[0]), n(retail[1]), ""),
+            ("airline", n(rest[0]), n(rest[1]), ' stroke-dasharray="7 4"'),
+            ("telecom", n(rest[2]), n(rest[3]), ' stroke-dasharray="2 3"')]
 
 
 def threshold(path: Path) -> None:
-    checked([n for c in COSTS for n in c[3:5]] + ["0.298", "0.13", "0.12"])
+    domains = costs()
+    stars = {name: d / (b + d) for name, b, d, _ in domains}
     w, h = 420, 270
     left, right, top, bottom = 52, 70, 14, 40
     pw, ph = w - left - right, h - top - bottom
@@ -211,17 +271,18 @@ def threshold(path: Path) -> None:
     for q in (0, 0.25, 0.5, 0.75, 1):
         text(out, sx(q), top + ph + 16, f"{q:g}", cls="m", anchor="middle", size=11)
     out.append(f'<line x1="{sx(0)}" x2="{sx(1)}" y1="{sy(0):.1f}" y2="{sy(0):.1f}" stroke="var(--ink)"/>')
-    text(out, sx(1) - 4, sy(ymin) - 6, "a detour costs more than the read is worth", cls="m", anchor="end", size=10.5)
-    for name, beta, delta, _, _, dash in COSTS:
+    text(out, sx(1) - 4, sy(ymin) - 6, "the expected detour costs more than the expected saving", cls="m", anchor="end", size=10.5)
+    for name, beta, delta, dash in domains:
         b, d = beta / 1000, delta / 1000
         out.append(f'<line x1="{sx(0)}" y1="{sy(-d):.1f}" x2="{sx(1)}" y2="{sy(b):.1f}" stroke="var(--ink)" stroke-width="1.75"{dash}/>')
         text(out, sx(1) + 6, sy(b) + 4, name, size=11.5)
         star = d / (b + d)
         out.append(f'<circle cx="{sx(star):.1f}" cy="{sy(0):.1f}" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>')
-    text(out, sx(0.298) + 7, sy(0) + 16, "θ* 0.30, retail", size=11)
+    text(out, sx(stars["retail"]) + 7, sy(0) + 16, f"θ* {stars['retail']:.2f}, retail", size=11)
+    low, high = sorted((stars["airline"], stars["telecom"]))
     lx, ly = sx(0.03), sy(5.2)
-    out.append(f'<line x1="{lx + 30:.1f}" y1="{ly + 5:.1f}" x2="{sx(0.12):.1f}" y2="{sy(0) - 6:.1f}" stroke="var(--muted)"/>')
-    text(out, lx, ly, "θ* 0.12–0.13, airline and telecom", size=11)
+    out.append(f'<line x1="{lx + 30:.1f}" y1="{ly + 5:.1f}" x2="{sx(low):.1f}" y2="{sy(0) - 6:.1f}" stroke="var(--muted)"/>')
+    text(out, lx, ly, f"θ* {low:.2f}–{high:.2f}, airline and telecom", size=11)
     text(out, sx(0.03), sy(8), "qβ − (1−q)δ", size=12, italic=True)
     text(out, left + pw / 2, h - 6, "q, probability the read is used before the next write", cls="m", anchor="middle", size=11)
     out.append(f'<text class="m" font-size="11" transform="translate(14 {top + ph / 2}) rotate(-90)" text-anchor="middle">'
@@ -232,33 +293,25 @@ def threshold(path: Path) -> None:
 
 # --- Figure: what decides each turn (Tables 1 and 1b) ---------------------------------------
 
+# Each group's table, by its columns, and each bar's name and row.
 TURNS = [
-    ("τ²-bench, nine agents", [
-        ("retail", "39.6%", "14.0%", "46.3%", "34.2%"),
-        ("airline", "40.3%", "12.7%", "46.9%", "29.5%"),
-        ("telecom", "55.2%", "10.6%", "34.3%", "24.7%"),
-        ("all", "46.8%", "12.2%", "41.0%", "29.0%"),
-    ]),
-    ("Six more benchmarks", [
-        ("τ-bench", "47.0%", "13.2%", "39.7%", "28.4%"),
-        ("BFCL", "34.9%", "33.7%", "31.5%", "13.2%"),
-        ("AgentDojo", "26.9%", "16.5%", "56.5%", "22.1%"),
-        ("WorkBench", "27.4%", "26.6%", "46.1%", "3.5%"),
-        ("DTap-Bench", "12.0%", "59.9%", "28.1%", "10.7%"),
-        ("MCPMark", "5.1%", "50.9%", "43.9%", "7.0%"),
-    ]),
+    ("τ²-bench, nine agents", ("Turns", "Replies", "Ceiling"),
+     [("retail", "Retail"), ("airline", "Airline"), ("telecom", "Telecom"), ("all", "All")]),
+    ("Six more benchmarks", ("Agents", "Replies", "Ceiling"),
+     [("τ-bench", "τ-bench (retail, airline)"), ("BFCL", "BFCL multi-turn"), ("AgentDojo", "AgentDojo (4 suites)"),
+      ("WorkBench", "WorkBench (6 domains)"), ("DTap-Bench", "DTap-Bench (6 domains)"), ("MCPMark", "MCPMark (4 servers)")]),
 ]
 
 
 def turns(path: Path) -> None:
-    rows_md = PAPER.read_text()
-    for _, rows in TURNS:
-        for r in rows:
-            if not any(all(v in line for v in r[1:]) for line in rows_md.splitlines() if line.startswith("|")):
-                raise SystemExit(f"paper_diagrams.py: no table row of paper/stretto.md holds {r}")
+    groups = []
+    for title, columns, bars in TURNS:
+        rows = table(*columns)
+        groups.append((title, [(name, *(number(cell(rows, label, c)) for c in ("Replies", "Writes", "Reads", "Ceiling")))
+                               for name, label in bars]))
     w, left, right, bar, gap, head = 420, 84, 16, 17, 5, 24
     top = 50
-    h = top + sum(head + len(rows) * (bar + gap) for _, rows in TURNS) + 26
+    h = top + sum(head + len(rows) * (bar + gap) for _, rows in groups) + 26
     pw = w - left - right
     out = svg_open(w, h)
     segs = [("a", "reads in the ceiling", "k"), ("pa", "other reads", "t"), ("g1", "writes", "t"), ("g2", "replies to the user", "t")]
@@ -268,11 +321,11 @@ def turns(path: Path) -> None:
         out.append(f'<rect x="{lx}" y="{ly}" width="12" height="12" rx="2" fill="var(--{key})"/>')
         text(out, lx + 18, ly + 10, label, size=11.5)
     y = top
-    for title, rows in TURNS:
+    for title, rows in groups:
         text(out, 0, y + 14, title, weight="700", size=12)
         y += head
         for name, replies, writes, reads, ceiling in rows:
-            vals = [pct(ceiling), pct(reads) - pct(ceiling), pct(writes), pct(replies)]
+            vals = [ceiling, reads - ceiling, writes, replies]
             total = sum(vals)
             text(out, left - 8, y + 12.5, name, cls="t" if name == "all" else "m", anchor="end", size=11.5,
                  weight="700" if name == "all" else None)
@@ -292,18 +345,16 @@ def turns(path: Path) -> None:
 
 # --- Figure: share of the ceiling in replay (Table 3) ---------------------------------------
 
-REPLAY = [  # domain, next step [lo, hi], use before write [lo, hi], difference
-    ("retail", ("76.2%", "71.7", "81.6"), ("86.4%", "80.2", "93.1"), "+10.2"),
-    ("airline", ("46.2%", "38.3", "55.1"), ("46.6%", "38.5", "55.4"), "+0.5"),
-    ("telecom", ("47.9%", "45.5", "50.3"), ("51.7%", "49.0", "54.4"), "+3.8"),
-    ("telecom, solo", ("40.0%", "36.9", "43.9"), ("42.8%", "39.0", "47.0"), "+2.8"),
-]
+REPLAY = [("retail", "Retail"), ("airline", "Airline"), ("telecom", "Telecom"), ("telecom, solo", "Telecom, solo†")]
 
 
 def replay(path: Path) -> None:
-    checked([f"{v} [{lo}, {hi}]" for r in REPLAY for v, lo, hi in r[1:3]] + [r[3] for r in REPLAY])
-    w, left, right, top, rowh = 420, 92, 58, 44, 40
-    h = top + len(REPLAY) * rowh + 34
+    rows = table("Speculator", "Share of ceiling")
+    share = lambda label, who: cell(rows, label, "Share of ceiling", Speculator=who)  # noqa: E731
+    domains = [(name, interval(share(label, "next step")), interval(share(label, "use before write")),
+                share(label, "difference")) for name, label in REPLAY]
+    w, left, right, top, rowh = 420, 92, 104, 44, 40
+    h = top + len(domains) * rowh + 34
     pw = w - left - right
     lo_x, hi_x = 30, 100
     sx = lambda v: left + pw * (v - lo_x) / (hi_x - lo_x)  # noqa: E731
@@ -314,63 +365,63 @@ def replay(path: Path) -> None:
         out.append(f'<circle cx="{lx + 9}" cy="16" r="4.5" fill="var(--{key})" stroke="var(--bg)" stroke-width="1.5"/>')
         text(out, lx + 24, 20, label, size=11.5)
     text(out, w - 2, 20, "difference, points", cls="m", anchor="end", size=11)
-    body = top + len(REPLAY) * rowh - 10
+    body = top + len(domains) * rowh - 10
     for v in range(lo_x, hi_x + 1, 10):
         out.append(f'<line x1="{sx(v):.1f}" x2="{sx(v):.1f}" y1="{top - 8}" y2="{body}" stroke="var(--grid)"/>')
         text(out, sx(v), body + 15, f"{v}", cls="m", anchor="middle", size=10.5)
     text(out, left + pw / 2, h - 4, "share of the read-only ceiling taken (%), 95% intervals", cls="m", anchor="middle", size=11)
-    for i, (name, nxt, use, diff) in enumerate(REPLAY):
+    for i, (name, nxt, use, diff) in enumerate(domains):
         y = top + i * rowh + 6
         text(out, left - 8, y + 9, name, cls="m", anchor="end", size=11.5)
         for k, (key, (v, lo, hi)) in enumerate((("a", nxt), ("b", use))):
             yy = y + k * 12
-            out.append(f'<line x1="{sx(float(lo)):.1f}" x2="{sx(float(hi)):.1f}" y1="{yy}" y2="{yy}" stroke="var(--{key})" stroke-width="2"/>')
-            out.append(f'<circle cx="{sx(pct(v)):.1f}" cy="{yy}" r="4.5" fill="var(--{key})" stroke="var(--bg)" stroke-width="1.5"/>')
-        text(out, w - 2, y + 10, diff, anchor="end", size=11.5, weight="700" if i == 0 else None)
+            out.append(f'<line x1="{sx(lo):.1f}" x2="{sx(hi):.1f}" y1="{yy}" y2="{yy}" stroke="var(--{key})" stroke-width="2"/>')
+            out.append(f'<circle cx="{sx(v):.1f}" cy="{yy}" r="4.5" fill="var(--{key})" stroke="var(--bg)" stroke-width="1.5"/>')
+        text(out, w - 2, y + 10, diff, anchor="end", size=11)
     out.append("</svg>")
     path.write_text("\n".join(out) + "\n")
 
 
 # --- Figure: every live comparison ----------------------------------------------------------
 
-LIVE = [  # group, [(label, change, lo, hi, kind)], kind: "s" the speculator, "p" the prompt alone
-    ("τ²-bench: GLM-5.3, agent and user", [
-        ("retail, 20 tasks", "−32.2%", "−40.0", "−23.5", "s"),
-        ("airline, 8 tasks", "−16.2%", "−37.2", "+10.6", "s"),
-        ("both, 28 tasks", "−27.9%", "−35.9", "−19.1", "s"),
-    ]),
-    ("τ²-bench: Claude Sonnet 5, 84 pairs", [
-        ("the speculator", "−20.5%", "−24.4", "−16.5", "s"),
-        ("the prompt alone", "−3.4%", "−7.8", "+1.2", "p"),
-        ("speculator, prompt in both", "−22.9%", "−26.1", "−19.5", "s"),
-    ]),
-    ("τ²-bench: Claude Haiku 4.5, 84 pairs", [
-        ("the speculator", "−22.4%", "−29.4", "−15.8", "s"),
-        ("the prompt alone", "−5.9%", "−10.9", "−0.9", "p"),
-        ("speculator, prompt in both", "−17.2%", "−24.0", "−10.2", "s"),
-    ]),
-    ("τ²-bench: glm-5.3-flash, with guards", [
-        ("20 tasks", "−20.8%", "−29.9", "−11.0", "s"),
-    ]),
-    ("AgentDojo and BFCL: GLM-5.3, Claude Haiku 4.5", [
-        ("AgentDojo, Slack and travel", "−10.1%", "−14.0", "−5.8", "s"),
-        ("AgentDojo, banking, workspace", "−2.1%", "−8.7", "+3.6", "s"),
-        ("AgentDojo, all", "−6.0%", "−9.9", "−2.1", "s"),
-        ("BFCL, 20 held-out tasks", "+1.6%", "−4.2", "+6.3", "s"),
-    ]),
-]
+def comparisons() -> list[tuple[str, list[tuple[str, float, float, float, str]]]]:
+    """Each group of live comparisons: its rows' labels, changes and 95% intervals, and
+    whether the speculator ("s") or the prompt alone ("p") made the change."""
+    glm = table("Tasks", "Change")
+    claude = table("Claude Sonnet 5", "Claude Haiku 4.5")
+    bench = table("Pairs", "Change")
+    v, lo, hi = find(rf"took ({NUM})% fewer turns with it \(({NUM}) to ({NUM})%, against its recorded baseline\)")
+    prompt = (-number(v), -number(hi), -number(lo))
+    v, lo, hi = find(rf"The agent took ({NUM})% fewer LLM turns \(({NUM})–({NUM})%\)")
+    flash = (-number(v), -number(hi), -number(lo))
+    tasks = {label: cell(glm, label, "Tasks") for label in ("Retail", "Airline", "Both")}
+    model = lambda m: [  # noqa: E731
+        ("the speculator", *interval(cell(claude, "LLM turns, baseline → speculator", m)), "s"),
+        ("the prompt alone", *interval(cell(claude, "The prompt alone", m)), "p"),
+        ("speculator, prompt in both", *interval(cell(claude, "The speculator, with the prompt in both arms", m)), "s"),
+    ]
+    return [
+        ("τ²-bench: GLM-5.3, agent and user", [
+            *[(f"{label.lower()}, {tasks[label]} tasks", *interval(cell(glm, label, "Change")), "s") for label in tasks],
+            ("the prompt alone", *prompt, "p"),
+        ]),
+        ("τ²-bench: Claude Sonnet 5, 84 pairs", model("Claude Sonnet 5")),
+        ("τ²-bench: Claude Haiku 4.5, 84 pairs", model("Claude Haiku 4.5")),
+        ("τ²-bench: glm-5.3-flash, with guards", [("20 tasks", *flash, "s")]),
+        ("AgentDojo and BFCL: GLM-5.3, Claude Haiku 4.5", [
+            (short, *interval(cell(bench, label, "Change")), "s")
+            for short, label in (("AgentDojo, Slack and travel", "AgentDojo, Slack and travel"),
+                                 ("AgentDojo, banking, workspace", "AgentDojo, banking and workspace"),
+                                 ("AgentDojo, all", "AgentDojo, all"),
+                                 ("BFCL, 20 held-out tasks", "BFCL, 20 held-out tasks"))
+        ]),
+    ]
 
 
 def live(path: Path) -> None:
-    md = PAPER.read_text().replace("**", "")
-    for _, rows in LIVE:
-        for label, v, lo, hi, _ in rows:
-            if v == "−20.8%":
-                checked(["20.8% fewer LLM turns (11.0–29.9%)"])
-            elif not (f"{v} [{lo}, {hi}]" in md or f"{v} [{hi}, {lo}]" in md):
-                raise SystemExit(f"paper_diagrams.py: paper/stretto.md does not hold {v} [{lo}, {hi}]")
+    groups = comparisons()
     w, left, right, top, rowh, head = 436, 178, 48, 30, 17, 22
-    h = top + sum(head + len(r) * rowh for _, r in LIVE) + 36
+    h = top + sum(head + len(r) * rowh for _, r in groups) + 36
     pw = w - left - right
     lo_x, hi_x = -45, 15
     sx = lambda v: left + pw * (v - lo_x) / (hi_x - lo_x)  # noqa: E731
@@ -386,16 +437,16 @@ def live(path: Path) -> None:
     out.append(f'<line x1="{sx(0):.1f}" x2="{sx(0):.1f}" y1="{top}" y2="{body}" stroke="var(--muted)" stroke-width="1.2"/>')
     text(out, left + pw / 2, h - 4, "change in LLM turns (%), 95% intervals", cls="m", anchor="middle", size=11)
     y = top
-    for title, rows in LIVE:
+    for title, rows in groups:
         text(out, 2, y + 14, title, weight="700", size=11.5)
         y += head
         for label, v, lo, hi, kind in rows:
             cy = y + rowh / 2 - 2
             key = "b" if kind == "s" else "g1"
             text(out, left - 8, cy + 4, label, cls="m", anchor="end", size=11)
-            out.append(f'<line x1="{sx(pct(lo)):.1f}" x2="{sx(pct(hi)):.1f}" y1="{cy:.1f}" y2="{cy:.1f}" stroke="var(--{key})" stroke-width="2"/>')
-            out.append(f'<rect x="{sx(pct(v)) - 4.5:.1f}" y="{cy - 4.5:.1f}" width="9" height="9" fill="var(--{key})" stroke="var(--bg)" stroke-width="1.5"/>')
-            text(out, w - 2, cy + 4, v, anchor="end", size=11)
+            out.append(f'<line x1="{sx(lo):.1f}" x2="{sx(hi):.1f}" y1="{cy:.1f}" y2="{cy:.1f}" stroke="var(--{key})" stroke-width="2"/>')
+            out.append(f'<rect x="{sx(v) - 4.5:.1f}" y="{cy - 4.5:.1f}" width="9" height="9" fill="var(--{key})" stroke="var(--bg)" stroke-width="1.5"/>')
+            text(out, w - 2, cy + 4, signed(v), anchor="end", size=11)
             y += rowh
     out.append("</svg>")
     path.write_text("\n".join(out) + "\n")
@@ -404,8 +455,12 @@ def live(path: Path) -> None:
 # --- Figure: the cascade where no user speaks -----------------------------------------------
 
 def cascade(path: Path) -> None:
-    checked(["40 held-out", "resolves 25 runs, transfers 11 to a person", "hands back 4, all four failures",
-             "it misses one failure", "in 4.75 LLM turns each", "39 of 40", "0.48 LLM turns per ticket", "15.9"])
+    resolved, transferred, handed = find(r"resolves (\d+) runs, transfers (\d+) to a person as the policy directs, "
+                                         r"and hands back (\d+), all four failures; it misses one failure")
+    (each,) = find(r"it resolved all four in both of two trials, in (\d+(?:\.\d+)?) LLM turns each")
+    passed, total, per, alone = find(r"The cascade passes (\d+) of (\d+) held-out tasks and makes (\d+(?:\.\d+)?) LLM turns "
+                                     r"per ticket, where GLM-5\.3 alone made (\d+(?:\.\d+)?)")
+    (tickets,) = find(r"GLM-5\.3 alone \((\d+) tickets\)")
     w, h = 420, 368
     out = svg_open(w, h)
 
@@ -419,27 +474,28 @@ def cascade(path: Path) -> None:
         out.append(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="var(--muted)" stroke-width="1.3" marker-end="url(#arrow)"/>')
 
     cx = w / 2
-    box(cx - 120, 4, 240, 26, "40 held-out solo telecom tickets", bold=False)
+    box(cx - 120, 4, 240, 26, f"{total} held-out solo telecom tickets", bold=False)
     arrow(cx, 30, cx, 46)
     box(cx - 140, 47, 280, 40, "compiled procedure, no model", "trees, bindings and a guard, from traces")
     arrow(cx, 87, cx, 103)
     box(cx - 140, 104, 280, 40, "check the ticket's stated outcome", "one read")
-    cols = [(4, "resolved 25", "one failure missed", "panel", "muted"),
-            (144, "transferred 11", "to a person, by policy", "panel", "muted"),
-            (284, "handed back 4", "all four failures", "pb", "b")]
+    cols = [(4, f"resolved {resolved}", "one failure missed", "panel", "muted"),
+            (144, f"transferred {transferred}", "to a person, by policy", "panel", "muted"),
+            (284, f"handed back {handed}", "all four failures", "pb", "b")]
     for x, t, s, fill, stroke in cols:
         arrow(cx, 144, x + 66, 166)
         box(x, 167, 132, 40, t, s, fill, stroke)
     arrow(284 + 66, 207, 284 + 66, 223)
     box(170, 224, 246, 40, "GLM-5.3 takes over", "with the procedure's calls and results", "pb", "b")
     text(out, 166, 238, "resolves all 4 in both trials,", cls="m", anchor="end", size=10.5)
-    text(out, 166, 251, "4.75 LLM turns each", cls="m", anchor="end", size=10.5)
+    text(out, 166, 251, f"{each} LLM turns each", cls="m", anchor="end", size=10.5)
     # The outcome.
     out.append(f'<line x1="0" x2="{w}" y1="280" y2="280" stroke="var(--grid)"/>')
-    text(out, 2, 298, "39 of 40 passed", weight="700", size=12.5)
+    text(out, 2, 298, f"{passed} of {total} passed", weight="700", size=12.5)
     text(out, 108, 298, "LLM turns per ticket:", cls="m", size=11.5)
-    L, x0 = 220, 150
-    for k, (key, label, v, shown) in enumerate((("b", "the cascade", 0.48, "0.48"), ("g1", "GLM-5.3 alone", 15.9, "15.9"))):
+    L, x0 = 200, 170
+    for k, (key, label, v, shown) in enumerate((("b", "the cascade", float(per), per),
+                                                ("g1", f"GLM-5.3 alone, {tickets} tickets", float(alone), alone))):
         y = 310 + 24 * k
         text(out, x0 - 8, y + 11, label, anchor="end", size=11.5)
         out.append(f'<rect x="{x0}" y="{y}" width="{max(L * v / 16, 2):.1f}" height="14" rx="2" fill="var(--{key})"/>')

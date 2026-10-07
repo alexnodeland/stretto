@@ -12,7 +12,7 @@ Tool-using agents spend most of their cost in the LLM turns that decide the next
 
 We answer both with one distinction. Each decision of an agent is informed by the state the tools have returned (what is in the account, what the phone reports) and by what the user said (which order, which fault). A program learned from traces sees the first; the second needs language. A compiler can take the decisions the environment determines, and no more, and two regimes follow:
 
-- **A user is present** (τ²-bench's retail, airline and dual-control telecom). Replies, and decisions the user's words trigger, stay with the model. What remains are reads whose arguments the tool state supplies. Reads are safe to make speculatively: they cannot change the state, and a wrong one costs a lookup (Figure 1a).
+- **A user is present** (τ²-bench's retail, airline and dual-control telecom). Replies, and decisions the user's words trigger, stay with the model. What remains are reads whose arguments the tool state supplies (Figure 1a). Reads are safe to make speculatively: they cannot change the state, and a wrong one costs a lookup.
 - **No user speaks** (telecom's solo mode, where the agent operates the phone itself). Every branch follows a tool result, so the whole procedure, writes included, can be compiled once, and handed to a model only when the outcome the ticket states does not hold.
 
 ![A lookup spares an LLM turn: without stretto the agent reads the user's details, then the order they name, then replies, in three turns; with stretto the order is read and appended to the first tool result, and the agent replies in its second turn. Beside it, the event the speculator estimates: the order read comes after a reply, before the next write](lookup.svg)
@@ -63,7 +63,7 @@ Three consequences follow. First, the next-step probability is the wrong quantit
 
 ![A read's expected value against its probability of use before the next write, one line per domain at its counted costs, each crossing zero at its threshold: 0.30 in retail, 0.12 to 0.13 in airline and telecom](threshold.svg)
 
-*Figure 2. Proposition 3 at each domain's counted costs (Appendix B): a read's expected value, $q\beta - (1-q)\delta$ in thousands of input tokens, against its probability of use before the next write. Each line crosses zero at its threshold $\theta^\star = \delta/(\beta+\delta)$: 0.30 in retail, and 0.12–0.13 in airline and telecom, whose contexts are longer and whose results are shorter. Below it, a lookup's expected detour costs more than its expected saving.*
+*Figure 2. Proposition 3 at the counted costs of retail, airline and telecom (Appendix B): a read's expected value, $q\beta - (1-q)\delta$ in thousands of input tokens, against its probability of use before the next write. Each line crosses zero at its threshold $\theta^\star = \delta/(\beta+\delta)$: 0.30 in retail, and 0.12–0.13 in airline and telecom, whose contexts are longer and whose results are shorter. Below it, a lookup's expected detour costs more than its expected saving.*
 
 The contrast with speculative decoding is the point. A drafted token is wasted when any token before it is rejected, because a sequence must match as a whole, so draft trees rank tokens by the product of confidences along their path [EAGLE-2, SpecDec++]. Reads form a set: each is used or not on its own, whenever the agent gets to it, and the path product is the wrong criterion.
 
@@ -149,7 +149,7 @@ Over 39,298 LLM turns of nine agents' test episodes (§3), 46.8% reply to the us
 
 ![Stacked bars of what decides each LLM turn, per τ²-bench domain and for six more benchmarks: reads in the read-only ceiling, other reads, writes, and replies to the user](turns.svg)
 
-*Figure 4. What decides each LLM turn, in τ²-bench's domains (Table 1) and six more benchmarks (Table 1b): reads in the ceiling, which a speculator binding from tool results could save (Proposition 2), other reads, writes, and replies to the user. Each bar is pooled over the test episodes of the replayed agents.*
+*Figure 4. What decides each LLM turn, in τ²-bench's domains (Table 1) and six more benchmarks (Table 1b): reads in the ceiling, which a speculator binding from tool results could save at most (Proposition 2), other reads (the reads less the ceiling), writes, and replies to the user. Each bar is pooled over the test episodes of the replayed agents.*
 
 *Table 1. LLM turns of nine agents' test episodes by what they do, and the read-only ceiling (Proposition 2). Pooled over agents, with the range across agents in brackets.*
 
@@ -183,7 +183,7 @@ Brackets give the range over suites or domains.
 
 ### 4.2 Speculation in replay
 
-**The next-step probability understates the probability of use.** Replays log every lookup a speculator weighed with whether the agent made that call before its next write. After a user's details, GLM-5 and Claude Sonnet 4.5 read an order *next* with probability 0.64 under the habit, but read it before their next write 94% of the time; after an order, a product comes next with probability 0.08, but before the next write 38% of the time, once the agent has told the user what the order holds. Over all lookups the share used ran far above the habit's score: 0.94 of lookups scored 0.4–0.5 were used, 0.97 of those scored 0.5–0.6, and 0.48 of those scored 0.05–0.10 (GLM-5, retail). Counting the right event (§2.4) lowers the calibration error and the Brier score in every domain, each interval excluding zero, and ranks lookups better everywhere but telecom, where the two rank alike (Table 2).
+**The next-step probability understates the probability of use.** Replays log every lookup a speculator weighed with whether the agent made that call before its next write. After a user's details, GLM-5 and Claude Sonnet 4.5 read an order *next* with probability 0.64 under the habit, but read it before their next write 94% of the time; after an order, a product comes next with probability 0.08, but before the next write 38% of the time, once the agent has told the user what the order holds. Over all lookups the share used ran far above the habit's score: 0.94 of lookups scored 0.4–0.5 were used, 0.97 of those scored 0.5–0.6, and 0.48 of those scored 0.05–0.10 (GLM-5, retail). Counting the right event (§2.4) lowers the calibration error and the Brier score in every domain, each interval excluding zero, and ranks lookups better everywhere but telecom, where the two rank alike (Table 2, Figure 6).
 
 *Table 2. Calibration of the score $q = p\,\rho$ against use before the next write, over every lookup the speculators weighed in replay (nine agents; two in solo telecom): expected calibration error (10 bins), Brier score, and AUC, with 95% intervals for each difference from a bootstrap over tasks shared by both.*
 
@@ -225,7 +225,7 @@ Brackets give the range over suites or domains.
 
 ![The share of the read-only ceiling taken by the next-step and the use-before-write speculators per domain, with 95% intervals, and the difference in points](replay.svg)
 
-*Figure 8. The share of the read-only ceiling each speculator takes in replay at θ = 0.3, nine agents' test episodes (two in solo telecom), with 95% intervals from a bootstrap over tasks (Table 3). On the right, the use-before-write speculator's lead, in points.*
+*Figure 8. The share of the read-only ceiling each speculator takes in replay at θ = 0.3, nine agents' test episodes (two in solo telecom), with 95% intervals from a bootstrap over tasks (Table 3). On the right, the difference in points, with its 95% interval from a bootstrap over the tasks both share.*
 
 **In seconds and dollars.** Six agents' episodes report each LLM turn's generation time and cost: Claude Opus and Sonnet 4.5, Gemini Pro and Flash, and GPT-5.2 at both settings. Priced there, the turns the use-before-write speculator saves in retail, 28% of all turns, are 24% of the episodes' generation time, 36 seconds an episode, and 18% of their cost net of its detours at the agent's input price; the next-step speculator's are 20% and 15%. In airline both save 7% of the time and 6.5% of the cost, and in telecom 12% of the cost. A turn that only reads generates less than one that replies, so the shares trail the share of turns (`scripts/priced.py`).
 
@@ -281,11 +281,11 @@ A deployment learns from the sessions it serves (§3). From ten of an agent's ow
 
 ### 4.4 Live
 
-Live, the speculator runs in `stretto-proxy` between the agent and the tools, over MCP: GLM-5.3 in Claude Code on τ²-bench's own prompts, with GLM-5.3 as the user. The earlier flow, which weighs the habit's next-step probability with an LLM's answers about the state [D0], cut LLM turns by 25.5% (95% CI 20.5–30.4%) over 80 paired retail and airline tasks, with 71 passed without it and 70 with it. The speculator of §2.4, deciding on the probability of use before the next write at $\theta = 0.3$, the live-measured $\theta^\star$, and asking no model, ran on 20 retail and 8 airline test tasks drawn at random from those 80, against the same recorded baseline (Table 5). It cut turns by 27.9% (19.1–35.9%) over the 28, where the earlier flow had cut 23.0% on the same tasks, and input tokens by 21.9% (9.9–32.9%); 23 of the 28 took fewer turns. The replay's assumption held throughout: of the speculator's 101 lookups, the agent made none again before the next write. Deciding took the speculator under a millisecond per tool response (at most 4 ms); its lookups add only the tools' own latency, where an LLM turn takes seconds. Figure 10 gathers every live comparison of this section.
+Live, the speculator runs in `stretto-proxy` between the agent and the tools, over MCP: GLM-5.3 in Claude Code on τ²-bench's own prompts, with GLM-5.3 as the user. The earlier flow, which weighs the habit's next-step probability with an LLM's answers about the state [D0], cut LLM turns by 25.5% (95% CI 20.5–30.4%) over 80 paired retail and airline tasks, with 71 passed without it and 70 with it. The speculator of §2.4, deciding on the probability of use before the next write at $\theta = 0.3$, the live-measured $\theta^\star$, and asking no model, ran on 20 retail and 8 airline test tasks drawn at random from those 80, against the same recorded baseline (Table 5). It cut turns by 27.9% (19.1–35.9%) over the 28, where the earlier flow had cut 23.0% on the same tasks, and input tokens by 21.9% (9.9–32.9%); 23 of the 28 took fewer turns. The replay's assumption held throughout: of the speculator's 101 lookups, the agent made none again before the next write. Deciding took the speculator under a millisecond per tool response (at most 4 ms); its lookups add only the tools' own latency, where an LLM turn takes seconds. Figure 10 gathers this section's comparisons of the speculator and of the prompt.
 
 ![The change in LLM turns, with 95% intervals, in every live comparison: GLM-5.3, Claude Sonnet 5, Claude Haiku 4.5 and glm-5.3-flash on τ²-bench, and GLM-5.3 with Claude Haiku 4.5 on AgentDojo and BFCL](live.svg)
 
-*Figure 10. Every live comparison: the change in LLM turns with the speculator, or with the prompt for parallel tool calls alone, with 95% intervals from a bootstrap over tasks (Tables 5, 5b and 5c, and the smaller agent below).*
+*Figure 10. The live comparisons of the speculator of §2.4 and of the prompt for parallel tool calls: the change in LLM turns with the speculator, or with the prompt alone, with 95% intervals from a bootstrap over tasks (Tables 5, 5b and 5c, and the text below). GLM-5.3's rows on τ²-bench are against its recorded baseline.*
 
 *Table 5. Live, GLM-5.3 as agent and user, against the paired run's recorded baseline (airline: the mean of its two trials; passes: its first). 95% intervals from a bootstrap over tasks.*
 
@@ -348,7 +348,7 @@ The cascade gives the handed-back tickets to a model, which takes over from the 
 
 ![The cascade on 40 held-out solo telecom tickets: the compiled procedure runs with no model, checks the ticket's stated outcome, resolves 25, transfers 11 and hands back 4, which GLM-5.3 resolves; 39 of 40 pass at 0.48 LLM turns per ticket against 15.9 for GLM-5.3 alone](cascade.svg)
 
-*Figure 11. The cascade on solo telecom's 40 held-out tasks (Table 6). The compiled procedure runs with no model, then checks the ticket's stated outcome with a read: it judges 25 runs resolved (one of them a failure it misses), transfers 11 to a person as the policy directs, and hands back 4, all failures. GLM-5.3, given the procedure's calls and results, resolved all four in both of two trials.*
+*Figure 11. The cascade on solo telecom's 40 held-out tasks (Table 6). The compiled procedure runs with no model, then checks the ticket's stated outcome with a read: it judges 25 runs resolved (one of them a failure it misses), transfers 11 to a person as the policy directs, and hands back 4, all failures. GLM-5.3, given the procedure's calls and results, resolved all four in both of two trials. GLM-5.3 alone made 15.9 LLM turns per ticket over the eight tickets it ran.*
 
 *Table 6. Telecom solo, 40 held-out tasks. LLM turns per ticket for the agents are their recorded averages; for GLM-5.3 alone, over the eight tickets run.*
 

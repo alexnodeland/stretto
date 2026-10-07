@@ -10,12 +10,12 @@
 What `build.py` changes on the way:
 
 - **Citations.** The Markdown's labels (`[AWM]`, `[ASI, SkillWeaver]`) become natbib citations of `refs.bib`; `CITES` maps each label to its keys. A bracket whose labels are not all in `CITES` stays as written, and the build fails if anything that looks like a pandoc citation is left.
-- **Tables** become floats captioned with the Markdown's own labels (Table 1b), with long headers on two lines and a first column of long labels wrapped. A table fits a column when its rows do, and otherwise spans both; the note under it (a dagger, or "Brackets give ...") travels with it. Columns of words are set left, columns of numbers centred.
+- **Tables** become floats captioned with the Markdown's own labels (Table 1b), with long headers on two lines and a first column of long labels wrapped. A table fits a column when its rows do, and otherwise spans both; the note under it (a dagger, or "Brackets give ...") travels with it. Columns of words are set left, columns of numbers centered.
 - **Figures.** The Mermaid diagram is the TikZ picture in `figure1.tex` (Figure 3), Algorithm 1 is `algorithm1.tex`, and each SVG figure a float, which spans both columns when the SVG is wider than 600 px.
 - **Propositions** are boxed, and a paragraph's bold lead-in is set as a run-in head.
 - **Sections** lose the Markdown's numbers for LaTeX's, which are the same, and the appendices follow the references.
 
-The SVGs come from two scripts. [`scripts/paper_figures.py`](../../scripts/paper_figures.py) draws Figures 5–7 and 9 from a round's published rows; [`scripts/paper_diagrams.py`](../../scripts/paper_diagrams.py) draws the diagrams (Figures 1 and 11) and the charts drawn from the paper's own tables (Figures 2, 4, 8 and 10), and fails if `../stretto.md` does not hold a number it draws:
+The SVGs come from two scripts. [`scripts/paper_figures.py`](../../scripts/paper_figures.py) draws Figures 5–7 and 9 from a round's published rows; [`scripts/paper_diagrams.py`](../../scripts/paper_diagrams.py) draws the diagrams (Figures 1 and 11) and the charts drawn from the paper's own tables (Figures 2, 4, 8 and 10), and fails if the text of `../stretto.md` (its figures' captions aside) does not hold a number it draws, in its sentence or table row:
 
 ```bash
 python3 scripts/paper_figures.py docs/results/reach-2026-09-26.json --benchmarks docs/results/benchmarks-2026-09-27.json --out paper/

@@ -235,7 +235,7 @@ def tables(tex: str) -> str:
             "\\bottomrule",
             "\\end{tabular}",
             "\\end{adjustbox}",
-            *([f"\\par\\smallskip{{\\footnotesize\\color{{muted}}{note.group(1)}\\par}}"] if note else []),
+            *([f"\\par\\smallskip{{\\raggedright\\footnotesize\\color{{muted}}{note.group(1)}\\par}}"] if note else []),
             f"\\end{{{env}}}",
         ])]
         at = end
@@ -253,7 +253,7 @@ def longest(head: str, rows: str) -> list[int]:
     """The characters of each column's longest cell, as printed (a split header cell by
     its longer line), plus two for the space between columns."""
     def plain(cell: str) -> str:
-        cell = re.sub(r"\\begin\{tabular\}\[b\]\{[^}]*\}\}?|\\end\{tabular\}", "", cell)
+        cell = re.sub(r"\\begin\{tabular\}\[b\]\{@\{\}c@\{\}\}|\\end\{tabular\}", "", cell)
         lines = cell.split("\\\\")
         return max((re.sub(r"\\[a-zA-Z]+|[{}$\\]", "", line).strip() for line in lines), key=len)
 
@@ -319,6 +319,7 @@ def main() -> None:
     parts = {
         "TITLE": inline(title),
         "PLAINTITLE": title,
+        "SHORTTITLE": title.split(":")[0],
         "DATE": f"{day.day} {day:%B %Y}",
         "ABSTRACT": inline(cite(abstract)),
         "BODY": styled(tables(pandoc(prepare(body, True)))),
