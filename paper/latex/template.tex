@@ -1,28 +1,40 @@
 % stretto.tex is written by build.py from ../stretto.md and this template:
 % edit the Markdown, then run `make`. See README.md.
 \pdfminorversion=7
-\documentclass[11pt]{article}
+\documentclass[10pt,twocolumn,letterpaper]{article}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{lmodern}
-\usepackage[margin=1in]{geometry}
+\usepackage[letterpaper,hmargin=0.72in,top=0.8in,bottom=0.85in,columnsep=0.27in,headsep=0.18in]{geometry}
 \usepackage{microtype}
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs,longtable,array,calc}
 \usepackage{adjustbox}
 \usepackage{etoolbox}
+\usepackage{xcolor}
 \usepackage{caption}
-\captionsetup{labelfont=bf,labelsep=period,font=small}
 \usepackage{algorithm}
 \usepackage[noend]{algpseudocode}
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,shapes.geometric,fit,backgrounds}
-\usepackage{xcolor}
+\usepackage[skins,breakable]{tcolorbox}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{dblfloatfix}
 \usepackage[authoryear,round]{natbib}
 \usepackage{newunicodechar}
 \usepackage{xurl}
-\usepackage[colorlinks,linkcolor={blue!50!black},citecolor={blue!50!black},urlcolor={blue!50!black}]{hyperref}
+\usepackage[colorlinks]{hyperref}
+
+% The palette of the figures: its blue for structure, its neutrals for rules and notes.
+\definecolor{accent}{HTML}{1F5FAE}
+\definecolor{accentbg}{HTML}{EEF4FC}
+\definecolor{muted}{HTML}{52514E}
+\definecolor{rulegray}{HTML}{C9C8C2}
+\hypersetup{linkcolor=accent,citecolor=accent,urlcolor=accent,
+  pdftitle={%%PLAINTITLE%%},pdfauthor={Alex Nodeland},pdfkeywords={LLM agents, tool use, speculation, MCP, trace compilation}}
 
 % The Markdown's characters that pdfLaTeX's UTF-8 input does not cover in text.
 \newunicodechar{τ}{\ensuremath{\tau}}
@@ -46,22 +58,78 @@
   \ifdim\wd\pandoc@box>\linewidth\resizebox{\linewidth}{!}{\usebox\pandoc@box}\else\usebox\pandoc@box\fi}
 \makeatother
 
-\setlength{\parskip}{0.35\baselineskip}
+% Text: short paragraphs set apart, so each run-in head starts a block the eye can find.
+\setlength{\parskip}{0.3\baselineskip plus 1pt}
 \setlength{\parindent}{0pt}
-\setcounter{topnumber}{3}
-\renewcommand{\topfraction}{0.9}
-\renewcommand{\floatpagefraction}{0.8}
+\setlength{\emergencystretch}{1.5em}
+\raggedbottom
+\setlist{leftmargin=1.3em,itemsep=2pt,topsep=3pt,parsep=0pt}
+\newcommand{\runin}[1]{{\sffamily\bfseries\color{accent}#1}}
 
-\title{%%TITLE%%}
-\author{Alex Nodeland\\\small\url{https://github.com/alexnodeland/stretto}}
-\date{%%DATE%%}
+% Headings in sans, numbered sections in the accent.
+\titleformat{\section}{\sffamily\large\bfseries\color{accent}}{\thesection}{0.55em}{}
+\titleformat{\subsection}{\sffamily\normalsize\bfseries}{\thesubsection}{0.5em}{}
+\titlespacing*{\section}{0pt}{1.3ex plus .5ex minus .2ex}{0.6ex plus .1ex}
+\titlespacing*{\subsection}{0pt}{1.1ex plus .4ex minus .2ex}{0.4ex plus .1ex}
+
+% Propositions, boxed.
+\newtcolorbox{prop}{enhanced,breakable,colback=accentbg,colframe=accent,boxrule=0pt,leftrule=2pt,
+  arc=0pt,outer arc=0pt,left=5pt,right=5pt,top=3pt,bottom=3pt,before skip=5pt,after skip=5pt,
+  parbox=false,before upper={\setlength{\parskip}{0.3\baselineskip}}}
+
+% Floats: captions in small type, tables captioned above; full-width floats may sit at the top or bottom.
+\captionsetup{labelfont={bf,sf},font=small,labelsep=period,skip=5pt}
+\captionsetup[table]{position=top}
+\setcounter{topnumber}{3}
+\setcounter{dbltopnumber}{2}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\dbltopfraction}{0.9}
+\renewcommand{\bottomfraction}{0.6}
+\renewcommand{\textfraction}{0.08}
+\renewcommand{\floatpagefraction}{0.75}
+\renewcommand{\dblfloatpagefraction}{0.75}
+\setlength{\textfloatsep}{10pt plus 3pt minus 2pt}
+\setlength{\dbltextfloatsep}{10pt plus 3pt minus 2pt}
+\setlength{\floatsep}{8pt plus 3pt minus 2pt}
+\setlength{\dblfloatsep}{8pt plus 3pt minus 2pt}
+% A page of floats stacks them from the top, rather than spreading them over the page.
+\makeatletter
+\setlength{\@fptop}{0pt}\setlength{\@dblfptop}{0pt}
+\setlength{\@fpsep}{14pt plus 6pt}\setlength{\@dblfpsep}{14pt plus 6pt}
+\makeatother
+
+% Running heads.
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\sffamily\footnotesize\color{muted}%%SHORTTITLE%%}
+\fancyhead[R]{\sffamily\footnotesize\color{muted}Nodeland, %%DATE%%}
+\fancyfoot[C]{\sffamily\footnotesize\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{{\color{rulegray}\hrule height\headrulewidth}}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[C]{\sffamily\footnotesize\thepage}\renewcommand{\headrulewidth}{0pt}}
+
+% The bibliography, compact.
+\setlength{\bibsep}{2pt plus 1pt}
+\renewcommand{\bibfont}{\footnotesize}
 
 \begin{document}
-\maketitle
 
-\begin{abstract}
-%%ABSTRACT%%
-\end{abstract}
+\twocolumn[{%
+\begin{center}
+{\sffamily\LARGE\bfseries %%TITLE%%\par}
+\vspace{0.9em}
+{\large Alex Nodeland}\par
+\vspace{0.25em}
+{\small\url{https://github.com/alexnodeland/stretto}\quad\textperiodcentered\quad %%DATE%%}\par
+\end{center}
+\vspace{0.4em}
+\begin{tcolorbox}[enhanced,colback=accentbg,colframe=accent,boxrule=0pt,leftrule=2.5pt,arc=0pt,outer arc=0pt,
+  left=9pt,right=9pt,top=6pt,bottom=6pt]
+\small{\sffamily\bfseries\color{accent}Abstract.}\enspace %%ABSTRACT%%
+\end{tcolorbox}
+\vspace{1.1em}
+}]
+\thispagestyle{plain}
 
 %%BODY%%
 

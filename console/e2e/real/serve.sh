@@ -39,6 +39,22 @@ for b in stretto-console stretto stretto-proxy stretto-mcp-demo; do
 done
 cp -R "$root/crates/stretto-console/tests/fixtures/home" "$work/home"
 
+# The fixtures' sessions were recorded on one day. The overview counts the
+# sessions of the last week against the clock, so the copy's start times move
+# forward by whole days, the latest to yesterday, whatever day the tests run.
+python3 - "$work/home" <<'EOF'
+import re, sys, time
+from pathlib import Path
+
+DAY = 86_400_000
+files = sorted(Path(sys.argv[1]).glob("*/*/*.jsonl"))
+started = re.compile(r'"started_unix_ms":(\d+)')
+latest = max(int(m.group(1)) for f in files for m in started.finditer(f.read_text()))
+shift = max(0, (int(time.time() * 1000) - DAY - latest) // DAY * DAY)
+for f in files:
+    f.write_text(started.sub(lambda m: f'"started_unix_ms":{int(m.group(1)) + shift}', f.read_text()))
+EOF
+
 # The fixtures name the demo server by its bare name, as if it were on PATH.
 PATH=$work/bin:$PATH
 export PATH

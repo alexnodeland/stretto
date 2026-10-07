@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 270" width="420" height="270" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12">
+<style>svg{--bg:#fcfcfb;--ink:#0b0b0b;--muted:#52514e;--grid:#e4e3df;--a:#2a78d6;--b:#eb6834;--c:#1baf7a;--pa:#dbe8f9;--pb:#fde6da;--panel:#f1f0ec;--g1:#a3a29c;--g2:#d6d5cf;}@media (prefers-color-scheme: dark){svg{--bg:#1a1a19;--ink:#ffffff;--muted:#c3c2b7;--grid:#3a3936;--a:#3987e5;--b:#d95926;--c:#199e70;--pa:#22385a;--pb:#4a2a1b;--panel:#262624;--g1:#76756f;--g2:#4b4a46;}}.t{fill:var(--ink)}.m{fill:var(--muted)}.k{fill:var(--bg)}</style>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker></defs>
+<rect width="420" height="270" fill="var(--bg)"/>
+<rect x="52" y="176.0" width="298" height="54.0" fill="var(--panel)"/>
+<line x1="52" x2="350" y1="230.0" y2="230.0" stroke="var(--grid)"/>
+<text class="m" x="46.0" y="234.0" text-anchor="end" font-size="11">−3</text>
+<line x1="52" x2="350" y1="176.0" y2="176.0" stroke="var(--grid)"/>
+<text class="m" x="46.0" y="180.0" text-anchor="end" font-size="11">0</text>
+<line x1="52" x2="350" y1="122.0" y2="122.0" stroke="var(--grid)"/>
+<text class="m" x="46.0" y="126.0" text-anchor="end" font-size="11">3</text>
+<line x1="52" x2="350" y1="68.0" y2="68.0" stroke="var(--grid)"/>
+<text class="m" x="46.0" y="72.0" text-anchor="end" font-size="11">6</text>
+<line x1="52" x2="350" y1="14.0" y2="14.0" stroke="var(--grid)"/>
+<text class="m" x="46.0" y="18.0" text-anchor="end" font-size="11">9</text>
+<text class="m" x="52.0" y="246.0" text-anchor="middle" font-size="11">0</text>
+<text class="m" x="126.5" y="246.0" text-anchor="middle" font-size="11">0.25</text>
+<text class="m" x="201.0" y="246.0" text-anchor="middle" font-size="11">0.5</text>
+<text class="m" x="275.5" y="246.0" text-anchor="middle" font-size="11">0.75</text>
+<text class="m" x="350.0" y="246.0" text-anchor="middle" font-size="11">1</text>
+<line x1="52" x2="350" y1="176.0" y2="176.0" stroke="var(--ink)"/>
+<text class="m" x="346.0" y="224.0" text-anchor="end" font-size="10.5">the expected detour costs more than the expected saving</text>
+<line x1="52" y1="220.5" x2="350" y2="71.2" stroke="var(--ink)" stroke-width="1.75"/>
+<text class="t" x="356.0" y="75.2" font-size="11.5">retail</text>
+<circle cx="140.8" cy="176.0" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<line x1="52" y1="194.4" x2="350" y2="49.1" stroke="var(--ink)" stroke-width="1.75" stroke-dasharray="7 4"/>
+<text class="t" x="356.0" y="53.1" font-size="11.5">airline</text>
+<circle cx="89.7" cy="176.0" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<line x1="52" y1="197.2" x2="350" y2="15.3" stroke="var(--ink)" stroke-width="1.75" stroke-dasharray="2 3"/>
+<text class="t" x="356.0" y="19.3" font-size="11.5">telecom</text>
+<circle cx="86.8" cy="176.0" r="4" fill="var(--b)" stroke="var(--bg)" stroke-width="1.5"/>
+<text class="t" x="147.8" y="192.0" font-size="11">θ* 0.30, retail</text>
+<line x1="90.9" y1="87.4" x2="86.8" y2="170.0" stroke="var(--muted)"/>
+<text class="t" x="60.9" y="82.4" font-size="11">θ* 0.12–0.13, airline and telecom</text>
+<text class="t" x="60.9" y="32.0" font-size="12" font-style="italic">qβ − (1−q)δ</text>
+<text class="m" x="201.0" y="264.0" text-anchor="middle" font-size="11">q, probability the read is used before the next write</text>
+<text class="m" font-size="11" transform="translate(14 122.0) rotate(-90)" text-anchor="middle">expected value of one read, thousand input tokens</text>
+</svg>

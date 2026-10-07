@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 878 262" width="878" height="262" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12">
+<style>svg{--bg:#fcfcfb;--ink:#0b0b0b;--muted:#52514e;--grid:#e4e3df;--a:#2a78d6;--b:#eb6834;--c:#1baf7a;--pa:#dbe8f9;--pb:#fde6da;--panel:#f1f0ec;--g1:#a3a29c;--g2:#d6d5cf;}@media (prefers-color-scheme: dark){svg{--bg:#1a1a19;--ink:#ffffff;--muted:#c3c2b7;--grid:#3a3936;--a:#3987e5;--b:#d95926;--c:#199e70;--pa:#22385a;--pb:#4a2a1b;--panel:#262624;--g1:#76756f;--g2:#4b4a46;}}.t{fill:var(--ink)}.m{fill:var(--muted)}.k{fill:var(--bg)}</style>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker></defs>
+<rect width="878" height="262" fill="var(--bg)"/>
+<text class="t" x="6.0" y="16.0" font-size="13" font-weight="700">(a) A lookup spares an LLM turn</text>
+<text class="t" x="6.0" y="44.0" font-weight="700">Without stretto</text>
+<text class="t" x="246.0" y="44.0" font-weight="700">With stretto</text>
+<rect x="2" y="106" width="236" height="49" rx="6" fill="none" stroke="var(--b)" stroke-width="1.5" stroke-dasharray="5 3"/>
+<rect x="6" y="57" width="50" height="19" rx="9.5" fill="var(--muted)"/>
+<text class="k" x="31.0" y="71.0" text-anchor="middle" font-size="11" font-weight="700">turn 1</text>
+<text class="t" x="64.0" y="71.0" font-size="11.5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">get_user_details(u)</text>
+<text class="m" x="64.0" y="98.0" font-size="11.5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">↳ orders: [#W12]</text>
+<rect x="6" y="111" width="50" height="19" rx="9.5" fill="var(--muted)"/>
+<text class="k" x="31.0" y="125.0" text-anchor="middle" font-size="11" font-weight="700">turn 2</text>
+<text class="t" x="64.0" y="125.0" font-size="11.5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">get_order_details(#W12)</text>
+<text class="m" x="64.0" y="152.0" font-size="11.5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">↳ status: delivered</text>
+<rect x="6" y="165" width="50" height="19" rx="9.5" fill="var(--muted)"/>
+<text class="k" x="31.0" y="179.0" text-anchor="middle" font-size="11" font-weight="700">turn 3</text>
+<text class="t" x="64.0" y="179.0" font-size="12">reply to the user</text>
+<text class="t" x="6.0" y="213.0" font-weight="700">3 LLM turns</text>
+<rect x="92.4" y="99" width="141.6" height="14" fill="var(--bg)"/>
+<text class="m" x="230.0" y="110.0" text-anchor="end" font-size="10.5">the turn a lookup spares</text>
+<rect x="246" y="57" width="50" height="19" rx="9.5" fill="var(--muted)"/>
+<text class="k" x="271.0" y="71.0" text-anchor="middle" font-size="11" font-weight="700">turn 1</text>
+<text class="t" x="304.0" y="71.0" font-size="11.5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">get_user_details(u)</text>
+<text class="m" x="304.0" y="98.0" font-size="11.5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">↳ orders: [#W12]</text>
+<rect x="296" y="108" width="190" height="49" rx="6" fill="var(--pb)" stroke="var(--b)" stroke-width="1.5"/>
+<text class="t" x="304.0" y="124.0" font-size="11.5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">+ get_order_details(#W12)</text>
+<text class="m" x="304.0" y="147.0" font-size="11.5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">↳ status: delivered</text>
+<rect x="246" y="155" width="50" height="19" rx="9.5" fill="var(--muted)"/>
+<text class="k" x="271.0" y="169.0" text-anchor="middle" font-size="11" font-weight="700">turn 2</text>
+<text class="t" x="304.0" y="169.0" font-size="12">reply to the user</text>
+<text class="t" x="246.0" y="213.0" font-weight="700">2 LLM turns</text>
+<path d="M420.2,94 C486.2,94 518.0,119 490.0,119" fill="none" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#arrow)"/>
+<text class="m" x="424.2" y="89.0" font-size="10.5">bound from this result</text>
+<text class="t" x="546.0" y="16.0" font-size="13" font-weight="700">(b) The event to estimate</text>
+<text class="m" x="546.0" y="44.0" font-size="11.5">After the user's details: will the agent read the order?</text>
+<rect x="546.0" y="74" width="40.1" height="22" rx="4" fill="var(--panel)" stroke="var(--muted)"/>
+<text class="t" x="566.0" y="89.0" text-anchor="middle" font-size="11.5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">user</text>
+<rect x="593.1" y="74" width="42.5" height="22" rx="4" fill="none" stroke="var(--g1)" stroke-dasharray="3 2"/>
+<text class="m" x="614.3" y="89.0" text-anchor="middle" font-size="11.5" font-style="italic">reply</text>
+<rect x="642.5" y="74" width="47.1" height="22" rx="4" fill="var(--panel)" stroke="var(--b)" stroke-width="2"/>
+<text class="t" x="666.1" y="89.0" text-anchor="middle" font-size="11.5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">order</text>
+<rect x="696.6" y="74" width="42.5" height="22" rx="4" fill="none" stroke="var(--g1)" stroke-dasharray="3 2"/>
+<text class="m" x="717.8" y="89.0" text-anchor="middle" font-size="11.5" font-style="italic">reply</text>
+<rect x="746.1" y="74" width="61.1" height="22" rx="4" fill="var(--panel)" stroke="var(--muted)"/>
+<text class="t" x="776.6" y="89.0" text-anchor="middle" font-size="11.5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">product</text>
+<rect x="814.2" y="74" width="54.1" height="22" rx="4" fill="var(--ink)"/>
+<text class="k" x="841.2" y="89.0" text-anchor="middle" font-size="11.5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">cancel</text>
+<path d="M584.6,65 L594.6,65 L589.6,72 z" fill="var(--ink)"/>
+<text class="m" x="581.6" y="62.0" font-size="11">the speculator decides</text>
+<text class="m" x="841.2" y="68.0" text-anchor="middle" font-size="11">write</text>
+<path d="M593.1,102 L593.1,108 L635.5,108 L635.5,102" fill="none" stroke="var(--a)" stroke-width="2"/>
+<text class="t" x="593.1" y="123.0" font-size="11.5">the next step: a reply</text>
+<path d="M593.1,136 L593.1,142 L807.2,142 L807.2,136" fill="none" stroke="var(--b)" stroke-width="2"/>
+<text class="t" x="593.1" y="157.0" font-size="11.5">before the next write: U(x), where the order is</text>
+<text class="t" x="546.0" y="184.0" font-size="11.5">read next, under the habit</text>
+<rect x="546" y="188" width="192.0" height="14" rx="2" fill="var(--a)"/>
+<rect x="546" y="188" width="300" height="14" rx="2" fill="none" stroke="var(--grid)"/>
+<text class="k" x="733.0" y="199.0" text-anchor="end" font-size="11" font-weight="700">0.64</text>
+<text class="t" x="546.0" y="220.0" font-size="11.5">read before the next write, observed</text>
+<rect x="546" y="224" width="282.0" height="14" rx="2" fill="var(--b)"/>
+<rect x="546" y="224" width="300" height="14" rx="2" fill="none" stroke="var(--grid)"/>
+<text class="k" x="823.0" y="235.0" text-anchor="end" font-size="11" font-weight="700">94%</text>
+</svg>

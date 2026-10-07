@@ -10,6 +10,12 @@ The `stretto` CLI and `stretto-proxy` are the product. The library crates (`stre
 - The voice-over of both videos and of the interactive explainer is Kokoro-82M's `af_heart`, run locally (`brand/video/narrate.py`), in place of Chatterbox. Each line is checked by speech recognition as before. The videos have no sound effects now: the voice, the music bed under it, and its motif in and out.
 - `brand/video/PACING.md` records the pacing the film follows, measured from Auracle's films: one breath a sentence, one idea a line, and silence written into the script.
 
+### The paper in two columns, with more figures
+
+- The paper's PDF (`paper/latex/`) is set in two columns, with the abstract boxed, the propositions boxed, run-in heads in the accent color and running heads. A table or figure spans both columns only when it is too wide for one, and the note under a table travels with it.
+- Six new figures: how a lookup spares an LLM turn and the event the speculator estimates (Figure 1), a read's expected value against its probability of use at the counted costs of retail, airline and telecom (Figure 2), what decides each turn across the benchmarks (Figure 4), the share of the ceiling each speculator takes in replay (Figure 8), the live comparisons of the speculator and of a prompt for parallel calls, with their intervals (Figure 10), and the cascade on solo telecom (Figure 11). `scripts/paper_diagrams.py` draws them, from numbers written as the paper writes them, and fails if the paper's text (its figures' captions aside) does not hold each one in its sentence or table row. The earlier figures are renumbered.
+- `scripts/paper_figures.py` sets the ceilings in two panels side by side and the reliability diagrams narrower, for the two-column page.
+
 ### The cold start on more agents
 
 - `scripts/cold_draws.py run` learns three flows from random draws of an agent's first sessions (the habit alone, the draw's own arbiter, a shipped arbiter) and replays each on the agent's test episodes; `report` gives each flow's spread across draws, how many draws save under half of what every training task gives, and the shipped arbiter's paired difference ([#9](https://github.com/alexnodeland/stretto/issues/9)).
